@@ -1,5 +1,12 @@
 [
   {
+    "version": "20260808-04",
+    "date": "2026-08-08",
+    "changes": [
+      "Fixed Gunneren's cleaning-map card blinking on the Robots page: the whole panel re-renders whenever any of its entities change, which is frequent while Gunner is actively cleaning (progress, current room) -- each re-render was destroying and recreating the map image from scratch and re-fetching it, leaving it blank for a moment every single time. The last loaded map now carries over between re-renders instead of going blank, and the map itself only actually re-fetches a few times a minute instead of on every update."
+    ]
+  },
+  {
     "version": "20260808-03",
     "date": "2026-08-08",
     "changes": [

@@ -31,6 +31,40 @@
   let roomLayoutEditing = false;
   const ROOM_LAYOUT_KEY = "beast_gunner_room_button_positions_v1";
 
+  // The whole panel re-renders (innerHTML replace) on every relevant state
+  // change, which is frequent while Gunner is actively cleaning (progress,
+  // current room). That destroys and recreates the map <img> each time, and
+  // since loading it is an authenticated blob fetch (not instant), the new
+  // element sat blank until the fetch resolved -- a visible blink every
+  // render. Caching the last frame at module scope (outliving any single
+  // <img> element) and throttling the actual refetch fixes both: the new
+  // element starts pre-filled with the last frame instead of blank, and the
+  // network fetch only happens a few times a minute instead of on every render.
+  let gunnerMapObjectUrl = null;
+  let gunnerMapEntityId = null;
+  let gunnerMapLastFetchAt = 0;
+  const GUNNER_MAP_REFRESH_MS = 5000;
+
+  function refreshGunnerMap(map) {
+    if (!map || !IDS.gunnerMap) return;
+    if (IDS.gunnerMap !== gunnerMapEntityId) {
+      if (gunnerMapObjectUrl) URL.revokeObjectURL(gunnerMapObjectUrl);
+      gunnerMapObjectUrl = null;
+      gunnerMapEntityId = IDS.gunnerMap;
+      gunnerMapLastFetchAt = 0;
+    }
+    const now = Date.now();
+    if (gunnerMapObjectUrl && now - gunnerMapLastFetchAt < GUNNER_MAP_REFRESH_MS) return;
+    gunnerMapLastFetchAt = now;
+    BeastAuth.haFetchBlob(`/api/image_proxy/${IDS.gunnerMap}`).then((blob) => {
+      const objectUrl = URL.createObjectURL(blob);
+      if (gunnerMapObjectUrl) URL.revokeObjectURL(gunnerMapObjectUrl);
+      gunnerMapObjectUrl = objectUrl;
+      const currentMap = document.getElementById("beastGunnerMap");
+      if (currentMap) currentMap.src = objectUrl;
+    }).catch(() => {});
+  }
+
   function savedRoomPositions() {
     try { return JSON.parse(localStorage.getItem(ROOM_LAYOUT_KEY) || "{}"); }
     catch (_) { return {}; }
@@ -194,7 +228,7 @@
         </div>
         <div class="beast-robot-map">
           <div class="beast-robot-map-canvas">
-            <img id="beastGunnerMap" alt="Gunnerens rengøringskort">
+            <img id="beastGunnerMap" alt="Gunnerens rengøringskort"${gunnerMapObjectUrl ? ` src="${gunnerMapObjectUrl}"` : ""}>
             <div class="beast-robot-room-layer" aria-label="Vælg rum på kortet">
               ${GUNNER_ROOMS.map((room) => `
                 <button type="button" class="beast-map-room beast-map-room--${room.cls}${state(room.id)?.state === "on" ? " is-selected" : ""}" data-room="${room.id}" aria-label="${escapeHtml(room.label)}" title="${escapeHtml(room.label)}" aria-pressed="${state(room.id)?.state === "on"}">
@@ -268,7 +302,7 @@
     roomLayer?.classList.toggle("is-editing", roomLayoutEditing);
     if (roomLayer) applyRoomPositions(roomLayer);
     const map = document.getElementById("beastGunnerMap");
-    if (map) BeastAuth.setAuthedImageSrc(map, `/api/image_proxy/${IDS.gunnerMap}`);
+    if (map) refreshGunnerMap(map);
     containerEl.querySelectorAll("[data-robot-image]").forEach((image) => {
       BeastAuth.setAuthedImageSrc(image, `/api/image_proxy/${image.dataset.robotImage}`);
     });
