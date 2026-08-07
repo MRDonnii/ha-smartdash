@@ -1074,7 +1074,12 @@
     `;
   }
 
-  const WEATHER_CONDITION_LABELS = { sunny: "Solrigt", partlycloudy: "Delvist skyet", cloudy: "Skyet", rainy: "Regn", pouring: "Kraftig regn", fog: "Tåget", windy: "Blæsende", "windy-variant": "Blæsende", lightning: "Torden", "lightning-rainy": "Tordenbyger", snowy: "Sne", "clear-night": "Klart" };
+  const WEATHER_CONDITION_LABELS = {
+    sunny: ["Solrigt", "Sunny"], partlycloudy: ["Delvist skyet", "Partly cloudy"], cloudy: ["Skyet", "Cloudy"],
+    rainy: ["Regn", "Rainy"], pouring: ["Kraftig regn", "Pouring"], fog: ["Tåget", "Foggy"],
+    windy: ["Blæsende", "Windy"], "windy-variant": ["Blæsende", "Windy"], lightning: ["Torden", "Thunder"],
+    "lightning-rainy": ["Tordenbyger", "Thunderstorm"], snowy: ["Sne", "Snowy"], "clear-night": ["Klart", "Clear"]
+  };
 
   function screensaverPreviewData() {
     const now = new Date();
@@ -1087,12 +1092,13 @@
       const value = BeastHaSocket.getState(id)?.state;
       return value && !["locked", "unknown", "unavailable"].includes(value);
     }).length;
+    const conditionLabels = WEATHER_CONDITION_LABELS[condition];
     return {
       time: now.toLocaleTimeString("da-DK", { hour: "2-digit", minute: "2-digit" }),
       date: now.toLocaleDateString("da-DK", { weekday: "long", day: "numeric", month: "long" }),
-      weatherLabel: WEATHER_CONDITION_LABELS[condition] || condition || "Aktuelt vejr",
+      weatherLabel: conditionLabels ? t(conditionLabels[0], conditionLabels[1]) : condition || t("Aktuelt vejr", "Current weather"),
       weatherTemp: Number.isFinite(temperature) ? `${Math.round(temperature)}°` : "–",
-      securityText: (unlocked || openDoors) ? `${openDoors} åbne · ${unlocked} ulåste` : "Huset er sikret",
+      securityText: (unlocked || openDoors) ? t(`${openDoors} åbne · ${unlocked} ulåste`, `${openDoors} open · ${unlocked} unlocked`) : t("Huset er sikret", "House is secured"),
       hasWeatherData: Number.isFinite(temperature)
     };
   }
@@ -1113,27 +1119,27 @@
   function renderScreensaverView() {
     const screensaver = BeastLocalSettings.get("screensaver", BeastConfig.get("screensaver")) || { enabled: true, schedule: "custom", startTime: "23:00", endTime: "05:30", offAfterMinutes: 5 };
     return `<section class="admin-view${activeView === "screensaver" ? " is-active" : ""}" data-admin-view="screensaver">
-      <div class="admin-settings-intro"><div><h2>Pauseskærm</h2><p>Styrer denne skærm/browser alene — hver kiosk kan have sin egen tidsplan og kan slås helt fra uden at påvirke andre skærme.</p></div></div>
-      <div class="admin-card admin-settings-group"><div class="admin-card-head"><div><h2>Tidsplan</h2><p>Bestem hvornår pauseskærmen må vise sig, og om den skal være aktiv overhovedet.</p></div></div><div class="beast-mqtt-config">
-        <label><span>Pauseskærm</span>
+      <div class="admin-settings-intro"><div><h2>${t("Pauseskærm", "Screensaver")}</h2><p>${t("Styrer denne skærm/browser alene — hver kiosk kan have sin egen tidsplan og kan slås helt fra uden at påvirke andre skærme.", "Controls this screen/browser only — each kiosk can have its own schedule and can be turned off entirely without affecting other screens.")}</p></div></div>
+      <div class="admin-card admin-settings-group"><div class="admin-card-head"><div><h2>${t("Tidsplan", "Schedule")}</h2><p>${t("Bestem hvornår pauseskærmen må vise sig, og om den skal være aktiv overhovedet.", "Decide when the screensaver is allowed to show, and whether it's active at all.")}</p></div></div><div class="beast-mqtt-config">
+        <label><span>${t("Pauseskærm", "Screensaver")}</span>
           <select id="adminScreensaverEnabled">
-            <option value="1" ${screensaver.enabled ? "selected" : ""}>Til</option>
-            <option value="0" ${!screensaver.enabled ? "selected" : ""}>Fra — aldrig aktiv</option>
+            <option value="1" ${screensaver.enabled ? "selected" : ""}>${t("Til", "On")}</option>
+            <option value="0" ${!screensaver.enabled ? "selected" : ""}>${t("Fra — aldrig aktiv", "Off — never active")}</option>
           </select>
         </label>
-        <label><span>Tidsrum</span>
+        <label><span>${t("Tidsrum", "Time window")}</span>
           <select id="adminScreensaverSchedule">
-            <option value="custom" ${screensaver.schedule !== "always" ? "selected" : ""}>Bestemt tidsrum</option>
-            <option value="always" ${screensaver.schedule === "always" ? "selected" : ""}>Altid, når skærmen er i ro</option>
+            <option value="custom" ${screensaver.schedule !== "always" ? "selected" : ""}>${t("Bestemt tidsrum", "Specific time window")}</option>
+            <option value="always" ${screensaver.schedule === "always" ? "selected" : ""}>${t("Altid, når skærmen er i ro", "Always, whenever the screen is idle")}</option>
           </select>
         </label>
-        <label><span>Starttidspunkt</span><input type="time" id="adminScreensaverStart" value="${escapeHtml(screensaver.startTime || "23:00")}"></label>
-        <label><span>Sluttidspunkt</span><input type="time" id="adminScreensaverEnd" value="${escapeHtml(screensaver.endTime || "05:30")}"></label>
-        <label><span>Slukker helt efter (minutter)</span><input type="number" min="1" max="60" id="adminScreensaverOffAfter" value="${Number(screensaver.offAfterMinutes) || 5}"></label>
-        <button type="button" class="beast-btn beast-btn-primary" id="adminScreensaverSave">Gem pauseskærm</button>
+        <label><span>${t("Starttidspunkt", "Start time")}</span><input type="time" id="adminScreensaverStart" value="${escapeHtml(screensaver.startTime || "23:00")}"></label>
+        <label><span>${t("Sluttidspunkt", "End time")}</span><input type="time" id="adminScreensaverEnd" value="${escapeHtml(screensaver.endTime || "05:30")}"></label>
+        <label><span>${t("Slukker helt efter (minutter)", "Turns off completely after (minutes)")}</span><input type="number" min="1" max="60" id="adminScreensaverOffAfter" value="${Number(screensaver.offAfterMinutes) || 5}"></label>
+        <button type="button" class="beast-btn beast-btn-primary" id="adminScreensaverSave">${t("Gem pauseskærm", "Save screensaver")}</button>
         <span class="admin-save-state" data-save-state="screensaver"></span>
       </div></div>
-      <div class="admin-card admin-settings-group"><div class="admin-card-head"><div><h2>Forhåndsvisning</h2><p>Sådan ser pauseskærmen ud lige nu, med rigtige data — nyttigt til at tjekke at vejret rent faktisk vises.</p></div></div>
+      <div class="admin-card admin-settings-group"><div class="admin-card-head"><div><h2>${t("Forhåndsvisning", "Preview")}</h2><p>${t("Sådan ser pauseskærmen ud lige nu, med rigtige data — nyttigt til at tjekke at vejret rent faktisk vises.", "How the screensaver looks right now, with real data — useful for checking the weather actually shows.")}</p></div></div>
         <div id="adminScreensaverPreviewHost">${renderScreensaverPreview()}</div>
       </div>
     </section>`;
@@ -1185,14 +1191,14 @@
             <p class="admin-nav-section">Indstillinger</p>
             <button class="${activeView === "settings" ? "is-active" : ""}" type="button" data-view="settings">Udseende & enhed</button>
             <button class="${activeView === "security-settings" ? "is-active" : ""}" type="button" data-view="security-settings">Adgang & pinkode</button>
-            <button class="${activeView === "screensaver" ? "is-active" : ""}" type="button" data-view="screensaver">Pauseskærm</button>
+            <button class="${activeView === "screensaver" ? "is-active" : ""}" type="button" data-view="screensaver">${t("Pauseskærm", "Screensaver")}</button>
             <button class="${activeView === "backup" ? "is-active" : ""}" type="button" data-view="backup">Backup & gendannelse</button>
             <button class="${activeView === "updates" ? "is-active" : ""}" type="button" data-view="updates">Opdatering</button>
           </nav>
           <div class="admin-sidebar-foot"><a class="admin-back" href="/">Åbn dashboard</a></div>
         </aside>
         <main class="admin-main">
-          <header class="admin-topbar"><div><h1>${activeView === "updates" ? "Opdatering" : activeView === "backup" ? "Backup & gendannelse" : activeView === "security-settings" ? "Sikkerhed" : activeView === "screensaver" ? "Pauseskærm" : activeView === "settings" ? "Udseende & enhed" : activeView === "overview" ? "Overblik" : "Opsætning"}</h1><p>${activeView === "updates" ? "Se hvad der er nyt, og gendan en tidligere version om nødvendigt." : activeView === "security-settings" ? "Lokal adgang, pinkode og beskyttelse af adminpanelet." : activeView === "screensaver" ? "Styrer denne skærm/browser — hver kiosk kan have sin egen tidsplan." : "Konfigurationen gemmes centralt på serveren."}</p></div><div class="admin-topbar-tools"><label class="admin-language-picker"><span>${BeastCore.icon("globe", { size: 15 })}</span><select id="adminLanguageSelect" aria-label="Dashboard-sprog"><option value="en"${dashboardLanguage !== "da" ? " selected" : ""}>English</option><option value="da"${dashboardLanguage === "da" ? " selected" : ""}>Dansk</option></select></label><span class="admin-status" id="adminHaStatus" data-state="${connected ? "connected" : "connecting"}">${connected ? "Home Assistant forbundet" : "Forbinder til Home Assistant…"}</span></div></header>
+          <header class="admin-topbar"><div><h1>${activeView === "updates" ? "Opdatering" : activeView === "backup" ? "Backup & gendannelse" : activeView === "security-settings" ? "Sikkerhed" : activeView === "screensaver" ? t("Pauseskærm", "Screensaver") : activeView === "settings" ? "Udseende & enhed" : activeView === "overview" ? "Overblik" : "Opsætning"}</h1><p>${activeView === "updates" ? "Se hvad der er nyt, og gendan en tidligere version om nødvendigt." : activeView === "security-settings" ? "Lokal adgang, pinkode og beskyttelse af adminpanelet." : activeView === "screensaver" ? t("Styrer denne skærm/browser — hver kiosk kan have sin egen tidsplan.", "Controls this screen/browser only — each kiosk can have its own schedule.") : "Konfigurationen gemmes centralt på serveren."}</p></div><div class="admin-topbar-tools"><label class="admin-language-picker"><span>${BeastCore.icon("globe", { size: 15 })}</span><select id="adminLanguageSelect" aria-label="Dashboard-sprog"><option value="en"${dashboardLanguage !== "da" ? " selected" : ""}>English</option><option value="da"${dashboardLanguage === "da" ? " selected" : ""}>Dansk</option></select></label><span class="admin-status" id="adminHaStatus" data-state="${connected ? "connected" : "connecting"}">${connected ? "Home Assistant forbundet" : "Forbinder til Home Assistant…"}</span></div></header>
           ${renderActiveView()}
         </main>
       </div>`;

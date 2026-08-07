@@ -1,5 +1,12 @@
 [
   {
+    "version": "20260808-02",
+    "date": "2026-08-08",
+    "changes": [
+      "The new Screensaver section in Administration now actually switches to English when English is selected -- it shipped Danish-only in the previous version. All its labels, options, and the live preview's weather/security summary now follow the language picker."
+    ]
+  },
+  {
     "version": "20260808-01",
     "date": "2026-08-08",
     "changes": [
