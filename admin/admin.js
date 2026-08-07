@@ -909,58 +909,73 @@
     if (!tile && !changelogEl && !installLatestEl) return;
     setUpdateStatus("checking", t("Tjekker…", "Checking…"));
     try {
-      const [versionsRes, changelogRes] = await Promise.all([
+      const [versionsRes, changelogRes, githubRes] = await Promise.all([
         fetch("/api/versions.php", { cache: "no-store" }),
-        fetch(`/changelog.json?_=${Date.now()}`, { cache: "no-store" })
+        fetch(`/changelog.json?_=${Date.now()}`, { cache: "no-store" }),
+        fetch("/api/update.php", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "check" }) }).catch(() => null)
       ]);
       if (!versionsRes.ok) throw new Error(`HTTP ${versionsRes.status}`);
       const versionsPayload = await versionsRes.json();
       const changelog = changelogRes.ok ? await changelogRes.json() : [];
+      const github = githubRes && githubRes.ok ? await githubRes.json() : null;
       const current = versionsPayload.currentVersion || "ukendt";
       const valueEl = tile?.querySelector(".beast-stat-tile-value");
       const metaEl = tile?.querySelector(".beast-stat-tile-meta");
       if (valueEl) valueEl.textContent = formatVersionLabel(current);
       if (metaEl) metaEl.textContent = current;
       if (changelogEl) changelogEl.innerHTML = renderChangelogEntries(Array.isArray(changelog) ? changelog : []);
-      if (installLatestEl || oldSelect) {
-        const versions = versionsPayload.versions || [];
-        const latestVersion = versions.length ? versions.map((item) => item.version).sort().at(-1) : null;
-        const latestEntry = versions.find((item) => item.version === latestVersion);
-        if (installLatestEl) {
-          installLatestEl.innerHTML = (latestVersion && latestVersion !== current && latestEntry)
-            ? `<div class="admin-install-latest"><div><strong>${t("Ny version klar", "New version ready")}</strong><span>${escapeHtml(formatVersionLabel(latestVersion))}</span>${latestEntry.changes?.length ? `<ul>${latestEntry.changes.slice(0, 4).map((change) => `<li>${escapeHtml(change)}</li>`).join("")}</ul>` : ""}</div><button type="button" class="beast-btn beast-btn-primary" data-rollback-version="${escapeHtml(latestVersion)}" data-is-newer="true" data-is-latest="true">${t("Installer ny version", "Install new version")}</button></div>`
-            : `<p class="admin-empty">${t("Du kører den nyeste version.", "You're on the latest version.")}</p>`;
+
+      const versions = versionsPayload.versions || [];
+      const localLatest = versions.length ? versions.map((item) => item.version).sort().at(-1) : null;
+      // GitHub is the real source of truth for "is a newer release out
+      // there" -- unlike the local snapshot list, it's meaningful even on
+      // an install that has never received a hand-pushed update (e.g. a
+      // fresh clone) and so has no snapshot history of its own at all.
+      const githubIsNewer = Boolean(github?.remoteVersion) && (!localLatest || github.remoteVersion > localLatest);
+      const latestVersion = githubIsNewer ? github.remoteVersion : localLatest;
+      const latestEntry = versions.find((item) => item.version === latestVersion);
+
+      if (installLatestEl) {
+        if (latestVersion && latestVersion !== current) {
+          const changesHtml = githubIsNewer
+            ? (github.releaseNotes ? `<p class="admin-install-latest-notes">${escapeHtml(String(github.releaseNotes)).slice(0, 600)}</p>` : "")
+            : (latestEntry?.changes?.length ? `<ul>${latestEntry.changes.slice(0, 4).map((change) => `<li>${escapeHtml(change)}</li>`).join("")}</ul>` : "");
+          const installSource = githubIsNewer ? "github" : "local";
+          const installTag = githubIsNewer ? escapeHtml(github.tag || "") : "";
+          installLatestEl.innerHTML = `<div class="admin-install-latest"><div><strong>${t("Ny version klar", "New version ready")}</strong><span>${escapeHtml(formatVersionLabel(latestVersion))}</span>${changesHtml}</div><button type="button" class="beast-btn beast-btn-primary" data-rollback-version="${escapeHtml(latestVersion)}" data-is-newer="true" data-is-latest="true" data-install-source="${installSource}" data-install-tag="${installTag}">${t("Installer ny version", "Install new version")}</button></div>`;
+        } else {
+          installLatestEl.innerHTML = `<p class="admin-empty">${t("Du kører den nyeste version.", "You're on the latest version.")}</p>`;
         }
-        const oldVersions = versions.filter((item) => item.version !== current && item.version !== latestVersion);
-        if (oldSelect) {
-          oldSelect.disabled = !oldVersions.length;
-          oldSelect.innerHTML = oldVersions.length
-            ? oldVersions.map((item) => {
-              const size = item.sizeKb < 1024 ? `${item.sizeKb} KB` : `${(item.sizeKb / 1024).toFixed(1)} MB`;
-              return `<option value="${escapeHtml(item.version)}">${escapeHtml(formatVersionLabel(item.version))} · ${size}</option>`;
-            }).join("")
-            : `<option value="">${t("Ingen andre versioner gemt", "No other versions saved")}</option>`;
-        }
-        if (oldRestoreBtn) {
-          oldRestoreBtn.disabled = !oldVersions.length;
-          oldRestoreBtn.dataset.rollbackVersion = oldVersions.length ? oldVersions[0].version : "";
-        }
+      }
+      const oldVersions = versions.filter((item) => item.version !== current && item.version !== latestVersion);
+      if (oldSelect) {
+        oldSelect.disabled = !oldVersions.length;
+        oldSelect.innerHTML = oldVersions.length
+          ? oldVersions.map((item) => {
+            const size = item.sizeKb < 1024 ? `${item.sizeKb} KB` : `${(item.sizeKb / 1024).toFixed(1)} MB`;
+            return `<option value="${escapeHtml(item.version)}">${escapeHtml(formatVersionLabel(item.version))} · ${size}</option>`;
+          }).join("")
+          : `<option value="">${t("Ingen andre versioner gemt", "No other versions saved")}</option>`;
+      }
+      if (oldRestoreBtn) {
+        oldRestoreBtn.disabled = !oldVersions.length;
+        oldRestoreBtn.dataset.rollbackVersion = oldVersions.length ? oldVersions[0].version : "";
+        oldRestoreBtn.dataset.installSource = "local";
       }
       if (!versionsPayload.hasCurrentSnapshot) {
         await fetch("/api/versions.php", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "snapshot" }) });
       }
-      const newestVersion = Array.isArray(changelog) && changelog.length
-        ? changelog.map((entry) => entry.version).sort().at(-1)
-        : current;
       const checkedAt = new Date().toLocaleTimeString();
-      if (newestVersion && newestVersion > current) {
-        setUpdateStatus("outdated", t(`Ny version tilgængelig: ${newestVersion} · tjekket ${checkedAt}`, `New version available: ${newestVersion} · checked ${checkedAt}`));
+      if (latestVersion && latestVersion > current) {
+        setUpdateStatus("outdated", t(`Ny version tilgængelig: ${latestVersion} · tjekket ${checkedAt}`, `New version available: ${latestVersion} · checked ${checkedAt}`));
+      } else if (!github) {
+        setUpdateStatus("current", t(`Du kører den nyeste version (kunne ikke tjekke GitHub) · tjekket ${checkedAt}`, `You're on the latest version (couldn't reach GitHub) · checked ${checkedAt}`));
       } else {
         setUpdateStatus("current", t(`Du kører den nyeste version · tjekket ${checkedAt}`, `You're on the latest version · checked ${checkedAt}`));
       }
     } catch (error) {
       if (changelogEl) changelogEl.innerHTML = `<p class="admin-empty">${t("Kunne ikke hente ændringslog.", "Could not load the changelog.")}</p>`;
-      if (listEl) listEl.innerHTML = `<p class="admin-empty">${t("Kunne ikke hente versionshistorik.", "Could not load version history.")}</p>`;
+      if (installLatestEl) installLatestEl.innerHTML = `<p class="admin-empty">${t("Kunne ikke hente versionshistorik.", "Could not load version history.")}</p>`;
       setUpdateStatus("error", t("Kunne ikke tjekke for opdateringer", "Could not check for updates"));
     }
   }
@@ -969,6 +984,13 @@
     const response = await fetch("/api/versions.php", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "rollback", version }) });
     if (!response.ok) throw new Error(`HTTP ${response.status}`);
     return response.json();
+  }
+
+  async function installFromGithub(tag) {
+    const response = await fetch("/api/update.php", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "install", tag: tag || undefined }) });
+    const payload = await response.json().catch(() => null);
+    if (!response.ok || !payload?.success) throw new Error(payload?.message || payload?.error || `HTTP ${response.status}`);
+    return payload;
   }
 
   function downloadJson(filename, payload) {
@@ -1174,10 +1196,14 @@
       if (!version) return;
       const isNewer = button.dataset.isNewer === "true";
       const isLatest = button.dataset.isLatest === "true";
+      const fromGithub = button.dataset.installSource === "github";
+      const installTag = button.dataset.installTag || "";
       const stateEl = document.getElementById("adminRollbackState");
       const progressEl = document.getElementById("adminRollbackProgress");
       const fillEl = document.getElementById("adminRollbackProgressFill");
-      const pendingText = isLatest ? t(`Installerer version ${version}…`, `Installing version ${version}…`) : isNewer ? t(`Opdaterer til version ${version}…`, `Updating to version ${version}…`) : t(`Gendanner version ${version}…`, `Restoring version ${version}…`);
+      const pendingText = fromGithub
+        ? t(`Henter version ${version} fra GitHub…`, `Downloading version ${version} from GitHub…`)
+        : isLatest ? t(`Installerer version ${version}…`, `Installing version ${version}…`) : isNewer ? t(`Opdaterer til version ${version}…`, `Updating to version ${version}…`) : t(`Gendanner version ${version}…`, `Restoring version ${version}…`);
       const successText = isLatest ? t(`✓ Version ${version} installeret`, `✓ Version ${version} installed`) : isNewer ? t(`✓ Opdateret til version ${version}`, `✓ Updated to version ${version}`) : t(`✓ Version ${version} gendannet`, `✓ Version ${version} restored`);
       const errorText = isLatest ? t(`Kunne ikke installere version ${version}`, `Could not install version ${version}`) : isNewer ? t(`Kunne ikke opdatere til version ${version}`, `Could not update to version ${version}`) : t(`Kunne ikke gendanne version ${version}`, `Could not restore version ${version}`);
       const confirmText = isLatest
@@ -1203,7 +1229,8 @@
         if (fillEl) fillEl.style.width = `${fakeProgress}%`;
       }, 150);
       try {
-        await rollbackToVersion(version);
+        if (fromGithub) await installFromGithub(installTag);
+        else await rollbackToVersion(version);
         window.clearInterval(progressTimer);
         if (fillEl) fillEl.style.width = "100%";
         if (progressEl) progressEl.dataset.state = "success";
