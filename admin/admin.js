@@ -842,6 +842,7 @@
       </div>
       <div class="admin-card"><div class="admin-card-head"><div><h2>Versionshistorik</h2><p>Tidligere versioner gemmes automatisk, når de vises her. Du kan gendanne en ældre version, hvis en opdatering går galt — den nuværende version gemmes altid først, så gendannelse selv kan fortrydes.</p></div><button type="button" class="beast-btn" data-reload-versions>Opdatér liste</button></div>
         <div class="admin-version-list" id="adminVersionList"><p class="admin-empty">Henter versioner…</p></div>
+        <div class="admin-progress-track" id="adminRollbackProgress" hidden><div class="admin-progress-fill" id="adminRollbackProgressFill"></div></div>
         <div class="admin-save-state" id="adminRollbackState"></div>
       </div>
     </section>`;
@@ -893,12 +894,15 @@
       if (changelogEl) changelogEl.innerHTML = renderChangelogEntries(Array.isArray(changelog) ? changelog : []);
       if (listEl) {
         const versions = versionsPayload.versions || [];
+        const latestVersion = versions.length ? versions.map((item) => item.version).sort().at(-1) : null;
         listEl.innerHTML = versions.length ? versions.map((item) => {
           const isCurrent = item.version === current;
           const isNewer = !isCurrent && item.version > current;
+          const isLatest = isNewer && item.version === latestVersion;
           const size = item.sizeKb < 1024 ? `${item.sizeKb} KB` : `${(item.sizeKb / 1024).toFixed(1)} MB`;
           const badge = isCurrent ? t(" · nuværende", " · current") : isNewer ? ` <span class="admin-version-badge">${t("Ny", "New")}</span>` : "";
-          const actionButton = isCurrent ? "" : `<button type="button" class="beast-btn${isNewer ? " beast-btn-primary" : ""}" data-rollback-version="${escapeHtml(item.version)}" data-is-newer="${isNewer}">${isNewer ? t("Opdater til denne version", "Update to this version") : t("Gendan denne version", "Restore this version")}</button>`;
+          const actionLabel = isLatest ? t("Installer ny version", "Install new version") : isNewer ? t("Opdater til denne version", "Update to this version") : t("Gendan denne version", "Restore this version");
+          const actionButton = isCurrent ? "" : `<button type="button" class="beast-btn${isNewer ? " beast-btn-primary" : ""}" data-rollback-version="${escapeHtml(item.version)}" data-is-newer="${isNewer}" data-is-latest="${isLatest}">${actionLabel}</button>`;
           return `<article class="admin-version-row${isNewer ? " is-newer" : ""}"><div><strong>${escapeHtml(item.version)}${badge}</strong><span>${escapeHtml(item.date || "")} · ${size}</span>${item.changes.length ? `<ul>${item.changes.slice(0, 4).map((change) => `<li>${escapeHtml(change)}</li>`).join("")}</ul>` : ""}</div>${actionButton}</article>`;
         }).join("") : `<p class="admin-empty">Ingen tidligere versioner gemt endnu. De dukker op her, efterhånden som dashboardet opdateres.</p>`;
       }
@@ -1124,22 +1128,51 @@
       if (!button) return;
       const version = button.dataset.rollbackVersion;
       const isNewer = button.dataset.isNewer === "true";
+      const isLatest = button.dataset.isLatest === "true";
       const stateEl = document.getElementById("adminRollbackState");
-      const confirmText = isNewer
+      const progressEl = document.getElementById("adminRollbackProgress");
+      const fillEl = document.getElementById("adminRollbackProgressFill");
+      const pendingText = isLatest ? t(`Installerer version ${version}…`, `Installing version ${version}…`) : isNewer ? t(`Opdaterer til version ${version}…`, `Updating to version ${version}…`) : t(`Gendanner version ${version}…`, `Restoring version ${version}…`);
+      const successText = isLatest ? t(`✓ Version ${version} installeret`, `✓ Version ${version} installed`) : isNewer ? t(`✓ Opdateret til version ${version}`, `✓ Updated to version ${version}`) : t(`✓ Version ${version} gendannet`, `✓ Version ${version} restored`);
+      const errorText = isLatest ? t(`Kunne ikke installere version ${version}`, `Could not install version ${version}`) : isNewer ? t(`Kunne ikke opdatere til version ${version}`, `Could not update to version ${version}`) : t(`Kunne ikke gendanne version ${version}`, `Could not restore version ${version}`);
+      const confirmText = isLatest
+        ? t(`Installer version ${version}?`, `Install version ${version}?`)
+        : isNewer
         ? t(`Opdater til version ${version}?`, `Update to version ${version}?`)
         : t(`Gendan version ${version}? Den nuværende version gemmes automatisk først, så dette kan fortrydes.`, `Restore version ${version}? The current version is saved automatically first, so this can be undone.`);
       if (!window.confirm(confirmText)) return;
-      button.disabled = true;
-      button.textContent = isNewer ? t("Opdaterer…", "Updating…") : t("Gendanner…", "Restoring…");
-      if (stateEl) { stateEl.dataset.state = "pending"; stateEl.textContent = isNewer ? t(`Opdaterer til version ${version}…`, `Updating to version ${version}…`) : t(`Gendanner version ${version}…`, `Restoring version ${version}…`); }
+      document.querySelectorAll("[data-rollback-version]").forEach((btn) => { btn.disabled = true; });
+      button.textContent = pendingText;
+      if (progressEl && fillEl) {
+        progressEl.hidden = false;
+        progressEl.dataset.state = "pending";
+        fillEl.style.width = "8%";
+      }
+      if (stateEl) { stateEl.dataset.state = "pending"; stateEl.textContent = pendingText; }
+      // The file copy is fast but the PHP endpoint doesn't stream real
+      // progress, so ease the bar toward 90% while the request is in
+      // flight and only snap to 100% once it actually succeeds.
+      let fakeProgress = 8;
+      const progressTimer = window.setInterval(() => {
+        fakeProgress = Math.min(90, fakeProgress + (90 - fakeProgress) * 0.25);
+        if (fillEl) fillEl.style.width = `${fakeProgress}%`;
+      }, 150);
       try {
         await rollbackToVersion(version);
-        if (stateEl) { stateEl.dataset.state = "success"; stateEl.textContent = isNewer ? t(`✓ Opdateret til version ${version} — genindlæser…`, `✓ Updated to version ${version} — reloading…`) : t(`✓ Version ${version} gendannet — genindlæser…`, `✓ Version ${version} restored — reloading…`); }
-        window.setTimeout(() => window.location.reload(), 900);
+        window.clearInterval(progressTimer);
+        if (fillEl) fillEl.style.width = "100%";
+        if (progressEl) progressEl.dataset.state = "success";
+        if (stateEl) { stateEl.dataset.state = "success"; stateEl.textContent = successText; }
+        window.setTimeout(() => {
+          sessionStorage.setItem("beast_admin_return_view_v1", "updates");
+          window.location.reload();
+        }, 1800);
       } catch (error) {
-        button.disabled = false;
-        button.textContent = isNewer ? t("Opdater til denne version", "Update to this version") : t("Gendan denne version", "Restore this version");
-        if (stateEl) { stateEl.dataset.state = "error"; stateEl.textContent = isNewer ? t(`Kunne ikke opdatere: ${error.message}`, `Could not update: ${error.message}`) : t(`Kunne ikke gendanne version: ${error.message}`, `Could not restore version: ${error.message}`); }
+        window.clearInterval(progressTimer);
+        if (progressEl) { progressEl.hidden = true; progressEl.dataset.state = "error"; }
+        document.querySelectorAll("[data-rollback-version]").forEach((btn) => { btn.disabled = false; });
+        button.textContent = isLatest ? t("Installer ny version", "Install new version") : isNewer ? t("Opdater til denne version", "Update to this version") : t("Gendan denne version", "Restore this version");
+        if (stateEl) { stateEl.dataset.state = "error"; stateEl.textContent = `${errorText}: ${error.message}`; }
       }
     });
     document.querySelector("[data-refresh-browser]")?.addEventListener("click", () => window.location.reload());
@@ -1512,6 +1545,8 @@
     if (!BeastAuth.getHaBaseUrl() && BeastConfig.get("haBaseUrl")) BeastAuth.setHaBaseUrl(BeastConfig.get("haBaseUrl"));
     if (pinRecoveryPending && !callback) { BeastAuth.startLogin({ forceLogin: true }); return; }
     if (!BeastAuth.hasSession()) { renderLogin(); return; }
+    const returnView = sessionStorage.getItem("beast_admin_return_view_v1");
+    if (returnView) { activeView = returnView; sessionStorage.removeItem("beast_admin_return_view_v1"); }
     renderShell();
     backupRequest({ action: "maybe" }).catch(() => null);
     if (callback?.type === "success" && pinRecoveryPending) {

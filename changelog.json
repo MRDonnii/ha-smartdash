@@ -1,5 +1,14 @@
 [
   {
+    "version": "20260807-07",
+    "date": "2026-08-07",
+    "changes": [
+      "The very latest available version now says \"Install new version\" in version history instead of \"Update to this version\"",
+      "Installing/updating/restoring a version now shows a real progress bar and a clear success message before reloading",
+      "Administration stays on the Update tab after that reload, instead of jumping back to Overview"
+    ]
+  },
+  {
     "version": "20260807-06",
     "date": "2026-08-07",
     "changes": [
