@@ -1,5 +1,12 @@
 [
   {
+    "version": "20260808-03",
+    "date": "2026-08-08",
+    "changes": [
+      "Fixed the favicon preview in Setup showing a broken-image icon instead of the current favicon: it used a relative path (./favicon.svg), which resolves against the admin page's own URL (/admin/) instead of the site root, so the browser requested a file that doesn't exist there and got the app's fallback page back instead of an image. It now uses an absolute path so the preview always shows what's actually in use."
+    ]
+  },
+  {
     "version": "20260808-02",
     "date": "2026-08-08",
     "changes": [
