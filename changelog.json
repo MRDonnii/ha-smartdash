@@ -1,5 +1,15 @@
 [
   {
+    "version": "20260807-11",
+    "date": "2026-08-07",
+    "changes": [
+      "The overview builder's live preview now uses the exact same grid rules as the real dashboard (dense packing, height capped at 2 rows), so it actually matches what you'll see on the overview instead of a rough approximation",
+      "Removed the tablet-height and portrait-height size fields from the overview builder: they never had any effect on the dashboard, so they were misleading",
+      "Fixed the desktop height dropdown offering values up to 6 when only 1-2 have any effect",
+      "Fixed size legends overlapping each other in the overview builder"
+    ]
+  },
+  {
     "version": "20260807-10",
     "date": "2026-08-07",
     "changes": [
