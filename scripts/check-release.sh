@@ -16,6 +16,7 @@ if command -v "$PHP_BIN" >/dev/null 2>&1 || test -x "$PHP_BIN"; then
   "$PHP_BIN" -l "$ROOT/api/config.php" >/dev/null
   "$PHP_BIN" -l "$ROOT/api/backup.php" >/dev/null
   "$PHP_BIN" -l "$ROOT/api/versions.php" >/dev/null
+  "$PHP_BIN" -l "$ROOT/api/update.php" >/dev/null
   "$PHP_BIN" -r 'json_decode(file_get_contents($argv[1]), true, 512, JSON_THROW_ON_ERROR);' "$ROOT/data/config.example.json"
 elif command -v python3 >/dev/null 2>&1; then
   python3 -m json.tool "$ROOT/data/config.example.json" >/dev/null
