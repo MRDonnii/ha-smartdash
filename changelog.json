@@ -1,5 +1,13 @@
 [
   {
+    "version": "20260807-06",
+    "date": "2026-08-07",
+    "changes": [
+      "Version history now clearly distinguishes newer versions (\"New\" badge, \"Update to this version\") from older ones (\"Restore this version\")",
+      "Fixed the \"current\" label in version history staying in Danish regardless of the language setting"
+    ]
+  },
+  {
     "version": "20260807-05",
     "date": "2026-08-07",
     "changes": [

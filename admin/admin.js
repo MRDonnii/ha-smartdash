@@ -895,8 +895,11 @@
         const versions = versionsPayload.versions || [];
         listEl.innerHTML = versions.length ? versions.map((item) => {
           const isCurrent = item.version === current;
+          const isNewer = !isCurrent && item.version > current;
           const size = item.sizeKb < 1024 ? `${item.sizeKb} KB` : `${(item.sizeKb / 1024).toFixed(1)} MB`;
-          return `<article class="admin-version-row"><div><strong>${escapeHtml(item.version)}${isCurrent ? " · nuværende" : ""}</strong><span>${escapeHtml(item.date || "")} · ${size}</span>${item.changes.length ? `<ul>${item.changes.slice(0, 4).map((change) => `<li>${escapeHtml(change)}</li>`).join("")}</ul>` : ""}</div>${isCurrent ? "" : `<button type="button" class="beast-btn" data-rollback-version="${escapeHtml(item.version)}">Gendan denne version</button>`}</article>`;
+          const badge = isCurrent ? t(" · nuværende", " · current") : isNewer ? ` <span class="admin-version-badge">${t("Ny", "New")}</span>` : "";
+          const actionButton = isCurrent ? "" : `<button type="button" class="beast-btn${isNewer ? " beast-btn-primary" : ""}" data-rollback-version="${escapeHtml(item.version)}" data-is-newer="${isNewer}">${isNewer ? t("Opdater til denne version", "Update to this version") : t("Gendan denne version", "Restore this version")}</button>`;
+          return `<article class="admin-version-row${isNewer ? " is-newer" : ""}"><div><strong>${escapeHtml(item.version)}${badge}</strong><span>${escapeHtml(item.date || "")} · ${size}</span>${item.changes.length ? `<ul>${item.changes.slice(0, 4).map((change) => `<li>${escapeHtml(change)}</li>`).join("")}</ul>` : ""}</div>${actionButton}</article>`;
         }).join("") : `<p class="admin-empty">Ingen tidligere versioner gemt endnu. De dukker op her, efterhånden som dashboardet opdateres.</p>`;
       }
       if (!versionsPayload.hasCurrentSnapshot) {
@@ -1120,19 +1123,23 @@
       const button = event.target.closest("[data-rollback-version]");
       if (!button) return;
       const version = button.dataset.rollbackVersion;
+      const isNewer = button.dataset.isNewer === "true";
       const stateEl = document.getElementById("adminRollbackState");
-      if (!window.confirm(t(`Gendan version ${version}? Den nuværende version gemmes automatisk først, så dette kan fortrydes.`, `Restore version ${version}? The current version is saved automatically first, so this can be undone.`))) return;
+      const confirmText = isNewer
+        ? t(`Opdater til version ${version}?`, `Update to version ${version}?`)
+        : t(`Gendan version ${version}? Den nuværende version gemmes automatisk først, så dette kan fortrydes.`, `Restore version ${version}? The current version is saved automatically first, so this can be undone.`);
+      if (!window.confirm(confirmText)) return;
       button.disabled = true;
-      button.textContent = t("Gendanner…", "Restoring…");
-      if (stateEl) { stateEl.dataset.state = "pending"; stateEl.textContent = t(`Gendanner version ${version}…`, `Restoring version ${version}…`); }
+      button.textContent = isNewer ? t("Opdaterer…", "Updating…") : t("Gendanner…", "Restoring…");
+      if (stateEl) { stateEl.dataset.state = "pending"; stateEl.textContent = isNewer ? t(`Opdaterer til version ${version}…`, `Updating to version ${version}…`) : t(`Gendanner version ${version}…`, `Restoring version ${version}…`); }
       try {
         await rollbackToVersion(version);
-        if (stateEl) { stateEl.dataset.state = "success"; stateEl.textContent = t(`✓ Version ${version} gendannet — genindlæser…`, `✓ Version ${version} restored — reloading…`); }
+        if (stateEl) { stateEl.dataset.state = "success"; stateEl.textContent = isNewer ? t(`✓ Opdateret til version ${version} — genindlæser…`, `✓ Updated to version ${version} — reloading…`) : t(`✓ Version ${version} gendannet — genindlæser…`, `✓ Version ${version} restored — reloading…`); }
         window.setTimeout(() => window.location.reload(), 900);
       } catch (error) {
         button.disabled = false;
-        button.textContent = t("Gendan denne version", "Restore this version");
-        if (stateEl) { stateEl.dataset.state = "error"; stateEl.textContent = t(`Kunne ikke gendanne version: ${error.message}`, `Could not restore version: ${error.message}`); }
+        button.textContent = isNewer ? t("Opdater til denne version", "Update to this version") : t("Gendan denne version", "Restore this version");
+        if (stateEl) { stateEl.dataset.state = "error"; stateEl.textContent = isNewer ? t(`Kunne ikke opdatere: ${error.message}`, `Could not update: ${error.message}`) : t(`Kunne ikke gendanne version: ${error.message}`, `Could not restore version: ${error.message}`); }
       }
     });
     document.querySelector("[data-refresh-browser]")?.addEventListener("click", () => window.location.reload());

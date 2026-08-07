@@ -133,6 +133,9 @@ button { cursor: pointer; }
 .admin-version-row { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; }
 .admin-version-row > div { min-width: 0; display: grid; gap: 4px; }
 .admin-version-row > button { flex: 0 0 auto; min-height: 36px; padding: 0 14px; border: 1px solid var(--border-strong); border-radius: 9px; background: var(--surface-2); color: var(--ink); font-weight: 700; }
+.admin-version-row > button.beast-btn-primary { border-color: transparent; background: var(--accent-gradient); color: var(--accent-ink); box-shadow: var(--accent-glow); }
+.admin-version-row.is-newer { border-color: color-mix(in srgb, var(--accent-b) 40%, var(--border)); background: color-mix(in srgb, var(--accent-b) 6%, #090c10); }
+.admin-version-badge { display: inline-flex; align-items: center; padding: 2px 8px; border-radius: 999px; background: var(--accent-gradient); color: var(--accent-ink); font-size: 10px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.04em; }
 .admin-overview-card-row { display:grid; gap:12px; padding:16px; }
 .admin-overview-row-head { display:flex; align-items:center; justify-content:space-between; gap:12px; }
 .admin-icon-actions { display:flex; gap:7px; }
