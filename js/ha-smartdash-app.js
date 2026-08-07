@@ -201,8 +201,12 @@ function handleDoorbellBinary() {
 }
 
 function ambientWeather() {
-  const allStates = Array.from(window.BeastHaSocket?.getAllStates?.().values?.() || []);
-  let state = window.BeastHaSocket?.getState(window.BeastConfig?.get("panels.weather.entity"));
+  // BeastHaSocket/BeastConfig are top-level `const` bindings in their own
+  // script files, not window properties -- window.BeastHaSocket is always
+  // undefined, so this silently fell back to empty state and "-" every
+  // time regardless of whether weather data was actually available.
+  const allStates = Array.from(BeastHaSocket.getAllStates().values());
+  let state = BeastHaSocket.getState(BeastConfig.get("panels.weather.entity"));
   if (!state || ["unknown", "unavailable"].includes(state.state)) {
     state = allStates.find((item) => item.entity_id?.startsWith("weather.") && !["unknown", "unavailable"].includes(item.state));
   }

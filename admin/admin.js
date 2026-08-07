@@ -153,6 +153,7 @@
   let currentConnState = "connecting";
   let currentMqttState = "connecting";
   let mqttWatchdogTimerId = null;
+  let screensaverPreviewTimerId = null;
   let mqttCheckRunning = false;
   let pendingKioskAction = null;
   let registryUiHydrated = false;
@@ -1054,7 +1055,6 @@
 
   function renderSettingsView() {
     const floatingPlayerOn = isFloatingPlayerEnabled();
-    const screensaver = BeastLocalSettings.get("screensaver", BeastConfig.get("screensaver")) || { enabled: true, schedule: "custom", startTime: "23:00", endTime: "05:30", offAfterMinutes: 5 };
     return `
       <section class="admin-view${activeView === "settings" ? " is-active" : ""}" data-admin-view="settings">
         <div class="admin-settings-intro"><div><h2>Udseende & denne enhed</h2><p>Visuelle valg og maskinspecifik adfærd er opdelt nedenfor. De fleste valg gemmes kun i denne browser.</p></div></div>
@@ -1068,28 +1068,75 @@
             extra: `<div class="beast-stat-tile-actions"><button type="button" class="beast-security-action-btn${floatingPlayerOn ? " is-disarm" : ""}" id="adminFloatingPlayerBtn">${floatingPlayerOn ? "Slå fra" : "Slå til"}</button></div>`
           })}
         </div></div>
-        <div class="admin-card admin-settings-group"><div class="admin-card-head"><div><h2>Pauseskærm</h2><p>Tilpas hvornår denne kiosk dæmpes, og hvornår skærmen slukkes helt.</p></div></div><div class="beast-mqtt-config">
-          <label><span>Pauseskærm</span>
-            <select id="adminScreensaverEnabled">
-              <option value="1" ${screensaver.enabled ? "selected" : ""}>Til</option>
-              <option value="0" ${!screensaver.enabled ? "selected" : ""}>Fra</option>
-            </select>
-          </label>
-          <label><span>Tidsrum</span>
-            <select id="adminScreensaverSchedule">
-              <option value="custom" ${screensaver.schedule !== "always" ? "selected" : ""}>Bestemt tidsrum</option>
-              <option value="always" ${screensaver.schedule === "always" ? "selected" : ""}>Altid</option>
-            </select>
-          </label>
-          <label><span>Starttidspunkt</span><input type="time" id="adminScreensaverStart" value="${escapeHtml(screensaver.startTime || "23:00")}"></label>
-          <label><span>Sluttidspunkt</span><input type="time" id="adminScreensaverEnd" value="${escapeHtml(screensaver.endTime || "05:30")}"></label>
-          <label><span>Slukker helt efter (minutter)</span><input type="number" min="1" max="60" id="adminScreensaverOffAfter" value="${Number(screensaver.offAfterMinutes) || 5}"></label>
-          <button type="button" class="beast-btn beast-btn-primary" id="adminScreensaverSave">Gem pauseskærm</button>
-        </div></div>
         <div class="admin-card admin-settings-group"><div class="admin-card-head"><div><h2>Kioskintegration</h2><p>Avanceret MQTT-styring og enhedskommandoer. Kan ignoreres på almindelige tablets.</p></div></div>${renderMqttPanel()}</div>
         <div class="admin-card admin-settings-group admin-diagnostics"><div class="admin-card-head"><div><h2>Diagnostik og session</h2><p>Seneste lokale hændelser samt mulighed for at logge Home Assistant-sessionen ud.</p></div></div><details><summary>Vis teknisk log</summary><pre class="beast-debug-log" id="adminDebugLog"></pre></details><button type="button" class="beast-btn" id="adminLogout">Log ud</button></div>
       </section>
     `;
+  }
+
+  const WEATHER_CONDITION_LABELS = { sunny: "Solrigt", partlycloudy: "Delvist skyet", cloudy: "Skyet", rainy: "Regn", pouring: "Kraftig regn", fog: "Tåget", windy: "Blæsende", "windy-variant": "Blæsende", lightning: "Torden", "lightning-rainy": "Tordenbyger", snowy: "Sne", "clear-night": "Klart" };
+
+  function screensaverPreviewData() {
+    const now = new Date();
+    const weatherState = BeastHaSocket.getState(BeastConfig.get("panels.weather.entity"));
+    const condition = weatherState && !["unknown", "unavailable"].includes(weatherState.state) ? weatherState.state : "";
+    const temperature = Number(weatherState?.attributes?.temperature);
+    const security = BeastConfig.get("panels.security") || {};
+    const openDoors = (security.openingSensors || []).filter((id) => BeastHaSocket.getState(id)?.state === "on").length;
+    const unlocked = (security.locks || []).filter((id) => {
+      const value = BeastHaSocket.getState(id)?.state;
+      return value && !["locked", "unknown", "unavailable"].includes(value);
+    }).length;
+    return {
+      time: now.toLocaleTimeString("da-DK", { hour: "2-digit", minute: "2-digit" }),
+      date: now.toLocaleDateString("da-DK", { weekday: "long", day: "numeric", month: "long" }),
+      weatherLabel: WEATHER_CONDITION_LABELS[condition] || condition || "Aktuelt vejr",
+      weatherTemp: Number.isFinite(temperature) ? `${Math.round(temperature)}°` : "–",
+      securityText: (unlocked || openDoors) ? `${openDoors} åbne · ${unlocked} ulåste` : "Huset er sikret",
+      hasWeatherData: Number.isFinite(temperature)
+    };
+  }
+
+  function renderScreensaverPreview() {
+    const data = screensaverPreviewData();
+    return `<div class="admin-screensaver-preview">
+      <div class="admin-screensaver-preview-time">${data.time}</div>
+      <div class="admin-screensaver-preview-date">${escapeHtml(data.date)}</div>
+      <div class="admin-screensaver-preview-summary">
+        <span>${BeastCore.icon("cloud", { size: 18 })}<b>${data.weatherTemp}</b>${escapeHtml(data.weatherLabel)}</span>
+        <span>${BeastCore.icon("shield", { size: 18 })}<b>${escapeHtml(data.securityText)}</b></span>
+      </div>
+      ${data.hasWeatherData ? "" : `<p class="admin-screensaver-preview-warning">${t("Ingen vejrdata endnu — tjek at Vejr-entity er valgt under Opsætning → Vejr.", "No weather data yet — check that a weather entity is selected under Setup → Weather.")}</p>`}
+    </div>`;
+  }
+
+  function renderScreensaverView() {
+    const screensaver = BeastLocalSettings.get("screensaver", BeastConfig.get("screensaver")) || { enabled: true, schedule: "custom", startTime: "23:00", endTime: "05:30", offAfterMinutes: 5 };
+    return `<section class="admin-view${activeView === "screensaver" ? " is-active" : ""}" data-admin-view="screensaver">
+      <div class="admin-settings-intro"><div><h2>Pauseskærm</h2><p>Styrer denne skærm/browser alene — hver kiosk kan have sin egen tidsplan og kan slås helt fra uden at påvirke andre skærme.</p></div></div>
+      <div class="admin-card admin-settings-group"><div class="admin-card-head"><div><h2>Tidsplan</h2><p>Bestem hvornår pauseskærmen må vise sig, og om den skal være aktiv overhovedet.</p></div></div><div class="beast-mqtt-config">
+        <label><span>Pauseskærm</span>
+          <select id="adminScreensaverEnabled">
+            <option value="1" ${screensaver.enabled ? "selected" : ""}>Til</option>
+            <option value="0" ${!screensaver.enabled ? "selected" : ""}>Fra — aldrig aktiv</option>
+          </select>
+        </label>
+        <label><span>Tidsrum</span>
+          <select id="adminScreensaverSchedule">
+            <option value="custom" ${screensaver.schedule !== "always" ? "selected" : ""}>Bestemt tidsrum</option>
+            <option value="always" ${screensaver.schedule === "always" ? "selected" : ""}>Altid, når skærmen er i ro</option>
+          </select>
+        </label>
+        <label><span>Starttidspunkt</span><input type="time" id="adminScreensaverStart" value="${escapeHtml(screensaver.startTime || "23:00")}"></label>
+        <label><span>Sluttidspunkt</span><input type="time" id="adminScreensaverEnd" value="${escapeHtml(screensaver.endTime || "05:30")}"></label>
+        <label><span>Slukker helt efter (minutter)</span><input type="number" min="1" max="60" id="adminScreensaverOffAfter" value="${Number(screensaver.offAfterMinutes) || 5}"></label>
+        <button type="button" class="beast-btn beast-btn-primary" id="adminScreensaverSave">Gem pauseskærm</button>
+        <span class="admin-save-state" data-save-state="screensaver"></span>
+      </div></div>
+      <div class="admin-card admin-settings-group"><div class="admin-card-head"><div><h2>Forhåndsvisning</h2><p>Sådan ser pauseskærmen ud lige nu, med rigtige data — nyttigt til at tjekke at vejret rent faktisk vises.</p></div></div>
+        <div id="adminScreensaverPreviewHost">${renderScreensaverPreview()}</div>
+      </div>
+    </section>`;
   }
 
   function renderSecurityView() {
@@ -1115,6 +1162,7 @@
     if (activeView === "setup") return renderSetupOverview();
     if (activeView === "settings") return renderSettingsView();
     if (activeView === "security-settings") return renderSecurityView();
+    if (activeView === "screensaver") return renderScreensaverView();
     if (activeView === "backup") return renderBackupView();
     if (activeView === "updates") return renderUpdatesView();
     const panel = PANELS.find((item) => item.id === activeView);
@@ -1137,13 +1185,14 @@
             <p class="admin-nav-section">Indstillinger</p>
             <button class="${activeView === "settings" ? "is-active" : ""}" type="button" data-view="settings">Udseende & enhed</button>
             <button class="${activeView === "security-settings" ? "is-active" : ""}" type="button" data-view="security-settings">Adgang & pinkode</button>
+            <button class="${activeView === "screensaver" ? "is-active" : ""}" type="button" data-view="screensaver">Pauseskærm</button>
             <button class="${activeView === "backup" ? "is-active" : ""}" type="button" data-view="backup">Backup & gendannelse</button>
             <button class="${activeView === "updates" ? "is-active" : ""}" type="button" data-view="updates">Opdatering</button>
           </nav>
           <div class="admin-sidebar-foot"><a class="admin-back" href="/">Åbn dashboard</a></div>
         </aside>
         <main class="admin-main">
-          <header class="admin-topbar"><div><h1>${activeView === "updates" ? "Opdatering" : activeView === "backup" ? "Backup & gendannelse" : activeView === "security-settings" ? "Sikkerhed" : activeView === "settings" ? "Udseende & enhed" : activeView === "overview" ? "Overblik" : "Opsætning"}</h1><p>${activeView === "updates" ? "Se hvad der er nyt, og gendan en tidligere version om nødvendigt." : activeView === "security-settings" ? "Lokal adgang, pinkode og beskyttelse af adminpanelet." : "Konfigurationen gemmes centralt på serveren."}</p></div><div class="admin-topbar-tools"><label class="admin-language-picker"><span>${BeastCore.icon("globe", { size: 15 })}</span><select id="adminLanguageSelect" aria-label="Dashboard-sprog"><option value="en"${dashboardLanguage !== "da" ? " selected" : ""}>English</option><option value="da"${dashboardLanguage === "da" ? " selected" : ""}>Dansk</option></select></label><span class="admin-status" id="adminHaStatus" data-state="${connected ? "connected" : "connecting"}">${connected ? "Home Assistant forbundet" : "Forbinder til Home Assistant…"}</span></div></header>
+          <header class="admin-topbar"><div><h1>${activeView === "updates" ? "Opdatering" : activeView === "backup" ? "Backup & gendannelse" : activeView === "security-settings" ? "Sikkerhed" : activeView === "screensaver" ? "Pauseskærm" : activeView === "settings" ? "Udseende & enhed" : activeView === "overview" ? "Overblik" : "Opsætning"}</h1><p>${activeView === "updates" ? "Se hvad der er nyt, og gendan en tidligere version om nødvendigt." : activeView === "security-settings" ? "Lokal adgang, pinkode og beskyttelse af adminpanelet." : activeView === "screensaver" ? "Styrer denne skærm/browser — hver kiosk kan have sin egen tidsplan." : "Konfigurationen gemmes centralt på serveren."}</p></div><div class="admin-topbar-tools"><label class="admin-language-picker"><span>${BeastCore.icon("globe", { size: 15 })}</span><select id="adminLanguageSelect" aria-label="Dashboard-sprog"><option value="en"${dashboardLanguage !== "da" ? " selected" : ""}>English</option><option value="da"${dashboardLanguage === "da" ? " selected" : ""}>Dansk</option></select></label><span class="admin-status" id="adminHaStatus" data-state="${connected ? "connected" : "connecting"}">${connected ? "Home Assistant forbundet" : "Forbinder til Home Assistant…"}</span></div></header>
           ${renderActiveView()}
         </main>
       </div>`;
@@ -1201,6 +1250,13 @@
     });
     if (activeView === "backup") loadBackupSettings();
     if (activeView === "updates") loadUpdatesSettings();
+    if (screensaverPreviewTimerId) { window.clearInterval(screensaverPreviewTimerId); screensaverPreviewTimerId = null; }
+    if (activeView === "screensaver") {
+      screensaverPreviewTimerId = window.setInterval(() => {
+        const host = document.getElementById("adminScreensaverPreviewHost");
+        if (host) host.innerHTML = renderScreensaverPreview();
+      }, 1000);
+    }
     document.querySelector("[data-reload-backups]")?.addEventListener("click", loadBackupSettings);
     document.querySelector("[data-reload-versions]")?.addEventListener("click", loadUpdatesSettings);
     document.querySelector("[data-check-updates]")?.addEventListener("click", loadUpdatesSettings);

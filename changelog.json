@@ -1,5 +1,16 @@
 [
   {
+    "version": "20260808-01",
+    "date": "2026-08-08",
+    "changes": [
+      "Fixed remaining overview clipping on portrait/mobile screens and on short desktop cards: wide cards (weather especially) could collapse to zero height because a card and its own content were both sized off each other with no real anchor, cutting content off instead of showing it. Cards now get real minimum heights per breakpoint, and the page scrolls instead of clipping when content still doesn't fit.",
+      "The Security card's door/lock rows, and the clock card's compact car/planner rows, now shrink their own spacing and font sizes when the card itself is short, instead of overflowing it.",
+      "The screensaver now has its own dedicated section in Administration, instead of being buried inside \"Appearance & this device\": schedule it, set the time window it's allowed to show in, set how many minutes until the screen turns fully off, or turn it off entirely so it's never active on that kiosk.",
+      "Fixed the screensaver never showing weather: it read window.BeastHaSocket/window.BeastConfig, which are never actually set (those modules only exist as local script-scope variables) -- so the check silently always failed and the weather line stayed empty regardless of whether a weather entity was configured. It now reads the correct references.",
+      "The new screensaver section includes a live preview using your real weather and security data, so you can confirm it actually shows what you expect without waiting for the screen to go idle."
+    ]
+  },
+  {
     "version": "20260807-19",
     "date": "2026-08-07",
     "changes": [
