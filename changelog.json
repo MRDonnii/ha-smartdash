@@ -1,5 +1,12 @@
 [
   {
+    "version": "20260807-17",
+    "date": "2026-08-07",
+    "changes": [
+      "Fixed the update-available banner appearing to pop up fresh every time a modal (like the camera picker) was closed: it was the same pending banner the whole time, just hidden behind the modal's higher stacking order and revealed the instant the modal closed. It now stays visibly on top of regular modals instead of flickering in and out."
+    ]
+  },
+  {
     "version": "20260807-16",
     "date": "2026-08-07",
     "changes": [
