@@ -731,7 +731,7 @@
         const entitySelectId = `admin_overview_card_${key}_entity`;
         selectSources.set(entitySelectId, allEntities);
         entityFieldBaseSources.set(entitySelectId, allEntities);
-        return `<div class="admin-overview-slot admin-overview-card-row" data-overview-card="${escapeHtml(key)}"><div class="admin-overview-row-head"><strong>Kort ${index+1}</strong><div><button type="button" data-overview-move="up">↑</button><button type="button" data-overview-move="down">↓</button><button type="button" data-overview-remove>Fjern</button></div></div><label>Indhold<select data-overview-type>${OVERVIEW_SLOT_OPTIONS.filter(([value])=>value!=="empty").map(([value,name]) => `<option value="${value}"${card.type === value ? " selected" : ""}>${name}</option>`).join("")}</select></label><label>Titel<input type="text" data-overview-label value="${escapeHtml(card.label || "")}" placeholder="Valgfri titel"></label><div class="admin-overview-custom"${card.type === "custom" ? "" : " hidden"}><input class="admin-filter" type="search" placeholder="Søg efter entity…" data-filter-select="${entitySelectId}"><select id="${entitySelectId}" data-overview-entity size="5">${renderSelectOptions(entitySelectId, card.entity)}</select></div><div class="admin-overview-sizes"><fieldset><legend>Stor skærm · 12 kolonner</legend><label>Bredde<select data-size="desktop.w">${sizeOptions(card.desktop?.w || 4,12)}</select></label><label>Højde<select data-size="desktop.h">${sizeOptions(card.desktop?.h || 1,6)}</select></label></fieldset><fieldset><legend>Smal/tablet · 2 kolonner</legend><label>Bredde<select data-size="tablet.w">${sizeOptions(card.tablet?.w || 1,2)}</select></label><label>Højde<select data-size="tablet.h">${sizeOptions(card.tablet?.h || 1,4)}</select></label></fieldset><fieldset><legend>Lodret/mobil · 1 kolonne</legend><label>Højde<select data-size="portrait.h">${sizeOptions(card.portrait?.h || 1,4)}</select></label></fieldset></div></div>`;
+        return `<div class="admin-overview-slot admin-overview-card-row" data-overview-card="${escapeHtml(key)}"><div class="admin-overview-row-head"><strong>Kort ${index+1}</strong><div class="admin-icon-actions"><button class="admin-icon-action" type="button" data-overview-move="up" aria-label="Flyt kort op" title="Flyt op">${BeastCore.icon("chevron-up", { size: 18 })}</button><button class="admin-icon-action" type="button" data-overview-move="down" aria-label="Flyt kort ned" title="Flyt ned">${BeastCore.icon("chevron-down", { size: 18 })}</button><button class="admin-icon-action is-danger" type="button" data-overview-remove aria-label="Fjern kort" title="Fjern kort">${BeastCore.icon("close", { size: 18 })}</button></div></div><label>Indhold<select data-overview-type>${OVERVIEW_SLOT_OPTIONS.filter(([value])=>value!=="empty").map(([value,name]) => `<option value="${value}"${card.type === value ? " selected" : ""}>${name}</option>`).join("")}</select></label><label>Titel<input type="text" data-overview-label value="${escapeHtml(card.label || "")}" placeholder="Valgfri titel"></label><div class="admin-overview-custom"${card.type === "custom" ? "" : " hidden"}><input class="admin-filter" type="search" placeholder="Søg efter entity…" data-filter-select="${entitySelectId}"><select id="${entitySelectId}" data-overview-entity size="5">${renderSelectOptions(entitySelectId, card.entity)}</select></div><div class="admin-overview-sizes"><fieldset><legend>Stor skærm · 12 kolonner</legend><label>Bredde<select data-size="desktop.w">${sizeOptions(card.desktop?.w || 4,12)}</select></label><label>Højde<select data-size="desktop.h">${sizeOptions(card.desktop?.h || 1,6)}</select></label></fieldset><fieldset><legend>Smal/tablet · 2 kolonner</legend><label>Bredde<select data-size="tablet.w">${sizeOptions(card.tablet?.w || 1,2)}</select></label><label>Højde<select data-size="tablet.h">${sizeOptions(card.tablet?.h || 1,4)}</select></label></fieldset><fieldset><legend>Lodret/mobil · 1 kolonne</legend><label>Højde<select data-size="portrait.h">${sizeOptions(card.portrait?.h || 1,4)}</select></label></fieldset></div></div>`;
       };
     return `<div class="admin-card"><div class="admin-card-head"><div><h2>Visuel forsidebygger</h2><p>Tilføj, fjern og flyt kort. Angiv størrelse separat for stor, smal og lodret skærm.</p></div></div><div class="admin-overview-builder" data-overview-card-list>${cards.map(row).join("")}</div><div class="admin-actions"><button type="button" data-add-overview-card>+ Tilføj kort</button><button class="admin-save" type="button" data-save-overview-cards>Gem og anvend forside</button><span class="admin-save-state" data-save-state="overviewCards"></span></div></div>`;
   }
@@ -781,7 +781,7 @@
     return `<div class="admin-local-favorites"><strong>Denne skærm</strong><div class="admin-grid">
       <label class="admin-field"><span>Standardfane</span><select id="adminDefaultSection">${[["overview","Oversigt"],...PAGES].map(([id,label]) => `<option value="${id}"${BeastLocalSettings.get("defaultSection","overview") === id ? " selected" : ""}>${escapeHtml(label)}</option>`).join("")}</select></label>
       <label class="admin-field"><span>Visningstæthed</span><select id="adminDensity"><option value="comfortable"${BeastLocalSettings.get("density","comfortable") === "comfortable" ? " selected" : ""}>Luftig</option><option value="compact"${BeastLocalSettings.get("density") === "compact" ? " selected" : ""}>Kompakt</option><option value="large"${BeastLocalSettings.get("density") === "large" ? " selected" : ""}>Store trykfelter</option></select></label>
-    </div><div class="admin-favorite-list">${orderedPages.map(([id,label]) => `<label data-favorite-row="${id}"><input type="checkbox" data-favorite-section="${id}"${selectedSet.has(id) ? " checked" : ""}><span>${escapeHtml(label)}</span><button type="button" data-favorite-move="up" aria-label="Flyt op">↑</button><button type="button" data-favorite-move="down" aria-label="Flyt ned">↓</button></label>`).join("")}</div><button type="button" class="admin-save" data-save-local-favorites>Gem denne skærm</button></div>`;
+    </div><div class="admin-favorite-list">${orderedPages.map(([id,label]) => `<label data-favorite-row="${id}"><input type="checkbox" data-favorite-section="${id}"${selectedSet.has(id) ? " checked" : ""}><span>${escapeHtml(label)}</span><button class="admin-icon-action" type="button" data-favorite-move="up" aria-label="Flyt ${escapeHtml(label)} op" title="Flyt op">${BeastCore.icon("chevron-up", { size: 16 })}</button><button class="admin-icon-action" type="button" data-favorite-move="down" aria-label="Flyt ${escapeHtml(label)} ned" title="Flyt ned">${BeastCore.icon("chevron-down", { size: 16 })}</button></label>`).join("")}</div><button type="button" class="admin-save" data-save-local-favorites>Gem denne skærm</button></div>`;
   }
 
   function renderConfigAudit() {
@@ -932,7 +932,9 @@
     return panel ? renderPanel(panel) : renderOverview();
   }
 
-  function renderShell() {
+  function renderShell(options = {}) {
+    const contentScrollTop = window.scrollY;
+    const sidebarScrollTop = document.querySelector(".admin-nav")?.scrollTop || 0;
     root.innerHTML = `
       <div class="admin-shell">
         <aside class="admin-sidebar">
@@ -955,6 +957,11 @@
         </main>
       </div>`;
     wireUi();
+    window.requestAnimationFrame(() => {
+      const nav = document.querySelector(".admin-nav");
+      if (nav) nav.scrollTop = sidebarScrollTop;
+      window.scrollTo({ top: options.resetContent ? 0 : contentScrollTop, behavior: "instant" });
+    });
   }
 
   function collectPanel(panel) {
@@ -996,8 +1003,7 @@
     document.querySelectorAll("[data-view]").forEach((button) => button.addEventListener("click", () => {
       activeView = button.dataset.view;
       hasUnsavedPanelChanges = false;
-      renderShell();
-      window.scrollTo({ top: 0, behavior: "smooth" });
+      renderShell({ resetContent: true });
     }));
     if (activeView === "backup") loadBackupSettings();
     document.querySelector("[data-reload-backups]")?.addEventListener("click", loadBackupSettings);
