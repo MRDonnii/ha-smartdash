@@ -50,7 +50,6 @@ function DOORBELL_BINARY_ID() { return BeastConfig.get("appEntities.doorbellBina
 function DOORBELL_EVENT_ID() { return BeastConfig.get("appEntities.doorbellEvent"); }
 const DOORBELL_VIEW_MS = 3 * 60 * 1000;
 let lastUserActivityAt = Date.now();
-let pendingBuildReload = false;
 let buildCheckTimerId = null;
 let cameraHealthTimerId = null;
 let ambientModeTimerId = null;
@@ -302,12 +301,6 @@ function currentBuildId() {
   return document.querySelector('meta[name="beast-build"]')?.content || "legacy";
 }
 
-function assetSignature(root = document) {
-  return Array.from(root.querySelectorAll('link[href*="?v="],script[src*="?v="]'))
-    .map((node) => node.getAttribute("href") || node.getAttribute("src"))
-    .join("|");
-}
-
 // Per-device on purpose — "I already saw this one, don't ask again" is a
 // preference about this specific screen, not something to sync centrally.
 const UPDATE_SKIP_KEY = "beast_skipped_update_version_v1";
@@ -347,6 +340,9 @@ function dismissUpdateBanner() {
   window.setTimeout(() => el.remove(), 300);
 }
 
+let pendingUpdateTag = null;
+let updateInstallInFlight = false;
+
 function renderUpdateBanner() {
   if (updateBannerEl || !pendingUpdateVersion) return;
   const changes = pendingUpdateChangelog.flatMap((entry) => Array.isArray(entry.changes) ? entry.changes : []);
@@ -355,9 +351,10 @@ function renderUpdateBanner() {
   el.innerHTML = `
     <div class="beast-update-banner-head">
       <span>${BeastCore.icon("sparkles", { size: 20 })}</span>
-      <div><strong>Ny version er klar</strong><small>Genindlæs for at opdatere dashboardet</small></div>
+      <div><strong>Ny version er klar</strong><small>Hent og installer den nyeste version fra GitHub</small></div>
     </div>
     ${changes.length ? `<ul class="beast-update-banner-list">${changes.slice(0, 8).map((change) => `<li>${overviewEscape(change)}</li>`).join("")}</ul>` : ""}
+    <div class="beast-update-banner-status" hidden></div>
     <div class="beast-update-banner-actions">
       <button type="button" class="beast-update-skip">Spring over</button>
       <button type="button" class="beast-update-apply">Opdater nu</button>
@@ -366,32 +363,62 @@ function renderUpdateBanner() {
   document.body.appendChild(el);
   updateBannerEl = el;
   window.requestAnimationFrame(() => el.classList.add("is-visible"));
-  el.querySelector(".beast-update-apply").addEventListener("click", () => window.location.reload());
+  el.querySelector(".beast-update-apply").addEventListener("click", () => installPendingUpdate(el));
   el.querySelector(".beast-update-skip").addEventListener("click", () => {
     localStorage.setItem(UPDATE_SKIP_KEY, pendingUpdateVersion);
     dismissUpdateBanner();
   });
 }
 
+async function installPendingUpdate(el) {
+  if (updateInstallInFlight) return;
+  updateInstallInFlight = true;
+  const statusEl = el.querySelector(".beast-update-banner-status");
+  const applyBtn = el.querySelector(".beast-update-apply");
+  const skipBtn = el.querySelector(".beast-update-skip");
+  applyBtn.disabled = true;
+  skipBtn.disabled = true;
+  applyBtn.textContent = "Installerer…";
+  if (statusEl) { statusEl.hidden = false; statusEl.textContent = "Henter den nyeste version fra GitHub…"; }
+  try {
+    const response = await fetch("/api/update.php", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "install", tag: pendingUpdateTag || undefined }) });
+    const payload = await response.json().catch(() => null);
+    if (!response.ok || !payload?.success) throw new Error(payload?.message || payload?.error || `HTTP ${response.status}`);
+    if (statusEl) statusEl.textContent = "✓ Installeret — genindlæser…";
+    window.setTimeout(() => window.location.reload(), 900);
+  } catch (error) {
+    updateInstallInFlight = false;
+    applyBtn.disabled = false;
+    skipBtn.disabled = false;
+    applyBtn.textContent = "Opdater nu";
+    if (statusEl) statusEl.textContent = `Kunne ikke installere: ${error.message}`;
+    BeastCore.log(`Opdateringsinstallation: ${error.message}`);
+  }
+}
+
+// The dashboard used to compare its own beast.html against itself on the
+// same server, which only ever reflected a hand-pushed change already on
+// disk — an install that never received one (or a browser tab that just
+// caught this same page mid-deploy) had nothing meaningful to detect.
+// GitHub Releases is now the single source of truth, matching the same
+// check Administration's Update panel uses.
 async function checkForDashboardUpdate() {
   try {
-    const response = await fetch(`./beast.html?_build_check=${Date.now()}`, { cache: "no-store" });
+    const response = await fetch("/api/update.php", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "check" }), cache: "no-store" });
     if (!response.ok) return;
-    const html = await response.text();
-    const nextDocument = new DOMParser().parseFromString(html, "text/html");
-    const nextBuild = nextDocument.querySelector('meta[name="beast-build"]')?.content;
-    const assetsChanged = assetSignature(nextDocument) && assetSignature(nextDocument) !== assetSignature();
-    if ((nextBuild && nextBuild !== currentBuildId()) || assetsChanged) {
-      pendingBuildReload = true;
-      const targetVersion = nextBuild || currentBuildId();
-      if (targetVersion !== skippedUpdateVersion() && targetVersion !== pendingUpdateVersion) {
-        pendingUpdateVersion = targetVersion;
-        pendingUpdateChangelog = await loadChangelogNewerThan(currentBuildId());
-        renderUpdateBanner();
-      }
+    const data = await response.json();
+    if (!data.updateAvailable || !data.remoteVersion) return;
+    const targetVersion = data.remoteVersion;
+    if (targetVersion === skippedUpdateVersion() || targetVersion === pendingUpdateVersion) return;
+    pendingUpdateVersion = targetVersion;
+    pendingUpdateTag = data.tag || null;
+    pendingUpdateChangelog = await loadChangelogNewerThan(currentBuildId());
+    if (!pendingUpdateChangelog.length && data.releaseNotes) {
+      pendingUpdateChangelog = [{ version: targetVersion, changes: String(data.releaseNotes).split("\n").map((line) => line.replace(/^[-*]\s*/, "").trim()).filter(Boolean) }];
     }
-    if (pendingBuildReload && !skippedUpdateVersion() && Date.now() - lastUserActivityAt > UPDATE_IDLE_AUTOAPPLY_MS) {
-      window.location.reload();
+    renderUpdateBanner();
+    if (pendingUpdateVersion && !skippedUpdateVersion() && Date.now() - lastUserActivityAt > UPDATE_IDLE_AUTOAPPLY_MS) {
+      installPendingUpdate(updateBannerEl);
     }
   } catch (error) {
     BeastCore.log(`Opdateringskontrol: ${error.message}`);

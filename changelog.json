@@ -1,5 +1,13 @@
 [
   {
+    "version": "20260807-18",
+    "date": "2026-08-07",
+    "changes": [
+      "The dashboard's update check now talks to GitHub Releases directly, the same way Administration's Update panel already did, instead of comparing the live page against this server's own beast.html. The old same-server comparison could only ever detect a change already hand-pushed to that specific server, which is meaningless for an install that's never received one -- and could misfire on its own during active development, which is what caused the update banner to seem to reappear on its own.",
+      "\"Opdater nu\" on the dashboard now actually downloads and installs the release from GitHub before reloading, instead of just reloading the browser (which only worked if something had already been placed on disk by other means)."
+    ]
+  },
+  {
     "version": "20260807-17",
     "date": "2026-08-07",
     "changes": [
