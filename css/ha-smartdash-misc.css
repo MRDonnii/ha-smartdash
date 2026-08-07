@@ -2218,7 +2218,13 @@
   position: fixed;
   right: 18px;
   bottom: 18px;
-  z-index: 90;
+  /* Above every regular modal (100: camera picker, entity pickers, the
+     overview editor, notification center) so it doesn't get hidden behind
+     one and then appear to "pop up fresh" the instant that modal closes --
+     it was the same pending banner the whole time, just invisible under a
+     higher-stacked overlay. Still well below the full-takeover surfaces
+     (screensaver/screen lock at 9999, the music detail view at 1000). */
+  z-index: 150;
   width: min(380px, calc(100vw - 36px));
   padding: 16px;
   border: 1px solid var(--border-strong);
