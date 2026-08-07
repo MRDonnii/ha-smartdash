@@ -740,9 +740,9 @@
         const entitySelectId = `admin_overview_card_${key}_entity`;
         selectSources.set(entitySelectId, allEntities);
         entityFieldBaseSources.set(entitySelectId, allEntities);
-        return `<div class="admin-overview-slot admin-overview-card-row" data-overview-card="${escapeHtml(key)}"><div class="admin-overview-row-head"><strong>Kort ${index+1}</strong><div class="admin-icon-actions"><button class="admin-icon-action" type="button" data-overview-move="up" aria-label="Flyt kort op" title="Flyt op">${BeastCore.icon("chevron-up", { size: 18 })}</button><button class="admin-icon-action" type="button" data-overview-move="down" aria-label="Flyt kort ned" title="Flyt ned">${BeastCore.icon("chevron-down", { size: 18 })}</button><button class="admin-icon-action is-danger" type="button" data-overview-remove aria-label="Fjern kort" title="Fjern kort">${BeastCore.icon("close", { size: 18 })}</button></div></div><label>Indhold<select data-overview-type>${OVERVIEW_SLOT_OPTIONS.filter(([value])=>value!=="empty").map(([value,name]) => `<option value="${value}"${card.type === value ? " selected" : ""}>${name}</option>`).join("")}</select></label><label>Titel<input type="text" data-overview-label value="${escapeHtml(card.label || "")}" placeholder="Valgfri titel"></label><div class="admin-overview-custom"${card.type === "custom" ? "" : " hidden"}><input class="admin-filter" type="search" placeholder="Søg efter entity…" data-filter-select="${entitySelectId}"><select id="${entitySelectId}" data-overview-entity size="5">${renderSelectOptions(entitySelectId, card.entity)}</select></div><div class="admin-overview-sizes"><fieldset><legend>Stor skærm · 12 kolonner</legend><label>Bredde<select data-size="desktop.w">${sizeOptions(card.desktop?.w || 4,12)}</select></label><label>Højde<select data-size="desktop.h">${sizeOptions(card.desktop?.h || 1,6)}</select></label></fieldset><fieldset><legend>Smal/tablet · 2 kolonner</legend><label>Bredde<select data-size="tablet.w">${sizeOptions(card.tablet?.w || 1,2)}</select></label><label>Højde<select data-size="tablet.h">${sizeOptions(card.tablet?.h || 1,4)}</select></label></fieldset><fieldset><legend>Lodret/mobil · 1 kolonne</legend><label>Højde<select data-size="portrait.h">${sizeOptions(card.portrait?.h || 1,4)}</select></label></fieldset></div></div>`;
+        return `<div class="admin-overview-slot admin-overview-card-row" draggable="true" data-overview-card="${escapeHtml(key)}"><div class="admin-overview-row-head"><span class="admin-overview-drag-handle" data-overview-drag-handle aria-label="Træk for at flytte kort" title="Træk for at flytte">${BeastCore.icon("grip", { size: 18 })}</span><strong>Kort ${index+1}</strong><div class="admin-icon-actions"><button class="admin-icon-action" type="button" data-overview-move="up" aria-label="Flyt kort op" title="Flyt op">${BeastCore.icon("chevron-up", { size: 18 })}</button><button class="admin-icon-action" type="button" data-overview-move="down" aria-label="Flyt kort ned" title="Flyt ned">${BeastCore.icon("chevron-down", { size: 18 })}</button><button class="admin-icon-action is-danger" type="button" data-overview-remove aria-label="Fjern kort" title="Fjern kort">${BeastCore.icon("close", { size: 18 })}</button></div></div><label>Indhold<select data-overview-type>${OVERVIEW_SLOT_OPTIONS.filter(([value])=>value!=="empty").map(([value,name]) => `<option value="${value}"${card.type === value ? " selected" : ""}>${name}</option>`).join("")}</select></label><label>Titel<input type="text" data-overview-label value="${escapeHtml(card.label || "")}" placeholder="Valgfri titel"></label><div class="admin-overview-custom"${card.type === "custom" ? "" : " hidden"}><input class="admin-filter" type="search" placeholder="Søg efter entity…" data-filter-select="${entitySelectId}"><select id="${entitySelectId}" data-overview-entity size="5">${renderSelectOptions(entitySelectId, card.entity)}</select></div><div class="admin-overview-sizes"><fieldset><legend>Stor skærm · 12 kolonner</legend><label>Bredde<select data-size="desktop.w">${sizeOptions(card.desktop?.w || 4,12)}</select></label><label>Højde<select data-size="desktop.h">${sizeOptions(card.desktop?.h || 1,6)}</select></label></fieldset><fieldset><legend>Smal/tablet · 2 kolonner</legend><label>Bredde<select data-size="tablet.w">${sizeOptions(card.tablet?.w || 1,2)}</select></label><label>Højde<select data-size="tablet.h">${sizeOptions(card.tablet?.h || 1,4)}</select></label></fieldset><fieldset><legend>Lodret/mobil · 1 kolonne</legend><label>Højde<select data-size="portrait.h">${sizeOptions(card.portrait?.h || 1,4)}</select></label></fieldset></div></div>`;
       };
-    return `<div class="admin-card"><div class="admin-card-head"><div><h2>Visuel forsidebygger</h2><p>Tilføj, fjern og flyt kort. Angiv størrelse separat for stor, smal og lodret skærm.</p></div></div><div class="admin-overview-builder" data-overview-card-list>${cards.map(row).join("")}</div><div class="admin-actions"><button type="button" data-add-overview-card>+ Tilføj kort</button><button class="admin-save" type="button" data-save-overview-cards>Gem og anvend forside</button><span class="admin-save-state" data-save-state="overviewCards"></span></div></div>`;
+    return `<div class="admin-card"><div class="admin-card-head"><div><h2>Visuel forsidebygger</h2><p>Træk kortene for at flytte dem rundt. Skift indhold, titel og størrelse nedenfor — forhåndsvisningen opdateres med det samme.</p></div></div><div class="admin-overview-preview" id="adminOverviewPreview"></div><div class="admin-overview-builder" data-overview-card-list>${cards.map(row).join("")}</div><div class="admin-actions"><button type="button" data-add-overview-card>+ Tilføj kort</button><button class="admin-save" type="button" data-save-overview-cards>Gem og anvend forside</button><span class="admin-save-state" data-save-state="overviewCards"></span></div></div>`;
   }
 
   function renderFeaturePanel() {
@@ -772,6 +772,14 @@
         portrait: { w:1, h:value("portrait.h",1) }
       };
     });
+  }
+
+  function refreshOverviewPreview() {
+    const previewEl = document.getElementById("adminOverviewPreview");
+    if (!previewEl) return;
+    const typeNames = new Map(OVERVIEW_SLOT_OPTIONS);
+    const cards = collectOverviewCards();
+    previewEl.innerHTML = cards.length ? `<div class="admin-overview-preview-grid">${cards.map((card) => `<div class="admin-overview-preview-card" style="grid-column: span ${Math.max(1, Math.min(12, card.desktop.w))}; grid-row: span ${Math.max(1, card.desktop.h)};"><strong>${escapeHtml(card.label || typeNames.get(card.type) || card.type)}</strong></div>`).join("")}</div>` : `<p class="admin-empty">Ingen kort endnu.</p>`;
   }
 
   function renderScenarioSettings() {
@@ -1218,7 +1226,7 @@
       });
     }));
     document.querySelectorAll("select[id]").forEach((select) => select.addEventListener("change", () => updateEntityPreview(select.id, select.value)));
-    document.querySelectorAll("[data-overview-type]").forEach((select) => select.addEventListener("change", () => { const custom = select.closest("[data-overview-slot]").querySelector(".admin-overview-custom"); custom.hidden = select.value !== "custom"; }));
+    document.querySelectorAll("[data-overview-type]").forEach((select) => select.addEventListener("change", () => { const custom = select.closest("[data-overview-card]").querySelector(".admin-overview-custom"); custom.hidden = select.value !== "custom"; }));
     document.querySelectorAll("[data-filter-overview-device]").forEach((input) => input.addEventListener("input", () => { const select = document.getElementById(input.dataset.filterOverviewDevice), query = input.value.trim().toLowerCase(); Array.from(select.options).forEach((option,index) => { option.hidden = Boolean(index && query && !option.dataset.search.includes(query)); }); }));
     document.querySelectorAll("[data-overview-device]").forEach((deviceSelect) => deviceSelect.addEventListener("change", () => {
       const entitySelect = document.getElementById(deviceSelect.dataset.targetEntity), selected = entitySelect.value;
@@ -1328,12 +1336,41 @@
       cards.push({ id:`card_${Date.now()}`, type:"custom", label:"Nyt kort", entity:null, desktop:{w:3,h:1}, tablet:{w:1,h:1}, portrait:{w:1,h:1} });
       await BeastConfig.set("overviewCards", cards); renderShell();
     });
-    document.querySelectorAll("[data-overview-remove]").forEach((button) => button.addEventListener("click", () => button.closest("[data-overview-card]")?.remove()));
+    document.querySelectorAll("[data-overview-remove]").forEach((button) => button.addEventListener("click", () => { button.closest("[data-overview-card]")?.remove(); refreshOverviewPreview(); }));
     document.querySelectorAll("[data-overview-move]").forEach((button) => button.addEventListener("click", () => {
       const row = button.closest("[data-overview-card]"), list = row.parentElement;
       if (button.dataset.overviewMove === "up" && row.previousElementSibling) list.insertBefore(row, row.previousElementSibling);
       if (button.dataset.overviewMove === "down" && row.nextElementSibling) list.insertBefore(row.nextElementSibling, row);
+      refreshOverviewPreview();
     }));
+    {
+      const cardList = document.querySelector("[data-overview-card-list]");
+      let draggedRow = null;
+      cardList?.addEventListener("input", refreshOverviewPreview);
+      cardList?.addEventListener("change", refreshOverviewPreview);
+      cardList?.addEventListener("dragstart", (event) => {
+        const row = event.target.closest("[data-overview-card]");
+        if (!row) return;
+        draggedRow = row;
+        row.classList.add("is-dragging");
+        event.dataTransfer.effectAllowed = "move";
+      });
+      cardList?.addEventListener("dragover", (event) => {
+        if (!draggedRow) return;
+        event.preventDefault();
+        const overRow = event.target.closest("[data-overview-card]");
+        if (!overRow || overRow === draggedRow) return;
+        const rect = overRow.getBoundingClientRect();
+        const before = event.clientY - rect.top < rect.height / 2;
+        cardList.insertBefore(draggedRow, before ? overRow : overRow.nextElementSibling);
+      });
+      cardList?.addEventListener("dragend", () => {
+        draggedRow?.classList.remove("is-dragging");
+        draggedRow = null;
+        refreshOverviewPreview();
+      });
+      refreshOverviewPreview();
+    }
     document.querySelector("[data-save-local-favorites]")?.addEventListener("click", (event) => save(event.currentTarget, "features", () => {
       BeastLocalSettings.set("defaultSection", document.getElementById("adminDefaultSection").value);
       BeastLocalSettings.set("density", document.getElementById("adminDensity").value);
