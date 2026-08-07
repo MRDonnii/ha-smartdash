@@ -2329,3 +2329,15 @@
   color: #fff;
   background: var(--accent-gradient);
 }
+
+.beast-update-banner-actions button:disabled {
+  opacity: .55;
+  cursor: wait;
+}
+
+.beast-update-banner-status {
+  margin-top: 10px;
+  color: var(--ink-muted);
+  font-size: 12.5px;
+  line-height: 1.5;
+}
