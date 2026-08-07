@@ -139,6 +139,17 @@ button { cursor: pointer; }
 .admin-progress-track { margin-top: 14px; height: 8px; border-radius: 999px; background: #090c10; border: 1px solid var(--border); overflow: hidden; }
 .admin-progress-fill { height: 100%; width: 0%; border-radius: 999px; background: var(--accent-gradient); transition: width .35s ease, background .25s ease; }
 .admin-progress-track[data-state="success"] .admin-progress-fill { background: var(--success); box-shadow: 0 0 10px var(--success); }
+.admin-install-latest { display: flex; align-items: center; justify-content: space-between; gap: 18px; padding: 16px 18px; border: 1px solid color-mix(in srgb, var(--accent-b) 40%, var(--border)); border-radius: 14px; background: color-mix(in srgb, var(--accent-b) 8%, #090c10); }
+.admin-install-latest > div { min-width: 0; display: grid; gap: 4px; }
+.admin-install-latest strong { font-size: 14px; }
+.admin-install-latest span { color: var(--accent-b); font-size: 13px; font-weight: 700; }
+.admin-install-latest ul { margin: 6px 0 0; padding-left: 18px; color: var(--ink-muted); font-size: 12.5px; line-height: 1.6; }
+.admin-install-latest > button { flex: 0 0 auto; }
+.admin-old-versions { margin-top: 16px; }
+.admin-field-label { display: block; margin-bottom: 8px; color: var(--ink-muted); font-size: 12px; font-weight: 800; }
+.admin-old-versions-row { display: flex; gap: 10px; }
+.admin-old-versions-row select { flex: 1 1 auto; min-width: 0; min-height: 44px; padding: 10px 12px; border: 1px solid var(--border-strong); border-radius: 10px; background: #090c10; color: var(--ink); }
+.admin-old-versions-row button { flex: 0 0 auto; }
 .admin-overview-card-row { display:grid; gap:12px; padding:16px; }
 .admin-overview-row-head { display:flex; align-items:center; justify-content:space-between; gap:12px; }
 .admin-icon-actions { display:flex; gap:7px; }
