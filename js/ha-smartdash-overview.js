@@ -592,11 +592,17 @@
     host.innerHTML = `
       <div class="beast-ov-camera-strip" data-count="${cameras.length}">${cameras.map((camera) => `
         <div class="beast-ov-camera-thumb${camera.motion ? " has-motion" : ""}" data-slug="${camera.slug}">
-          <iframe class="beast-ov-camera-live" src="./camera-player.html?v=11&transport=mse&src=${encodeURIComponent(camera.streamName)}" title="${escapeHtml(camera.label)} livekamera" frameborder="0" allow="autoplay"></iframe>
+          ${camera.streamName
+            ? `<iframe class="beast-ov-camera-live" src="./camera-player.html?v=11&transport=mse&src=${encodeURIComponent(camera.streamName)}" title="${escapeHtml(camera.label)} livekamera" frameborder="0" allow="autoplay"></iframe>`
+            : `<img class="beast-ov-camera-snapshot" alt="${escapeHtml(camera.label)}">`}
           ${camera.motion ? `<em>${BeastCore.icon("bolt", { size: 12 })} Bevægelse nu</em>` : ""}
         </div>
       `).join("")}</div>
     `;
+    cameras.filter((camera) => !camera.streamName && camera.entityPicture).forEach((camera) => {
+      const img = host.querySelector(`.beast-ov-camera-thumb[data-slug="${camera.slug}"] img`);
+      if (img) BeastAuth.setAuthedImageSrc(img, camera.entityPicture);
+    });
     const cameraPickerButton = document.getElementById("beastOvCameraPicker");
     if (cameraPickerButton) cameraPickerButton.onclick = (event) => {
       event.stopPropagation();
@@ -630,7 +636,7 @@
           <div class="beast-ov-camera-options">
             ${cameras.map((camera) => `
               <button type="button" class="beast-ov-camera-option${selected.includes(camera.slug) ? " is-selected" : ""}" data-camera-slug="${camera.slug}">
-                <img src="${window.BeastCameras.snapshotUrl(camera.streamName)}" alt="">
+                <img${camera.streamName ? ` src="${window.BeastCameras.snapshotUrl(camera.streamName)}"` : ""} data-camera-picture="${camera.streamName ? "" : escapeHtml(camera.entityPicture || "")}" alt="">
                 <span>${escapeHtml(camera.label)}</span>
                 <i>${BeastCore.icon("check", { size: 18 })}</i>
               </button>
@@ -695,15 +701,22 @@
     });
     renderSelectedOrder();
     document.body.appendChild(overlay);
+    overlay.querySelectorAll("img[data-camera-picture]").forEach((img) => {
+      const picture = img.dataset.cameraPicture;
+      if (picture) BeastAuth.setAuthedImageSrc(img, picture);
+    });
   }
 
   function refreshCameraSnapshots() {
     if (!window.BeastCameras || !BeastCore.isPanelVisible(zoneEl)) return;
     const cams = window.BeastCameras.getAllCameras();
+    // Only cameras without a go2rtc mapping get a plain <img> here (ones
+    // with one use a live iframe instead, nothing to refresh); go through
+    // HA's own authenticated camera image for those.
     document.querySelectorAll("#beastOvCameras .beast-ov-camera-thumb img").forEach((img) => {
       const slug = img.closest(".beast-ov-camera-thumb")?.dataset.slug;
       const cam = cams.find((c) => c.slug === slug);
-      if (cam) window.BeastCameras.swapSnapshot(img, window.BeastCameras.snapshotUrl(cam.streamName));
+      if (cam?.entityPicture) BeastAuth.setAuthedImageSrc(img, cam.entityPicture);
     });
   }
 

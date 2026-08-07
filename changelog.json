@@ -1,5 +1,13 @@
 [
   {
+    "version": "20260807-19",
+    "date": "2026-08-07",
+    "changes": [
+      "Camera discovery no longer requires a specific NVR sub-stream naming convention (\"_medium_resolution_channel\") and a hand-curated go2rtc stream-name mapping just to appear at all -- any HA camera entity can now be selected on the front page, in the camera picker, and on the full Cameras page.",
+      "Cameras without a go2rtc mapping now show a live snapshot via Home Assistant's own camera image instead of not showing up at all -- refreshed on the same interval as go2rtc thumbnails, though without go2rtc's lower-latency stream."
+    ]
+  },
+  {
     "version": "20260807-18",
     "date": "2026-08-07",
     "changes": [
