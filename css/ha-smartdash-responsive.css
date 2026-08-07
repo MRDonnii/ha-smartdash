@@ -71,7 +71,6 @@ html, body, .beast-app { width: 100%; height: 100%; height: 100dvh; }
   .beast-pool-live { min-height: 0; }
   .beast-pool-live-frame { width: 100%; height: auto; min-height: 0; aspect-ratio: 16 / 9; }
   .beast-waste-panel { grid-template-columns: minmax(0, 1fr); }
-  .beast-waste-section:first-child > .beast-stat-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); }
   .beast-waste-section:nth-child(2) > .beast-stat-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
   .beast-robots-grid { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; height: auto !important; }
   .beast-robots-grid > :last-child:nth-child(odd) { grid-column: 1 / -1; }
@@ -117,7 +116,6 @@ html, body, .beast-app { width: 100%; height: 100%; height: 100dvh; }
   .beast-heating-room-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); grid-auto-rows: minmax(180px, auto); }
   .beast-heatpump-grid { grid-template-columns: minmax(0, 1fr); }
   .beast-pool-insights > .beast-pool-temperature-chart-card { grid-column: 1 !important; }
-  .beast-waste-section:first-child > .beast-stat-grid,
   .beast-waste-section:nth-child(2) > .beast-stat-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .beast-car-top { padding: clamp(18px, 4vw, 30px); }
   .beast-car-battery { width: 100%; }
