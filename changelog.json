@@ -1,5 +1,14 @@
 [
   {
+    "version": "20260807-13",
+    "date": "2026-08-07",
+    "changes": [
+      "The update system in Administration now actually contacts GitHub Releases instead of only checking versions already present on this specific server. Installs that have never received a hand-pushed update (a fresh clone, for example) can now discover and install new releases directly.",
+      "\"Install new version\" downloads, validates, and installs the release automatically when it isn't already available locally, falling back to the fast local copy when it is -- your config and local settings are never touched.",
+      "New api/update.php endpoint: checks the latest GitHub release, downloads its source archive, verifies it, snapshots the current install first, and rolls back automatically if the install fails partway through."
+    ]
+  },
+  {
     "version": "20260807-12",
     "date": "2026-08-07",
     "changes": [

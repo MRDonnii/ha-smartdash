@@ -144,6 +144,7 @@ button { cursor: pointer; }
 .admin-install-latest strong { font-size: 14px; }
 .admin-install-latest span { color: var(--accent-b); font-size: 13px; font-weight: 700; }
 .admin-install-latest ul { margin: 6px 0 0; padding-left: 18px; color: var(--ink-muted); font-size: 12.5px; line-height: 1.6; }
+.admin-install-latest-notes { margin: 6px 0 0; color: var(--ink-muted); font-size: 12.5px; line-height: 1.6; white-space: pre-wrap; }
 .admin-install-latest > button { flex: 0 0 auto; }
 .admin-old-versions { margin-top: 16px; }
 .admin-field-label { display: block; margin-bottom: 8px; color: var(--ink-muted); font-size: 12px; font-weight: 800; }
