@@ -24,6 +24,13 @@
   display: block;
 }
 
+.beast-camera-featured-snapshot {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
 .beast-camera-featured-label {
   position: absolute;
   left: var(--space-4);
