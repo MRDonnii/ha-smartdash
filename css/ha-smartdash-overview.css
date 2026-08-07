@@ -20,7 +20,7 @@
   top: 12px;
   left: 50%;
   z-index: 25;
-  min-width: 340px;
+  min-width: min(340px, calc(100vw - 24px));
   max-width: 620px;
   min-height: 62px;
   display: grid;
@@ -1044,6 +1044,13 @@
   grid-template-columns: minmax(170px, .85fr) minmax(0, 1.15fr);
   align-items: center;
   gap: 12px;
+}
+
+/* The 170px-minimum left column assumed the card always had room for it.
+   On a narrow tablet-width card that isn't true -- stack instead of
+   forcing an overflow that .beast-ov-card's overflow:hidden then clips. */
+@container (max-width: 260px) {
+  .beast-ov-weather-now { grid-template-columns: minmax(0, 1fr); }
 }
 
 .beast-ov-weather-hero {

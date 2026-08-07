@@ -1,5 +1,15 @@
 [
   {
+    "version": "20260807-14",
+    "date": "2026-08-07",
+    "changes": [
+      "Fixed the overview grid using the wrong breakpoint: it measured the browser's full viewport width, not the space actually left after the nav rail and padding, so cards stayed cramped in 12-column desktop mode at viewport widths (roughly 1180-1450px) where less than 1180px was really available. Now measured against the real available width via a container query.",
+      "The default overview layout (installs that haven't customized cards yet) no longer collapses every card to the same width on tablet -- wide cards (weather, energy) now span two tablet columns like the camera card already did, instead of shrinking to the same width as compact cards (clock, security)",
+      "The weather card's internal layout now stacks instead of overflowing when the card itself is narrow",
+      "The mail/post notification banner no longer has a fixed minimum width wider than very narrow screens"
+    ]
+  },
+  {
     "version": "20260807-13",
     "date": "2026-08-07",
     "changes": [
