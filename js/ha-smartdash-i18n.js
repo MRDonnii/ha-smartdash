@@ -89,6 +89,7 @@
     "Glemt pinkode?": "Forgot your PIN?", "Gruppenavn": "Group name", "HA-forbindelse": "HA connection",
     "Hent": "Download", "Henter backups…": "Loading backups…", "Henter status…": "Loading status…",
     "Henter versioner…": "Loading versions…", "Henter ændringslog…": "Loading changelog…",
+    "Tjekker…": "Checking…", "Tjek for opdateringer": "Check for updates",
     "Home Assistant-adresse": "Home Assistant address", "Hovedmåler (effekt)": "Main meter (power)",
     "Hurtigscenarier på dashboardet": "Quick scenes on the dashboard",
     "Hver udvidelse kan aktiveres eller deaktiveres uafhængigt.": "Each extension can be turned on or off independently.",

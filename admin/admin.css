@@ -112,6 +112,19 @@ button { cursor: pointer; }
 .admin-smb-help > p { margin: 0; color: var(--ink-muted); line-height: 1.55; }
 #adminCurrentVersionTile .beast-stat-tile-value { font-size: 1.5rem; font-weight: 750; letter-spacing: 0; font-variant-numeric: tabular-nums; }
 #adminCurrentVersionTile .beast-stat-tile-meta { font-family: ui-monospace, "SF Mono", Consolas, monospace; }
+.admin-update-status { display: inline-flex; align-items: center; gap: 8px; margin-top: 14px; padding: 8px 13px; border: 1px solid var(--border); border-radius: 999px; background: var(--surface-2); color: var(--ink-muted); font-size: 13px; font-weight: 700; width: fit-content; }
+.admin-update-status-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--warning); flex-shrink: 0; }
+.admin-update-status[data-state="checking"] .admin-update-status-dot { animation: admin-update-pulse 1s ease-in-out infinite; }
+.admin-update-status[data-state="current"] .admin-update-status-dot { background: var(--success); box-shadow: 0 0 10px var(--success); animation: none; }
+.admin-update-status[data-state="current"] { color: var(--success); }
+.admin-update-status[data-state="outdated"] .admin-update-status-dot { background: var(--accent-b); box-shadow: 0 0 10px var(--accent-b); animation: none; }
+.admin-update-status[data-state="outdated"] { color: var(--accent-b); }
+.admin-update-status[data-state="error"] .admin-update-status-dot { background: var(--danger); animation: none; }
+.admin-update-status[data-state="error"] { color: var(--danger); }
+@keyframes admin-update-pulse { 0%, 100% { opacity: 1; } 50% { opacity: .3; } }
+.admin-save-state[data-state="pending"] { color: var(--ink-muted); }
+.admin-save-state[data-state="success"] { color: var(--success); font-weight: 700; }
+.admin-save-state[data-state="error"] { color: var(--danger); font-weight: 700; }
 .admin-changelog-list,.admin-version-list { display: grid; gap: 10px; margin-top: 14px; }
 .admin-changelog-entry,.admin-version-row { padding: 14px 16px; border: 1px solid var(--border); border-radius: 13px; background: #090c10; }
 .admin-changelog-entry header,.admin-version-row > div > strong { display: flex; align-items: baseline; gap: 10px; font-size: 14px; }
