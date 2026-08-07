@@ -1,5 +1,12 @@
 [
   {
+    "version": "20260807-16",
+    "date": "2026-08-07",
+    "changes": [
+      "Fixed the real cause of overlapping content on the overview: tablet/portrait height controls were mistakenly removed from the overview builder earlier today after an incomplete check missed that they're actually used (grid-row: span var(--tablet-h)) -- every card was silently forced to a single, often too-short row on tablet and portrait, which is what made entries overlap and other cards clip content. The height fields are back, and default cards (clock, security, weather, energy) now get enough room to fit what they actually contain instead of just one row-unit."
+    ]
+  },
+  {
     "version": "20260807-15",
     "date": "2026-08-07",
     "changes": [
