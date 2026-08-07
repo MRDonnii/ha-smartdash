@@ -703,9 +703,9 @@
           <div class="admin-branding-grid">
             <label class="admin-field"><span>Home Assistant-adresse</span><input type="url" id="adminHaBaseUrl" value="${escapeHtml(BeastConfig.get("haBaseUrl") || BeastAuth.getHaBaseUrl() || "")}" placeholder="http://homeassistant.local:8123"></label>
             <label class="admin-field"><span>Tekst i browserfanen</span><input type="text" id="adminDashboardTitle" value="${escapeHtml(BeastConfig.get("dashboardTitle") || "HA Smartdash")}"></label>
-            <label class="admin-field"><span>Favicon-adresse</span><input type="text" id="adminFaviconUrl" value="${escapeHtml(BeastConfig.get("faviconUrl") || "./favicon.svg")}" placeholder="./favicon.svg eller https://…"></label>
+            <label class="admin-field"><span>Favicon-adresse</span><input type="text" id="adminFaviconUrl" value="${escapeHtml(BeastConfig.get("faviconUrl") || "/favicon.svg")}" placeholder="/favicon.svg eller https://…"></label>
             <label class="admin-field admin-favicon-upload"><span>Vælg favicon-fil</span><input type="file" id="adminFaviconFile" accept="image/png,image/svg+xml,image/x-icon,image/vnd.microsoft.icon,image/webp"><small>PNG, SVG, ICO eller WebP · højst 256 KB</small></label>
-            <div class="admin-favicon-preview"><img id="adminFaviconPreview" src="${escapeHtml(BeastConfig.get("faviconUrl") || "./favicon.svg")}" alt="Forhåndsvisning"><span>Forhåndsvisning</span></div>
+            <div class="admin-favicon-preview"><img id="adminFaviconPreview" src="${escapeHtml(BeastConfig.get("faviconUrl") || "/favicon.svg")}" alt="Forhåndsvisning"><span>Forhåndsvisning</span></div>
           </div>
           <div class="admin-actions"><button class="admin-save" type="button" data-save-title>Gem browserfane</button><span class="admin-save-state" data-save-state="title"></span></div>
         </div>
@@ -1426,7 +1426,7 @@
       await BeastConfig.set("haBaseUrl", haBaseUrl || null);
       if (haBaseUrl) BeastAuth.setHaBaseUrl(haBaseUrl);
       await BeastConfig.set("dashboardTitle", document.getElementById("adminDashboardTitle").value.trim() || "HA Smartdash");
-      const result = await BeastConfig.set("faviconUrl", document.getElementById("adminFaviconUrl").value.trim() || "./favicon.svg");
+      const result = await BeastConfig.set("faviconUrl", document.getElementById("adminFaviconUrl").value.trim() || "/favicon.svg");
       document.title = BeastConfig.get("dashboardTitle") || "HA Smartdash";
       const favicon = document.querySelector('link[rel="icon"]');
       if (favicon) favicon.href = BeastConfig.get("faviconUrl") || "/favicon.svg";
