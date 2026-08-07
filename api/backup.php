@@ -33,10 +33,44 @@ function resolveTarget($id, $targets) {
   return $targets[0];
 }
 
+function backupFiles($targets) {
+  $items = [];
+  foreach ($targets as $target) {
+    foreach (glob($target["path"] . "/ha-smartdash-profile-*.json") ?: [] as $file) {
+      if (!is_file($file)) continue;
+      $items[] = [
+        "target" => $target["id"], "targetLabel" => $target["label"],
+        "filename" => basename($file), "size" => filesize($file) ?: 0,
+        "createdAt" => gmdate("c", filemtime($file) ?: time())
+      ];
+    }
+  }
+  usort($items, function ($a, $b) { return strcmp($b["createdAt"], $a["createdAt"]); });
+  return array_slice($items, 0, 100);
+}
+
+function streamBackup($target, $filename) {
+  if (!preg_match('/^ha-smartdash-profile-[0-9]{4}-[0-9]{2}-[0-9]{2}-[0-9]{6}\.json$/', $filename)) return false;
+  $base = realpath($target["path"]);
+  $file = realpath($target["path"] . "/" . $filename);
+  if (!$base || !$file || dirname($file) !== $base || !is_file($file) || !is_readable($file)) return false;
+  header_remove("Content-Type");
+  header("Content-Type: application/json; charset=utf-8");
+  header("Content-Disposition: attachment; filename=\"" . basename($file) . "\"");
+  header("Content-Length: " . filesize($file));
+  readfile($file);
+  return true;
+}
+
 $settings = backupSettings($settingsFile);
 $targets = backupTargets($localRoot, $mountRoot);
 if ($_SERVER["REQUEST_METHOD"] === "GET") {
-  echo json_encode(["settings" => $settings, "targets" => array_map(function ($item) { unset($item["path"]); return $item; }, $targets)]);
+  if (($_GET["action"] ?? "") === "download") {
+    $target = resolveTarget((string)($_GET["target"] ?? "local"), $targets);
+    if (streamBackup($target, basename((string)($_GET["file"] ?? "")))) exit;
+    http_response_code(404); echo json_encode(["error" => "backup_not_found"]); exit;
+  }
+  echo json_encode(["settings" => $settings, "targets" => array_map(function ($item) { unset($item["path"]); return $item; }, $targets), "backups" => backupFiles($targets)]);
   exit;
 }
 if ($_SERVER["REQUEST_METHOD"] !== "POST") { http_response_code(405); echo json_encode(["error" => "method_not_allowed"]); exit; }
