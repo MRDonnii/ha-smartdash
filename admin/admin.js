@@ -829,13 +829,20 @@
   function renderUpdatesView() {
     return `<section class="admin-view${activeView === "updates" ? " is-active" : ""}" data-admin-view="updates">
       <div class="admin-card"><div class="admin-card-head"><div><h2>Denne installation</h2><p>Versionen der kører lige nu, og hvad der senest er ændret.</p></div></div>
-        <div class="beast-stat-grid">${BeastCore.statTile({ icon: "sparkles", label: "Nuværende version", value: "Henter…", id: "adminCurrentVersionTile" })}</div>
+        <div class="beast-stat-grid">${BeastCore.statTile({ icon: "sparkles", label: "Nuværende version", value: "Henter…", meta: "…", id: "adminCurrentVersionTile" })}</div>
         <div class="admin-changelog-list" id="adminChangelogList"><p class="admin-empty">Henter ændringslog…</p></div>
       </div>
       <div class="admin-card"><div class="admin-card-head"><div><h2>Versionshistorik</h2><p>Tidligere versioner gemmes automatisk, når de vises her. Du kan gendanne en ældre version, hvis en opdatering går galt — den nuværende version gemmes altid først, så gendannelse selv kan fortrydes.</p></div><button type="button" class="beast-btn" data-reload-versions>Opdatér liste</button></div>
         <div class="admin-version-list" id="adminVersionList"><p class="admin-empty">Henter versioner…</p></div>
       </div>
     </section>`;
+  }
+
+  function formatVersionLabel(version) {
+    const match = /^(\d{4})(\d{2})(\d{2})-(\d+)$/.exec(version || "");
+    if (!match) return version || "—";
+    const [, year, month, day, build] = match;
+    return `${year}-${month}-${day} · build ${Number(build)}`;
   }
 
   function renderChangelogEntries(entries) {
@@ -863,7 +870,9 @@
       const changelog = changelogRes.ok ? await changelogRes.json() : [];
       const current = versionsPayload.currentVersion || "ukendt";
       const valueEl = tile?.querySelector(".beast-stat-tile-value");
-      if (valueEl) valueEl.textContent = current;
+      const metaEl = tile?.querySelector(".beast-stat-tile-meta");
+      if (valueEl) valueEl.textContent = formatVersionLabel(current);
+      if (metaEl) metaEl.textContent = current;
       if (changelogEl) changelogEl.innerHTML = renderChangelogEntries(Array.isArray(changelog) ? changelog : []);
       if (listEl) {
         const versions = versionsPayload.versions || [];

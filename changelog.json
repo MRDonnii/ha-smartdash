@@ -1,32 +1,40 @@
 [
   {
+    "version": "20260807-04",
+    "date": "2026-08-07",
+    "changes": [
+      "The current-version tile in Administration → Update is now readable (date + build number instead of one long digit string)",
+      "Release notes and the changelog shown in Administration are now written in English"
+    ]
+  },
+  {
     "version": "20260807-03",
     "date": "2026-08-07",
     "changes": [
-      "Sprogvalget i Administration oversætter nu også hele adminpanelet, ikke kun selve dashboardet"
+      "The language picker in Administration now also translates the entire admin panel, not just the dashboard"
     ]
   },
   {
     "version": "20260807-02",
     "date": "2026-08-07",
     "changes": [
-      "Ny sektion i Administration under Opdatering: se versionshistorik og gendan en tidligere version med ét klik",
-      "Admin-knapper (backup, sikkerhed, opdatering m.fl.) har nu et rigtigt design i stedet for kedelige grå kasser",
-      "Nyt sprogvalg øverst i Administration ved siden af Home Assistant-status: dashboardet kan vises på engelsk (standard) eller dansk",
-      "Rettet fejl hvor sprogskiftet ikke slog igennem, fordi sprogindstillingen ikke blev læst korrekt"
+      "New section in Administration under Update: view version history and restore a previous version with one click",
+      "Admin buttons (backup, security, update, etc.) now have a real design instead of plain grey boxes",
+      "New language picker at the top of Administration next to the Home Assistant status: the dashboard can be shown in English (default) or Danish",
+      "Fixed a bug where switching language didn't actually take effect, because the language setting wasn't read correctly"
     ]
   },
   {
     "version": "20260807-01",
     "date": "2026-08-07",
     "changes": [
-      "Kamera-panelet på forsiden fylder nu hele sin plads korrekt, uanset skærmstørrelse og antal kameraer",
-      "Rettet fejl hvor Sikkerhed-panelet kunne gå ned, hvis intet alarmpanel var valgt",
-      "Rettet fejl hvor skjulte sider valgt i Administration ikke faktisk blev skjult på dashboardet",
-      "Rettet skalering af kort på forsiden, så tekst og tal altid passer til kortets egen størrelse, ikke skærmens",
-      "Rettet fejl hvor låse og døråbningssensorer kunne blive parret forkert i Sikkerhed-widgeten på forsiden",
-      "PIN-koden til skærmlås deles nu på tværs af alle browsere/enheder i stedet for kun at virke der hvor den blev oprettet",
-      "Robotstøvsuger- og robotplæneklipper-billeder kan nu vælges frit under Robotter i Administration"
+      "The camera panel on the overview now fills its space correctly, regardless of screen size or camera count",
+      "Fixed a crash in the Security panel when no alarm panel was configured",
+      "Fixed hidden pages selected in Administration not actually being hidden on the dashboard",
+      "Fixed overview card scaling so text and numbers always fit the card's own size, not the screen's",
+      "Fixed locks and door sensors sometimes being paired incorrectly in the Security widget on the overview",
+      "The screen-lock PIN is now shared across all browsers/devices instead of only working where it was created",
+      "Robot vacuum and robot mower images can now be chosen freely under Robots in Administration"
     ]
   }
 ]
