@@ -1,5 +1,12 @@
 [
   {
+    "version": "20260807-15",
+    "date": "2026-08-07",
+    "changes": [
+      "Fixed door/lock rows in the Security overview card overlapping each other on narrow cards (e.g. tablet width): the status badge column had no overflow protection and could spill over the door name"
+    ]
+  },
+  {
     "version": "20260807-14",
     "date": "2026-08-07",
     "changes": [

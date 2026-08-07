@@ -1606,7 +1606,7 @@
 .beast-ov-entry-copy { min-width:0; }
 .beast-ov-entry-copy b { display:block; overflow:hidden; color:var(--ink); font-size:16px; white-space:nowrap; text-overflow:ellipsis; }
 .beast-ov-entry-copy small { display:block; margin-top:3px; color:var(--ink-faint); font-size:12px; white-space:nowrap; }
-.beast-ov-entry-state { grid-column:3; color:var(--danger); font-size:12px; font-weight:800; white-space:nowrap; }
+.beast-ov-entry-state { grid-column:3; min-width:0; max-width:120px; overflow:hidden; color:var(--danger); font-size:12px; font-weight:800; white-space:nowrap; text-overflow:ellipsis; }
 .beast-ov-entry.is-locked .beast-ov-entry-state { color: var(--success); }
 .beast-ov-entry.is-pending .beast-ov-entry-state { color: var(--warning); }
 
@@ -1629,6 +1629,20 @@
   border-color: rgba(47, 224, 168, 0.25);
   background: var(--success-soft);
   color: var(--success);
+}
+
+/* .beast-ov-entry-copy's own <small> already shows the same locked/unlocked
+   state compactly -- this badge is a wider-screen-only visual emphasis.
+   At narrow card widths (e.g. tablet width:1) there isn't room for both
+   the label and a phrase like "Bekræft oplåsning" without one spilling
+   into the other, even with the ellipsis above as a safety net. Placed
+   after the base .beast-ov-entry-action rule above so its grid-column
+   override actually wins the cascade when this condition matches --
+   equal-specificity rules resolve by source order, not just condition. */
+@container (max-width: 300px) {
+  .beast-ov-entry { grid-template-columns: 8px minmax(0, 1fr) 52px; }
+  .beast-ov-entry-state { display: none; }
+  .beast-ov-entry-action { grid-column: 3; }
 }
 
 .beast-ov-lock-all {
