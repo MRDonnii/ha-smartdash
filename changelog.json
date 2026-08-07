@@ -1,5 +1,13 @@
 [
   {
+    "version": "20260807-12",
+    "date": "2026-08-07",
+    "changes": [
+      "Fixed the overview builder showing a layout that didn't match the actual dashboard on installs that hadn't customized the overview yet: the default cards were assembled in an order that didn't reconstruct the real fixed layout once run through the grid's placement rules",
+      "The overview builder no longer shows an empty card list on a fresh install with no saved configuration"
+    ]
+  },
+  {
     "version": "20260807-11",
     "date": "2026-08-07",
     "changes": [

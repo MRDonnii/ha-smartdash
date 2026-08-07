@@ -22,7 +22,13 @@
     ["empty","Tom plads"],["cameras","Kameraer"],["clock","Ur, kalender og affald"],["weather","Vejr"],["security","Sikkerhed"],["energy","Energi"],
     ["car","Bil"],["pool","Pool"],["robots","Robotter"],["printer","3D-printer"],["custom","Valgfri HA-entity"]
   ];
-  const OVERVIEW_SLOTS = [["main","Stor plads"],["compactTop","Venstre øverst"],["compactBottom","Venstre nederst"],["wideTop","Midte øverst"],["wideBottom","Midte nederst"]];
+  // Order matters here beyond just labeling: when overviewCards is still
+  // empty and this list gets synthesized into freeform cards below, dense
+  // grid packing places items in this exact order. This specific order is
+  // the one that reconstructs the legacy fixed layout (clock/weather top,
+  // camera right spanning both rows, security/energy bottom) -- reordering
+  // it changes what the preview (and a fresh save) actually produces.
+  const OVERVIEW_SLOTS = [["compactTop","Venstre øverst"],["wideTop","Midte øverst"],["main","Stor plads"],["compactBottom","Venstre nederst"],["wideBottom","Midte nederst"]];
 
   const PANELS = [
     { id: "weather", title: "Vejr", description: "Vejrudsigt og aktuelle vejrdata.", fields: [
@@ -731,7 +737,8 @@
 
   function renderOverviewBuilder() {
     const allEntities = allOverviewEntities();
-    const legacy = BeastConfig.get("overviewSlots") || {};
+    const legacyDefaults = { main:{type:"cameras"}, compactTop:{type:"clock"}, compactBottom:{type:"security"}, wideTop:{type:"weather"}, wideBottom:{type:"energy"} };
+    const legacy = { ...legacyDefaults, ...(BeastConfig.get("overviewSlots") || {}) };
     const legacySizes = { main:[4,2], compactTop:[3,1], compactBottom:[3,1], wideTop:[5,1], wideBottom:[5,1] };
     const cards = (BeastConfig.get("overviewCards") || []).length ? BeastConfig.get("overviewCards") : OVERVIEW_SLOTS.map(([key]) => ({ id:key, ...(legacy[key] || {type:"empty"}), desktop:{w:legacySizes[key][0],h:legacySizes[key][1]}, tablet:{w:key === "main" ? 2 : 1,h:1}, portrait:{w:1,h:1} })).filter((card) => card.type !== "empty");
     const sizeOptions = (selected,max) => Array.from({length:max},(_,i)=>`<option value="${i+1}"${Number(selected)===i+1?" selected":""}>${i+1}</option>`).join("");
