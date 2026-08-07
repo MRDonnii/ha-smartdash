@@ -739,8 +739,13 @@
     const allEntities = allOverviewEntities();
     const legacyDefaults = { main:{type:"cameras"}, compactTop:{type:"clock"}, compactBottom:{type:"security"}, wideTop:{type:"weather"}, wideBottom:{type:"energy"} };
     const legacy = { ...legacyDefaults, ...(BeastConfig.get("overviewSlots") || {}) };
-    const legacySizes = { main:[4,2], compactTop:[3,1], compactBottom:[3,1], wideTop:[5,1], wideBottom:[5,1] };
-    const cards = (BeastConfig.get("overviewCards") || []).length ? BeastConfig.get("overviewCards") : OVERVIEW_SLOTS.map(([key]) => ({ id:key, ...(legacy[key] || {type:"empty"}), desktop:{w:legacySizes[key][0],h:legacySizes[key][1]}, tablet:{w:key === "main" ? 2 : 1,h:1}, portrait:{w:1,h:1} })).filter((card) => card.type !== "empty");
+    // Desktop widths out of 12; tablet widths out of the 2-column tablet
+    // grid. Only "main" used to get the full 2 tablet columns -- every
+    // other card, including the wide weather/energy ones (desktop w:5),
+    // collapsed to the same single narrow column as the compact clock/
+    // security cards, losing all size differentiation on tablet.
+    const legacySizes = { main:[4,2,2], compactTop:[3,1,1], compactBottom:[3,1,1], wideTop:[5,1,2], wideBottom:[5,1,2] };
+    const cards = (BeastConfig.get("overviewCards") || []).length ? BeastConfig.get("overviewCards") : OVERVIEW_SLOTS.map(([key]) => ({ id:key, ...(legacy[key] || {type:"empty"}), desktop:{w:legacySizes[key][0],h:legacySizes[key][1]}, tablet:{w:legacySizes[key][2],h:1}, portrait:{w:1,h:1} })).filter((card) => card.type !== "empty");
     const sizeOptions = (selected,max) => Array.from({length:max},(_,i)=>`<option value="${i+1}"${Number(selected)===i+1?" selected":""}>${i+1}</option>`).join("");
     const row = (card,index) => {
         const key = card.id || `card_${index}`;

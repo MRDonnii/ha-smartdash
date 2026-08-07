@@ -208,6 +208,11 @@ a.beast-rail-btn:visited {
   overflow: hidden;
   display: flex;
   flex-direction: column;
+  /* The overview grid's breakpoints need the space actually left after the
+     nav rail and this padding, not raw viewport width -- see the
+     .beast-overview-grid @container rules in ha-smartdash-responsive.css. */
+  container-type: inline-size;
+  container-name: beast-content;
 }
 
 .beast-section {
