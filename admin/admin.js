@@ -840,8 +840,17 @@
         <div class="admin-update-status" id="adminUpdateStatus" data-state="checking"><span class="admin-update-status-dot"></span><span id="adminUpdateStatusText">Tjekker…</span></div>
         <div class="admin-changelog-list" id="adminChangelogList"><p class="admin-empty">Henter ændringslog…</p></div>
       </div>
-      <div class="admin-card"><div class="admin-card-head"><div><h2>Versionshistorik</h2><p>Tidligere versioner gemmes automatisk, når de vises her. Du kan gendanne en ældre version, hvis en opdatering går galt — den nuværende version gemmes altid først, så gendannelse selv kan fortrydes.</p></div><button type="button" class="beast-btn" data-reload-versions>Opdatér liste</button></div>
-        <div class="admin-version-list" id="adminVersionList"><p class="admin-empty">Henter versioner…</p></div>
+      <div class="admin-card"><div class="admin-card-head"><div><h2>Versionshistorik</h2><p>Du kan altid installere den nyeste version, eller vælge en ældre at gendanne. Den nuværende version gemmes altid først, så det kan fortrydes.</p></div><button type="button" class="beast-btn" data-reload-versions>Opdatér liste</button></div>
+        <div id="adminVersionSection">
+          <div id="adminInstallLatest"><p class="admin-empty">Henter…</p></div>
+          <div class="admin-old-versions">
+            <span class="admin-field-label">Tidligere versioner</span>
+            <div class="admin-old-versions-row">
+              <select id="adminOldVersionSelect" disabled><option value="">Henter…</option></select>
+              <button type="button" class="beast-btn" id="adminOldVersionRestoreBtn" data-rollback-version="" data-is-newer="false" data-is-latest="false" disabled>Gendan valgte version</button>
+            </div>
+          </div>
+        </div>
         <div class="admin-progress-track" id="adminRollbackProgress" hidden><div class="admin-progress-fill" id="adminRollbackProgressFill"></div></div>
         <div class="admin-save-state" id="adminRollbackState"></div>
       </div>
@@ -875,8 +884,10 @@
   async function loadUpdatesSettings() {
     const tile = document.getElementById("adminCurrentVersionTile");
     const changelogEl = document.getElementById("adminChangelogList");
-    const listEl = document.getElementById("adminVersionList");
-    if (!tile && !changelogEl && !listEl) return;
+    const installLatestEl = document.getElementById("adminInstallLatest");
+    const oldSelect = document.getElementById("adminOldVersionSelect");
+    const oldRestoreBtn = document.getElementById("adminOldVersionRestoreBtn");
+    if (!tile && !changelogEl && !installLatestEl) return;
     setUpdateStatus("checking", t("Tjekker…", "Checking…"));
     try {
       const [versionsRes, changelogRes] = await Promise.all([
@@ -892,19 +903,29 @@
       if (valueEl) valueEl.textContent = formatVersionLabel(current);
       if (metaEl) metaEl.textContent = current;
       if (changelogEl) changelogEl.innerHTML = renderChangelogEntries(Array.isArray(changelog) ? changelog : []);
-      if (listEl) {
+      if (installLatestEl || oldSelect) {
         const versions = versionsPayload.versions || [];
         const latestVersion = versions.length ? versions.map((item) => item.version).sort().at(-1) : null;
-        listEl.innerHTML = versions.length ? versions.map((item) => {
-          const isCurrent = item.version === current;
-          const isNewer = !isCurrent && item.version > current;
-          const isLatest = isNewer && item.version === latestVersion;
-          const size = item.sizeKb < 1024 ? `${item.sizeKb} KB` : `${(item.sizeKb / 1024).toFixed(1)} MB`;
-          const badge = isCurrent ? t(" · nuværende", " · current") : isNewer ? ` <span class="admin-version-badge">${t("Ny", "New")}</span>` : "";
-          const actionLabel = isLatest ? t("Installer ny version", "Install new version") : isNewer ? t("Opdater til denne version", "Update to this version") : t("Gendan denne version", "Restore this version");
-          const actionButton = isCurrent ? "" : `<button type="button" class="beast-btn${isNewer ? " beast-btn-primary" : ""}" data-rollback-version="${escapeHtml(item.version)}" data-is-newer="${isNewer}" data-is-latest="${isLatest}">${actionLabel}</button>`;
-          return `<article class="admin-version-row${isNewer ? " is-newer" : ""}"><div><strong>${escapeHtml(item.version)}${badge}</strong><span>${escapeHtml(item.date || "")} · ${size}</span>${item.changes.length ? `<ul>${item.changes.slice(0, 4).map((change) => `<li>${escapeHtml(change)}</li>`).join("")}</ul>` : ""}</div>${actionButton}</article>`;
-        }).join("") : `<p class="admin-empty">Ingen tidligere versioner gemt endnu. De dukker op her, efterhånden som dashboardet opdateres.</p>`;
+        const latestEntry = versions.find((item) => item.version === latestVersion);
+        if (installLatestEl) {
+          installLatestEl.innerHTML = (latestVersion && latestVersion !== current && latestEntry)
+            ? `<div class="admin-install-latest"><div><strong>${t("Ny version klar", "New version ready")}</strong><span>${escapeHtml(formatVersionLabel(latestVersion))}</span>${latestEntry.changes?.length ? `<ul>${latestEntry.changes.slice(0, 4).map((change) => `<li>${escapeHtml(change)}</li>`).join("")}</ul>` : ""}</div><button type="button" class="beast-btn beast-btn-primary" data-rollback-version="${escapeHtml(latestVersion)}" data-is-newer="true" data-is-latest="true">${t("Installer ny version", "Install new version")}</button></div>`
+            : `<p class="admin-empty">${t("Du kører den nyeste version.", "You're on the latest version.")}</p>`;
+        }
+        const oldVersions = versions.filter((item) => item.version !== current && item.version !== latestVersion);
+        if (oldSelect) {
+          oldSelect.disabled = !oldVersions.length;
+          oldSelect.innerHTML = oldVersions.length
+            ? oldVersions.map((item) => {
+              const size = item.sizeKb < 1024 ? `${item.sizeKb} KB` : `${(item.sizeKb / 1024).toFixed(1)} MB`;
+              return `<option value="${escapeHtml(item.version)}">${escapeHtml(formatVersionLabel(item.version))} · ${size}</option>`;
+            }).join("")
+            : `<option value="">${t("Ingen andre versioner gemt", "No other versions saved")}</option>`;
+        }
+        if (oldRestoreBtn) {
+          oldRestoreBtn.disabled = !oldVersions.length;
+          oldRestoreBtn.dataset.rollbackVersion = oldVersions.length ? oldVersions[0].version : "";
+        }
       }
       if (!versionsPayload.hasCurrentSnapshot) {
         await fetch("/api/versions.php", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "snapshot" }) });
@@ -1123,10 +1144,15 @@
     document.querySelector("[data-reload-backups]")?.addEventListener("click", loadBackupSettings);
     document.querySelector("[data-reload-versions]")?.addEventListener("click", loadUpdatesSettings);
     document.querySelector("[data-check-updates]")?.addEventListener("click", loadUpdatesSettings);
-    document.getElementById("adminVersionList")?.addEventListener("click", async (event) => {
+    document.getElementById("adminOldVersionSelect")?.addEventListener("change", (event) => {
+      const restoreBtn = document.getElementById("adminOldVersionRestoreBtn");
+      if (restoreBtn) restoreBtn.dataset.rollbackVersion = event.target.value;
+    });
+    document.getElementById("adminVersionSection")?.addEventListener("click", async (event) => {
       const button = event.target.closest("[data-rollback-version]");
       if (!button) return;
       const version = button.dataset.rollbackVersion;
+      if (!version) return;
       const isNewer = button.dataset.isNewer === "true";
       const isLatest = button.dataset.isLatest === "true";
       const stateEl = document.getElementById("adminRollbackState");

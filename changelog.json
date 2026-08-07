@@ -1,5 +1,12 @@
 [
   {
+    "version": "20260807-08",
+    "date": "2026-08-07",
+    "changes": [
+      "Simplified version history: only the single latest version gets a prominent \"Install new version\" card, everything else moved into a dropdown to restore an older version from"
+    ]
+  },
+  {
     "version": "20260807-07",
     "date": "2026-08-07",
     "changes": [
