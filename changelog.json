@@ -1,5 +1,13 @@
 [
   {
+    "version": "20260807-10",
+    "date": "2026-08-07",
+    "changes": [
+      "The \"+ Add card\" button in the overview builder is now styled instead of a plain unstyled browser button",
+      "Fixed cramped width/height dropdowns in the overview builder on wide screens: each card's size fields now respond to the card's own width, not the browser window's"
+    ]
+  },
+  {
     "version": "20260807-09",
     "date": "2026-08-07",
     "changes": [
