@@ -47,6 +47,14 @@ button { cursor: pointer; }
 .admin-security-toggle span { display: grid; gap: 5px; }
 .admin-security-toggle small { color: var(--ink-muted); line-height: 1.4; }
 .admin-security-toggle input { width: 24px; height: 24px; accent-color: var(--accent-b); }
+.admin-screensaver-preview { padding: 22px 24px; border: 1px solid var(--border); border-radius: 15px; background: #090c10; text-align: center; }
+.admin-screensaver-preview-time { font-size: 40px; font-weight: 800; letter-spacing: .01em; font-variant-numeric: tabular-nums; }
+.admin-screensaver-preview-date { margin-top: 4px; color: var(--ink-muted); text-transform: capitalize; }
+.admin-screensaver-preview-summary { display: flex; align-items: center; justify-content: center; gap: 22px; flex-wrap: wrap; margin-top: 18px; }
+.admin-screensaver-preview-summary span { display: inline-flex; align-items: center; gap: 8px; color: var(--ink-muted); font-size: 13px; font-weight: 700; }
+.admin-screensaver-preview-summary span b { color: var(--ink); font-size: 15px; font-weight: 800; }
+.admin-screensaver-preview-summary svg { color: var(--accent-b); }
+.admin-screensaver-preview-warning { margin: 16px 0 0; padding: 10px 14px; border: 1px solid color-mix(in srgb, #e2a03f 40%, var(--border)); border-radius: 10px; background: color-mix(in srgb, #e2a03f 12%, transparent); color: #e2a03f; font-size: 12.5px; line-height: 1.5; }
 .admin-security-warning { margin-top: 13px; padding: 13px 15px; border: 1px solid color-mix(in srgb, var(--warning) 46%, var(--border)); border-radius: 12px; color: var(--warning); background: color-mix(in srgb, var(--warning) 9%, transparent); }
 .admin-security-warning[hidden] { display: none; }
 .admin-diagnostics details { margin-bottom: 16px; border: 1px solid var(--border); border-radius: 13px; background: #090c10; }
