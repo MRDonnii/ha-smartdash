@@ -163,6 +163,13 @@
     return String(value ?? "").replace(/[&<>"']/g, (char) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[char]));
   }
 
+  // Dynamic status strings (with interpolated versions/timestamps) can't be
+  // caught by the DOM-text dictionary in ha-smartdash-i18n.js, since it only
+  // matches exact static phrases — so these pick their language directly.
+  function t(da, en) {
+    return BeastLocalSettings.get("language", "en") === "da" ? da : en;
+  }
+
   function fieldId(panelId, key) { return `admin_${panelId}_${key}`; }
 
   function baseCandidates(field) {
@@ -828,12 +835,14 @@
 
   function renderUpdatesView() {
     return `<section class="admin-view${activeView === "updates" ? " is-active" : ""}" data-admin-view="updates">
-      <div class="admin-card"><div class="admin-card-head"><div><h2>Denne installation</h2><p>Versionen der kører lige nu, og hvad der senest er ændret.</p></div></div>
+      <div class="admin-card"><div class="admin-card-head"><div><h2>Denne installation</h2><p>Versionen der kører lige nu, og hvad der senest er ændret.</p></div><button type="button" class="beast-btn" data-check-updates>Tjek for opdateringer</button></div>
         <div class="beast-stat-grid">${BeastCore.statTile({ icon: "sparkles", label: "Nuværende version", value: "Henter…", meta: "…", id: "adminCurrentVersionTile" })}</div>
+        <div class="admin-update-status" id="adminUpdateStatus" data-state="checking"><span class="admin-update-status-dot"></span><span id="adminUpdateStatusText">Tjekker…</span></div>
         <div class="admin-changelog-list" id="adminChangelogList"><p class="admin-empty">Henter ændringslog…</p></div>
       </div>
       <div class="admin-card"><div class="admin-card-head"><div><h2>Versionshistorik</h2><p>Tidligere versioner gemmes automatisk, når de vises her. Du kan gendanne en ældre version, hvis en opdatering går galt — den nuværende version gemmes altid først, så gendannelse selv kan fortrydes.</p></div><button type="button" class="beast-btn" data-reload-versions>Opdatér liste</button></div>
         <div class="admin-version-list" id="adminVersionList"><p class="admin-empty">Henter versioner…</p></div>
+        <div class="admin-save-state" id="adminRollbackState"></div>
       </div>
     </section>`;
   }
@@ -855,11 +864,19 @@
     `).join("");
   }
 
+  function setUpdateStatus(state, text) {
+    const statusEl = document.getElementById("adminUpdateStatus");
+    const textEl = document.getElementById("adminUpdateStatusText");
+    if (statusEl) statusEl.dataset.state = state;
+    if (textEl) textEl.textContent = text;
+  }
+
   async function loadUpdatesSettings() {
     const tile = document.getElementById("adminCurrentVersionTile");
     const changelogEl = document.getElementById("adminChangelogList");
     const listEl = document.getElementById("adminVersionList");
     if (!tile && !changelogEl && !listEl) return;
+    setUpdateStatus("checking", t("Tjekker…", "Checking…"));
     try {
       const [versionsRes, changelogRes] = await Promise.all([
         fetch("/api/versions.php", { cache: "no-store" }),
@@ -885,9 +902,19 @@
       if (!versionsPayload.hasCurrentSnapshot) {
         await fetch("/api/versions.php", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "snapshot" }) });
       }
+      const newestVersion = Array.isArray(changelog) && changelog.length
+        ? changelog.map((entry) => entry.version).sort().at(-1)
+        : current;
+      const checkedAt = new Date().toLocaleTimeString();
+      if (newestVersion && newestVersion > current) {
+        setUpdateStatus("outdated", t(`Ny version tilgængelig: ${newestVersion} · tjekket ${checkedAt}`, `New version available: ${newestVersion} · checked ${checkedAt}`));
+      } else {
+        setUpdateStatus("current", t(`Du kører den nyeste version · tjekket ${checkedAt}`, `You're on the latest version · checked ${checkedAt}`));
+      }
     } catch (error) {
-      if (changelogEl) changelogEl.innerHTML = `<p class="admin-empty">Kunne ikke hente ændringslog.</p>`;
-      if (listEl) listEl.innerHTML = `<p class="admin-empty">Kunne ikke hente versionshistorik.</p>`;
+      if (changelogEl) changelogEl.innerHTML = `<p class="admin-empty">${t("Kunne ikke hente ændringslog.", "Could not load the changelog.")}</p>`;
+      if (listEl) listEl.innerHTML = `<p class="admin-empty">${t("Kunne ikke hente versionshistorik.", "Could not load version history.")}</p>`;
+      setUpdateStatus("error", t("Kunne ikke tjekke for opdateringer", "Could not check for updates"));
     }
   }
 
@@ -1088,21 +1115,24 @@
     if (activeView === "updates") loadUpdatesSettings();
     document.querySelector("[data-reload-backups]")?.addEventListener("click", loadBackupSettings);
     document.querySelector("[data-reload-versions]")?.addEventListener("click", loadUpdatesSettings);
+    document.querySelector("[data-check-updates]")?.addEventListener("click", loadUpdatesSettings);
     document.getElementById("adminVersionList")?.addEventListener("click", async (event) => {
       const button = event.target.closest("[data-rollback-version]");
       if (!button) return;
       const version = button.dataset.rollbackVersion;
-      if (!window.confirm(`Gendan version ${version}? Den nuværende version gemmes automatisk først, så dette kan fortrydes.`)) return;
+      const stateEl = document.getElementById("adminRollbackState");
+      if (!window.confirm(t(`Gendan version ${version}? Den nuværende version gemmes automatisk først, så dette kan fortrydes.`, `Restore version ${version}? The current version is saved automatically first, so this can be undone.`))) return;
       button.disabled = true;
-      button.textContent = "Gendanner…";
+      button.textContent = t("Gendanner…", "Restoring…");
+      if (stateEl) { stateEl.dataset.state = "pending"; stateEl.textContent = t(`Gendanner version ${version}…`, `Restoring version ${version}…`); }
       try {
         await rollbackToVersion(version);
-        window.alert(`Version ${version} er gendannet. Siden genindlæses nu.`);
-        window.location.reload();
+        if (stateEl) { stateEl.dataset.state = "success"; stateEl.textContent = t(`✓ Version ${version} gendannet — genindlæser…`, `✓ Version ${version} restored — reloading…`); }
+        window.setTimeout(() => window.location.reload(), 900);
       } catch (error) {
         button.disabled = false;
-        button.textContent = "Gendan denne version";
-        window.alert(`Kunne ikke gendanne version: ${error.message}`);
+        button.textContent = t("Gendan denne version", "Restore this version");
+        if (stateEl) { stateEl.dataset.state = "error"; stateEl.textContent = t(`Kunne ikke gendanne version: ${error.message}`, `Could not restore version: ${error.message}`); }
       }
     });
     document.querySelector("[data-refresh-browser]")?.addEventListener("click", () => window.location.reload());

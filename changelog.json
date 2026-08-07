@@ -1,5 +1,13 @@
 [
   {
+    "version": "20260807-05",
+    "date": "2026-08-07",
+    "changes": [
+      "Administration → Update now shows a live status pill: checking, up to date, or update available, with a manual \"Check for updates\" button",
+      "Restoring a previous version now shows an inline success/error message instead of a native browser alert"
+    ]
+  },
+  {
     "version": "20260807-04",
     "date": "2026-08-07",
     "changes": [
