@@ -1,6 +1,11 @@
 const BeastScreenLock = (() => {
-  const PIN_HASH_KEY = "beast_panel_screen_pin_hash_v1";
-  const AUTOLOCK_KEY = "beast_panel_screen_autolock_v1";
+  // Legacy per-browser storage keys — kept only so any PIN set before this
+  // moved to the shared backend config can be migrated forward once, not
+  // silently lost. The PIN itself now lives in BeastConfig (screenLock.*)
+  // so it's the same code on every browser/device, not just the one it was
+  // created on.
+  const LEGACY_PIN_HASH_KEY = "beast_panel_screen_pin_hash_v1";
+  const LEGACY_AUTOLOCK_KEY = "beast_panel_screen_autolock_v1";
   const PIN_LENGTH = 4;
 
   let overlayEl = null;
@@ -28,15 +33,30 @@ const BeastScreenLock = (() => {
   }
 
   function hasPin() {
-    return Boolean(localStorage.getItem(PIN_HASH_KEY));
+    return Boolean(BeastConfig.get("screenLock.pinHash"));
   }
 
   function isAutoLockEnabled() {
-    return localStorage.getItem(AUTOLOCK_KEY) === "1";
+    return BeastConfig.get("screenLock.autoLockEnabled") === true;
   }
 
   function setAutoLockEnabled(enabled) {
-    localStorage.setItem(AUTOLOCK_KEY, enabled ? "1" : "0");
+    BeastConfig.set("screenLock.autoLockEnabled", Boolean(enabled));
+  }
+
+  // Runs once, after BeastConfig has loaded from the backend (see init()).
+  // If this browser has an old, local-only PIN and the shared config has
+  // none yet, carry it forward so the person who set it up doesn't have to
+  // redo it. The server's own PIN always wins if one already exists there.
+  function migrateLegacyPinIfNeeded() {
+    const legacyHash = localStorage.getItem(LEGACY_PIN_HASH_KEY);
+    if (!legacyHash || BeastConfig.get("screenLock.pinHash")) return;
+    BeastConfig.set("screenLock", {
+      pinHash: legacyHash,
+      autoLockEnabled: localStorage.getItem(LEGACY_AUTOLOCK_KEY) === "1"
+    });
+    localStorage.removeItem(LEGACY_PIN_HASH_KEY);
+    localStorage.removeItem(LEGACY_AUTOLOCK_KEY);
   }
 
   function isLocked() {
@@ -171,7 +191,7 @@ const BeastScreenLock = (() => {
     }
 
     if (mode === "locked" || mode === "verify") {
-      const storedHash = localStorage.getItem(PIN_HASH_KEY);
+      const storedHash = BeastConfig.get("screenLock.pinHash");
       const enteredHash = hashPin(entered);
       if (enteredHash !== storedHash) {
         shakeAndClear();
@@ -190,8 +210,7 @@ const BeastScreenLock = (() => {
       if (action === "change" || action === "set") {
         beginSetFlow(cb);
       } else if (action === "remove") {
-        localStorage.removeItem(PIN_HASH_KEY);
-        setAutoLockEnabled(false);
+        BeastConfig.set("screenLock", { pinHash: null, autoLockEnabled: false });
         resetFlow();
         if (cb) cb(true);
       } else {
@@ -216,7 +235,7 @@ const BeastScreenLock = (() => {
         return;
       }
       const hash = hashPin(entered);
-      localStorage.setItem(PIN_HASH_KEY, hash);
+      BeastConfig.set("screenLock.pinHash", hash);
       const cb = onDoneCallback;
       resetFlow();
       if (cb) cb(true);
@@ -316,6 +335,7 @@ const BeastScreenLock = (() => {
   function init() {
     if (alarmSubscribed || !window.BeastHaSocket) return;
     alarmSubscribed = true;
+    migrateLegacyPinIfNeeded();
     const security = window.BeastConfig?.get("panels.security") || {};
     const alarmIds = Array.isArray(security.alarmPanels) ? security.alarmPanels.filter(Boolean) : [];
     BeastHaSocket.onStatusChange((status) => {

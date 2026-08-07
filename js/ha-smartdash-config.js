@@ -53,7 +53,7 @@ const BeastConfig = (() => {
       activeTray: null, traySensors: [], amsHumidity: null, totalUsage: null, liveStream: null
     },
     robots: {
-      vacuums: [], mowers: [], roomSelectors: []
+      vacuums: [], mowers: [], roomSelectors: [], leonoraImage: null, poulImage: null
     },
     waste: { sensors: [], calendars: [] },
     heating: {
@@ -88,6 +88,7 @@ const BeastConfig = (() => {
     hiddenSections: [],
     appEntities: { kioskScreenLight: null, kioskEntities: {}, doorbellBinarySensor: null, doorbellEvent: null, doorbellCamera: null, mailPresent: null, mailCount: null, mailDescription: null, quickScenes: [] },
     screensaver: { enabled: true, schedule: "custom", startTime: "23:00", endTime: "05:30", offAfterMinutes: 5 },
+    screenLock: { pinHash: null, autoLockEnabled: false },
     panels: DEFAULT_PANELS
   };
 

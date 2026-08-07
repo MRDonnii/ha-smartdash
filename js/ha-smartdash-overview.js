@@ -10,7 +10,6 @@
   let CAR_BATTERY_ID = null;
   let CAR_RANGE_ID = null;
   let CAR_CHARGING_ID = null;
-  let CAR_LABEL = "Elbil";
   let POOL_TEMPERATURE_ID = null;
   let LOCKS = [];
   let LOCK_IDS = [];
@@ -48,8 +47,6 @@
     MAIL_COUNT_ID = app.mailCount;
     MAIL_DESCRIPTION_ID = app.mailDescription;
     CAR_BATTERY_ID = car.battery; CAR_RANGE_ID = car.range; CAR_CHARGING_ID = car.charging;
-    const carDevice = car.sourceDevice ? BeastRegistry.getDevice(car.sourceDevice) : null;
-    CAR_LABEL = carDevice?.name || carDevice?.name_by_user || "Elbil";
     POOL_TEMPERATURE_ID = pool.waterTemp;
     LOCK_IDS = Array.isArray(security.locks) ? security.locks.filter(Boolean) : [];
     DOOR_IDS = Array.isArray(security.openingSensors) ? security.openingSensors.filter(Boolean) : [];
@@ -227,7 +224,7 @@
         <div class="beast-ov-home-quick">
           <button type="button" class="beast-ov-car-compact" id="beastOvCarCompact">
             <span class="beast-ov-car-icon">${BeastCore.icon(carCharging ? "bolt" : "car", { size: 19 })}</span>
-            <span><b>${escapeHtml(CAR_LABEL)}</b><small>${carCharging ? "Lader" : "Bilbatteri"}</small></span>
+            <span><b>Energitte</b><small>${carCharging ? "Lader" : "Bilbatteri"}</small></span>
             <strong>${Number.isFinite(carBattery) ? Math.round(carBattery) + "%" : "–"}<small>${Number.isFinite(carRange) ? Math.round(carRange) + " km" : ""}</small></strong>
             <i style="--car-pct:${Number.isFinite(carBattery) ? Math.max(0, Math.min(100, carBattery)) : 0}%"></i>
           </button>
@@ -761,7 +758,7 @@
       return { meta: periodMeta, body: `
         <div class="beast-ov-focus-grid">
           <button type="button" data-smart-nav="waste"><span>${BeastCore.icon("calendar", { size: 19 })}</span><div><small>Næste aftale</small><strong>${appointments[0] ? escapeHtml(appointments[0].label) : "Dagen er fri"}</strong><em>${appointments[0] ? escapeHtml(formatCompactDate(appointments[0].date)) : "Ingen kommende aftaler"}</em></div></button>
-          <button type="button" data-smart-nav="car"><span>${BeastCore.icon("car", { size: 19 })}</span><div><small>Transport</small><strong>${escapeHtml(CAR_LABEL)} ${Number.isFinite(battery) ? Math.round(battery) + "%" : "–"}</strong><em>${Number.isFinite(range) ? Math.round(range) + " km rækkevidde" : "Klar til afgang"}</em></div></button>
+          <button type="button" data-smart-nav="car"><span>${BeastCore.icon("car", { size: 19 })}</span><div><small>Transport</small><strong>Energitte ${Number.isFinite(battery) ? Math.round(battery) + "%" : "–"}</strong><em>${Number.isFinite(range) ? Math.round(range) + " km rækkevidde" : "Klar til afgang"}</em></div></button>
           ${appointments[1] ? `<button type="button" data-smart-nav="waste"><span>${BeastCore.icon("calendar", { size: 19 })}</span><div><small>Derefter</small><strong>${escapeHtml(appointments[1].label)}</strong><em>${escapeHtml(formatCompactDate(appointments[1].date))}</em></div></button>` : `<button type="button" data-smart-nav="energy"><span>${BeastCore.icon("bolt", { size: 19 })}</span><div><small>Strøm lige nu</small><strong>${escapeHtml(BeastHaSocket.getState(PRICE_ENTITY_ID)?.state || "–")} kr/kWh</strong><em>Se dagens bedste timer</em></div></button>`}
         </div>` };
     }
@@ -802,13 +799,11 @@
       wireContextualFocus(host);
       return;
     }
-    const entries = LOCKS.map((lock, index) => ({
+    const entries = LOCKS.map((lock) => ({
       ...lock,
-      doorId: DOOR_IDS[index],
-      open: BeastHaSocket.getState(DOOR_IDS[index])?.state === "on",
       locked: BeastHaSocket.getState(lock.id)?.state === "locked"
     }));
-    const doorsOpen = entries.filter((entry) => entry.open).length;
+    const doorsOpen = DOOR_IDS.filter((id) => BeastHaSocket.getState(id)?.state === "on").length;
     const locksUnlocked = entries.filter((entry) => !entry.locked).length;
     const alarmState = BeastHaSocket.getState(PRIMARY_ALARM_ID);
     const alarmValue = alarmState?.state || "unknown";
@@ -839,8 +834,8 @@
         <div class="beast-ov-entry-list">
           ${entries.map((entry) => `
             <button type="button" class="beast-ov-entry${entry.locked ? " is-locked" : ""}${pendingUnlockId === entry.id ? " is-pending" : ""}" data-lock="${entry.id}" data-locked="${entry.locked}">
-              <span class="beast-ov-entry-dot${entry.open ? " is-open" : ""}"></span>
-              <span class="beast-ov-entry-copy"><b>${escapeHtml(entry.label)}</b><small>${entry.open ? "Døren er åben" : "Døren er lukket"}</small></span>
+              <span class="beast-ov-entry-dot${entry.locked ? "" : " is-open"}"></span>
+              <span class="beast-ov-entry-copy"><b>${escapeHtml(entry.label)}</b><small>${entry.locked ? "Låst" : "Ulåst"}</small></span>
               <span class="beast-ov-entry-state">${pendingUnlockId === entry.id ? "Bekræft oplåsning" : (entry.locked ? "Låst" : "Ulåst")}</span>
               <span class="beast-ov-entry-action">${BeastCore.icon(entry.locked ? "lock" : "unlock", { size: 20 })}</span>
             </button>
