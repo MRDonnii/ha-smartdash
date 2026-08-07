@@ -158,7 +158,7 @@ button { cursor: pointer; }
 .admin-icon-action:hover { color:var(--ink); border-color:color-mix(in srgb,var(--accent-b) 55%,var(--border)); background:color-mix(in srgb,var(--accent-b) 10%,var(--surface-2)); transform:translateY(-1px); }
 .admin-icon-action.is-danger:hover { color:var(--danger); border-color:color-mix(in srgb,var(--danger) 55%,var(--border)); background:var(--danger-soft); }
 .admin-overview-card-row > label { display:grid; gap:6px; color:var(--ink-muted); font-size:12px; font-weight:750; }
-.admin-overview-sizes { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:10px; }
+.admin-overview-sizes { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:10px; }
 .admin-overview-sizes fieldset { display:grid; grid-template-columns:1fr 1fr; gap:8px; padding:10px; border:1px solid var(--border); border-radius:10px; min-width:0; }
 .admin-overview-sizes legend { padding:0 5px; color:var(--ink-muted); font-size:11.5px; max-width:none; }
 .admin-overview-sizes label { display:grid; gap:5px; min-width:0; color:var(--ink-faint); font-size:11.5px; }
@@ -168,7 +168,7 @@ button { cursor: pointer; }
    viewport width never fires even though every individual card is
    narrow. Legends are allowed to wrap rather than use nowrap, which
    let long legend text overflow its fieldset and overlap its neighbor. */
-@container overview-card (max-width: 340px) {
+@container overview-card (max-width: 460px) {
   .admin-overview-sizes { grid-template-columns: 1fr; }
 }
 @media(max-width:850px){.admin-overview-row-head{align-items:flex-start}}
