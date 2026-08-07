@@ -1,0 +1,141 @@
+.beast-cameras-panel {
+  overflow: hidden;
+}
+
+.beast-camera-featured {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  background: #000;
+  border: 1px solid var(--border);
+}
+
+.beast-camera-featured-frame {
+  position: absolute;
+  inset: 0;
+}
+
+.beast-camera-featured-frame iframe {
+  width: 100%;
+  height: 100%;
+  border: none;
+  display: block;
+}
+
+.beast-camera-featured-label {
+  position: absolute;
+  left: var(--space-4);
+  bottom: var(--space-3);
+  color: #fff;
+  font-weight: 700;
+  font-size: var(--text-md);
+  text-shadow: 0 1px 6px rgba(0, 0, 0, 0.7);
+  z-index: 1;
+}
+
+.beast-camera-audio-toggle {
+  appearance: none;
+  position: absolute;
+  top: var(--space-3);
+  left: var(--space-3);
+  z-index: 3;
+  min-height: 40px;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 7px 12px;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: var(--radius-full);
+  background: rgba(5, 8, 12, 0.76);
+  backdrop-filter: blur(10px);
+  color: #fff;
+  font: inherit;
+  font-size: var(--text-sm);
+  font-weight: 750;
+  cursor: pointer;
+}
+
+.beast-camera-audio-toggle[aria-pressed="true"] {
+  background: rgba(24, 145, 225, 0.88);
+}
+
+.beast-camera-strip {
+  flex-shrink: 0;
+  margin-top: var(--space-3);
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: 200px;
+  gap: var(--space-3);
+  overflow-x: auto;
+  padding-bottom: var(--space-1);
+}
+
+.beast-camera-tile {
+  appearance: none;
+  position: relative;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 0;
+  overflow: hidden;
+  cursor: pointer;
+  background: #000;
+  width: 200px;
+  height: 113px;
+  aspect-ratio: 16 / 9;
+}
+
+.beast-camera-tile:active { transform: scale(.98); }
+.beast-camera-tile:focus-visible { outline: 3px solid rgba(83, 190, 255, .42); outline-offset: 2px; }
+
+.beast-camera-tile.has-motion {
+  border-color: var(--accent-security);
+  box-shadow: 0 0 0 1px var(--accent-security), 0 0 20px rgba(255, 93, 122, 0.35);
+}
+
+.beast-camera-tile.is-featured {
+  border-color: var(--accent-a);
+  box-shadow: 0 0 0 2px var(--accent-a);
+}
+
+.beast-camera-snapshot {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  object-position: center;
+  display: block;
+}
+
+.beast-camera-label {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  padding: var(--space-2) var(--space-3);
+  background: linear-gradient(to top, rgba(0, 0, 0, 0.85), transparent);
+  color: #fff;
+  font-size: var(--text-sm);
+  font-weight: 700;
+  text-align: left;
+}
+
+.beast-camera-motion-badge {
+  position: absolute;
+  top: var(--space-2);
+  right: var(--space-2);
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: var(--accent-security);
+  color: #fff;
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  padding: 3px 8px;
+  border-radius: var(--radius-full);
+  z-index: 1;
+}

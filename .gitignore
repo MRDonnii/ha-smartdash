@@ -1,0 +1,6 @@
+.DS_Store
+data/config.json
+data/backup-settings.json
+data/backups/
+data/*.tmp
+

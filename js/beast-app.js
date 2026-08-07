@@ -1,0 +1,646 @@
+const RAIL_ITEMS = [
+  { id: "overview", label: "Oversigt", icon: "home" },
+  { id: "weather", label: "Vejr", icon: "cloud" },
+  { id: "rooms", label: "Rum", icon: "grid" },
+  { id: "cameras", label: "Kameraer", icon: "camera" },
+  { id: "security", label: "Sikkerhed", icon: "shield" },
+  { id: "music", label: "Musik", icon: "music" },
+  { id: "energy", label: "Energi", icon: "bolt" },
+  { id: "heating", label: "Varme", icon: "thermometer" },
+  { id: "car", label: "Bil", icon: "car" },
+  { id: "pool", label: "Pool", icon: "droplet" },
+  { id: "waste", label: "Kalender", icon: "calendar" },
+  { id: "robots", label: "Robotter", icon: "robot" },
+  { id: "printer", label: "3D Printer", icon: "printer" },
+  { id: "settings", label: "Administration", icon: "settings" }
+];
+
+const MOUNTED_SECTION_ZONES = {
+  weather: "beastWeatherZone",
+  rooms: "beastRoomsZone",
+  cameras: "beastCamerasZone",
+  security: "beastSecurityZone",
+  music: "beastMusicZone",
+  energy: "beastEnergyZone",
+  heating: "beastHeatingZone",
+  car: "beastCarZone",
+  pool: "beastPoolZone",
+  waste: "beastWasteZone",
+  robots: "beastRobotsZone",
+  printer: "beastPrinterZone"
+};
+
+const AUTO_RETURN_TO_OVERVIEW_MS = 3 * 60 * 1000;
+const BUILD_CHECK_INTERVAL_MS = 60 * 1000;
+const CAMERA_HEALTH_CHECK_INTERVAL_MS = 10 * 1000;
+const CAMERA_RECONNECT_AFTER_MS = 20 * 1000;
+const CAMERA_RELOAD_AFTER_MS = 48 * 1000;
+const FULL_RECOVERY_COOLDOWN_MS = 10 * 60 * 1000;
+const AMBIENT_MODE_AFTER_MS = 5 * 60 * 1000;
+function screensaverConfig() {
+  return BeastLocalSettings.get("screensaver", BeastConfig.get("screensaver")) || { enabled: true, schedule: "custom", startTime: "23:00", endTime: "05:30", offAfterMinutes: 5 };
+}
+function parseTimeToMinutes(value, fallbackMinutes) {
+  const match = /^(\d{1,2}):(\d{2})$/.exec(String(value || "").trim());
+  if (!match) return fallbackMinutes;
+  return Number(match[1]) * 60 + Number(match[2]);
+}
+function KIOSK_SCREEN_ENTITY_ID() { return BeastLocalSettings.get("kioskScreenLight", BeastConfig.get("appEntities.kioskScreenLight")); }
+function DOORBELL_BINARY_ID() { return BeastConfig.get("appEntities.doorbellBinarySensor"); }
+function DOORBELL_EVENT_ID() { return BeastConfig.get("appEntities.doorbellEvent"); }
+const DOORBELL_VIEW_MS = 3 * 60 * 1000;
+let lastUserActivityAt = Date.now();
+let pendingBuildReload = false;
+let buildCheckTimerId = null;
+let cameraHealthTimerId = null;
+let ambientModeTimerId = null;
+let screenOffTimerId = null;
+let morningWakeTimerId = null;
+let nightStartTimerId = null;
+let kioskScreenIsOff = false;
+let doorbellTimerId = null;
+let lastDoorbellAt = 0;
+let lastDoorbellBinaryState = null;
+let eventFocusTimerId = null;
+const cameraHealth = new Map();
+
+function noteUserActivity() {
+  lastUserActivityAt = Date.now();
+  if (kioskScreenIsOff) setKioskScreenPower(true);
+  hideAmbientMode();
+  scheduleAmbientMode();
+}
+
+function setKioskScreenPower(on) {
+  if (!window.BeastAuth?.haFetch) return;
+  kioskScreenIsOff = !on;
+  BeastAuth.haFetch(`/api/services/light/turn_${on ? "on" : "off"}`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ entity_id: KIOSK_SCREEN_ENTITY_ID() })
+  }).catch((error) => {
+    kioskScreenIsOff = false;
+    BeastCore.log(`Skærmstyring: kunne ikke ${on ? "tænde" : "slukke"} kioskskærmen (${error.message}).`);
+  });
+}
+
+function doorbellCameraStream() {
+  const cameras = window.BeastCameras?.getAllCameras?.() || [];
+  const configuredCameraId = BeastConfig.get("appEntities.doorbellCamera");
+  let camera = configuredCameraId ? cameras.find((item) => item.entityId === configuredCameraId) : null;
+  if (!camera) camera = cameras.find((item) => /fordør|fordor|hoveddør|hoveddor/i.test(`${item.slug} ${item.label} ${item.streamName}`));
+  return camera?.streamName || "Fordor";
+}
+
+function closeDoorbellView() {
+  window.clearTimeout(doorbellTimerId);
+  document.getElementById("beastDoorbellView")?.remove();
+  document.body.classList.remove("beast-doorbell-active");
+  scheduleAmbientMode();
+}
+
+function featureEnabled(key) { return BeastConfig.get(`features.${key}`) === true; }
+
+function showEventFocus({ title, detail, section, icon = "bell", priority = "normal" }) {
+  if (!featureEnabled("eventFocus") || document.querySelector(".beast-doorbell-view")) return;
+  document.getElementById("beastEventFocus")?.remove();
+  const banner = document.createElement("button");
+  banner.type = "button";
+  banner.id = "beastEventFocus";
+  banner.className = "beast-event-focus";
+  banner.dataset.priority = priority;
+  banner.innerHTML = `<span>${BeastCore.icon(icon, { size: 23 })}</span><div><strong>${title}</strong><small>${detail}</small></div><b>Åbn</b>`;
+  document.body.appendChild(banner);
+  banner.addEventListener("click", () => { document.dispatchEvent(new CustomEvent("beast:navigate", { detail: { section } })); banner.remove(); });
+  window.clearTimeout(eventFocusTimerId);
+  eventFocusTimerId = window.setTimeout(() => banner.remove(), priority === "critical" ? 45000 : 25000);
+}
+
+function setupEventFocus() {
+  const watch = (entityId, handler) => { if (entityId) BeastHaSocket.subscribeEntity(entityId, (id, next, previous) => handler(next, previous)); };
+  const security = BeastConfig.get("panels.security") || {};
+  (security.alarmPanels || []).forEach((id) => watch(id, (next, previous) => {
+    if (next?.state === "triggered" && previous?.state !== "triggered") showEventFocus({ title: "Alarm aktiveret", detail: next.attributes?.friendly_name || "Kontrollér sikkerhedssystemet", section: "security", icon: "shield", priority: "critical" });
+  }));
+  watch(BeastConfig.get("panels.pool.personInWater"), (next, previous) => { if (next?.state === "on" && previous?.state !== "on") showEventFocus({ title: "Person i poolen", detail: "Pumpen er stoppet · åbn poolvisningen", section: "pool", icon: "droplet", priority: "important" }); });
+  watch(BeastConfig.get("panels.car.charging"), (next, previous) => { if (next?.state === "on" && previous?.state !== "on") showEventFocus({ title: "Bilen lader", detail: "Batteristatus og forventet sluttid er opdateret", section: "car", icon: "bolt" }); });
+  watch(BeastConfig.get("panels.printer.statusSensor"), (next, previous) => {
+    const value = String(next?.state || "").toLowerCase();
+    if (next?.state === previous?.state) return;
+    if (/(finish|complete|idle)/.test(value) && /(print|run|busy)/.test(String(previous?.state || "").toLowerCase())) showEventFocus({ title: "Print færdigt", detail: "3D-printeren er klar", section: "printer", icon: "printer" });
+    if (/(fail|error|pause)/.test(value)) showEventFocus({ title: "Printer kræver opmærksomhed", detail: `Status: ${next.state}`, section: "printer", icon: "printer", priority: "important" });
+  });
+}
+
+function quickScenarioMarkup() {
+  if (!featureEnabled("quickScenarios")) return "";
+  const scenes = BeastConfig.get("appEntities.quickScenes") || [];
+  if (!scenes.length) return "";
+  return `<div class="beast-quick-scenarios" id="beastQuickScenarios"><button type="button" aria-expanded="false" data-scenario-toggle>${BeastCore.icon("bolt", { size:22 })}<span>Scenarier</span></button><div hidden>${scenes.map((id) => `<button type="button" data-scene="${id}">${(BeastHaSocket.getState(id)?.attributes?.friendly_name || id.split(".")[1] || id).replaceAll("_"," ")}</button>`).join("")}</div></div>`;
+}
+
+function setupQuickScenarios() {
+  const host = document.getElementById("beastQuickScenarios"); if (!host) return;
+  const menu = host.querySelector("div"), toggle = host.querySelector("[data-scenario-toggle]");
+  toggle.addEventListener("click", () => { menu.hidden = !menu.hidden; toggle.setAttribute("aria-expanded", String(!menu.hidden)); });
+  host.querySelectorAll("[data-scene]").forEach((button) => button.addEventListener("click", async () => {
+    const label = button.textContent.trim();
+    if (!window.confirm(`Aktivér scenariet “${label}”?`)) return;
+    button.disabled = true;
+    await BeastAuth.haFetch("/api/services/scene/turn_on", { method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({entity_id:button.dataset.scene}) }).catch((error) => BeastCore.log(`Scenario fejlede: ${error.message}`));
+    menu.hidden = true; button.disabled = false;
+  }));
+}
+
+function setupDataQuality() {
+  if (!featureEnabled("dataQuality")) return;
+  let pending = null;
+  const collectIds = (value, result = []) => { if (typeof value === "string" && /^[a-z_]+\.[a-z0-9_]+$/i.test(value)) result.push(value); else if (Array.isArray(value)) value.forEach((item) => collectIds(item, result)); else if (value && typeof value === "object") Object.values(value).forEach((item) => collectIds(item, result)); return result; };
+  const update = () => {
+    pending = null;
+    Object.entries(MOUNTED_SECTION_ZONES).forEach(([section, zoneId]) => {
+      const zone = document.getElementById(zoneId); if (!zone) return;
+      zone.querySelector(":scope > .beast-section-quality")?.remove();
+      const ids = [...new Set(collectIds(BeastConfig.get(`panels.${section}`) || {}))];
+      if (!ids.length) return;
+      const states = ids.map((id) => BeastHaSocket.getState(id));
+      const missing = states.filter((state) => !state || ["unknown","unavailable"].includes(state.state)).length;
+      const newest = Math.max(0, ...states.filter(Boolean).map((state) => new Date(state.last_updated || state.last_changed || 0).getTime()));
+      const quality = missing ? "unavailable" : (newest && Date.now() - newest > 2 * 3600000 ? "stale" : "live");
+      const badge = document.createElement("span"); badge.className = "beast-section-quality"; badge.dataset.quality = quality; badge.textContent = quality === "unavailable" ? `${missing} uden data` : quality === "stale" ? "Seneste kendte data" : "Live data"; zone.prepend(badge);
+    });
+  };
+  const schedule = () => { if (!pending) pending = window.setTimeout(update, 1200); };
+  BeastHaSocket.subscribeAll(schedule); BeastHaSocket.onStatusChange((status) => { if (status === "connected") schedule(); }); schedule();
+}
+
+function showDoorbellView() {
+  if (!featureEnabled("eventFocus")) return;
+  const now = Date.now();
+  if (now - lastDoorbellAt < 5000) return;
+  lastDoorbellAt = now;
+  setKioskScreenPower(true);
+  hideAmbientMode();
+  window.clearTimeout(ambientModeTimerId);
+  window.clearTimeout(screenOffTimerId);
+  document.getElementById("beastDoorbellView")?.remove();
+  const overlay = document.createElement("div");
+  overlay.id = "beastDoorbellView";
+  overlay.className = "beast-doorbell-view";
+  const stream = doorbellCameraStream();
+  overlay.innerHTML = `<iframe src="./camera-player.html?v=7&src=${encodeURIComponent(stream)}" title="Fordør livekamera" frameborder="0" allow="autoplay"></iframe><div class="beast-doorbell-head"><span>${BeastCore.icon("bell", { size: 25 })}</span><div><strong>Det ringer på</strong><small>Fordør · livekamera</small></div></div><button type="button" class="beast-doorbell-close" aria-label="Luk dørkamera">${BeastCore.icon("close", { size: 24 })}<span>Luk</span></button><div class="beast-doorbell-live"><i></i> Live</div>`;
+  document.body.appendChild(overlay);
+  document.body.classList.add("beast-doorbell-active");
+  overlay.querySelector(".beast-doorbell-close")?.addEventListener("click", (event) => { event.stopPropagation(); closeDoorbellView(); });
+  doorbellTimerId = window.setTimeout(closeDoorbellView, DOORBELL_VIEW_MS);
+}
+
+function handleDoorbellBinary() {
+  const state = BeastHaSocket.getState(DOORBELL_BINARY_ID())?.state || "off";
+  if (state === "on" && lastDoorbellBinaryState !== "on") showDoorbellView();
+  lastDoorbellBinaryState = state;
+}
+
+function ambientWeather() {
+  const allStates = Array.from(window.BeastHaSocket?.getAllStates?.().values?.() || []);
+  let state = window.BeastHaSocket?.getState(window.BeastConfig?.get("panels.weather.entity"));
+  if (!state || ["unknown", "unavailable"].includes(state.state)) {
+    state = allStates.find((item) => item.entity_id?.startsWith("weather.") && !["unknown", "unavailable"].includes(item.state));
+  }
+  let temperature = Number(state?.attributes?.temperature);
+  if (!Number.isFinite(temperature)) {
+    const fallback = allStates.find((item) => item.entity_id?.startsWith("sensor.") && /ude|outdoor/i.test(`${item.entity_id} ${item.attributes?.friendly_name || ""}`) && Number.isFinite(Number(item.state)) && /°c|c/i.test(item.attributes?.unit_of_measurement || ""));
+    temperature = Number(fallback?.state);
+  }
+  const labels = { sunny: "Solrigt", partlycloudy: "Delvist skyet", cloudy: "Skyet", rainy: "Regn", pouring: "Kraftig regn", fog: "Tåget", windy: "Blæsende", "windy-variant": "Blæsende", lightning: "Torden", "lightning-rainy": "Tordenbyger", snowy: "Sne", "clear-night": "Klart" };
+  const condition = state && !["unknown", "unavailable"].includes(state.state) ? state.state : "";
+  return { label: labels[condition] || condition || "Aktuelt vejr", temperature: Number.isFinite(temperature) ? `${Math.round(temperature)}°` : "–" };
+}
+
+function hideAmbientMode() {
+  window.clearTimeout(screenOffTimerId);
+  document.getElementById("beastAmbientMode")?.classList.remove("is-visible");
+  document.body.classList.remove("beast-is-ambient");
+}
+
+function isNightScreenPeriod(date = new Date()) {
+  const config = screensaverConfig();
+  if (!config.enabled) return false;
+  if (config.schedule === "always") return true;
+  const minutes = date.getHours() * 60 + date.getMinutes();
+  const start = parseTimeToMinutes(config.startTime, 23 * 60);
+  const end = parseTimeToMinutes(config.endTime, 5 * 60 + 30);
+  if (start === end) return true;
+  if (start > end) return minutes >= start || minutes < end;
+  return minutes >= start && minutes < end;
+}
+
+function scheduleMorningWake() {
+  window.clearTimeout(morningWakeTimerId);
+  const config = screensaverConfig();
+  if (!config.enabled || config.schedule === "always") return;
+  const now = new Date();
+  const end = parseTimeToMinutes(config.endTime, 5 * 60 + 30);
+  const wake = new Date(now);
+  wake.setHours(Math.floor(end / 60), end % 60, 0, 0);
+  if (wake <= now) wake.setDate(wake.getDate() + 1);
+  morningWakeTimerId = window.setTimeout(() => {
+    setKioskScreenPower(true);
+    hideAmbientMode();
+    document.querySelector('.beast-rail-btn[data-section="overview"]')?.click();
+    lastUserActivityAt = Date.now();
+    scheduleAmbientMode();
+    scheduleMorningWake();
+  }, wake.getTime() - now.getTime());
+}
+
+function scheduleNightStart() {
+  window.clearTimeout(nightStartTimerId);
+  const config = screensaverConfig();
+  if (!config.enabled || config.schedule === "always") return;
+  const now = new Date();
+  const start = parseTimeToMinutes(config.startTime, 23 * 60);
+  const night = new Date(now);
+  night.setHours(Math.floor(start / 60), start % 60, 0, 0);
+  if (night <= now) night.setDate(night.getDate() + 1);
+  nightStartTimerId = window.setTimeout(() => {
+    scheduleAmbientMode();
+    scheduleNightStart();
+  }, night.getTime() - now.getTime());
+}
+
+function showAmbientMode() {
+  const overlay = document.getElementById("beastAmbientMode");
+  if (!isNightScreenPeriod() || !overlay || document.hidden || document.querySelector(".beast-screen-lock")) return;
+  const now = new Date();
+  const weather = ambientWeather();
+  const securityConfig = BeastConfig.get("panels.security") || {};
+  const openDoors = (securityConfig.openingSensors || []).filter((id) => BeastHaSocket.getState(id)?.state === "on").length;
+  const unlocked = (securityConfig.locks || []).filter((id) => {
+    const value = BeastHaSocket.getState(id)?.state;
+    return value && !["locked", "unknown", "unavailable"].includes(value);
+  }).length;
+  overlay.innerHTML = `<div class="beast-ambient-time">${now.toLocaleTimeString("da-DK", { hour: "2-digit", minute: "2-digit" })}</div><div class="beast-ambient-date">${now.toLocaleDateString("da-DK", { weekday: "long", day: "numeric", month: "long" })}</div><div class="beast-ambient-summary"><span>${BeastCore.icon("cloud", { size: 26 })}<b>${weather.temperature}</b>${weather.label}</span><span>${BeastCore.icon(unlocked || openDoors ? "unlock" : "shield", { size: 25 })}<b>${unlocked || openDoors ? `${openDoors} åbne · ${unlocked} ulåste` : "Huset er sikret"}</b></span></div><small>Tryk på skærmen for at åbne dashboardet</small>`;
+  overlay.classList.add("is-visible");
+  document.body.classList.add("beast-is-ambient");
+  window.clearTimeout(screenOffTimerId);
+  const offAfterMs = Math.max(1, Number(screensaverConfig().offAfterMinutes) || 5) * 60 * 1000;
+  screenOffTimerId = window.setTimeout(() => {
+    if (document.body.classList.contains("beast-is-ambient") && !document.hidden) setKioskScreenPower(false);
+  }, offAfterMs);
+}
+
+function scheduleAmbientMode() {
+  window.clearTimeout(ambientModeTimerId);
+  window.clearTimeout(screenOffTimerId);
+  if (!featureEnabled("idleMode") || !isNightScreenPeriod()) return;
+  const idleFor = Date.now() - lastUserActivityAt;
+  ambientModeTimerId = window.setTimeout(showAmbientMode, Math.max(0, AMBIENT_MODE_AFTER_MS - idleFor));
+}
+
+function currentBuildId() {
+  return document.querySelector('meta[name="beast-build"]')?.content || "legacy";
+}
+
+function assetSignature(root = document) {
+  return Array.from(root.querySelectorAll('link[href*="?v="],script[src*="?v="]'))
+    .map((node) => node.getAttribute("href") || node.getAttribute("src"))
+    .join("|");
+}
+
+async function checkForDashboardUpdate() {
+  try {
+    const response = await fetch(`./index.html?_build_check=${Date.now()}`, { cache: "no-store" });
+    if (!response.ok) return;
+    const html = await response.text();
+    const nextDocument = new DOMParser().parseFromString(html, "text/html");
+    const nextBuild = nextDocument.querySelector('meta[name="beast-build"]')?.content;
+    const assetsChanged = assetSignature(nextDocument) && assetSignature(nextDocument) !== assetSignature();
+    if ((nextBuild && nextBuild !== currentBuildId()) || assetsChanged) pendingBuildReload = true;
+    if (pendingBuildReload && Date.now() - lastUserActivityAt > 20000) window.location.reload();
+  } catch (error) {
+    BeastCore.log(`Opdateringskontrol: ${error.message}`);
+  }
+}
+
+function reloadCameraFrame(frame, reason) {
+  const url = new URL(frame.src, window.location.href);
+  url.searchParams.set("recover", String(Date.now()));
+  frame.dataset.cameraReloads = String(Number(frame.dataset.cameraReloads || 0) + 1);
+  frame.src = url.href;
+  cameraHealth.set(frame, { lastProgressAt: Date.now(), lastReconnectAt: 0 });
+  BeastCore.log(`Kamera-watchdog: genstarter videorammen (${reason}).`);
+  document.dispatchEvent(new CustomEvent("beast:camerahealth", { detail: { state: "recovering", reason } }));
+}
+
+function visibleCameraFrames() {
+  return Array.from(document.querySelectorAll('iframe[src*="camera-player.html"]'))
+    .filter((frame) => frame.closest(".beast-section.is-active"));
+}
+
+function runCameraHealthCheck() {
+  if (document.hidden) return;
+  const now = Date.now();
+  visibleCameraFrames().forEach((frame) => {
+    const health = cameraHealth.get(frame) || { lastProgressAt: now, lastReconnectAt: 0 };
+    cameraHealth.set(frame, health);
+    const silentFor = now - health.lastProgressAt;
+    if (silentFor > CAMERA_RELOAD_AFTER_MS) {
+      reloadCameraFrame(frame, "ingen live-data");
+      const reloads = Number(frame.dataset.cameraReloads || 0);
+      const lastFullRecovery = Number(sessionStorage.getItem("beast_last_camera_full_recovery") || 0);
+      if (reloads >= 3 && now - lastUserActivityAt > 60000 && now - lastFullRecovery > FULL_RECOVERY_COOLDOWN_MS) {
+        sessionStorage.setItem("beast_last_camera_full_recovery", String(now));
+        window.location.reload();
+      }
+    } else if (silentFor > CAMERA_RECONNECT_AFTER_MS && now - health.lastReconnectAt > CAMERA_RECONNECT_AFTER_MS) {
+      health.lastReconnectAt = now;
+      try { frame.contentWindow?.postMessage({ type: "camera-player-reconnect" }, window.location.origin); } catch (_) {}
+    }
+  });
+}
+
+function startKioskWatchdogs() {
+  if (!buildCheckTimerId) {
+    buildCheckTimerId = window.setInterval(checkForDashboardUpdate, BUILD_CHECK_INTERVAL_MS);
+    window.setTimeout(checkForDashboardUpdate, 5000);
+  }
+  if (!cameraHealthTimerId) cameraHealthTimerId = window.setInterval(runCameraHealthCheck, CAMERA_HEALTH_CHECK_INTERVAL_MS);
+  if (!isNightScreenPeriod()) setKioskScreenPower(true);
+  scheduleAmbientMode();
+  scheduleMorningWake();
+  scheduleNightStart();
+  document.addEventListener("beast:config-changed", () => {
+    scheduleAmbientMode();
+    scheduleMorningWake();
+    scheduleNightStart();
+    if (!screensaverConfig().enabled) {
+      hideAmbientMode();
+      if (kioskScreenIsOff) setKioskScreenPower(true);
+    }
+  });
+  window.addEventListener("message", (event) => {
+    if (event.origin !== window.location.origin || !["camera-player-ready", "camera-player-health"].includes(event.data?.type)) return;
+    const frame = Array.from(document.querySelectorAll('iframe[src*="camera-player.html"]')).find((item) => item.contentWindow === event.source);
+    if (!frame) return;
+    const healthy = event.data.type === "camera-player-ready" || event.data.state === "playing";
+    const previous = cameraHealth.get(frame) || {};
+    cameraHealth.set(frame, { ...previous, lastProgressAt: healthy ? Date.now() : (previous.lastProgressAt || Date.now()), lastState: event.data.state || "ready" });
+    if (healthy) frame.dataset.cameraReloads = "0";
+    if (healthy) document.dispatchEvent(new CustomEvent("beast:camerahealth", { detail: { state: "live" } }));
+  });
+}
+
+function placeholderPanel(title, note) {
+  return `
+    <p class="beast-panel-title">${title}</p>
+    <div class="beast-placeholder-panel">${note}</div>
+  `;
+}
+
+function renderLoginScreen(root, message) {
+  root.innerHTML = "";
+  const screen = BeastCore.el("div", "beast-login-screen");
+  const card = BeastCore.el("div", "beast-login-card", [
+    BeastCore.el("h2", null, "HA Smartdash"),
+    BeastCore.el("p", null, "Log ind med Home Assistant for at komme i gang."),
+    message ? BeastCore.el("p", null, message) : null
+  ]);
+  const loginButton = BeastCore.el("button", "beast-btn beast-btn-primary", "Log ind");
+  loginButton.type = "button";
+  loginButton.addEventListener("click", () => BeastAuth.startLogin());
+  card.appendChild(loginButton);
+  screen.appendChild(card);
+  root.appendChild(screen);
+}
+
+function overviewEscape(value) { const el = document.createElement("span"); el.textContent = String(value || ""); return el.innerHTML; }
+function renderOverviewSection() {
+  const defaults = { main:{type:"cameras"}, compactTop:{type:"clock"}, compactBottom:{type:"security"}, wideTop:{type:"weather"}, wideBottom:{type:"energy"} };
+  const slots = { ...defaults, ...(BeastConfig.get("overviewSlots") || {}) };
+  const configuredCards = BeastConfig.get("overviewCards") || [];
+  const freeform = Array.isArray(configuredCards) && configuredCards.length > 0;
+  const positionClasses = { main:"beast-ov-card--wide", compactTop:"beast-ov-card--clock", compactBottom:"beast-ov-card--security", wideTop:"beast-ov-card--weather", wideBottom:"beast-ov-card--energy" };
+  const widget = (keyOrCard) => {
+    const isCard = typeof keyOrCard === "object";
+    const key = isCard ? keyOrCard.id : keyOrCard;
+    const slot = isCard ? keyOrCard : (slots[key] || {type:"empty"});
+    const position = isCard ? `beast-ov-card--${slot.type}` : positionClasses[key];
+    const size = isCard ? ` data-builder-card="${overviewEscape(key)}" style="--desktop-w:${Number(slot.desktop?.w)||4};--desktop-h:${Number(slot.desktop?.h)||1};--tablet-w:${Number(slot.tablet?.w)||1};--tablet-h:${Number(slot.tablet?.h)||1};--portrait-h:${Number(slot.portrait?.h)||1};"` : "";
+    if (slot.type === "empty") return "";
+    if (slot.type === "cameras") return `<section class="beast-panel beast-ov-card ${position} beast-ov-card--flush"${size} data-nav="cameras" data-card="cameras" data-fixed="true" aria-label="Åbn alle kameraer">
+        <div class="beast-ov-camera-header">
+          <span class="beast-ov-card-kicker">${BeastCore.icon("camera", { size: 14 })} Live kameraer</span>
+          <div class="beast-ov-camera-menu">
+            <button type="button" class="beast-ov-camera-menu-toggle" id="beastOvCameraMenuToggle" aria-label="Åbn kameramenu" aria-expanded="false">⋮</button>
+            <div class="beast-ov-camera-menu-popover" id="beastOvCameraMenu" hidden>
+              <button type="button" id="beastOvCameraPicker">${BeastCore.icon("camera", { size: 17 })}<span>Vælg kameraer</span></button>
+              <button type="button" id="beastOvNotifications">${BeastCore.icon("bell", { size: 17 })}<span>Notifikationer</span><b id="beastOvNotificationCount" hidden>0</b></button>
+              <button type="button" id="beastOvEdit">${BeastCore.icon("settings", { size: 17 })}<span>Rediger forsiden</span></button>
+            </div>
+          </div>
+        </div>
+        <div id="beastOvCameras"></div>
+      </section>`;
+    const builtins = {
+      clock:["overview","beastOvClock","Tid, kalender og affald"], weather:["weather","beastOvWeather","Vejr"], security:["security","beastOvSecurity","Sikkerhed"], energy:["energy","beastOvEnergy","Energi"]
+    };
+    if (builtins[slot.type]) { const [nav,id,label] = builtins[slot.type]; return `<section class="beast-panel beast-ov-card ${position}"${size} data-nav="${nav}" data-card="${slot.type}" aria-label="${overviewEscape(slot.label || label)}"><div id="${id}"></div></section>`; }
+    return `<section class="beast-panel beast-ov-card ${position} beast-ov-card--generic"${size} data-nav="${slot.type === "custom" ? "overview" : slot.type}" data-card="generic" data-widget="${overviewEscape(slot.type)}" data-entity="${overviewEscape(slot.entity)}" data-label="${overviewEscape(slot.label)}"><div class="beastOvGeneric"></div></section>`;
+  };
+  const hasEmptySlots = !freeform && Object.values(slots).some((slot) => slot?.type === "empty");
+  return `
+    <div class="beast-overview-grid is-configurable${freeform ? " is-freeform" : ""}${hasEmptySlots ? " has-empty-slots" : ""}" id="beastOverviewZone">
+      ${(freeform ? configuredCards : ["main","compactTop","compactBottom","wideTop","wideBottom"]).map(widget).join("")}
+      <div id="beastOvClockMusic"></div>
+    </div>
+  `;
+}
+
+function renderSectionMarkup(item) {
+  if (item.id === "overview") return renderOverviewSection();
+  const zoneId = MOUNTED_SECTION_ZONES[item.id];
+  if (zoneId) return `<div class="beast-panel beast-panel-fill" id="${zoneId}"></div>`;
+  return `
+    <section class="beast-panel beast-panel-fill">
+      <div class="beast-placeholder-panel">Kommer snart.</div>
+    </section>
+  `;
+}
+
+function renderAppShell(root) {
+  const dashboardTitle = BeastConfig.get("dashboardTitle") || "HA Smartdash";
+  const titleEl = document.createElement("div");
+  titleEl.textContent = dashboardTitle;
+  const brandHtml = `<div class="beast-rail-brand">${titleEl.innerHTML}</div>`;
+
+  const favoriteSections = featureEnabled("localFavorites") ? BeastLocalSettings.get("favoriteSections", []) : [];
+  const orderedRailItems = favoriteSections.length ? [...RAIL_ITEMS].sort((a, b) => {
+    if (["overview", "settings"].includes(a.id) || ["overview", "settings"].includes(b.id)) return a.id === "overview" ? -1 : b.id === "overview" ? 1 : a.id === "settings" ? 1 : b.id === "settings" ? -1 : 0;
+    const ai = favoriteSections.indexOf(a.id), bi = favoriteSections.indexOf(b.id);
+    return (ai < 0 ? 999 : ai) - (bi < 0 ? 999 : bi);
+  }) : RAIL_ITEMS;
+  const visibleRailItems = BeastConfig.get("showAdminButton") === false ? orderedRailItems.filter((item) => item.id !== "settings") : orderedRailItems;
+  const railButtonsHtml = visibleRailItems.map((item) => item.id === "settings" ? `
+    <a href="/admin/" class="beast-rail-btn">
+      ${BeastCore.icon(item.icon, { size: 24 })}
+      <span>${item.label}</span>
+    </a>
+  ` : `
+    <button type="button" class="beast-rail-btn" data-section="${item.id}">
+      ${BeastCore.icon(item.icon, { size: 24 })}
+      <span>${item.label}</span>
+    </button>
+  `).join("");
+
+  const sectionsHtml = RAIL_ITEMS.filter((item) => item.id !== "settings").map((item) => `
+    <div class="beast-section" data-section="${item.id}">
+      ${renderSectionMarkup(item)}
+    </div>
+  `).join("");
+
+  root.innerHTML = `
+    <div class="beast-app">
+      <span class="beast-status-dot-fixed" id="beastStatusDot" data-state="connecting" title="Forbinder…"></span>
+      <div class="beast-body">
+        <nav class="beast-rail" id="beastRail">${brandHtml}${railButtonsHtml}</nav>
+        <main class="beast-content" id="beastContent">${sectionsHtml}</main>
+      </div>
+    </div>
+    <div class="beast-ambient-mode" id="beastAmbientMode" aria-hidden="true"></div>
+    ${quickScenarioMarkup()}
+  `;
+  document.documentElement.dataset.density = featureEnabled("localFavorites") ? BeastLocalSettings.get("density", "comfortable") : "comfortable";
+
+  const statusDot = document.getElementById("beastStatusDot");
+  const STATUS_LABELS = {
+    connecting: "Forbinder…",
+    connected: "Live",
+    "auth-failed": "Login udløbet"
+  };
+
+  BeastHaSocket.onStatusChange((state) => {
+    statusDot.dataset.state = state === "connected" ? "connected" : (state === "auth-failed" ? "error" : "connecting");
+    statusDot.title = STATUS_LABELS[state] || state;
+    if (state === "auth-failed") {
+      BeastAuth.logout();
+      renderLoginScreen(root, "Din session er udløbet. Log ind igen.");
+    }
+  });
+
+  setupNavigation();
+  setupQuickScenarios();
+  setupDataQuality();
+  BeastCore.mountPanels();
+  BeastHaSocket.connect();
+  setupEventFocus();
+  window.BeastScreenLock?.init();
+  lastDoorbellBinaryState = BeastHaSocket.getState(DOORBELL_BINARY_ID())?.state || null;
+  if (DOORBELL_BINARY_ID()) BeastHaSocket.subscribeEntity(DOORBELL_BINARY_ID(), handleDoorbellBinary);
+  if (DOORBELL_EVENT_ID()) BeastHaSocket.subscribeEntity(DOORBELL_EVENT_ID(), showDoorbellView);
+}
+
+function applyDashboardBranding() {
+  document.title = BeastConfig.get("dashboardTitle") || "HA Smartdash";
+  const favicon = document.querySelector('link[rel="icon"]') || document.head.appendChild(document.createElement("link"));
+  favicon.rel = "icon";
+  favicon.href = BeastConfig.get("faviconUrl") || "./favicon.svg";
+}
+
+function setupNavigation() {
+  const rail = document.getElementById("beastRail");
+  const content = document.getElementById("beastContent");
+  const railButtons = Array.from(rail.querySelectorAll("[data-section]"));
+  const sections = Array.from(content.querySelectorAll("[data-section]"));
+  let activeSectionId = "overview";
+  let autoReturnTimerId = null;
+
+  function scheduleAutoReturn() {
+    window.clearTimeout(autoReturnTimerId);
+    if (document.hidden || activeSectionId === "overview") return;
+    autoReturnTimerId = window.setTimeout(() => activate("overview"), AUTO_RETURN_TO_OVERVIEW_MS);
+  }
+
+  function activate(sectionId) {
+    activeSectionId = sectionId;
+    railButtons.forEach((btn) => btn.classList.toggle("is-active", btn.dataset.section === sectionId));
+    sections.forEach((section) => section.classList.toggle("is-active", section.dataset.section === sectionId));
+    document.dispatchEvent(new CustomEvent("beast:sectionchange", { detail: { section: sectionId } }));
+    scheduleAutoReturn();
+  }
+
+  document.addEventListener("beast:navigate", (event) => activate(event.detail?.section || "overview"));
+
+  railButtons.forEach((btn) => btn.addEventListener("click", () => activate(btn.dataset.section)));
+  content.querySelectorAll("[data-nav]").forEach((el) => {
+    el.addEventListener("click", () => activate(el.dataset.nav));
+  });
+
+  const adminLink = rail.querySelector('a.beast-rail-btn[href="/admin/"]');
+  adminLink?.addEventListener("click", (event) => {
+    if (!window.BeastScreenLock?.hasPin()) return;
+    event.preventDefault();
+    window.BeastScreenLock.requestPinVerification((ok) => {
+      if (ok) window.location.href = "/admin/";
+    });
+  });
+
+  ["pointerdown", "keydown", "input", "wheel"].forEach((eventName) => {
+    document.addEventListener(eventName, () => {
+      noteUserActivity();
+      scheduleAutoReturn();
+    }, { passive: true });
+  });
+  document.addEventListener("visibilitychange", () => {
+    if (document.hidden) window.clearTimeout(autoReturnTimerId);
+    else scheduleAutoReturn();
+  });
+
+  const preferredSection = featureEnabled("localFavorites") ? BeastLocalSettings.get("defaultSection", "overview") : "overview";
+  activate(railButtons.some((button) => button.dataset.section === preferredSection) ? preferredSection : "overview");
+}
+
+function syncCameraPlayers() {
+  document.querySelectorAll('iframe[src*="camera-player.html"]').forEach((frame) => {
+    const section = frame.closest(".beast-section");
+    const active = !section || section.classList.contains("is-active");
+    try {
+      frame.contentWindow?.postMessage({ type: active ? "camera-player-resume" : "camera-player-pause" }, window.location.origin);
+    } catch (error) {
+      BeastCore.log("Kamera-watchdog: kunne ikke kontakte en videoramme.");
+    }
+  });
+}
+
+function reconnectVisibleCameraPlayers() {
+  document.querySelectorAll('iframe[src*="camera-player.html"]').forEach((frame) => {
+    if (!frame.closest(".beast-section.is-active") && frame.closest(".beast-section")) return;
+    try { frame.contentWindow?.postMessage({ type: "camera-player-reconnect" }, window.location.origin); } catch (_) {}
+  });
+}
+
+window.addEventListener("online", () => window.setTimeout(reconnectVisibleCameraPlayers, 500));
+window.addEventListener("pageshow", () => window.setTimeout(syncCameraPlayers, 500));
+document.addEventListener("beast:sectionchange", () => window.setTimeout(syncCameraPlayers, 150));
+
+document.addEventListener("DOMContentLoaded", async () => {
+  const root = document.getElementById("beastRoot");
+  const callbackResult = await BeastAuth.handleAuthCallback();
+  if (callbackResult && callbackResult.type === "error") {
+    renderLoginScreen(root, callbackResult.message);
+    return;
+  }
+
+  if (BeastAuth.hasSession()) {
+    await BeastConfig.init();
+    if (BeastConfig.get("haBaseUrl")) BeastAuth.setHaBaseUrl(BeastConfig.get("haBaseUrl"));
+    applyDashboardBranding();
+    document.addEventListener("beast:config-changed", () => {
+      applyDashboardBranding();
+    });
+    renderAppShell(root);
+    startKioskWatchdogs();
+  } else {
+    renderLoginScreen(root);
+  }
+});

@@ -1,0 +1,57 @@
+{
+  "dashboardTitle": "HA Smartdash",
+  "faviconUrl": "./favicon.svg",
+  "showAdminButton": true,
+  "haBaseUrl": null,
+  "features": {
+    "eventFocus": false,
+    "dynamicOverview": false,
+    "localFavorites": false,
+    "dataQuality": false,
+    "quickScenarios": false,
+    "idleMode": true,
+    "adminPreview": false,
+    "configAudit": false
+  },
+  "overviewSlots": {
+    "main": {
+      "type": "cameras",
+      "entity": null,
+      "label": ""
+    },
+    "compactTop": {
+      "type": "clock",
+      "entity": null,
+      "label": ""
+    },
+    "compactBottom": {
+      "type": "security",
+      "entity": null,
+      "label": ""
+    },
+    "wideTop": {
+      "type": "weather",
+      "entity": null,
+      "label": ""
+    },
+    "wideBottom": {
+      "type": "energy",
+      "entity": null,
+      "label": ""
+    }
+  },
+  "overviewCards": [],
+  "hiddenSections": [],
+  "appEntities": {
+    "kioskScreenLight": null,
+    "kioskEntities": {},
+    "doorbellBinarySensor": null,
+    "doorbellEvent": null,
+    "doorbellCamera": null,
+    "mailPresent": null,
+    "mailCount": null,
+    "mailDescription": null,
+    "quickScenes": []
+  },
+  "panels": {}
+}

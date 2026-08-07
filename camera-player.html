@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Camera Player</title>
+  <style>
+    html, body {
+      margin: 0;
+      width: 100%;
+      height: 100%;
+      background: #000;
+      overflow: hidden;
+    }
+
+    body { display: grid; place-items: center; }
+
+    #poster, #stream {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      background: #000;
+      display: block;
+    }
+
+    #poster {
+      z-index: 2;
+      object-fit: contain;
+      object-position: center center;
+      opacity: 1;
+      transition: opacity 180ms ease;
+      pointer-events: none;
+    }
+
+    #stream {
+      z-index: 1;
+      overflow: hidden;
+      pointer-events: none;
+    }
+    body.ready #poster { opacity: 0; }
+    body.position-fordor #stream { transform: translate3d(0, -12%, 0) scale(1.04); }
+  </style>
+</head>
+<body>
+  <img id="poster" alt="">
+  <beast-camera-stream id="stream"></beast-camera-stream>
+  <script type="module" src="./js/camera-player.js?v=12"></script>
+</body>
+</html>
