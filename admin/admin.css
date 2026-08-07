@@ -96,6 +96,14 @@ button { cursor: pointer; }
 .admin-audit p { margin: 8px 0 0; padding: 8px 10px; border-radius: 8px; font-size: 12px; }
 .admin-audit .is-error { color: var(--danger); background: var(--danger-soft); }.admin-audit .is-warning { color: var(--warning); background: var(--warning-soft); }.admin-audit .is-ok { color: var(--success); background: var(--success-soft); }
 .admin-backup-tools > div { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }.admin-backup-tools button,.admin-backup-tools label { min-height: 40px; display: inline-flex; align-items: center; padding: 0 12px; border: 1px solid var(--border-strong); border-radius: 9px; background: var(--surface-2); color: var(--ink); font-weight: 700; }.admin-backup-tools input { display: none; }.admin-backup-tools small { display: block; margin-top: 9px; color: var(--ink-muted); }
+.admin-backup-list { display: grid; gap: 10px; }
+.admin-backup-list article { display: flex; align-items: center; justify-content: space-between; gap: 18px; padding: 14px 16px; border: 1px solid var(--border); border-radius: 13px; background: #090c10; }
+.admin-backup-list article div { min-width: 0; display: grid; gap: 5px; }
+.admin-backup-list article strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.admin-backup-list article span { color: var(--ink-muted); font-size: 12px; }
+.admin-backup-list article a { flex: 0 0 auto; display: inline-flex; align-items: center; justify-content: center; text-decoration: none; }
+.admin-smb-help { background: radial-gradient(circle at 100% 0, rgba(78,142,240,.10), transparent 35%), var(--surface-2); }
+.admin-smb-help > p { margin: 0; color: var(--ink-muted); line-height: 1.55; }
 .admin-overview-card-row { display:grid; gap:12px; padding:16px; }
 .admin-overview-row-head { display:flex; align-items:center; justify-content:space-between; gap:12px; }
 .admin-overview-row-head > div { display:flex; gap:7px; }
@@ -151,5 +159,6 @@ button { cursor: pointer; }
   .admin-entity-device-scope small { grid-column: auto; }
   .admin-project-heading,.admin-project-grid { grid-template-columns:1fr; }
   .admin-project-heading img { max-width:260px; }
+  .admin-backup-list article { align-items: flex-start; flex-direction: column; }
   .admin-security-recovery, .admin-security-toggle { align-items: flex-start; flex-direction: column; }
 }

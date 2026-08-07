@@ -15,7 +15,7 @@ On many kiosk computers and tablets, HA Smartdash can feel faster and use fewer 
 
 ## Screenshot gallery
 
-All screenshots use synthetic values and fictional entities. The camera image was generated specifically for this repository and depicts no real home.
+These screenshots mirror the production dashboard's layout, card proportions and navigation. All values, entity names and rooms are synthetic, and every camera/room image was generated specifically for this repository; no private Home Assistant data or real home is shown.
 
 | Rooms | Energy |
 | --- | --- |
@@ -25,7 +25,9 @@ All screenshots use synthetic values and fictional entities. The camera image wa
 | --- | --- |
 | ![Weather demo](docs/screenshots/weather.png) | ![Robot demo](docs/screenshots/robot.png) |
 
-![Pool and electric vehicle demo](docs/screenshots/pool.png)
+| Pool | Electric vehicle |
+| --- | --- |
+| ![Pool demo](docs/screenshots/pool.png) | ![Electric vehicle demo](docs/screenshots/car.png) |
 
 ## Highlights
 
@@ -41,7 +43,7 @@ All screenshots use synthetic values and fictional entities. The camera image wa
 - Danish and English interface selector
 - No analytics, telemetry or required cloud service
 
-The included [static demo](demo/index.html) contains synthetic data and never connects to Home Assistant.
+The included [production-style showcase](demo/showcase.html) reproduces the dashboard layout with synthetic data and never connects to Home Assistant. A simpler [static demo](demo/index.html) is also included.
 
 ## Requirements
 
@@ -83,6 +85,8 @@ Older `beast-profile` and `beast-central` profile files can also be imported.
 ## Automatic backup and SMB
 
 HA Smartdash does not mount network shares or store SMB credentials. Mount the share on the host under `/config/backup-targets/<name>`. Writable subdirectories appear as backup destinations in the admin panel. Scheduling is triggered by dashboard activity, so it is a convenience backup rather than a guaranteed server cron job.
+
+Existing local and SMB backups are listed in the admin panel and can be downloaded directly. See the complete [SMB backup setup guide](deploy/SMB-BACKUP.md).
 
 ## Security and privacy
 

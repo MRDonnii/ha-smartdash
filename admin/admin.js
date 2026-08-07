@@ -815,10 +815,12 @@
       <div class="admin-card"><div class="admin-card-head"><div><h2>Denne skærm</h2><p>Separat kopi af lokale valg til netop denne browser eller kiosk.</p></div></div>
         <div class="admin-backup-tools"><div><button type="button" data-export-local>Eksportér lokale skærmvalg</button></div></div>
       </div>
-      <div class="admin-card"><div class="admin-card-head"><div><h2>Automatisk backup</h2><p>Kan gemme centralkonfigurationen lokalt eller på en SMB-share, der er monteret på serveren under <code>/config/backup-targets</code>.</p></div></div>
+      <div class="admin-card"><div class="admin-card-head"><div><h2>Automatisk backup og SMB</h2><p>Gem lokalt eller på en SMB-share, som værten har monteret under <code>/config/backup-targets/&lt;navn&gt;</code>. Skrivbare shares dukker automatisk op under Placering; SMB-brugernavn og adgangskode gemmes aldrig i dashboardet.</p></div></div>
         <div class="admin-grid"><label class="admin-field"><span>Automatisk backup</span><select id="adminBackupEnabled"><option value="0">Fra</option><option value="1">Til</option></select></label><label class="admin-field"><span>Interval</span><select id="adminBackupFrequency"><option value="daily">Dagligt</option><option value="weekly">Ugentligt</option></select></label><label class="admin-field"><span>Placering</span><select id="adminBackupTarget"><option value="local">Lokal backupmappe</option></select></label></div>
         <div class="admin-actions"><button class="admin-save" type="button" data-save-backup>Gem auto-backup</button><button type="button" data-run-backup>Lav backup nu</button><span class="admin-save-state" data-backup-state>Henter status…</span></div>
       </div>
+      <div class="admin-card"><div class="admin-card-head"><div><h2>Gemte backups</h2><p>Backups fra både den lokale mappe og monterede SMB-shares kan hentes direkte herfra.</p></div><button type="button" class="beast-btn" data-reload-backups>Opdatér liste</button></div><div class="admin-backup-list" id="adminBackupList"><p class="admin-empty">Henter backups…</p></div></div>
+      <div class="admin-card admin-smb-help"><div class="admin-card-head"><div><h2>Sådan tilføjes en SMB-share</h2><p>Montér netværksdrevet på serveren eller som et Docker-bind mount. Eksempel: <code>//NAS/Smartdash</code> → <code>/config/backup-targets/nas</code>. Genåbn derefter denne fane.</p></div></div><p>Det holder netværkslogin uden for browseren og gør backup kompatibel med Unraid, Docker og almindelig Linux. Den fulde vejledning findes i <code>deploy/SMB-BACKUP.md</code>.</p></div>
     </section>`;
   }
 
@@ -847,6 +849,12 @@
       document.getElementById("adminBackupFrequency").value = settings.frequency || "daily";
       target.value = settings.target || "local";
       state.textContent = settings.lastBackup ? `Seneste: ${new Date(settings.lastBackup).toLocaleString("da-DK")}` : "Ingen serverbackup endnu";
+      const list = document.getElementById("adminBackupList");
+      if (list) list.innerHTML = (payload.backups || []).length ? payload.backups.map((item) => {
+        const size = item.size < 1024 ? `${item.size} B` : item.size < 1048576 ? `${Math.round(item.size / 1024)} KB` : `${(item.size / 1048576).toFixed(1)} MB`;
+        const url = `/api/backup.php?action=download&target=${encodeURIComponent(item.target)}&file=${encodeURIComponent(item.filename)}`;
+        return `<article><div><strong>${escapeHtml(item.filename)}</strong><span>${escapeHtml(item.targetLabel)} · ${escapeHtml(new Date(item.createdAt).toLocaleString("da-DK"))} · ${size}</span></div><a class="admin-save" href="${url}" download>Hent</a></article>`;
+      }).join("") : `<p class="admin-empty">Der er ikke lavet nogen serverbackups endnu.</p>`;
     } catch (error) { state.textContent = "Backup-backend kunne ikke læses"; }
   }
 
@@ -992,6 +1000,7 @@
       window.scrollTo({ top: 0, behavior: "smooth" });
     }));
     if (activeView === "backup") loadBackupSettings();
+    document.querySelector("[data-reload-backups]")?.addEventListener("click", loadBackupSettings);
     document.querySelector("[data-refresh-browser]")?.addEventListener("click", () => window.location.reload());
     document.querySelectorAll("[data-filter-select]").forEach((input) => input.addEventListener("input", () => {
       const select = document.getElementById(input.dataset.filterSelect);
