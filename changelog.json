@@ -1,0 +1,32 @@
+[
+  {
+    "version": "20260807-03",
+    "date": "2026-08-07",
+    "changes": [
+      "Sprogvalget i Administration oversætter nu også hele adminpanelet, ikke kun selve dashboardet"
+    ]
+  },
+  {
+    "version": "20260807-02",
+    "date": "2026-08-07",
+    "changes": [
+      "Ny sektion i Administration under Opdatering: se versionshistorik og gendan en tidligere version med ét klik",
+      "Admin-knapper (backup, sikkerhed, opdatering m.fl.) har nu et rigtigt design i stedet for kedelige grå kasser",
+      "Nyt sprogvalg øverst i Administration ved siden af Home Assistant-status: dashboardet kan vises på engelsk (standard) eller dansk",
+      "Rettet fejl hvor sprogskiftet ikke slog igennem, fordi sprogindstillingen ikke blev læst korrekt"
+    ]
+  },
+  {
+    "version": "20260807-01",
+    "date": "2026-08-07",
+    "changes": [
+      "Kamera-panelet på forsiden fylder nu hele sin plads korrekt, uanset skærmstørrelse og antal kameraer",
+      "Rettet fejl hvor Sikkerhed-panelet kunne gå ned, hvis intet alarmpanel var valgt",
+      "Rettet fejl hvor skjulte sider valgt i Administration ikke faktisk blev skjult på dashboardet",
+      "Rettet skalering af kort på forsiden, så tekst og tal altid passer til kortets egen størrelse, ikke skærmens",
+      "Rettet fejl hvor låse og døråbningssensorer kunne blive parret forkert i Sikkerhed-widgeten på forsiden",
+      "PIN-koden til skærmlås deles nu på tværs af alle browsere/enheder i stedet for kun at virke der hvor den blev oprettet",
+      "Robotstøvsuger- og robotplæneklipper-billeder kan nu vælges frit under Robotter i Administration"
+    ]
+  }
+]

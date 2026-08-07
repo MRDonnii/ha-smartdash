@@ -6,6 +6,7 @@ const BeastLocalSettings = (() => {
     density: "comfortable",
     favoriteSections: [],
     kioskScreenLight: null,
+    language: "en",
     screensaver: { enabled: true, schedule: "custom", startTime: "23:00", endTime: "05:30", offAfterMinutes: 5 }
   };
   function readRaw() {
@@ -39,5 +40,9 @@ const BeastLocalSettings = (() => {
     document.dispatchEvent(new CustomEvent("beast:local-settings-changed", { detail: { path: "*", value } }));
     return { success: true };
   }
+  window.addEventListener("storage", (event) => {
+    if (event.key !== STORAGE_KEY) return;
+    document.dispatchEvent(new CustomEvent("beast:local-settings-changed", { detail: { path: "*", value: read(), remote: true } }));
+  });
   return { get, set, getAll: read, replaceAll };
 })();

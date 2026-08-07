@@ -48,15 +48,15 @@
       { key: "locks", label: "Dørlåse", type: "multi", domain: "lock" },
       { key: "openingSensors", label: "Sensorer til de tre indgangskort (øvrige åbninger opdages automatisk)", type: "multi", domain: "binary_sensor", deviceClasses: ["door", "window", "garage_door", "opening"] }
     ]},
-    { id: "heating", title: "Varme", description: "Rumtermostater, varmepumper, varmeforsyning og ventilation.", fields: [
+    { id: "heating", title: "Varme", description: "Rumtermostater, varmepumper, fjernvarmemåler og Dantherm-ventilation.", fields: [
       { key: "rooms", label: "Rumtermostater", type: "multi", domain: "climate" },
       { key: "heatPumps", label: "Varmepumper", type: "multi", domain: "climate" },
       { key: "automation", label: "Automatisk varmestyring", type: "single", domain: "input_boolean", hints: ["varme", "heat", "calefa"], filterHints: true },
-      { key: "districtSensors", label: "Varme-/forsyningssensorer", type: "multi", domain: "sensor", hints: ["heat", "varme", "energy", "energi", "meter"], filterHints: true },
-      { key: "ventilationSensors", label: "Ventilationssensorer", type: "multi", domain: "sensor", hints: ["ventilation", "air", "luft", "fan"], filterHints: true }
+      { key: "districtSensors", label: "Fjernvarme-sensorer", type: "multi", domain: "sensor", hints: ["kamstrup", "multical"], filterHints: true },
+      { key: "ventilationSensors", label: "Dantherm-sensorer", type: "multi", domain: "sensor", hints: ["dantherm", "hch5"], filterHints: true }
     ]},
-    { id: "car", title: "Bil", description: "Valgfri elbil: batteri, opladning, lås, lokation, temperatur og dæktryk.", fields: [
-      { key: "sourceDevice", label: "Bil / integration", type: "device", sourceDomains: ["sensor", "binary_sensor", "device_tracker", "lock"], deviceHints: ["vehicle", "ev", "car", "bil", "tesla"] },
+    { id: "car", title: "Bil", description: "Energitte: batteri, opladning, lås, lokation, temperatur og dæktryk.", fields: [
+      { key: "sourceDevice", label: "Bil / integration", type: "device", sourceDomains: ["sensor", "binary_sensor", "device_tracker", "lock"], deviceHints: ["tesla", "car", "bil", "energitte"] },
       { key: "battery", label: "Batteri", type: "single", domain: "sensor", relatedTo: ["battery"] }, { key: "range", label: "Rækkevidde", type: "single", domain: "sensor", relatedTo: ["battery"] },
       { key: "shiftState", label: "Gear-/kørestatus", type: "single", domain: "sensor" },
       { key: "charging", label: "Oplader", type: "single", domain: "binary_sensor" }, { key: "pluggedIn", label: "Ladekabel tilsluttet", type: "single", domain: "binary_sensor" },
@@ -79,9 +79,11 @@
       { key: "vacuums", label: "Robotstøvsugere", type: "multi", domain: "vacuum" },
       { key: "mowers", label: "Robotplæneklippere", type: "multi", domain: "lawn_mower" }
       ,{ key: "roomSelectors", label: "Valgbare robotrum (valgfri)", type: "multi", domain: "input_boolean", hints: ["vacuum", "room", "rum"] }
+      ,{ key: "leonoraImage", label: "Billede til 1. robotstøvsuger (valgfri, erstatter standardbilledet)", type: "single", domain: "image" }
+      ,{ key: "poulImage", label: "Billede til robotplæneklipperen (valgfri, erstatter standardbilledet)", type: "single", domain: "image" }
     ]},
-    { id: "printer", title: "3D Printer", description: "Valgfri printer: job, temperaturer, lag, materialer, kamera og betjeningsknapper.", fields: [
-      { key: "sourceDevice", label: "Printer / integration", type: "device", sourceDomains: ["sensor", "image", "button"], deviceHints: ["printer", "3d", "bambu", "prusa", "klipper"] },
+    { id: "printer", title: "3D Printer", description: "Bambu P1S-job, temperaturer, lag, AMS, kamera og betjeningsknapper.", fields: [
+      { key: "sourceDevice", label: "Printer / integration", type: "device", sourceDomains: ["sensor", "image", "button"], deviceHints: ["bambu", "printer", "p1s", "prusa", "klipper"] },
       { key: "statusSensor", label: "Printstatus", type: "single", domain: "sensor", relatedTo: ["statusSensor"] }, { key: "stageSensor", label: "Aktuelt trin", type: "single", domain: "sensor", relatedTo: ["statusSensor"] },
       { key: "progressSensor", label: "Fremdrift", type: "single", domain: "sensor" }, { key: "remainingSensor", label: "Resterende tid", type: "single", domain: "sensor" },
       { key: "nozzleTemp", label: "Dysetemperatur", type: "single", domain: "sensor" }, { key: "nozzleTarget", label: "Dyse-måltemperatur", type: "single", domain: "sensor" },
@@ -120,7 +122,7 @@
     { id: "homeassistant", label: "Home Assistant", prefix: "homeassistant" },
     { id: "custom", label: "Custom", prefix: "" }
   ];
-  // beast-overview.js (which normally owns this key) isn't loaded on the
+  // ha-smartdash-overview.js (which normally owns this key) isn't loaded on the
   // admin page, so this mirrors its tiny get/set directly against the same
   // localStorage key rather than pulling in the whole panel file. Written
   // here takes effect the next time the dashboard tab loads or re-reads it
@@ -458,7 +460,7 @@
   function publishDirectKioskCommand(kind) {
     return callService("mqtt", "publish", {
       topic: "dashboard/kiosk/command",
-      payload: JSON.stringify({ action: mqttCommandAction(kind), source: "ha-smartdash-admin", layout: "ha-smartdash", url: window.location.href, timestamp: new Date().toISOString() }),
+      payload: JSON.stringify({ action: mqttCommandAction(kind), source: "beast-admin", layout: "beast", url: window.location.href, timestamp: new Date().toISOString() }),
       qos: 0,
       retain: false
     });
@@ -468,7 +470,7 @@
     if (mqttCheckRunning || currentConnState !== "connected" || navigator.onLine === false) return;
     mqttCheckRunning = true;
     try {
-      await callService("mqtt", "publish", { topic: "dashboard/ha-smartdash/status", payload: JSON.stringify({ state: "online", timestamp: new Date().toISOString() }), qos: 0, retain: true });
+      await callService("mqtt", "publish", { topic: "dashboard/beast/status", payload: JSON.stringify({ state: "online", timestamp: new Date().toISOString() }), qos: 0, retain: true });
       currentMqttState = "connected";
     } catch (error) {
       currentMqttState = "connecting";
@@ -531,7 +533,7 @@
         return `<button type="button" data-kiosk-action="press" data-kind="${kind}" data-entity="${entityId}" data-entity-available="${available}" class="${kind === "shutdown" ? "is-danger" : ""}">${BeastCore.icon(kind === "shutdown" ? "close" : "settings", { size: 18 })}<strong>${label}</strong><small>${available ? "HA-entitet" : "Direkte MQTT"}</small></button>`;
       }).join("")}</div>
       <div class="beast-mqtt-controls">${buildNumberControl("Zoom", ids.zoom)}${buildNumberControl("Lyd", ids.volume)}${buildSelectControl("Kiosktilstand", ids.kiosk)}${buildSelectControl("Tema", ids.theme)}</div>
-      <div class="beast-mqtt-url"><span>Sideadresse</span><code>${escapeHtml(stateValue(ids.url))}</code><button type="button" data-kiosk-action="url" data-entity="${ids.url}" data-value="${escapeHtml(new URL("/", window.location.origin).href)}">Åbn HA Smartdash</button></div>
+      <div class="beast-mqtt-url"><span>Sideadresse</span><code>${escapeHtml(stateValue(ids.url))}</code><button type="button" data-kiosk-action="url" data-entity="${ids.url}" data-value="${escapeHtml(new URL("/beast.html", window.location.origin).href)}">Åbn Beast</button></div>
       <div class="beast-mqtt-metrics">${metrics.map(([label, entityId]) => `<div><span>${label}</span><strong>${escapeHtml(stateValue(entityId))}</strong></div>`).join("")}</div>
       <p class="beast-mqtt-feedback" id="beastMqttFeedback"></p>
     `;
@@ -824,6 +826,68 @@
     </section>`;
   }
 
+  function renderUpdatesView() {
+    return `<section class="admin-view${activeView === "updates" ? " is-active" : ""}" data-admin-view="updates">
+      <div class="admin-card"><div class="admin-card-head"><div><h2>Denne installation</h2><p>Versionen der kører lige nu, og hvad der senest er ændret.</p></div></div>
+        <div class="beast-stat-grid">${BeastCore.statTile({ icon: "sparkles", label: "Nuværende version", value: "Henter…", id: "adminCurrentVersionTile" })}</div>
+        <div class="admin-changelog-list" id="adminChangelogList"><p class="admin-empty">Henter ændringslog…</p></div>
+      </div>
+      <div class="admin-card"><div class="admin-card-head"><div><h2>Versionshistorik</h2><p>Tidligere versioner gemmes automatisk, når de vises her. Du kan gendanne en ældre version, hvis en opdatering går galt — den nuværende version gemmes altid først, så gendannelse selv kan fortrydes.</p></div><button type="button" class="beast-btn" data-reload-versions>Opdatér liste</button></div>
+        <div class="admin-version-list" id="adminVersionList"><p class="admin-empty">Henter versioner…</p></div>
+      </div>
+    </section>`;
+  }
+
+  function renderChangelogEntries(entries) {
+    if (!entries.length) return `<p class="admin-empty">Ingen ændringslog fundet.</p>`;
+    return entries.map((entry) => `
+      <article class="admin-changelog-entry">
+        <header><strong>${escapeHtml(entry.version)}</strong><span>${escapeHtml(entry.date || "")}</span></header>
+        ${Array.isArray(entry.changes) && entry.changes.length ? `<ul>${entry.changes.map((change) => `<li>${escapeHtml(change)}</li>`).join("")}</ul>` : ""}
+      </article>
+    `).join("");
+  }
+
+  async function loadUpdatesSettings() {
+    const tile = document.getElementById("adminCurrentVersionTile");
+    const changelogEl = document.getElementById("adminChangelogList");
+    const listEl = document.getElementById("adminVersionList");
+    if (!tile && !changelogEl && !listEl) return;
+    try {
+      const [versionsRes, changelogRes] = await Promise.all([
+        fetch("/api/versions.php", { cache: "no-store" }),
+        fetch(`/changelog.json?_=${Date.now()}`, { cache: "no-store" })
+      ]);
+      if (!versionsRes.ok) throw new Error(`HTTP ${versionsRes.status}`);
+      const versionsPayload = await versionsRes.json();
+      const changelog = changelogRes.ok ? await changelogRes.json() : [];
+      const current = versionsPayload.currentVersion || "ukendt";
+      const valueEl = tile?.querySelector(".beast-stat-tile-value");
+      if (valueEl) valueEl.textContent = current;
+      if (changelogEl) changelogEl.innerHTML = renderChangelogEntries(Array.isArray(changelog) ? changelog : []);
+      if (listEl) {
+        const versions = versionsPayload.versions || [];
+        listEl.innerHTML = versions.length ? versions.map((item) => {
+          const isCurrent = item.version === current;
+          const size = item.sizeKb < 1024 ? `${item.sizeKb} KB` : `${(item.sizeKb / 1024).toFixed(1)} MB`;
+          return `<article class="admin-version-row"><div><strong>${escapeHtml(item.version)}${isCurrent ? " · nuværende" : ""}</strong><span>${escapeHtml(item.date || "")} · ${size}</span>${item.changes.length ? `<ul>${item.changes.slice(0, 4).map((change) => `<li>${escapeHtml(change)}</li>`).join("")}</ul>` : ""}</div>${isCurrent ? "" : `<button type="button" class="beast-btn" data-rollback-version="${escapeHtml(item.version)}">Gendan denne version</button>`}</article>`;
+        }).join("") : `<p class="admin-empty">Ingen tidligere versioner gemt endnu. De dukker op her, efterhånden som dashboardet opdateres.</p>`;
+      }
+      if (!versionsPayload.hasCurrentSnapshot) {
+        await fetch("/api/versions.php", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "snapshot" }) });
+      }
+    } catch (error) {
+      if (changelogEl) changelogEl.innerHTML = `<p class="admin-empty">Kunne ikke hente ændringslog.</p>`;
+      if (listEl) listEl.innerHTML = `<p class="admin-empty">Kunne ikke hente versionshistorik.</p>`;
+    }
+  }
+
+  async function rollbackToVersion(version) {
+    const response = await fetch("/api/versions.php", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "rollback", version }) });
+    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+    return response.json();
+  }
+
   function downloadJson(filename, payload) {
     const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
     const link = document.createElement("a");
@@ -928,6 +992,7 @@
     if (activeView === "settings") return renderSettingsView();
     if (activeView === "security-settings") return renderSecurityView();
     if (activeView === "backup") return renderBackupView();
+    if (activeView === "updates") return renderUpdatesView();
     const panel = PANELS.find((item) => item.id === activeView);
     return panel ? renderPanel(panel) : renderOverview();
   }
@@ -935,6 +1000,7 @@
   function renderShell(options = {}) {
     const contentScrollTop = window.scrollY;
     const sidebarScrollTop = document.querySelector(".admin-nav")?.scrollTop || 0;
+    const dashboardLanguage = BeastLocalSettings.get("language", "en");
     root.innerHTML = `
       <div class="admin-shell">
         <aside class="admin-sidebar">
@@ -948,11 +1014,12 @@
             <button class="${activeView === "settings" ? "is-active" : ""}" type="button" data-view="settings">Udseende & enhed</button>
             <button class="${activeView === "security-settings" ? "is-active" : ""}" type="button" data-view="security-settings">Adgang & pinkode</button>
             <button class="${activeView === "backup" ? "is-active" : ""}" type="button" data-view="backup">Backup & gendannelse</button>
+            <button class="${activeView === "updates" ? "is-active" : ""}" type="button" data-view="updates">Opdatering</button>
           </nav>
           <div class="admin-sidebar-foot"><a class="admin-back" href="/">Åbn dashboard</a></div>
         </aside>
         <main class="admin-main">
-          <header class="admin-topbar"><div><h1>${activeView === "backup" ? "Backup & gendannelse" : activeView === "security-settings" ? "Sikkerhed" : activeView === "settings" ? "Udseende & enhed" : activeView === "overview" ? "Overblik" : "Opsætning"}</h1><p>${activeView === "security-settings" ? "Lokal adgang, pinkode og beskyttelse af adminpanelet." : "Konfigurationen gemmes centralt på serveren."}</p></div><span class="admin-status" id="adminHaStatus" data-state="${connected ? "connected" : "connecting"}">${connected ? "Home Assistant forbundet" : "Forbinder til Home Assistant…"}</span></header>
+          <header class="admin-topbar"><div><h1>${activeView === "updates" ? "Opdatering" : activeView === "backup" ? "Backup & gendannelse" : activeView === "security-settings" ? "Sikkerhed" : activeView === "settings" ? "Udseende & enhed" : activeView === "overview" ? "Overblik" : "Opsætning"}</h1><p>${activeView === "updates" ? "Se hvad der er nyt, og gendan en tidligere version om nødvendigt." : activeView === "security-settings" ? "Lokal adgang, pinkode og beskyttelse af adminpanelet." : "Konfigurationen gemmes centralt på serveren."}</p></div><div class="admin-topbar-tools"><label class="admin-language-picker"><span>${BeastCore.icon("globe", { size: 15 })}</span><select id="adminLanguageSelect" aria-label="Dashboard-sprog"><option value="en"${dashboardLanguage !== "da" ? " selected" : ""}>English</option><option value="da"${dashboardLanguage === "da" ? " selected" : ""}>Dansk</option></select></label><span class="admin-status" id="adminHaStatus" data-state="${connected ? "connected" : "connecting"}">${connected ? "Home Assistant forbundet" : "Forbinder til Home Assistant…"}</span></div></header>
           ${renderActiveView()}
         </main>
       </div>`;
@@ -1005,8 +1072,30 @@
       hasUnsavedPanelChanges = false;
       renderShell({ resetContent: true });
     }));
+    document.getElementById("adminLanguageSelect")?.addEventListener("change", (event) => {
+      BeastLocalSettings.set("language", event.target.value);
+    });
     if (activeView === "backup") loadBackupSettings();
+    if (activeView === "updates") loadUpdatesSettings();
     document.querySelector("[data-reload-backups]")?.addEventListener("click", loadBackupSettings);
+    document.querySelector("[data-reload-versions]")?.addEventListener("click", loadUpdatesSettings);
+    document.getElementById("adminVersionList")?.addEventListener("click", async (event) => {
+      const button = event.target.closest("[data-rollback-version]");
+      if (!button) return;
+      const version = button.dataset.rollbackVersion;
+      if (!window.confirm(`Gendan version ${version}? Den nuværende version gemmes automatisk først, så dette kan fortrydes.`)) return;
+      button.disabled = true;
+      button.textContent = "Gendanner…";
+      try {
+        await rollbackToVersion(version);
+        window.alert(`Version ${version} er gendannet. Siden genindlæses nu.`);
+        window.location.reload();
+      } catch (error) {
+        button.disabled = false;
+        button.textContent = "Gendan denne version";
+        window.alert(`Kunne ikke gendanne version: ${error.message}`);
+      }
+    });
     document.querySelector("[data-refresh-browser]")?.addEventListener("click", () => window.location.reload());
     document.querySelectorAll("[data-filter-select]").forEach((input) => input.addEventListener("input", () => {
       const select = document.getElementById(input.dataset.filterSelect);

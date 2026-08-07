@@ -116,8 +116,13 @@
 
   function render() {
     if (!containerEl) return;
-    const primary = ALARM_PANELS.find((panel) => panel.primary);
-    const primaryState = BeastHaSocket.getState(primary.entityId)?.state || "unknown";
+    if (!ENTRY_POINTS.length && !ALARM_PANELS.length) {
+      containerEl.innerHTML = BeastCore.notConfiguredMarkup("Sikkerhed", "Vælg alarmpanel, låse og/eller åbningssensorer i Administration for at aktivere dette panel.");
+      BeastCore.wireNotConfiguredLinks(containerEl);
+      return;
+    }
+    const primary = ALARM_PANELS.find((panel) => panel.primary) || null;
+    const primaryState = primary ? (BeastHaSocket.getState(primary.entityId)?.state || "unknown") : "unknown";
     const alarmTriggered = ALARM_PANELS.some((panel) => BeastHaSocket.getState(panel.entityId)?.state === "triggered");
     const alarmArmed = primaryState.startsWith("armed");
     const entryStates = ENTRY_POINTS.map((entry) => ({
@@ -149,9 +154,11 @@
             <div><span>${BeastCore.icon("shield", { size: 18 })}</span><b>${onlineSystems}/${ALARM_PANELS.length}</b><small>Systemer online</small></div>
           </div>
           <div class="beast-security-primary-actions">
-            ${buildActionButton(primary.entityId, "alarm_disarm", "Fra", true)}
-            ${buildActionButton(primary.entityId, "alarm_arm_home", "Hjemme")}
-            ${buildActionButton(primary.entityId, "alarm_arm_away", "Fuld tilkobling")}
+            ${primary ? `
+              ${buildActionButton(primary.entityId, "alarm_disarm", "Fra", true)}
+              ${buildActionButton(primary.entityId, "alarm_arm_home", "Hjemme")}
+              ${buildActionButton(primary.entityId, "alarm_arm_away", "Fuld tilkobling")}
+            ` : ""}
           </div>
           <p class="beast-security-note">${BeastCore.icon("lock", { size: 15 })} Fuld tilkobling låser automatisk dashboardet</p>
         </section>

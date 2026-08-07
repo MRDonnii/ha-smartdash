@@ -308,16 +308,91 @@ function assetSignature(root = document) {
     .join("|");
 }
 
+// Per-device on purpose — "I already saw this one, don't ask again" is a
+// preference about this specific screen, not something to sync centrally.
+const UPDATE_SKIP_KEY = "beast_skipped_update_version_v1";
+// Long enough that an update banner never yanks the screen away from
+// someone actively using it; short enough that an unattended kiosk still
+// self-heals within a work day even if nobody ever taps "Opdater nu".
+const UPDATE_IDLE_AUTOAPPLY_MS = 30 * 60 * 1000;
+let pendingUpdateVersion = null;
+let pendingUpdateChangelog = [];
+let updateBannerEl = null;
+
+function skippedUpdateVersion() {
+  return localStorage.getItem(UPDATE_SKIP_KEY);
+}
+
+async function loadChangelogNewerThan(fromVersion) {
+  try {
+    const response = await fetch(`./changelog.json?_=${Date.now()}`, { cache: "no-store" });
+    if (!response.ok) return [];
+    const entries = await response.json();
+    if (!Array.isArray(entries)) return [];
+    // Build IDs are date-based (YYYYMMDD-NN), so a plain string compare
+    // already sorts them chronologically — no need to parse them.
+    return entries
+      .filter((entry) => entry && entry.version && (!fromVersion || entry.version > fromVersion))
+      .sort((a, b) => String(b.version).localeCompare(String(a.version)));
+  } catch (error) {
+    return [];
+  }
+}
+
+function dismissUpdateBanner() {
+  if (!updateBannerEl) return;
+  const el = updateBannerEl;
+  updateBannerEl = null;
+  el.classList.remove("is-visible");
+  window.setTimeout(() => el.remove(), 300);
+}
+
+function renderUpdateBanner() {
+  if (updateBannerEl || !pendingUpdateVersion) return;
+  const changes = pendingUpdateChangelog.flatMap((entry) => Array.isArray(entry.changes) ? entry.changes : []);
+  const el = document.createElement("div");
+  el.className = "beast-update-banner";
+  el.innerHTML = `
+    <div class="beast-update-banner-head">
+      <span>${BeastCore.icon("sparkles", { size: 20 })}</span>
+      <div><strong>Ny version er klar</strong><small>Genindlæs for at opdatere dashboardet</small></div>
+    </div>
+    ${changes.length ? `<ul class="beast-update-banner-list">${changes.slice(0, 8).map((change) => `<li>${overviewEscape(change)}</li>`).join("")}</ul>` : ""}
+    <div class="beast-update-banner-actions">
+      <button type="button" class="beast-update-skip">Spring over</button>
+      <button type="button" class="beast-update-apply">Opdater nu</button>
+    </div>
+  `;
+  document.body.appendChild(el);
+  updateBannerEl = el;
+  window.requestAnimationFrame(() => el.classList.add("is-visible"));
+  el.querySelector(".beast-update-apply").addEventListener("click", () => window.location.reload());
+  el.querySelector(".beast-update-skip").addEventListener("click", () => {
+    localStorage.setItem(UPDATE_SKIP_KEY, pendingUpdateVersion);
+    dismissUpdateBanner();
+  });
+}
+
 async function checkForDashboardUpdate() {
   try {
-    const response = await fetch(`./index.html?_build_check=${Date.now()}`, { cache: "no-store" });
+    const response = await fetch(`./beast.html?_build_check=${Date.now()}`, { cache: "no-store" });
     if (!response.ok) return;
     const html = await response.text();
     const nextDocument = new DOMParser().parseFromString(html, "text/html");
     const nextBuild = nextDocument.querySelector('meta[name="beast-build"]')?.content;
     const assetsChanged = assetSignature(nextDocument) && assetSignature(nextDocument) !== assetSignature();
-    if ((nextBuild && nextBuild !== currentBuildId()) || assetsChanged) pendingBuildReload = true;
-    if (pendingBuildReload && Date.now() - lastUserActivityAt > 20000) window.location.reload();
+    if ((nextBuild && nextBuild !== currentBuildId()) || assetsChanged) {
+      pendingBuildReload = true;
+      const targetVersion = nextBuild || currentBuildId();
+      if (targetVersion !== skippedUpdateVersion() && targetVersion !== pendingUpdateVersion) {
+        pendingUpdateVersion = targetVersion;
+        pendingUpdateChangelog = await loadChangelogNewerThan(currentBuildId());
+        renderUpdateBanner();
+      }
+    }
+    if (pendingBuildReload && !skippedUpdateVersion() && Date.now() - lastUserActivityAt > UPDATE_IDLE_AUTOAPPLY_MS) {
+      window.location.reload();
+    }
   } catch (error) {
     BeastCore.log(`Opdateringskontrol: ${error.message}`);
   }
@@ -403,13 +478,30 @@ function renderLoginScreen(root, message) {
   const screen = BeastCore.el("div", "beast-login-screen");
   const card = BeastCore.el("div", "beast-login-card", [
     BeastCore.el("h2", null, "HA Smartdash"),
-    BeastCore.el("p", null, "Log ind med Home Assistant for at komme i gang."),
+    BeastCore.el("p", null, "Vælg selv den Home Assistant-adresse, denne skærm skal logge ind på."),
     message ? BeastCore.el("p", null, message) : null
   ]);
+  const form = BeastCore.el("form", "beast-login-form");
+  const label = BeastCore.el("label", null, "Home Assistant-adresse");
+  const addressInput = BeastCore.el("input");
+  addressInput.type = "url";
+  addressInput.name = "haBaseUrl";
+  addressInput.placeholder = "http://homeassistant.local:8123";
+  addressInput.autocomplete = "url";
+  addressInput.required = true;
+  addressInput.value = BeastAuth.getHaBaseUrl() || `${window.location.origin}/ha`;
+  label.appendChild(addressInput);
   const loginButton = BeastCore.el("button", "beast-btn beast-btn-primary", "Log ind");
-  loginButton.type = "button";
-  loginButton.addEventListener("click", () => BeastAuth.startLogin());
-  card.appendChild(loginButton);
+  loginButton.type = "submit";
+  form.append(label, loginButton);
+  form.addEventListener("submit", (event) => {
+    event.preventDefault();
+    const address = addressInput.value.trim();
+    if (!addressInput.reportValidity()) return;
+    BeastAuth.setHaBaseUrl(address);
+    BeastAuth.startLogin();
+  });
+  card.appendChild(form);
   screen.appendChild(card);
   root.appendChild(screen);
 }
@@ -480,7 +572,10 @@ function renderAppShell(root) {
     const ai = favoriteSections.indexOf(a.id), bi = favoriteSections.indexOf(b.id);
     return (ai < 0 ? 999 : ai) - (bi < 0 ? 999 : bi);
   }) : RAIL_ITEMS;
-  const visibleRailItems = BeastConfig.get("showAdminButton") === false ? orderedRailItems.filter((item) => item.id !== "settings") : orderedRailItems;
+  const hiddenSections = BeastLocalSettings.get("hiddenSections", []);
+  const visibleRailItems = orderedRailItems
+    .filter((item) => ["overview", "settings"].includes(item.id) || !hiddenSections.includes(item.id))
+    .filter((item) => item.id !== "settings" || BeastConfig.get("showAdminButton") !== false);
   const railButtonsHtml = visibleRailItems.map((item) => item.id === "settings" ? `
     <a href="/admin/" class="beast-rail-btn">
       ${BeastCore.icon(item.icon, { size: 24 })}
@@ -493,7 +588,7 @@ function renderAppShell(root) {
     </button>
   `).join("");
 
-  const sectionsHtml = RAIL_ITEMS.filter((item) => item.id !== "settings").map((item) => `
+  const sectionsHtml = visibleRailItems.filter((item) => item.id !== "settings").map((item) => `
     <div class="beast-section" data-section="${item.id}">
       ${renderSectionMarkup(item)}
     </div>
@@ -633,7 +728,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   if (BeastAuth.hasSession()) {
     await BeastConfig.init();
-    if (BeastConfig.get("haBaseUrl")) BeastAuth.setHaBaseUrl(BeastConfig.get("haBaseUrl"));
+    if (!BeastAuth.getHaBaseUrl() && BeastConfig.get("haBaseUrl")) BeastAuth.setHaBaseUrl(BeastConfig.get("haBaseUrl"));
     applyDashboardBranding();
     document.addEventListener("beast:config-changed", () => {
       applyDashboardBranding();

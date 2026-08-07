@@ -2211,3 +2211,115 @@
   }
   .beast-printer-metrics { grid-template-columns: repeat(2, 1fr); }
 }
+
+/* Update-available notification — bottom-right toast, dismissible, never
+   blocks interaction with the dashboard underneath it. */
+.beast-update-banner {
+  position: fixed;
+  right: 18px;
+  bottom: 18px;
+  z-index: 90;
+  width: min(380px, calc(100vw - 36px));
+  padding: 16px;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-md);
+  background: color-mix(in srgb, var(--surface-solid) 96%, transparent);
+  box-shadow: 0 20px 48px rgba(0, 0, 0, 0.42);
+  backdrop-filter: blur(16px);
+  color: var(--ink);
+  opacity: 0;
+  transform: translateY(12px);
+  transition: opacity 260ms ease, transform 260ms ease;
+  pointer-events: none;
+}
+
+.beast-update-banner.is-visible {
+  opacity: 1;
+  transform: translateY(0);
+  pointer-events: auto;
+}
+
+.beast-update-banner-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.beast-update-banner-head > span {
+  flex-shrink: 0;
+  width: 38px;
+  height: 38px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  color: #fff;
+  background: var(--accent-gradient);
+}
+
+.beast-update-banner-head strong {
+  display: block;
+  font-size: 15px;
+}
+
+.beast-update-banner-head small {
+  display: block;
+  margin-top: 2px;
+  color: var(--ink-muted);
+  font-size: 12px;
+}
+
+.beast-update-banner-list {
+  list-style: none;
+  margin: 12px 0 0;
+  padding: 0;
+  display: grid;
+  gap: 6px;
+  max-height: 220px;
+  overflow-y: auto;
+}
+
+.beast-update-banner-list li {
+  position: relative;
+  padding-left: 16px;
+  color: var(--ink-muted);
+  font-size: 12.5px;
+  line-height: 1.4;
+}
+
+.beast-update-banner-list li::before {
+  content: "";
+  position: absolute;
+  left: 2px;
+  top: 7px;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--accent-b);
+}
+
+.beast-update-banner-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 14px;
+}
+
+.beast-update-banner-actions button {
+  appearance: none;
+  min-height: 38px;
+  padding: 0 14px;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-full);
+  background: transparent;
+  color: var(--ink-muted);
+  font-family: var(--font-sans);
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.beast-update-apply {
+  border-color: transparent;
+  color: #fff;
+  background: var(--accent-gradient);
+}
