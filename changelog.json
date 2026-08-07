@@ -1,5 +1,12 @@
 [
   {
+    "version": "20260808-05",
+    "date": "2026-08-08",
+    "changes": [
+      "The four waste-pickup tiles on the Waste page now stack in a single column instead of spreading across the available width -- easier to scan at a glance instead of splitting attention across a 2-wide grid."
+    ]
+  },
+  {
     "version": "20260808-04",
     "date": "2026-08-08",
     "changes": [
