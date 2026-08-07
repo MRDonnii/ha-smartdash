@@ -110,6 +110,8 @@ button { cursor: pointer; }
 .admin-backup-list article a { flex: 0 0 auto; display: inline-flex; align-items: center; justify-content: center; text-decoration: none; }
 .admin-smb-help { background: radial-gradient(circle at 100% 0, rgba(78,142,240,.10), transparent 35%), var(--surface-2); }
 .admin-smb-help > p { margin: 0; color: var(--ink-muted); line-height: 1.55; }
+#adminCurrentVersionTile .beast-stat-tile-value { font-size: 1.5rem; font-weight: 750; letter-spacing: 0; font-variant-numeric: tabular-nums; }
+#adminCurrentVersionTile .beast-stat-tile-meta { font-family: ui-monospace, "SF Mono", Consolas, monospace; }
 .admin-changelog-list,.admin-version-list { display: grid; gap: 10px; margin-top: 14px; }
 .admin-changelog-entry,.admin-version-row { padding: 14px 16px; border: 1px solid var(--border); border-radius: 13px; background: #090c10; }
 .admin-changelog-entry header,.admin-version-row > div > strong { display: flex; align-items: baseline; gap: 10px; font-size: 14px; }
