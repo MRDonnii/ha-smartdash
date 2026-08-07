@@ -19,4 +19,4 @@ jobs:
         with:
           php-version: '8.2'
       - name: Validate release
-        run: ./scripts/check-release.sh
+        run: sh ./scripts/check-release.sh
