@@ -1,5 +1,14 @@
 [
   {
+    "version": "20260807-09",
+    "date": "2026-08-07",
+    "changes": [
+      "Fixed the visual overview builder: changing a card's content type no longer silently fails to show its entity picker",
+      "The overview builder now shows a live preview grid that updates instantly as you edit cards",
+      "Cards in the overview builder can now be reordered by dragging them, not just with the up/down buttons"
+    ]
+  },
+  {
     "version": "20260807-08",
     "date": "2026-08-07",
     "changes": [
