@@ -1213,6 +1213,16 @@
     };
   }
 
+  // A checkbox grid (matching the "Synlige sider" pattern) instead of a
+  // native <select multiple> -- ctrl/cmd-click to multi-select isn't
+  // discoverable, especially for picking as few as 0-3 items.
+  function cameraCheckboxListHtml(id, selectedIds) {
+    const cameras = BeastEntityPicker.candidates({ domain: "camera" });
+    if (!cameras.length) return `<p class="admin-empty">${t("Ingen kamera-entities fundet.", "No camera entities found.")}</p>`;
+    const selected = new Set(selectedIds || []);
+    return `<div class="admin-checkbox-grid" id="${id}">${cameras.map((camera) => `<label${selected.size >= 3 && !selected.has(camera.id) ? " class=\"is-disabled\"" : ""}><input type="checkbox" value="${escapeHtml(camera.id)}"${selected.has(camera.id) ? " checked" : ""}${selected.size >= 3 && !selected.has(camera.id) ? " disabled" : ""}><span>${escapeHtml(camera.name)}</span></label>`).join("")}</div>`;
+  }
+
   // Mirrors app.js's ambientCameraMarkup() -- duplicated rather than shared
   // since admin/index.html and beast.html are separate script contexts.
   // Absolute-path camera-player.html src (not "./") since this markup is
@@ -1220,9 +1230,10 @@
   function ambientPreviewCameraMarkup(config) {
     const ids = (config.cameraEntities || []).filter(Boolean).slice(0, 3);
     if (!ids.length) return "";
-    const allCameras = window.BeastCameras?.getAllCameras?.() || [];
+    // resolveCamera(), not getAllCameras().find() -- see the matching
+    // comment in app.js's ambientCameraMarkup().
     const tiles = ids.map((id) => {
-      const camera = allCameras.find((item) => item.entityId === id);
+      const camera = window.BeastCameras?.resolveCamera?.(id);
       if (!camera) return "";
       if (camera.streamName) {
         const src = `/camera-player.html?v=11&sub=1&src=${encodeURIComponent(camera.streamName)}`;
@@ -1303,30 +1314,38 @@
         <label><span>${t("Sluttidspunkt", "End time")}</span><input type="time" id="adminScreensaverEnd" value="${escapeHtml(screensaver.endTime || "05:30")}"></label>
         <label><span>${t("Slukker helt efter (minutter)", "Turns off completely after (minutes)")}</span><input type="number" min="1" max="60" id="adminScreensaverOffAfter" value="${Number(screensaver.offAfterMinutes) || 5}"></label>
       </div></div>
-      <div class="admin-card admin-settings-group"><div class="admin-card-head"><div><h2>${t("Design", "Design")}</h2><p>${t("Et billede har forrang frem for farven, hvis begge er sat.", "An image takes priority over the color if both are set.")}</p></div></div><div class="beast-mqtt-config">
-        <label class="admin-field"><span>${t("Baggrundsbillede — adresse", "Background image — address")}</span><input type="text" id="adminScreensaverBgUrl" value="${escapeHtml(screensaver.backgroundImageUrl || "")}" placeholder="https://…"></label>
-        <label class="admin-field admin-favicon-upload"><span>${t("Vælg billedfil", "Choose an image file")}</span><input type="file" id="adminScreensaverBgFile" accept="image/png,image/jpeg,image/webp"><small>${t("PNG, JPEG eller WebP · højst 1 MB", "PNG, JPEG or WebP · max 1 MB")}</small></label>
-        <label class="admin-security-toggle"><span><strong>${t("Brug baggrundsfarve", "Use background color")}</strong><small>${t("Bruges kun når der ikke er sat et billede.", "Only used when no image is set.")}</small></span><input type="checkbox" id="adminScreensaverBgColorEnabled"${screensaver.backgroundColor ? " checked" : ""}></label>
-        <label><span>${t("Baggrundsfarve", "Background color")}</span><input type="color" id="adminScreensaverBgColor" value="${escapeHtml(screensaver.backgroundColor || "#03060c")}"></label>
-        <button type="button" class="beast-btn" id="adminScreensaverBgClear">${t("Ryd baggrund (brug standard)", "Clear background (use default)")}</button>
-        <label><span>${t("Urets størrelse", "Clock size")}</span>
+      <div class="admin-card admin-settings-group"><div class="admin-card-head"><div><h2>${t("Design", "Design")}</h2><p>${t("Et billede har forrang frem for farven, hvis begge er sat.", "An image takes priority over the color if both are set.")}</p></div></div><div class="admin-bg-section">
+        <div class="admin-bg-row">
+          <label class="admin-field admin-bg-url"><span>${t("Baggrundsbillede — adresse", "Background image — address")}</span><input type="text" id="adminScreensaverBgUrl" value="${escapeHtml(screensaver.backgroundImageUrl || "")}" placeholder="https://…"></label>
+          <label class="admin-bg-upload-btn"><span>${t("Vælg fil", "Choose file")}</span><input type="file" id="adminScreensaverBgFile" accept="image/png,image/jpeg,image/webp"></label>
+        </div>
+        <p class="admin-field-hint">${t("PNG, JPEG eller WebP · højst 1 MB", "PNG, JPEG or WebP · max 1 MB")}</p>
+        <div class="admin-bg-color-row">
+          <label class="admin-bg-color-toggle"><input type="checkbox" id="adminScreensaverBgColorEnabled"${screensaver.backgroundColor ? " checked" : ""}><span>${t("Brug baggrundsfarve", "Use background color")}</span></label>
+          <input type="color" class="admin-bg-color-swatch" id="adminScreensaverBgColor" value="${escapeHtml(screensaver.backgroundColor || "#03060c")}">
+          <button type="button" class="beast-btn admin-bg-clear" id="adminScreensaverBgClear">${t("Ryd baggrund", "Clear background")}</button>
+        </div>
+        <label class="admin-field admin-clock-size"><span>${t("Urets størrelse", "Clock size")}</span>
           <select id="adminScreensaverClockSize">
             <option value="small" ${screensaver.clockSize === "small" ? "selected" : ""}>${t("Lille", "Small")}</option>
             <option value="medium" ${!screensaver.clockSize || screensaver.clockSize === "medium" ? "selected" : ""}>${t("Mellem", "Medium")}</option>
             <option value="large" ${screensaver.clockSize === "large" ? "selected" : ""}>${t("Stor", "Large")}</option>
           </select>
         </label>
-        <label><span>${t("Kameraer i bunden (op til 3)", "Cameras at the bottom (up to 3)")}</span>${BeastEntityPicker.multiSelectHtml({ id: "adminScreensaverCameraEntities", domain: "camera", selectedIds: screensaver.cameraEntities || [] })}</label>
-        <p class="admin-field-hint">${t("Vælg 0-3 kameraer — vises som små felter i bunden af pauseskærmen (1 kamera vises centreret, uden kamera vises uret centreret på skærmen som normalt). Ctrl/Cmd-klik for at vælge flere.", "Pick 0-3 cameras — shown as small tiles at the bottom of the screensaver (1 camera is centered, with none the clock is centered on screen as normal). Ctrl/Cmd-click to pick more than one.")}</p>
-        <label><span>${t("Lysstyrke-skyder på pauseskærmen", "Brightness slider on the screensaver")}</span>
+        <div class="admin-field-full"><span>${t("Kameraer i bunden (op til 3)", "Cameras at the bottom (up to 3)")}</span>${cameraCheckboxListHtml("adminScreensaverCameraEntities", screensaver.cameraEntities || [])}</div>
+        <p class="admin-field-hint">${t("Vælg 0-3 kameraer — vises som små felter i bunden af pauseskærmen (1 kamera vises centreret, uden kamera vises uret centreret på skærmen som normalt).", "Pick 0-3 cameras — shown as small tiles at the bottom of the screensaver (1 camera is centered, with none the clock is centered on screen as normal).")}</p>
+        <label class="admin-field admin-clock-size"><span>${t("Lysstyrke-skyder på pauseskærmen", "Brightness slider on the screensaver")}</span>
           <select id="adminScreensaverBrightnessEnabled">
             <option value="0" ${screensaver.brightnessEnabled ? "" : "selected"}>${t("Fra", "Off")}</option>
             <option value="1" ${screensaver.brightnessEnabled ? "selected" : ""}>${t("Til — styrer kioskskærmens egen light-entity (sat op under Grundindstillinger → Kiosk & dørklokke)", "On — controls the kiosk screen's own light entity (set up under Basic settings → Kiosk & doorbell)")}</option>
           </select>
         </label>
-        <button type="button" class="beast-btn beast-btn-primary" id="adminScreensaverSave">${t("Gem pauseskærm", "Save screensaver")}</button>
-        <span class="admin-save-state" data-save-state="screensaver"></span>
       </div></div>
+      <div class="admin-save-bar">
+        <button type="button" class="beast-btn beast-btn-primary" id="adminScreensaverSave">${t("Gem pauseskærm", "Save screensaver")}</button>
+        <span class="admin-save-bar-hint">${t("Gemmer tidsplan, design og lysstyrke ovenfor samlet.", "Saves the schedule, design and brightness above together.")}</span>
+        <span class="admin-save-state" data-save-state="screensaver"></span>
+      </div>
       <div class="admin-card admin-settings-group"><div class="admin-card-head"><div><h2>${t("Forhåndsvisning", "Preview")}</h2><p>${t("Sådan ser pauseskærmen ud lige nu, med rigtige data — nyttigt til at tjekke at vejret, kamera og design rent faktisk vises.", "How the screensaver looks right now, with real data — useful for checking the weather, camera and design actually show.")}</p></div></div>
         <div id="adminScreensaverPreviewHost">${renderScreensaverPreview()}</div>
       </div>
@@ -1884,12 +1903,14 @@
       document.getElementById("adminScreensaverBgColor").value = "#03060c";
     });
     document.getElementById("adminScreensaverCameraEntities")?.addEventListener("change", (event) => {
-      const select = event.currentTarget;
-      const selected = Array.from(select.selectedOptions);
-      if (selected.length <= 3) return;
-      selected.slice(3).forEach((option) => { option.selected = false; });
-      const state = document.querySelector('[data-save-state="screensaver"]');
-      if (state) { state.textContent = t("Højst 3 kameraer", "3 cameras max"); window.setTimeout(() => { if (state.textContent === t("Højst 3 kameraer", "3 cameras max")) state.textContent = ""; }, 2200); }
+      const grid = event.currentTarget;
+      const boxes = Array.from(grid.querySelectorAll("input[type=checkbox]"));
+      const checkedCount = boxes.filter((box) => box.checked).length;
+      boxes.forEach((box) => {
+        const disable = checkedCount >= 3 && !box.checked;
+        box.disabled = disable;
+        box.closest("label")?.classList.toggle("is-disabled", disable);
+      });
     });
     document.getElementById("adminScreensaverSave")?.addEventListener("click", () => {
       BeastLocalSettings.set("screensaver", {
@@ -1902,7 +1923,7 @@
         backgroundImageUrl: document.getElementById("adminScreensaverBgUrl").value.trim() || null,
         backgroundColor: document.getElementById("adminScreensaverBgColorEnabled").checked ? document.getElementById("adminScreensaverBgColor").value : null,
         clockSize: document.getElementById("adminScreensaverClockSize").value || "medium",
-        cameraEntities: Array.from(document.getElementById("adminScreensaverCameraEntities").selectedOptions).map((option) => option.value).slice(0, 3),
+        cameraEntities: Array.from(document.querySelectorAll("#adminScreensaverCameraEntities input:checked")).map((box) => box.value).slice(0, 3),
         brightnessEnabled: document.getElementById("adminScreensaverBrightnessEnabled").value === "1"
       });
       renderShell();

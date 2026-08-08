@@ -1,5 +1,39 @@
 [
   {
+    "version": "20260809-09",
+    "tag": "v0.5.41",
+    "date": "2026-08-09",
+    "changes": [
+      "Cleaned up the Pauseskærm -> Design row: background image/upload, color, and clock size now share one consistent control height instead of a mix of default browser sizes.",
+      "The save button now sits in its own clearly-marked bar between the editable settings and the preview, instead of being buried at the bottom of just the Design card -- it saves the whole page (schedule, design and brightness together)."
+    ]
+  },
+  {
+    "version": "20260809-08",
+    "tag": "v0.5.40",
+    "date": "2026-08-09",
+    "changes": [
+      "Fixed the real cause of waking up on the wrong page: the tap that dismissed the screensaver could also register as a real click on whatever card/button happened to be underneath it (e.g. the Energy card), instantly navigating there right after returning to Overview.",
+      "The screensaver's camera picker (Administration -> Pauseskærm) is now a checkbox grid instead of a multi-select list -- easier to see and pick up to 3 cameras."
+    ]
+  },
+  {
+    "version": "20260809-07",
+    "tag": "v0.5.39",
+    "date": "2026-08-09",
+    "changes": [
+      "Waking the screen from the screensaver now always returns to Overview, instead of sometimes staying on whatever page was open before the kiosk went idle."
+    ]
+  },
+  {
+    "version": "20260809-06",
+    "tag": "v0.5.38",
+    "date": "2026-08-09",
+    "changes": [
+      "Fixed cameras picked for the screensaver (or the front-page preview) not showing at all if they weren't also in the separate camera allowlist under Administration -> Kameraer -> Kamera-entities -- the screensaver's own camera picker is now independent of that list."
+    ]
+  },
+  {
     "version": "20260809-05",
     "tag": "v0.5.37",
     "date": "2026-08-09",
