@@ -31,7 +31,14 @@ const MOUNTED_SECTION_ZONES = {
 };
 
 const AUTO_RETURN_TO_OVERVIEW_MS = 3 * 60 * 1000;
-const BUILD_CHECK_INTERVAL_MS = 60 * 1000;
+// Checks GitHub Releases (rate-limited to 60 requests/hour per source IP,
+// shared by every kiosk on this network). This used to be 60 seconds, left
+// over from when it was a same-server comparison -- against a real external
+// API that alone was enough to exhaust the entire hourly quota from a
+// single always-on kiosk. api/update.php also caches its GitHub response
+// for a few minutes as a second layer of protection, but there's no reason
+// to poll for a new *release* anywhere near this often regardless.
+const BUILD_CHECK_INTERVAL_MS = 30 * 60 * 1000;
 const CAMERA_HEALTH_CHECK_INTERVAL_MS = 10 * 1000;
 const CAMERA_RECONNECT_AFTER_MS = 20 * 1000;
 const CAMERA_RELOAD_AFTER_MS = 48 * 1000;

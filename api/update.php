@@ -170,21 +170,89 @@ if (!is_array($body)) { http_response_code(400); echo json_encode(["error" => "i
 $action = $body["action"] ?? "";
 
 if ($action === "check") {
+  // GitHub's unauthenticated API allows only 60 requests/hour per source
+  // IP -- shared by every kiosk and every open Administration tab on this
+  // network. Each check used to hit GitHub directly (2 requests), and the
+  // dashboard itself used to poll every 60 seconds, which alone exhausts
+  // the entire hourly quota from a single always-on kiosk. Caching the
+  // GitHub-derived result for a few minutes means any number of kiosks and
+  // admin tabs polling this endpoint only cost GitHub a request every few
+  // minutes, not per poll. currentVersion/updateAvailable are still
+  // recomputed fresh every call against whatever is actually installed
+  // right now -- only the GitHub half of the answer is cached.
+  $cacheFile = $dataDir . "/update-check-cache.json";
+  $cacheTtlSeconds = 300;
+  $cached = null;
+  if (is_file($cacheFile)) {
+    $raw = @file_get_contents($cacheFile);
+    $decoded = $raw ? json_decode($raw, true) : null;
+    if (is_array($decoded) && isset($decoded["fetchedAt"]) && (time() - $decoded["fetchedAt"]) < $cacheTtlSeconds) {
+      $cached = $decoded;
+    }
+  }
+
+  if ($cached !== null) {
+    $tag = $cached["tag"];
+    $remoteBuildId = $cached["remoteVersion"];
+    echo json_encode([
+      "currentVersion" => $current,
+      "tag" => $tag,
+      "remoteVersion" => $remoteBuildId,
+      "updateAvailable" => $remoteBuildId > $current,
+      "releaseUrl" => $cached["releaseUrl"],
+      "releaseNotes" => $cached["releaseNotes"],
+      "publishedAt" => $cached["publishedAt"],
+      "cached" => true,
+    ]);
+    exit;
+  }
+
   $error = null;
   $release = fetchLatestRelease($githubRepo, $error);
-  if ($release === null) { http_response_code(502); echo json_encode(["error" => "github_unreachable", "message" => $error]); exit; }
+  if ($release === null) {
+    // GitHub is unreachable (rate-limited, offline, etc.) -- serve a stale
+    // cache if one exists rather than failing outright; a slightly old
+    // answer is far more useful than none.
+    if (is_file($cacheFile)) {
+      $raw = @file_get_contents($cacheFile);
+      $stale = $raw ? json_decode($raw, true) : null;
+      if (is_array($stale)) {
+        echo json_encode([
+          "currentVersion" => $current,
+          "tag" => $stale["tag"],
+          "remoteVersion" => $stale["remoteVersion"],
+          "updateAvailable" => $stale["remoteVersion"] > $current,
+          "releaseUrl" => $stale["releaseUrl"],
+          "releaseNotes" => $stale["releaseNotes"],
+          "publishedAt" => $stale["publishedAt"],
+          "cached" => true,
+          "stale" => true,
+        ]);
+        exit;
+      }
+    }
+    http_response_code(502);
+    echo json_encode(["error" => "github_unreachable", "message" => $error]);
+    exit;
+  }
   $tag = $release["tag_name"];
   $remoteBuildId = fetchRemoteBuildId($githubRepo, $tag, $error);
   if ($remoteBuildId === null) { http_response_code(502); echo json_encode(["error" => "github_unreachable", "message" => $error]); exit; }
-  echo json_encode([
-    "currentVersion" => $current,
+
+  $payload = [
     "tag" => $tag,
     "remoteVersion" => $remoteBuildId,
-    "updateAvailable" => $remoteBuildId > $current,
     "releaseUrl" => $release["html_url"] ?? null,
     "releaseNotes" => $release["body"] ?? "",
     "publishedAt" => $release["published_at"] ?? null,
-  ]);
+  ];
+  @file_put_contents($cacheFile, json_encode(["fetchedAt" => time()] + $payload));
+
+  echo json_encode([
+    "currentVersion" => $current,
+    "updateAvailable" => $remoteBuildId > $current,
+    "cached" => false,
+  ] + $payload);
   exit;
 }
 
