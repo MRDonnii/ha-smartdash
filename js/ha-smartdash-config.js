@@ -76,6 +76,7 @@ const BeastConfig = (() => {
       idleMode: true,
       adminPreview: false,
       configAudit: false,
+      postBanner: true,
     },
     overviewSlots: {
       main: { type: "cameras", entity: null, label: "" },
@@ -86,7 +87,7 @@ const BeastConfig = (() => {
     },
     overviewCards: [],
     hiddenSections: [],
-    appEntities: { kioskScreenLight: null, kioskEntities: {}, doorbellBinarySensor: null, doorbellEvent: null, doorbellCamera: null, mailPresent: null, mailCount: null, mailDescription: null, quickScenes: [] },
+    appEntities: { kioskScreenLight: null, kioskEntities: {}, doorbellBinarySensor: null, doorbellEvent: null, doorbellCamera: null, mailPresent: null, mailCount: null, mailDescription: null, mailImage: null, mailImageCarport: null, mailImageForhaven: null, quickScenes: [] },
     screensaver: { enabled: true, schedule: "custom", startTime: "23:00", endTime: "05:30", offAfterMinutes: 5 },
     screenLock: { pinHash: null, autoLockEnabled: false },
     panels: DEFAULT_PANELS
