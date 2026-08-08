@@ -1,5 +1,13 @@
 [
   {
+    "version": "20260808-21",
+    "tag": "v0.5.26",
+    "date": "2026-08-08",
+    "changes": [
+      "The 3D printer banner's camera picker no longer replaces the printer's built-in camera -- both are shown, with the picked camera as the primary image and a switcher in the detail popup to flip between it and the printer's own camera, the same way the post banner already switches between its camera angles."
+    ]
+  },
+  {
     "version": "20260808-20",
     "tag": "v0.5.25",
     "date": "2026-08-08",

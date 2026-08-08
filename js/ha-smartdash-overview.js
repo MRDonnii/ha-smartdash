@@ -94,9 +94,7 @@
   let overviewPlayerHideTimerId = null;
   let overviewPlayerDraggedUntil = 0;
   let bannerDraggedUntil = {};
-  let printerImageObjectUrl = null;
-  let printerImageLastFetchAt = 0;
-  let printerImageSourceId = null;
+  const printerImageCache = {}; // role -> { url, sourceId, lastFetchAt }
   const PRINTER_IMAGE_REFRESH_MS = 5000;
   function bannerPositionKey(type) { return `beast_banner_position_${type}_v1`; }
   let overviewEditing = false;
@@ -373,31 +371,40 @@
   // something else entirely, which defeated the point of a banner you can
   // glance at and immediately know it's about the mailbox. This is now
   // post-only, on purpose.
-  function refreshPrinterImage() {
-    // An external camera (e.g. a Protect camera pointed at the printer) can
-    // be chosen instead of the printer's own built-in camera image -- both
-    // expose the same authenticated entity_picture attribute, so either
-    // works through the same fetch. Switching source invalidates the cache
-    // immediately instead of waiting out the throttle window.
-    const sourceId = PRINTER_BANNER_CAMERA_ID || PRINTER_CAMERA_IMAGE_ID;
-    if (!sourceId) return;
-    if (sourceId !== printerImageSourceId) {
-      if (printerImageObjectUrl) URL.revokeObjectURL(printerImageObjectUrl);
-      printerImageObjectUrl = null;
-      printerImageSourceId = sourceId;
-      printerImageLastFetchAt = 0;
+  // Both the printer's own built-in camera and an optional external camera
+  // (e.g. a Protect camera pointed at the printer) can be shown and
+  // switched between, mirroring the mail banner's multi-camera switcher --
+  // each is fetched/cached independently under its own role so having one
+  // configured doesn't block or evict the other.
+  function refreshPrinterImageRole(role, entityId) {
+    if (!entityId) { delete printerImageCache[role]; return; }
+    const cache = printerImageCache[role] || (printerImageCache[role] = { url: null, sourceId: null, lastFetchAt: 0 });
+    if (entityId !== cache.sourceId) {
+      if (cache.url) URL.revokeObjectURL(cache.url);
+      cache.url = null;
+      cache.sourceId = entityId;
+      cache.lastFetchAt = 0;
     }
-    const path = BeastHaSocket.getState(sourceId)?.attributes?.entity_picture;
+    const path = BeastHaSocket.getState(entityId)?.attributes?.entity_picture;
     if (!path) return;
     const now = Date.now();
-    if (printerImageObjectUrl && now - printerImageLastFetchAt < PRINTER_IMAGE_REFRESH_MS) return;
-    printerImageLastFetchAt = now;
+    if (cache.url && now - cache.lastFetchAt < PRINTER_IMAGE_REFRESH_MS) return;
+    cache.lastFetchAt = now;
     BeastAuth.haFetchBlob(path).then((blob) => {
       const objectUrl = URL.createObjectURL(blob);
-      if (printerImageObjectUrl) URL.revokeObjectURL(printerImageObjectUrl);
-      printerImageObjectUrl = objectUrl;
+      if (cache.url) URL.revokeObjectURL(cache.url);
+      cache.url = objectUrl;
       renderBanners();
     }).catch(() => {});
+  }
+
+  function printerImages() {
+    refreshPrinterImageRole("protect", PRINTER_BANNER_CAMERA_ID);
+    refreshPrinterImageRole("indbygget", PRINTER_CAMERA_IMAGE_ID);
+    return {
+      protect: printerImageCache.protect?.url || null,
+      indbygget: printerImageCache.indbygget?.url || null
+    };
   }
 
   const PRINTER_ACTIVE_STATES = ["running", "prepare", "slicing", "pause"];
@@ -423,7 +430,7 @@
     if (featureEnabled("printerBanner") && PRINTER_STATUS_ID) {
       const status = BeastHaSocket.getState(PRINTER_STATUS_ID)?.state;
       if (PRINTER_ACTIVE_STATES.includes(status)) {
-        refreshPrinterImage();
+        const images = printerImages();
         const progress = Number(BeastHaSocket.getState(PRINTER_PROGRESS_ID)?.state);
         const remaining = Number(BeastHaSocket.getState(PRINTER_REMAINING_ID)?.state);
         const task = validText(BeastHaSocket.getState(PRINTER_TASK_ID)?.state);
@@ -431,7 +438,7 @@
         banners.push({
           type: "printer", title: status === "pause" ? "Printer på pause" : "Printer kører",
           detail: [progressLabel, task].filter(Boolean).join(" · ") || "Ingen data endnu",
-          icon: "printer", image: printerImageObjectUrl,
+          icon: "printer", image: images.protect || images.indbygget, images,
           progress: Number.isFinite(progress) ? progress : null,
           remaining: Number.isFinite(remaining) ? remaining : null,
           task
@@ -566,8 +573,13 @@
     });
   }
 
-  function openPrinterDetail(banner) {
+  const PRINTER_CAMERA_LABELS = { protect: "Kamera", indbygget: "Indbygget" };
+
+  function openPrinterDetail(banner, activeCamera = "protect") {
     document.getElementById("beastOvBannerModal")?.remove();
+    const images = banner.images || printerImages();
+    const available = Object.entries(images).filter(([, url]) => url);
+    const current = available.length ? (images[activeCamera] ? activeCamera : available[0][0]) : null;
     const overlay = document.createElement("div");
     overlay.id = "beastOvBannerModal";
     overlay.className = "beast-modal-overlay";
@@ -576,7 +588,8 @@
     overlay.innerHTML = `<div class="beast-modal beast-ov-mail-modal" role="dialog" aria-modal="true">
       <div class="beast-modal-header"><div><h3>3D-printer</h3><p>${escapeHtml(banner.task || banner.title)}</p></div><button type="button" class="beast-modal-close" data-close>${BeastCore.icon("close", { size: 22 })}</button></div>
       <div class="beast-modal-body">
-        ${banner.image ? `<div class="beast-ov-mail-modal-image"><img src="${escapeHtml(banner.image)}" alt=""></div>` : ""}
+        ${current ? `<div class="beast-ov-mail-modal-image"><img src="${escapeHtml(images[current])}" alt=""></div>` : ""}
+        ${available.length > 1 ? `<div class="beast-ov-mail-modal-switch">${available.map(([key]) => `<button type="button" data-camera="${key}"${key === current ? " class=\"is-active\"" : ""}>${escapeHtml(PRINTER_CAMERA_LABELS[key] || key)}</button>`).join("")}</div>` : ""}
         <div class="beast-ov-printer-modal-progress"><div class="beast-ov-printer-modal-bar" style="width:${progress}%"></div></div>
         <p class="beast-ov-printer-modal-meta">${Math.round(progress)}%${remainingLabel ? ` · ${remainingLabel}` : ""}</p>
         <div class="beast-ov-mail-modal-actions">
@@ -589,6 +602,8 @@
     const close = () => overlay.remove();
     overlay.addEventListener("click", (event) => {
       if (event.target === overlay || event.target.closest("[data-close]")) { close(); return; }
+      const cameraButton = event.target.closest("[data-camera]");
+      if (cameraButton) { openPrinterDetail(banner, cameraButton.dataset.camera); return; }
       if (event.target.closest("[data-open-printer]")) { close(); document.querySelector('.beast-rail-btn[data-section="printer"]')?.click(); return; }
       if (event.target.closest("[data-snooze]")) {
         snoozeBanner("printer");
