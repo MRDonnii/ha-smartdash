@@ -1,5 +1,14 @@
 [
   {
+    "version": "20260808-22",
+    "tag": "v0.5.27",
+    "date": "2026-08-08",
+    "changes": [
+      "Banners now stack flush against each other (12px gap, based on each one's real measured height) instead of fixed-size slots sized for the tallest banner -- a shorter banner no longer leaves a gap above the one below it.",
+      "Redesigned the doors/windows/locks banner as a compact single-row card (small icon + status line) instead of the full picture-card layout -- it's a status line, not a picture, so it no longer takes up as much space as the post/printer banners."
+    ]
+  },
+  {
     "version": "20260808-21",
     "tag": "v0.5.26",
     "date": "2026-08-08",
