@@ -1,5 +1,14 @@
 [
   {
+    "version": "20260808-25",
+    "tag": "v0.5.30",
+    "date": "2026-08-08",
+    "changes": [
+      "The lock screen (shown when the screen is PIN-locked) is now customizable from a new Administration -> Låseskærm section: a background image or color, an on-screen clock (with a size option), and an optional camera shown as a full-screen live background behind the code pad.",
+      "Optional brightness slider on the lock screen -- turn it on in Låseskærm and it controls this kiosk's own screen light entity (the same one already used to turn the screen on/off, set up under Grundindstillinger -> Kiosk & dørklokke)."
+    ]
+  },
+  {
     "version": "20260808-24",
     "tag": "v0.5.29",
     "date": "2026-08-08",
