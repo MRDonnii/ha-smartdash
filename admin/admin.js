@@ -942,7 +942,7 @@
       const currentTag = versionsPayload.currentTag || null;
       const valueEl = tile?.querySelector(".beast-stat-tile-value");
       const metaEl = tile?.querySelector(".beast-stat-tile-meta");
-      if (valueEl) valueEl.textContent = currentTag || formatVersionLabel(current);
+      if (valueEl) valueEl.textContent = currentTag ? `HA Smartdash ${currentTag}` : formatVersionLabel(current);
       if (metaEl) metaEl.textContent = currentTag ? current : "";
       if (changelogEl) changelogEl.innerHTML = renderChangelogEntries(Array.isArray(changelog) ? changelog : []);
 
@@ -963,7 +963,8 @@
             : (latestEntry?.changes?.length ? `<ul>${latestEntry.changes.slice(0, 4).map((change) => `<li>${escapeHtml(change)}</li>`).join("")}</ul>` : "");
           const installSource = githubIsNewer ? "github" : "local";
           const installTag = githubIsNewer ? escapeHtml(github.tag || "") : "";
-          const latestLabel = (githubIsNewer ? github.tag : latestEntry?.tag) || formatVersionLabel(latestVersion);
+          const latestTag = githubIsNewer ? github.tag : latestEntry?.tag;
+          const latestLabel = latestTag ? `HA Smartdash ${latestTag}` : formatVersionLabel(latestVersion);
           installLatestEl.innerHTML = `<div class="admin-install-latest"><div><strong>${t("Ny version klar", "New version ready")}</strong><span>${escapeHtml(latestLabel)}</span>${changesHtml}</div><button type="button" class="beast-btn beast-btn-primary" data-rollback-version="${escapeHtml(latestVersion)}" data-is-newer="true" data-is-latest="true" data-install-source="${installSource}" data-install-tag="${installTag}">${t("Installer ny version", "Install new version")}</button></div>`;
         } else {
           installLatestEl.innerHTML = `<p class="admin-empty">${t("Du kører den nyeste version.", "You're on the latest version.")}</p>`;
