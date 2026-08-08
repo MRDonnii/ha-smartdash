@@ -75,6 +75,11 @@
 .beast-ov-mail-modal-actions .beast-btn { flex:1; display:inline-flex; align-items:center; justify-content:center; gap:8px; }
 .beast-ov-mail-modal-switch button { flex:1; min-height:44px; padding:0 14px; border:1px solid var(--border-strong); border-radius:999px; background:transparent; color:var(--ink-muted); font-weight:750; }
 .beast-ov-mail-modal-switch button.is-active { border-color:var(--accent-a); background:var(--accent-soft); color:var(--ink); box-shadow:var(--accent-glow); }
+.beast-ov-printer-modal-progress { width:100%; height:10px; margin-top:var(--space-3); border-radius:999px; background:var(--surface-2); overflow:hidden; }
+.beast-ov-printer-modal-bar { height:100%; border-radius:999px; background:var(--accent-gradient); transition:width var(--transition-fast); }
+.beast-ov-printer-modal-meta { margin:8px 0 0; color:var(--ink-muted); font-size:13px; font-weight:700; }
+.beast-ov-doors-modal-list { margin:0; padding:0; list-style:none; display:flex; flex-direction:column; gap:8px; }
+.beast-ov-doors-modal-list li { padding:11px 14px; border:1px solid var(--border); border-radius:var(--radius-md); background:var(--surface-solid); color:var(--ink); font-weight:700; font-size:13px; }
 .beast-ov-editor-modal { max-width:820px; overflow-y:auto; }
 .beast-ov-editor-preview { display:grid; grid-template-columns:repeat(3,1fr); gap:12px; margin:8px 0 20px; }
 .beast-ov-editor-preview > * { min-height:82px; display:flex; flex-direction:column; align-items:flex-start; justify-content:center; gap:5px; padding:14px; border:1px solid var(--border-strong); border-radius:var(--radius-md); background:var(--surface-solid); color:var(--ink); text-align:left; }

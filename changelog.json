@@ -1,5 +1,16 @@
 [
   {
+    "version": "20260808-19",
+    "tag": "v0.5.24",
+    "date": "2026-08-08",
+    "changes": [
+      "Generalized the post banner into a multi-banner system: multiple alert banners can now be visible at the same time, each independently draggable and remembering its own position.",
+      "New 3D printer banner: shows the printer's camera image and progress while it's printing or paused. Reuses the entities already configured for the 3D Printer page -- no extra setup needed if that's already set up.",
+      "New doors & locks banner: warns if a door or lock has been open/unlocked longer than a configurable number of minutes (15 by default), instead of nagging the moment it opens. Reuses the entities already configured under Security.",
+      "All three banners (post, 3D printer, doors & locks) can be turned on/off independently from the Advarsler section in Administration, which also now has the doors/locks time threshold."
+    ]
+  },
+  {
     "version": "20260808-18",
     "tag": "v0.5.23",
     "date": "2026-08-08",

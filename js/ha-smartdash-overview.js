@@ -27,6 +27,8 @@
   let PRINTER_STATUS_ID = null;
   let PRINTER_PROGRESS_ID = null;
   let PRINTER_REMAINING_ID = null;
+  let PRINTER_TASK_ID = null;
+  let PRINTER_CAMERA_IMAGE_ID = null;
   const NOTIFICATION_SNOOZE_KEY = "beast_notification_snooze_v1";
   const OVERVIEW_CAMERA_LIMIT = 3;
   let UTILITY_VIEWS = {};
@@ -62,6 +64,7 @@
     WASTE_SENSORS = Array.isArray(waste.sensors) ? waste.sensors.filter(Boolean) : [];
     ROBOT_IDS = [...(robots.vacuums || []), ...(robots.mowers || [])].filter(Boolean).map((id) => ({ id, label: BeastEntityPicker.friendlyName(id) }));
     PRINTER_STATUS_ID = printer.statusSensor; PRINTER_PROGRESS_ID = printer.progressSensor; PRINTER_REMAINING_ID = printer.remainingSensor;
+    PRINTER_TASK_ID = printer.taskName; PRINTER_CAMERA_IMAGE_ID = printer.cameraImage;
     UTILITY_VIEWS = {
       electric: { label: "El", current: energy.powerSensor, today: energy.totalEnergySensor, history: energy.powerSensor, mode: "average", unit: "W", todayUnit: "kWh" },
       heat: { label: "Varme", current: energy.heatPowerSensor, today: energy.heatEnergySensor, history: energy.heatEnergySensor, mode: "delta", unit: "kW", todayUnit: "kWh" },
@@ -87,9 +90,11 @@
   let lastOverviewPlaybackAt = 0;
   let overviewPlayerHideTimerId = null;
   let overviewPlayerDraggedUntil = 0;
-  let mailBannerDraggedUntil = 0;
-  const MAIL_BANNER_POSITION_KEY = "beast_mail_banner_position_v1";
-  let cameraRecoveryActive = false;
+  let bannerDraggedUntil = {};
+  let printerImageObjectUrl = null;
+  let printerImageLastFetchAt = 0;
+  const PRINTER_IMAGE_REFRESH_MS = 5000;
+  function bannerPositionKey(type) { return `beast_banner_position_${type}_v1`; }
   let overviewEditing = false;
   let contextualFocusTimerId = null;
   let motionFocusSlug = null;
@@ -186,17 +191,16 @@
     window.addEventListener("resize", () => positionOverviewPlayer(host));
   }
 
-  function savedMailBannerPosition() {
+  function savedBannerPosition(type) {
     try {
-      const value = JSON.parse(localStorage.getItem(MAIL_BANNER_POSITION_KEY) || "null");
+      const value = JSON.parse(localStorage.getItem(bannerPositionKey(type)) || "null");
       return Number.isFinite(value?.x) && Number.isFinite(value?.y) ? value : null;
     } catch (error) {
       return null;
     }
   }
 
-  function positionMailBanner(host, position = savedMailBannerPosition()) {
-    if (!position) return;
+  function applyBannerPosition(host, position) {
     const rect = host.getBoundingClientRect();
     const edge = 12;
     const x = Math.max(edge, Math.min(window.innerWidth - rect.width - edge, position.x));
@@ -207,8 +211,22 @@
     host.classList.add("has-custom-position");
   }
 
-  function wireMailBannerDrag(host) {
-    positionMailBanner(host);
+  // Multiple banners can be visible at once now; each remembers its own
+  // dragged position independently (keyed by type). Undragged banners stack
+  // vertically by default (12px + index * 222px, still horizontally
+  // centered via CSS) rather than all landing on top of each other.
+  function positionBanner(host, type) {
+    const saved = savedBannerPosition(type);
+    if (saved) { applyBannerPosition(host, saved); return; }
+    const index = Number(host.dataset.bannerIndex || 0);
+    host.style.left = "";
+    host.style.top = `${12 + index * 222}px`;
+    host.style.transform = "";
+    host.classList.remove("has-custom-position");
+  }
+
+  function wireBannerDrag(host, type) {
+    positionBanner(host, type);
     if (host.dataset.dragWired === "true") return;
     host.dataset.dragWired = "true";
     let drag = null;
@@ -229,7 +247,7 @@
       if (!drag.moved && Math.hypot(dx, dy) < 8) return;
       drag.moved = true;
       event.preventDefault();
-      positionMailBanner(host, { x: drag.x + dx, y: drag.y + dy });
+      applyBannerPosition(host, { x: drag.x + dx, y: drag.y + dy });
     });
     const finishDrag = (event) => {
       if (!drag || event.pointerId !== drag.pointerId) return;
@@ -237,14 +255,14 @@
       host.classList.remove("is-dragging");
       if (drag.moved) {
         const rect = host.getBoundingClientRect();
-        localStorage.setItem(MAIL_BANNER_POSITION_KEY, JSON.stringify({ x: Math.round(rect.left), y: Math.round(rect.top) }));
-        mailBannerDraggedUntil = Date.now() + 450;
+        localStorage.setItem(bannerPositionKey(type), JSON.stringify({ x: Math.round(rect.left), y: Math.round(rect.top) }));
+        bannerDraggedUntil[type] = Date.now() + 450;
       }
       drag = null;
     };
     host.addEventListener("pointerup", finishDrag);
     host.addEventListener("pointercancel", finishDrag);
-    window.addEventListener("resize", () => positionMailBanner(host));
+    window.addEventListener("resize", () => positionBanner(host, type));
   }
 
   function renderClock() {
@@ -351,69 +369,164 @@
   // something else entirely, which defeated the point of a banner you can
   // glance at and immediately know it's about the mailbox. This is now
   // post-only, on purpose.
-  function notificationItems() {
-    const hasMail = featureEnabled("postBanner") && BeastHaSocket.getState(MAIL_PRESENT_ID)?.state === "on";
-    if (!hasMail) return [];
-    const mailCount = Number(BeastHaSocket.getState(MAIL_COUNT_ID)?.state);
-    const mailDescription = validText(BeastHaSocket.getState(MAIL_DESCRIPTION_ID)?.state);
-    const images = mailImages();
-    return [{
-      id: "mail", priority: 1, title: "Der er post",
-      detail: mailDescription || (Number.isFinite(mailCount) && mailCount > 0 ? `${mailCount} registreringer` : "Post registreret"),
-      icon: "bell",
-      image: images.indkorsel,
-      images
-    }];
+  function refreshPrinterImage() {
+    if (!PRINTER_CAMERA_IMAGE_ID) return;
+    const path = BeastHaSocket.getState(PRINTER_CAMERA_IMAGE_ID)?.attributes?.entity_picture;
+    if (!path) return;
+    const now = Date.now();
+    if (printerImageObjectUrl && now - printerImageLastFetchAt < PRINTER_IMAGE_REFRESH_MS) return;
+    printerImageLastFetchAt = now;
+    BeastAuth.haFetchBlob(path).then((blob) => {
+      const objectUrl = URL.createObjectURL(blob);
+      if (printerImageObjectUrl) URL.revokeObjectURL(printerImageObjectUrl);
+      printerImageObjectUrl = objectUrl;
+      renderBanners();
+    }).catch(() => {});
+  }
+
+  const PRINTER_ACTIVE_STATES = ["running", "prepare", "slicing", "pause"];
+
+  // Each banner type is independent: its own on/off toggle, its own trigger
+  // condition, its own data. Multiple can be active and visible at once
+  // (unlike the old single shared "top priority wins" attention system) --
+  // see renderBanners() for how each gets its own draggable card.
+  function activeBanners() {
+    const banners = [];
+
+    if (featureEnabled("postBanner") && BeastHaSocket.getState(MAIL_PRESENT_ID)?.state === "on") {
+      const mailCount = Number(BeastHaSocket.getState(MAIL_COUNT_ID)?.state);
+      const mailDescription = validText(BeastHaSocket.getState(MAIL_DESCRIPTION_ID)?.state);
+      const images = mailImages();
+      banners.push({
+        type: "mail", title: "Der er post",
+        detail: mailDescription || (Number.isFinite(mailCount) && mailCount > 0 ? `${mailCount} registreringer` : "Post registreret"),
+        icon: "bell", image: images.indkorsel, images
+      });
+    }
+
+    if (featureEnabled("printerBanner") && PRINTER_STATUS_ID) {
+      const status = BeastHaSocket.getState(PRINTER_STATUS_ID)?.state;
+      if (PRINTER_ACTIVE_STATES.includes(status)) {
+        refreshPrinterImage();
+        const progress = Number(BeastHaSocket.getState(PRINTER_PROGRESS_ID)?.state);
+        const remaining = Number(BeastHaSocket.getState(PRINTER_REMAINING_ID)?.state);
+        const task = validText(BeastHaSocket.getState(PRINTER_TASK_ID)?.state);
+        const progressLabel = Number.isFinite(progress) ? `${Math.round(progress)}%` : "";
+        banners.push({
+          type: "printer", title: status === "pause" ? "Printer på pause" : "Printer kører",
+          detail: [progressLabel, task].filter(Boolean).join(" · ") || "Ingen data endnu",
+          icon: "printer", image: printerImageObjectUrl,
+          progress: Number.isFinite(progress) ? progress : null,
+          remaining: Number.isFinite(remaining) ? remaining : null,
+          task
+        });
+      }
+    }
+
+    if (featureEnabled("doorBanner")) {
+      const thresholdMs = Math.max(1, Number(BeastConfig.get("banners.doorOpenTooLongMinutes")) || 15) * 60000;
+      const now = Date.now();
+      const tooLong = (state) => {
+        const changedAt = new Date(state?.last_changed || 0).getTime();
+        return Number.isFinite(changedAt) && now - changedAt >= thresholdMs;
+      };
+      const longOpen = DOOR_IDS.map((id, index) => {
+        const state = BeastHaSocket.getState(id);
+        if (state?.state !== "on" || !tooLong(state)) return null;
+        return LOCKS[index]?.label || BeastEntityPicker.friendlyName(id);
+      }).filter(Boolean);
+      const longUnlocked = LOCKS.filter((entry) => {
+        const state = BeastHaSocket.getState(entry.id);
+        const value = state?.state;
+        return value && !["locked", "unknown", "unavailable"].includes(value) && tooLong(state);
+      }).map((entry) => entry.label);
+      if (longOpen.length || longUnlocked.length) {
+        const rows = [
+          ...longOpen.map((label) => `${label} — åben`),
+          ...longUnlocked.map((label) => `${label} — ulåst`)
+        ];
+        banners.push({
+          type: "doors", title: `${rows.length} ${rows.length === 1 ? "indgang har" : "indgange har"} stået åbne/ulåste længe`,
+          detail: rows.join(" · "), icon: "unlock", image: null, rows
+        });
+      }
+    }
+
+    return banners;
   }
 
   function snoozedNotifications() {
     try { return JSON.parse(localStorage.getItem(NOTIFICATION_SNOOZE_KEY) || "{}"); } catch (_) { return {}; }
   }
 
-  function visibleNotifications() {
+  function visibleBanners() {
     const snoozed = snoozedNotifications();
     const now = Date.now();
-    return notificationItems().filter((item) => Number(snoozed[item.id] || 0) < now);
+    return activeBanners().filter((banner) => Number(snoozed[banner.type] || 0) < now);
   }
 
-  function renderAttentionSystem() {
-    const host = document.getElementById("beastOvMailBanner");
-    const top = visibleNotifications()[0];
-    if (!host) return;
-    host.hidden = !top;
-    if (!top) return;
-    host.classList.toggle("has-image", Boolean(top.image));
-    host.innerHTML = `
-      <span class="beast-ov-mail-banner-drag" aria-hidden="true"></span>
-      ${top.image ? `<img class="beast-ov-mail-banner-photo" src="${escapeHtml(top.image)}" alt="">` : `<span class="beast-ov-mail-banner-icon">${BeastCore.icon(top.icon, { size: 32 })}</span>`}
-      <div><strong>${escapeHtml(top.title)}</strong><small>${escapeHtml(top.detail)}</small></div>
-    `;
-    host.onclick = (event) => {
-      event.stopPropagation();
-      if (Date.now() < mailBannerDraggedUntil) return;
-      openMailDetail(top);
-    };
-    wireMailBannerDrag(host);
+  function renderBanners() {
+    const container = document.getElementById("beastOvBanners");
+    if (!container) return;
+    const banners = visibleBanners();
+    const activeTypes = new Set(banners.map((banner) => banner.type));
+    container.querySelectorAll("[data-banner-type]").forEach((el) => {
+      if (!activeTypes.has(el.dataset.bannerType)) el.remove();
+    });
+    banners.forEach((banner, index) => {
+      let host = container.querySelector(`[data-banner-type="${banner.type}"]`);
+      if (!host) {
+        host = document.createElement("div");
+        host.className = "beast-ov-mail-banner";
+        host.dataset.bannerType = banner.type;
+        container.appendChild(host);
+      }
+      host.dataset.bannerIndex = String(index);
+      host.classList.toggle("has-image", Boolean(banner.image));
+      host.innerHTML = `
+        <span class="beast-ov-mail-banner-drag" aria-hidden="true"></span>
+        ${banner.image ? `<img class="beast-ov-mail-banner-photo" src="${escapeHtml(banner.image)}" alt="">` : `<span class="beast-ov-mail-banner-icon">${BeastCore.icon(banner.icon, { size: 32 })}</span>`}
+        <div><strong>${escapeHtml(banner.title)}</strong><small>${escapeHtml(banner.detail)}</small></div>
+      `;
+      host.onclick = (event) => {
+        event.stopPropagation();
+        if (Date.now() < (bannerDraggedUntil[banner.type] || 0)) return;
+        openBannerDetail(banner);
+      };
+      wireBannerDrag(host, banner.type);
+    });
+  }
+
+  function openBannerDetail(banner) {
+    if (banner.type === "mail") return openMailDetail(banner);
+    if (banner.type === "printer") return openPrinterDetail(banner);
+    if (banner.type === "doors") return openDoorsDetail(banner);
+  }
+
+  function snoozeBanner(type) {
+    const snoozed = snoozedNotifications();
+    snoozed[type] = Date.now() + 30 * 60 * 1000;
+    localStorage.setItem(NOTIFICATION_SNOOZE_KEY, JSON.stringify(snoozed));
   }
 
   const MAIL_CAMERA_LABELS = { indkorsel: "Indkørsel", carport: "Carport", forhaven: "Forhaven" };
 
-  function openMailDetail(item, activeCamera = "indkorsel") {
-    document.getElementById("beastOvMailModal")?.remove();
-    const images = item.images || mailImages();
+  function openMailDetail(banner, activeCamera = "indkorsel") {
+    document.getElementById("beastOvBannerModal")?.remove();
+    const images = banner.images || mailImages();
     const available = Object.entries(images).filter(([, url]) => url);
     const current = available.length ? (images[activeCamera] ? activeCamera : available[0][0]) : null;
     const overlay = document.createElement("div");
-    overlay.id = "beastOvMailModal";
+    overlay.id = "beastOvBannerModal";
     overlay.className = "beast-modal-overlay";
     overlay.innerHTML = `<div class="beast-modal beast-ov-mail-modal" role="dialog" aria-modal="true">
-      <div class="beast-modal-header"><div><h3>Postkassen</h3><p>${escapeHtml(item.detail)}</p></div><button type="button" class="beast-modal-close" data-close>${BeastCore.icon("close", { size: 22 })}</button></div>
+      <div class="beast-modal-header"><div><h3>Postkassen</h3><p>${escapeHtml(banner.detail)}</p></div><button type="button" class="beast-modal-close" data-close>${BeastCore.icon("close", { size: 22 })}</button></div>
       <div class="beast-modal-body">
         ${current ? `<div class="beast-ov-mail-modal-image"><img src="${escapeHtml(images[current])}" alt="${escapeHtml(MAIL_CAMERA_LABELS[current] || current)}"></div>` : ""}
         ${available.length > 1 ? `<div class="beast-ov-mail-modal-switch">${available.map(([key]) => `<button type="button" data-camera="${key}"${key === current ? " class=\"is-active\"" : ""}>${escapeHtml(MAIL_CAMERA_LABELS[key] || key)}</button>`).join("")}</div>` : ""}
         <div class="beast-ov-mail-modal-actions">
           <button type="button" class="beast-btn beast-btn-primary" data-mail-collected>${BeastCore.icon("check", { size: 17 })}<span>Posten er hentet</span></button>
-          <button type="button" class="beast-btn" data-snooze="${escapeHtml(item.id)}">Skjul 30 min.</button>
+          <button type="button" class="beast-btn" data-snooze>Skjul 30 min.</button>
         </div>
       </div>
     </div>`;
@@ -422,19 +535,77 @@
     overlay.addEventListener("click", (event) => {
       if (event.target === overlay || event.target.closest("[data-close]")) { close(); return; }
       const cameraButton = event.target.closest("[data-camera]");
-      if (cameraButton) { openMailDetail(item, cameraButton.dataset.camera); return; }
+      if (cameraButton) { openMailDetail(banner, cameraButton.dataset.camera); return; }
       if (event.target.closest("[data-mail-collected]")) {
         if (MAIL_PRESENT_ID) callService("input_boolean", "turn_off", MAIL_PRESENT_ID);
         close();
-        renderAttentionSystem();
+        renderBanners();
         return;
       }
       if (event.target.closest("[data-snooze]")) {
-        const snoozed = snoozedNotifications();
-        snoozed[item.id] = Date.now() + 30 * 60 * 1000;
-        localStorage.setItem(NOTIFICATION_SNOOZE_KEY, JSON.stringify(snoozed));
+        snoozeBanner("mail");
         close();
-        renderAttentionSystem();
+        renderBanners();
+      }
+    });
+  }
+
+  function openPrinterDetail(banner) {
+    document.getElementById("beastOvBannerModal")?.remove();
+    const overlay = document.createElement("div");
+    overlay.id = "beastOvBannerModal";
+    overlay.className = "beast-modal-overlay";
+    const remainingLabel = Number.isFinite(banner.remaining) ? `${banner.remaining.toFixed(1)} t tilbage` : "";
+    const progress = Math.max(0, Math.min(100, banner.progress || 0));
+    overlay.innerHTML = `<div class="beast-modal beast-ov-mail-modal" role="dialog" aria-modal="true">
+      <div class="beast-modal-header"><div><h3>3D-printer</h3><p>${escapeHtml(banner.task || banner.title)}</p></div><button type="button" class="beast-modal-close" data-close>${BeastCore.icon("close", { size: 22 })}</button></div>
+      <div class="beast-modal-body">
+        ${banner.image ? `<div class="beast-ov-mail-modal-image"><img src="${escapeHtml(banner.image)}" alt=""></div>` : ""}
+        <div class="beast-ov-printer-modal-progress"><div class="beast-ov-printer-modal-bar" style="width:${progress}%"></div></div>
+        <p class="beast-ov-printer-modal-meta">${Math.round(progress)}%${remainingLabel ? ` · ${remainingLabel}` : ""}</p>
+        <div class="beast-ov-mail-modal-actions">
+          <button type="button" class="beast-btn beast-btn-primary" data-open-printer>${BeastCore.icon("printer", { size: 17 })}<span>Åbn 3D-printer</span></button>
+          <button type="button" class="beast-btn" data-snooze>Skjul 30 min.</button>
+        </div>
+      </div>
+    </div>`;
+    document.body.appendChild(overlay);
+    const close = () => overlay.remove();
+    overlay.addEventListener("click", (event) => {
+      if (event.target === overlay || event.target.closest("[data-close]")) { close(); return; }
+      if (event.target.closest("[data-open-printer]")) { close(); document.querySelector('.beast-rail-btn[data-section="printer"]')?.click(); return; }
+      if (event.target.closest("[data-snooze]")) {
+        snoozeBanner("printer");
+        close();
+        renderBanners();
+      }
+    });
+  }
+
+  function openDoorsDetail(banner) {
+    document.getElementById("beastOvBannerModal")?.remove();
+    const overlay = document.createElement("div");
+    overlay.id = "beastOvBannerModal";
+    overlay.className = "beast-modal-overlay";
+    overlay.innerHTML = `<div class="beast-modal beast-ov-mail-modal" role="dialog" aria-modal="true">
+      <div class="beast-modal-header"><div><h3>Døre & låse</h3><p>${escapeHtml(banner.title)}</p></div><button type="button" class="beast-modal-close" data-close>${BeastCore.icon("close", { size: 22 })}</button></div>
+      <div class="beast-modal-body">
+        <ul class="beast-ov-doors-modal-list">${banner.rows.map((row) => `<li>${escapeHtml(row)}</li>`).join("")}</ul>
+        <div class="beast-ov-mail-modal-actions">
+          <button type="button" class="beast-btn beast-btn-primary" data-open-security>${BeastCore.icon("shield", { size: 17 })}<span>Åbn sikkerhed</span></button>
+          <button type="button" class="beast-btn" data-snooze>Skjul 30 min.</button>
+        </div>
+      </div>
+    </div>`;
+    document.body.appendChild(overlay);
+    const close = () => overlay.remove();
+    overlay.addEventListener("click", (event) => {
+      if (event.target === overlay || event.target.closest("[data-close]")) { close(); return; }
+      if (event.target.closest("[data-open-security]")) { close(); document.querySelector('.beast-rail-btn[data-section="security"]')?.click(); return; }
+      if (event.target.closest("[data-snooze]")) {
+        snoozeBanner("doors");
+        close();
+        renderBanners();
       }
     });
   }
@@ -1363,7 +1534,7 @@
   }
 
   function renderAll() {
-    renderAttentionSystem();
+    renderBanners();
     renderClock();
     renderWeather();
     renderCameras();
@@ -1419,21 +1590,21 @@
       if (config.today) BeastHaSocket.subscribeEntity(config.today, renderEnergy);
     });
     [PRICE_ENTITY_ID, PRICE_FORECAST_ENTITY_ID, PRICE_TOMORROW_ID].filter(Boolean).forEach((id) => BeastHaSocket.subscribeEntity(id, () => { renderEnergy(); applyOverviewLayout(); }));
-    [...LOCK_IDS, ...DOOR_IDS, ...ALARM_IDS].forEach((id) => BeastHaSocket.subscribeEntity(id, () => { renderSecurity(); applyOverviewLayout(); }));
+    [...LOCK_IDS, ...DOOR_IDS, ...ALARM_IDS].forEach((id) => BeastHaSocket.subscribeEntity(id, () => { renderSecurity(); applyOverviewLayout(); renderBanners(); }));
     ROBOT_IDS.forEach((robot) => BeastHaSocket.subscribeEntity(robot.id, renderSecurity));
-    [PRINTER_STATUS_ID, PRINTER_PROGRESS_ID, PRINTER_REMAINING_ID].filter(Boolean).forEach((id) => BeastHaSocket.subscribeEntity(id, () => { renderAttentionSystem(); renderSecurity(); }));
+    [PRINTER_STATUS_ID, PRINTER_PROGRESS_ID, PRINTER_REMAINING_ID, PRINTER_TASK_ID, PRINTER_CAMERA_IMAGE_ID].filter(Boolean).forEach((id) => BeastHaSocket.subscribeEntity(id, () => { renderBanners(); renderSecurity(); }));
     WASTE_SENSORS.forEach((id) => BeastHaSocket.subscribeEntity(id, renderClock));
-    [MAIL_PRESENT_ID, MAIL_COUNT_ID, MAIL_DESCRIPTION_ID, MAIL_IMAGE_ID, MAIL_IMAGE_CARPORT_ID, MAIL_IMAGE_FORHAVEN_ID].filter(Boolean).forEach((id) => BeastHaSocket.subscribeEntity(id, renderAttentionSystem));
+    [MAIL_PRESENT_ID, MAIL_COUNT_ID, MAIL_DESCRIPTION_ID, MAIL_IMAGE_ID, MAIL_IMAGE_CARPORT_ID, MAIL_IMAGE_FORHAVEN_ID].filter(Boolean).forEach((id) => BeastHaSocket.subscribeEntity(id, renderBanners));
+    // The "open/unlocked too long" door banner is duration-based, not just
+    // state-based -- a door that's been open past the threshold needs its
+    // banner to appear even without a NEW state change firing this second.
+    window.setInterval(renderBanners, 60000);
     [CAR_BATTERY_ID, CAR_RANGE_ID, CAR_CHARGING_ID, POOL_TEMPERATURE_ID].filter(Boolean).forEach((id) => BeastHaSocket.subscribeEntity(id, renderClock));
     BeastHaSocket.subscribeDomain("calendar", renderClock);
     BeastHaSocket.subscribeDomain("light", renderSecurity);
     BeastHaSocket.subscribeDomain("media_player", () => { stableMusicRender(); renderSecurity(); });
     BeastHaSocket.subscribeDomain("binary_sensor", (entityId) => {
       if (entityId.endsWith("_motion")) updateOverviewCameraMotion();
-    });
-    document.addEventListener("beast:camerahealth", (event) => {
-      cameraRecoveryActive = event.detail?.state !== "live";
-      renderAttentionSystem();
     });
   }
 
