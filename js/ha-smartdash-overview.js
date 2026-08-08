@@ -697,7 +697,7 @@
       <div class="beast-ov-camera-strip" data-count="${cameras.length}">${cameras.map((camera) => `
         <div class="beast-ov-camera-thumb${camera.motion ? " has-motion" : ""}" data-slug="${camera.slug}">
           ${camera.streamName
-            ? `<iframe class="beast-ov-camera-live" src="./camera-player.html?v=11&transport=mse&src=${encodeURIComponent(camera.streamName)}" title="${escapeHtml(camera.label)} livekamera" frameborder="0" allow="autoplay"></iframe>`
+            ? `<iframe class="beast-ov-camera-live" src="./camera-player.html?v=11&transport=mse&sub=1&src=${encodeURIComponent(camera.streamName)}" title="${escapeHtml(camera.label)} livekamera" frameborder="0" allow="autoplay"></iframe>`
             : `<img class="beast-ov-camera-snapshot" alt="${escapeHtml(camera.label)}">`}
           ${camera.motion ? `<em>${BeastCore.icon("bolt", { size: 12 })} Bevægelse nu</em>` : ""}
         </div>

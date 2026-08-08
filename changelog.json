@@ -1,5 +1,13 @@
 [
   {
+    "version": "20260808-18",
+    "tag": "v0.5.23",
+    "date": "2026-08-08",
+    "changes": [
+      "Fixed grainy/choppy camera video on the overview page: it ran up to three simultaneous full 4K (16 Mbps) live streams at once for the small thumbnail strip, which is more than a kiosk device can decode smoothly. Switched to go2rtc's lower-resolution substream for these thumbnails specifically -- plenty sharp at thumbnail size, and far lighter to decode. The dedicated Cameras page (which only ever streams one camera live at a time) is unaffected and still uses full quality."
+    ]
+  },
+  {
     "version": "20260808-17",
     "tag": "v0.5.22",
     "date": "2026-08-08",
