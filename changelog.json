@@ -1,5 +1,13 @@
 [
   {
+    "version": "20260808-09",
+    "tag": "v0.5.14",
+    "date": "2026-08-08",
+    "changes": [
+      "The automatic update check now runs every 12 hours instead of every 30 minutes -- a new release isn't time-sensitive enough to justify checking more often, and this leaves an even wider safety margin under GitHub's hourly request limit."
+    ]
+  },
+  {
     "version": "20260808-08",
     "tag": "v0.5.13",
     "date": "2026-08-08",
