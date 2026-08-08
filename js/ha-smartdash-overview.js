@@ -1702,5 +1702,13 @@
 
   BeastCore.registerPanel("overviewWidgets", "beastOverviewZone", init);
 
-  window.BeastOverview = { isFloatingPlayerEnabled, setFloatingPlayerEnabled };
+  // Lets the ambient/screensaver overlay (app.js, a separate full-screen
+  // element shown while the whole dashboard including this page is
+  // hidden) surface the same active alerts as compact pills, without
+  // duplicating the banner-detection/snooze/schedule logic above.
+  function activeBannerSummaries() {
+    return visibleBanners().map((banner) => ({ type: banner.type, icon: banner.icon, title: banner.title }));
+  }
+
+  window.BeastOverview = { isFloatingPlayerEnabled, setFloatingPlayerEnabled, activeBannerSummaries };
 })();

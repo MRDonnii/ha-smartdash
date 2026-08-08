@@ -47,13 +47,34 @@ button { cursor: pointer; }
 .admin-security-toggle span { display: grid; gap: 5px; }
 .admin-security-toggle small { color: var(--ink-muted); line-height: 1.4; }
 .admin-security-toggle input { width: 24px; height: 24px; accent-color: var(--accent-b); }
-.admin-screensaver-preview { padding: 22px 24px; border: 1px solid var(--border); border-radius: 15px; background: #090c10; text-align: center; }
-.admin-screensaver-preview-time { font-size: 40px; font-weight: 800; letter-spacing: .01em; font-variant-numeric: tabular-nums; }
-.admin-screensaver-preview-date { margin-top: 4px; color: var(--ink-muted); text-transform: capitalize; }
-.admin-screensaver-preview-summary { display: flex; align-items: center; justify-content: center; gap: 22px; flex-wrap: wrap; margin-top: 18px; }
-.admin-screensaver-preview-summary span { display: inline-flex; align-items: center; gap: 8px; color: var(--ink-muted); font-size: 13px; font-weight: 700; }
-.admin-screensaver-preview-summary span b { color: var(--ink); font-size: 15px; font-weight: 800; }
-.admin-screensaver-preview-summary svg { color: var(--accent-b); }
+/* A real, scaled replica of the live ambient screen -- a fixed 1280x720
+   canvas holding the actual .beast-ambient-* markup/CSS, scaled down with
+   a transform to fit a small box, rather than a separate hand-built mockup
+   that could drift out of sync with what the kiosk actually shows. */
+.admin-ambient-preview { width: 100%; max-width: 520px; aspect-ratio: 16 / 9; overflow: hidden; border-radius: 15px; border: 1px solid var(--border); position: relative; background: #020408; }
+.admin-ambient-preview-canvas { width: 1280px; height: 720px; transform: scale(0.40625); transform-origin: top left; position: relative; }
+/* Actual .beast-ambient-* look/content rules, duplicated from
+   ha-smartdash-layout.css rather than linking that whole stylesheet here --
+   it carries kiosk-only global rules (html,body{overflow:hidden} in
+   particular) that broke scrolling across every admin page the one time
+   this was tried. Keep these two copies in sync by hand if the ambient
+   screen's design changes. */
+.admin-ambient-preview-canvas .beast-ambient-mode { position: absolute; inset: 0; overflow: hidden; display: grid; grid-template-rows: 1fr auto; padding: 8vh 8vw; opacity: 1; visibility: visible; pointer-events: none; transition: none; color: #f7fbff; background: radial-gradient(circle at 50% 35%, color-mix(in srgb, var(--accent-a) 16%, transparent), transparent 38%), rgba(3,6,12,.96); background-size: cover; background-position: center; background-repeat: no-repeat; backdrop-filter: blur(24px); }
+.admin-ambient-preview-canvas .beast-ambient-mode.has-custom-background { backdrop-filter: none; }
+.admin-ambient-preview-canvas .beast-ambient-main { min-height: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; }
+.admin-ambient-preview-canvas .beast-ambient-time { color: #f7fbff; font-size: clamp(6rem,15vw,13rem); font-weight: 800; line-height: .9; letter-spacing: -.055em; font-variant-numeric: tabular-nums; }
+.admin-ambient-preview-canvas .beast-ambient-time.is-size-small { font-size: clamp(3.2rem,9vw,7rem); }
+.admin-ambient-preview-canvas .beast-ambient-time.is-size-large { font-size: clamp(8rem,19vw,17rem); }
+.admin-ambient-preview-canvas .beast-ambient-date { color: rgba(255,255,255,.62); font-size: clamp(1.4rem,2.4vw,2.3rem); text-transform: capitalize; }
+.admin-ambient-preview-canvas .beast-ambient-summary { display: flex; flex-wrap: wrap; justify-content: center; gap: 18px; margin-top: 32px; }
+.admin-ambient-preview-canvas .beast-ambient-summary > span { min-height: 64px; display: flex; align-items: center; gap: 12px; padding: 12px 20px; border: 1px solid rgba(255,255,255,.12); border-radius: 22px; background: rgba(255,255,255,.055); color: rgba(255,255,255,.68); }
+.admin-ambient-preview-canvas .beast-ambient-summary b { color: #fff; font-size: 1.25rem; }
+.admin-ambient-preview-canvas .beast-ambient-brightness { display: flex; align-items: center; gap: 10px; margin-top: 18px; background: rgba(10,12,20,.6); border: 1px solid rgba(255,255,255,.14); border-radius: 999px; padding: 10px 18px; color: rgba(255,255,255,.7); backdrop-filter: blur(8px); }
+.admin-ambient-preview-canvas .beast-ambient-bottom { display: flex; flex-direction: column; align-items: center; gap: 14px; padding-top: 20px; }
+.admin-ambient-preview-canvas .beast-ambient-bottom > small { color: rgba(255,255,255,.35); font-size: 1rem; }
+.admin-ambient-preview-canvas .beast-ambient-camera-row { display: flex; justify-content: center; align-items: center; flex-wrap: wrap; gap: 16px; }
+.admin-ambient-preview-canvas .beast-ambient-camera-tile { width: 280px; height: 168px; border-radius: 16px; overflow: hidden; border: 1px solid rgba(255,255,255,.14); background: rgba(255,255,255,.04); box-shadow: 0 14px 40px rgba(0,0,0,.35); }
+.admin-ambient-preview-canvas .beast-ambient-camera-tile-frame { display: block; width: 100%; height: 100%; object-fit: cover; border: 0; }
 .admin-screensaver-preview-warning { margin: 16px 0 0; padding: 10px 14px; border: 1px solid color-mix(in srgb, #e2a03f 40%, var(--border)); border-radius: 10px; background: color-mix(in srgb, #e2a03f 12%, transparent); color: #e2a03f; font-size: 12.5px; line-height: 1.5; }
 .admin-security-warning { margin-top: 13px; padding: 13px 15px; border: 1px solid color-mix(in srgb, var(--warning) 46%, var(--border)); border-radius: 12px; color: var(--warning); background: color-mix(in srgb, var(--warning) 9%, transparent); }
 .admin-security-warning[hidden] { display: none; }
@@ -197,6 +218,35 @@ button { cursor: pointer; }
 .admin-overview-preview-card { min-width: 0; display: flex; align-items: center; justify-content: center; padding: 4px 6px; border-radius: 7px; border: 1px solid color-mix(in srgb, var(--accent-b) 30%, var(--border)); background: color-mix(in srgb, var(--accent-b) 10%, var(--surface-2)); overflow: hidden; }
 .admin-overview-preview-card strong { font-size: 10.5px; font-weight: 700; color: var(--ink-muted); text-align: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
 @media(max-width:850px){.admin-overview-preview-grid{grid-template-columns:repeat(6,minmax(0,1fr));}}
+/* A real, scaled "image" of the front page -- same fixed-canvas-plus-
+   transform:scale approach as the screensaver preview, and reuses the
+   dashboard's own card chrome (.beast-panel / .beast-ov-card-kicker
+   tokens, not the whole overview.css file -- same reasoning as the
+   screensaver preview's duplicated .beast-ambient-* rules) so colors,
+   rounding and the icon+label kicker genuinely match. Where cheap (a
+   camera snapshot, weather/security state, a custom entity's state) it
+   shows real live data via BeastHaSocket/BeastCameras, already loaded in
+   admin for the screensaver preview; clock/energy show representative
+   content since wiring their full live widgets here isn't worth the
+   risk/complexity this took on layout.css. Sits alongside the abstract
+   labeled-box preview above, not instead of it -- one shows layout/sizing
+   at a glance, this one shows what it'll actually look like. */
+.admin-overview-visual-preview { width: 100%; max-width: 640px; aspect-ratio: 16 / 9; overflow: hidden; border-radius: 15px; border: 1px solid var(--border); position: relative; background: var(--bg, #05070a); margin-bottom: 16px; }
+.admin-overview-visual-canvas { width: 1280px; height: 720px; transform: scale(0.5); transform-origin: top left; box-sizing: border-box; padding: 20px; display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); grid-auto-flow: dense; grid-auto-rows: minmax(140px, 1fr); gap: 14px; background: var(--bg, #05070a); }
+.admin-ov-preview-card { position: relative; display: flex; flex-direction: column; justify-content: flex-end; background: var(--panel-surface); border: 1px solid var(--panel-border); border-radius: var(--radius-lg); padding: 16px; overflow: hidden; }
+.admin-ov-preview-kicker { position: absolute; top: 13px; left: 15px; display: inline-flex; align-items: center; gap: 6px; padding: 4px 9px; border: 1px solid rgba(255,255,255,.12); border-radius: 999px; background: rgba(5,6,8,.7); color: rgba(255,255,255,.78); font-size: 11px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; }
+.admin-ov-preview-body { font-size: 15px; color: var(--ink-muted); display: flex; align-items: center; height: 100%; }
+.admin-ov-preview-hero { display: flex; align-items: center; gap: 14px; }
+.admin-ov-preview-hero .beast-icon { flex-shrink: 0; color: var(--accent-b); }
+.admin-ov-preview-hero.is-good .beast-icon { color: var(--success); }
+.admin-ov-preview-hero.is-warning .beast-icon { color: var(--warning); }
+.admin-ov-preview-hero strong { display: block; font-size: 30px; font-weight: 800; line-height: 1.1; color: var(--ink); }
+.admin-ov-preview-hero span { display: block; margin-top: 2px; font-size: 14px; color: var(--ink-muted); }
+.admin-ov-preview-clock-time { font-size: 44px; font-weight: 800; line-height: 1; font-variant-numeric: tabular-nums; color: var(--ink); }
+.admin-ov-preview-clock-date { margin-top: 6px; font-size: 14px; color: var(--ink-muted); text-transform: capitalize; }
+.admin-ov-preview-card.is-camera { padding: 0; }
+.admin-ov-preview-camera-img { width: 100%; height: 100%; object-fit: cover; display: block; border: 0; }
+.admin-ov-preview-card.is-camera .admin-ov-preview-body { position: absolute; inset: auto 0 0 0; padding: 30px 16px 12px; background: linear-gradient(180deg, transparent, rgba(3,4,6,.85)); }
 .admin-groups { display: grid; gap: 14px; }
 .admin-group-row { padding: 12px; border: 1px solid var(--border); border-radius: 12px; background: rgba(255,255,255,.02); }
 .admin-group-row-head { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }

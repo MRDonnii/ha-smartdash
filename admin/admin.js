@@ -155,6 +155,7 @@
   let currentMqttState = "connecting";
   let mqttWatchdogTimerId = null;
   let screensaverPreviewTimerId = null;
+  let overviewVisualPreviewTimerId = null;
   let mqttCheckRunning = false;
   let pendingKioskAction = null;
   let registryUiHydrated = false;
@@ -715,7 +716,6 @@
           <div class="admin-page-grid">${PAGES.map(([id, label]) => `<label class="admin-page-toggle"><input type="checkbox" data-page="${id}"${hidden.includes(id) ? "" : " checked"}><span>${escapeHtml(label)}</span></label>`).join("")}</div>
           <div class="admin-actions"><button class="admin-save" type="button" data-save-pages>Gem synlige sider</button><span class="admin-save-state" data-save-state="pages"></span></div>
         </div>
-        ${renderOverviewBuilder()}
         ${renderFeaturePanel()}
         <div class="admin-card">
           <div class="admin-card-head"><div><h2>Kiosk & dørklokke</h2><p>Valgfrit — styrer skærm-sluk om natten og et automatisk dørkamera-overlay.</p></div></div>
@@ -767,7 +767,14 @@
         entityFieldBaseSources.set(entitySelectId, allEntities);
         return `<div class="admin-overview-slot admin-overview-card-row" draggable="true" data-overview-card="${escapeHtml(key)}"><div class="admin-overview-row-head"><span class="admin-overview-drag-handle" data-overview-drag-handle aria-label="Træk for at flytte kort" title="Træk for at flytte">${BeastCore.icon("grip", { size: 18 })}</span><strong>Kort ${index+1}</strong><div class="admin-icon-actions"><button class="admin-icon-action" type="button" data-overview-move="up" aria-label="Flyt kort op" title="Flyt op">${BeastCore.icon("chevron-up", { size: 18 })}</button><button class="admin-icon-action" type="button" data-overview-move="down" aria-label="Flyt kort ned" title="Flyt ned">${BeastCore.icon("chevron-down", { size: 18 })}</button><button class="admin-icon-action is-danger" type="button" data-overview-remove aria-label="Fjern kort" title="Fjern kort">${BeastCore.icon("close", { size: 18 })}</button></div></div><label>Indhold<select data-overview-type>${OVERVIEW_SLOT_OPTIONS.filter(([value])=>value!=="empty").map(([value,name]) => `<option value="${value}"${card.type === value ? " selected" : ""}>${name}</option>`).join("")}</select></label><label>Titel<input type="text" data-overview-label value="${escapeHtml(card.label || "")}" placeholder="Valgfri titel"></label><div class="admin-overview-custom"${card.type === "custom" ? "" : " hidden"}><input class="admin-filter" type="search" placeholder="Søg efter entity…" data-filter-select="${entitySelectId}"><select id="${entitySelectId}" data-overview-entity size="5">${renderSelectOptions(entitySelectId, card.entity)}</select></div><div class="admin-overview-sizes"><fieldset><legend>Stor skærm · 12 kolonner</legend><label>Bredde<select data-size="desktop.w">${sizeOptions(card.desktop?.w || 4,12)}</select></label><label>Højde<select data-size="desktop.h">${sizeOptions(Math.min(card.desktop?.h || 1,2),2)}</select></label></fieldset><fieldset><legend>Smal/tablet · 2 kolonner</legend><label>Bredde<select data-size="tablet.w">${sizeOptions(card.tablet?.w || 1,2)}</select></label><label>Højde<select data-size="tablet.h">${sizeOptions(card.tablet?.h || 1,3)}</select></label></fieldset><fieldset><legend>Lodret/mobil · 1 kolonne</legend><label>Højde<select data-size="portrait.h">${sizeOptions(card.portrait?.h || 1,3)}</select></label></fieldset></div></div>`;
       };
-    return `<div class="admin-card"><div class="admin-card-head"><div><h2>Visuel forsidebygger</h2><p>Træk kortene for at flytte dem rundt. Skift indhold, titel og størrelse nedenfor — forhåndsvisningen opdateres med det samme.</p></div></div><div class="admin-overview-preview" id="adminOverviewPreview"></div><div class="admin-overview-builder" data-overview-card-list>${cards.map(row).join("")}</div><div class="admin-actions"><button type="button" class="beast-btn" data-add-overview-card>+ Tilføj kort</button><button class="admin-save" type="button" data-save-overview-cards>Gem og anvend forside</button><span class="admin-save-state" data-save-state="overviewCards"></span></div></div>`;
+    return `<div class="admin-card"><div class="admin-card-head"><div><h2>Visuel forsidebygger</h2><p>Træk kortene for at flytte dem rundt. Skift indhold, titel og størrelse nedenfor — forhåndsvisningerne opdateres med det samme.</p></div></div><div class="admin-overview-visual-preview" id="adminOverviewVisualPreview"></div><div class="admin-overview-preview" id="adminOverviewPreview"></div><div class="admin-overview-builder" data-overview-card-list>${cards.map(row).join("")}</div><div class="admin-actions"><button type="button" class="beast-btn" data-add-overview-card>+ Tilføj kort</button><button class="admin-save" type="button" data-save-overview-cards>Gem og anvend forside</button><span class="admin-save-state" data-save-state="overviewCards"></span></div></div>`;
+  }
+
+  function renderForsideView() {
+    return `<section class="admin-view${activeView === "forside" ? " is-active" : ""}" data-admin-view="forside">
+      <div class="admin-settings-intro"><div><h2>${t("Forside", "Front page")}</h2><p>${t("Byg og forhåndsvis Oversigt-fanen — kortene, deres størrelser og hvad de viser.", "Build and preview the Overview tab — its cards, their sizes, and what they show.")}</p></div></div>
+      ${renderOverviewBuilder()}
+    </section>`;
   }
 
   function renderFeaturePanel() {
@@ -809,6 +816,97 @@
     // there (`grid-row: span min(var(--desktop-h), 2)`), so the preview
     // has to apply the same clamp to actually match what ships.
     previewEl.innerHTML = cards.length ? `<div class="admin-overview-preview-grid">${cards.map((card) => `<div class="admin-overview-preview-card" style="grid-column: span ${Math.max(1, Math.min(12, card.desktop.w))}; grid-row: span ${Math.max(1, Math.min(2, card.desktop.h))};"><strong>${escapeHtml(card.label || typeNames.get(card.type) || card.type)}</strong></div>`).join("")}</div>` : `<p class="admin-empty">Ingen kort endnu.</p>`;
+    refreshVisualOverviewPreview(cards);
+  }
+
+  const OVERVIEW_CARD_ICONS = { cameras: "camera", clock: "calendar", weather: "cloud", security: "shield", energy: "bolt", custom: "grid" };
+  const OVERVIEW_CARD_LABELS = { cameras: "Live kameraer", clock: "Tid, kalender og affald", weather: "Vejr", security: "Sikkerhed", energy: "Energi" };
+  const WEATHER_ICON_MAP = { sunny: "sun", "clear-night": "moon", partlycloudy: "cloud", cloudy: "cloud", rainy: "cloud-rain", pouring: "cloud-rain", snowy: "cloud", fog: "cloud", windy: "wind", "windy-variant": "wind", lightning: "cloud-rain", "lightning-rainy": "cloud-rain" };
+
+  function overviewCardVisualMarkup(card) {
+    const icon = OVERVIEW_CARD_ICONS[card.type] || "grid";
+    const kicker = card.label || OVERVIEW_CARD_LABELS[card.type] || card.type;
+    const style = `grid-column: span ${Math.max(1, Math.min(12, card.desktop.w))}; grid-row: span ${Math.max(1, Math.min(2, card.desktop.h))};`;
+    const kickerHtml = `<span class="admin-ov-preview-kicker">${BeastCore.icon(icon, { size: 12 })}${escapeHtml(kicker)}</span>`;
+    if (card.type === "cameras") {
+      // A live iframe (like the screensaver preview's camera tiles), not a
+      // static snapshot -- "den rigtige side" means it should actually
+      // look/behave like the real one. Absolute path: this markup is used
+      // from /admin/, where "./camera-player.html" would 404.
+      const camera = (window.BeastCameras?.getAllCameras?.() || [])[0];
+      let media = "";
+      if (camera?.streamName) {
+        const src = `/camera-player.html?v=11&sub=1&src=${encodeURIComponent(camera.streamName)}`;
+        media = `<iframe class="admin-ov-preview-camera-img" src="${src}" allow="autoplay"></iframe>`;
+      } else if (camera?.entityPicture) {
+        media = `<img class="admin-ov-preview-camera-img" data-preview-camera-picture="${escapeHtml(camera.entityPicture)}" alt="">`;
+      }
+      return `<div class="admin-ov-preview-card is-camera" data-card-type="cameras" style="${style}">${kickerHtml}${media}<div class="admin-ov-preview-body">${camera ? escapeHtml(camera.label || "") : t("Intet kamera valgt endnu", "No camera picked yet")}</div></div>`;
+    }
+    let body;
+    if (card.type === "weather") {
+      const data = screensaverPreviewData();
+      const state = BeastHaSocket.getState(BeastConfig.get("panels.weather.entity"));
+      const weatherIcon = WEATHER_ICON_MAP[state?.state] || "cloud";
+      body = `<div class="admin-ov-preview-hero">${BeastCore.icon(weatherIcon, { size: 34 })}<div><strong class="admin-ov-preview-weather-temp">${data.weatherTemp}</strong><span class="admin-ov-preview-weather-label">${escapeHtml(data.weatherLabel)}</span></div></div>`;
+    } else if (card.type === "security") {
+      const data = screensaverPreviewData();
+      const secured = data.securityText === t("Huset er sikret", "House is secured");
+      body = `<div class="admin-ov-preview-hero${secured ? " is-good" : " is-warning"}">${BeastCore.icon(secured ? "shield" : "unlock", { size: 34 })}<div><strong class="admin-ov-preview-security-text">${escapeHtml(data.securityText)}</strong></div></div>`;
+    } else if (card.type === "clock") {
+      const now = new Date();
+      body = `<div class="admin-ov-preview-clock"><div class="admin-ov-preview-clock-time">${now.toLocaleTimeString("da-DK", { hour: "2-digit", minute: "2-digit" })}</div><div class="admin-ov-preview-clock-date">${escapeHtml(BeastCore.formatDate(now))}</div></div>`;
+    } else if (card.type === "energy") {
+      const powerState = BeastHaSocket.getState(BeastConfig.get("panels.energy.powerSensor"));
+      const watts = Number(powerState?.state);
+      const label = Number.isFinite(watts) ? `${(watts / 1000).toFixed(1)} kW` : t("Ingen data endnu", "No data yet");
+      body = `<div class="admin-ov-preview-hero">${BeastCore.icon("bolt", { size: 34 })}<div><strong>${escapeHtml(label)}</strong><span>${t("Forbrug nu", "Usage now")}</span></div></div>`;
+    } else if (card.type === "custom" && card.entity) {
+      const state = BeastHaSocket.getState(card.entity);
+      body = `<div class="admin-ov-preview-hero">${BeastCore.icon("grid", { size: 34 })}<div><strong>${escapeHtml(state?.state ?? "–")}</strong><span>${escapeHtml(state?.attributes?.friendly_name || card.entity)}</span></div></div>`;
+    } else {
+      body = `<div class="admin-ov-preview-hero"><div><strong>${escapeHtml(kicker)}</strong></div></div>`;
+    }
+    return `<div class="admin-ov-preview-card" data-card-type="${escapeHtml(card.type)}" style="${style}">${kickerHtml}<div class="admin-ov-preview-body">${body}</div></div>`;
+  }
+
+  // Refreshes just the text that changes on its own on the real dashboard
+  // (clock tick, weather/security state) without rebuilding the whole
+  // preview -- a full rebuild would tear down and restart the camera
+  // iframe above on every tick, same reasoning as the screensaver preview
+  // (see updateScreensaverPreviewClock).
+  function updateVisualOverviewPreviewLiveBits() {
+    const host = document.getElementById("adminOverviewVisualPreview");
+    if (!host) return;
+    const timeEl = host.querySelector(".admin-ov-preview-clock-time");
+    const dateEl = host.querySelector(".admin-ov-preview-clock-date");
+    if (timeEl || dateEl) {
+      const now = new Date();
+      if (timeEl) timeEl.textContent = now.toLocaleTimeString("da-DK", { hour: "2-digit", minute: "2-digit" });
+      if (dateEl) dateEl.textContent = BeastCore.formatDate(now);
+    }
+    if (host.querySelector(".admin-ov-preview-weather-temp, .admin-ov-preview-security-text")) {
+      const data = screensaverPreviewData();
+      const tempEl = host.querySelector(".admin-ov-preview-weather-temp");
+      const labelEl = host.querySelector(".admin-ov-preview-weather-label");
+      if (tempEl) tempEl.textContent = data.weatherTemp;
+      if (labelEl) labelEl.textContent = data.weatherLabel;
+      const securityEl = host.querySelector(".admin-ov-preview-security-text");
+      if (securityEl) securityEl.textContent = data.securityText;
+    }
+  }
+
+  // A second, visually-real preview alongside the abstract labeled-box one
+  // above -- same fixed-canvas-plus-transform:scale trick as the
+  // screensaver preview, reusing the dashboard's own card chrome (see the
+  // CSS comment in admin.css) instead of a from-scratch mockup.
+  function refreshVisualOverviewPreview(cards) {
+    const host = document.getElementById("adminOverviewVisualPreview");
+    if (!host) return;
+    host.innerHTML = `<div class="admin-overview-visual-canvas">${cards.map(overviewCardVisualMarkup).join("")}</div>`;
+    document.querySelectorAll("[data-preview-camera-picture]").forEach((img) => {
+      window.BeastAuth?.setAuthedImageSrc?.(img, img.dataset.previewCameraPicture);
+    });
   }
 
   function renderScenarioSettings() {
@@ -1115,17 +1213,73 @@
     };
   }
 
+  // Mirrors app.js's ambientCameraMarkup() -- duplicated rather than shared
+  // since admin/index.html and beast.html are separate script contexts.
+  // Absolute-path camera-player.html src (not "./") since this markup is
+  // used from /admin/.
+  function ambientPreviewCameraMarkup(config) {
+    const ids = (config.cameraEntities || []).filter(Boolean).slice(0, 3);
+    if (!ids.length) return "";
+    const allCameras = window.BeastCameras?.getAllCameras?.() || [];
+    const tiles = ids.map((id) => {
+      const camera = allCameras.find((item) => item.entityId === id);
+      if (!camera) return "";
+      if (camera.streamName) {
+        const src = `/camera-player.html?v=11&sub=1&src=${encodeURIComponent(camera.streamName)}`;
+        return `<div class="beast-ambient-camera-tile"><iframe class="beast-ambient-camera-tile-frame" src="${src}" allow="autoplay"></iframe></div>`;
+      }
+      if (camera.entityPicture) {
+        return `<div class="beast-ambient-camera-tile"><img class="beast-ambient-camera-tile-frame" data-ambient-preview-picture="${camera.entityPicture}" alt=""></div>`;
+      }
+      return "";
+    }).filter(Boolean).join("");
+    return tiles ? `<div class="beast-ambient-camera-row">${tiles}</div>` : "";
+  }
+
+  // A scaled, real replica of the actual ambient screen (same
+  // .beast-ambient-* classes/CSS as the live kiosk overlay, inside a fixed
+  // 1280x720 canvas transformed down to fit the preview box) rather than a
+  // simplified mockup, so background/clock size/camera genuinely show what
+  // it'll look like. The camera iframe is only rebuilt when this whole
+  // function re-runs (view switch or after Save) -- the 1s preview tick
+  // only patches the clock text, so a live feed doesn't restart every
+  // second (see updateScreensaverPreviewClock).
   function renderScreensaverPreview() {
     const data = screensaverPreviewData();
-    return `<div class="admin-screensaver-preview">
-      <div class="admin-screensaver-preview-time">${data.time}</div>
-      <div class="admin-screensaver-preview-date">${escapeHtml(data.date)}</div>
-      <div class="admin-screensaver-preview-summary">
-        <span>${BeastCore.icon("cloud", { size: 18 })}<b>${data.weatherTemp}</b>${escapeHtml(data.weatherLabel)}</span>
-        <span>${BeastCore.icon("shield", { size: 18 })}<b>${escapeHtml(data.securityText)}</b></span>
+    const screensaver = BeastLocalSettings.get("screensaver", BeastConfig.get("screensaver")) || {};
+    const clockSizeClass = screensaver.clockSize && screensaver.clockSize !== "medium" ? ` is-size-${screensaver.clockSize}` : "";
+    const hasBg = Boolean(screensaver.backgroundImageUrl || screensaver.backgroundColor);
+    const bgStyle = screensaver.backgroundImageUrl
+      ? ` style="background-image:url('${escapeHtml(screensaver.backgroundImageUrl)}')"`
+      : screensaver.backgroundColor ? ` style="background-color:${escapeHtml(screensaver.backgroundColor)}"` : "";
+    const cameraRowHtml = ambientPreviewCameraMarkup(screensaver);
+    return `<div class="admin-ambient-preview">
+      <div class="admin-ambient-preview-canvas">
+        <div class="beast-ambient-mode is-visible${hasBg ? " has-custom-background" : ""}"${bgStyle}>
+          <div class="beast-ambient-main">
+            <div class="beast-ambient-time${clockSizeClass}">${data.time}</div>
+            <div class="beast-ambient-date">${escapeHtml(data.date)}</div>
+            <div class="beast-ambient-summary">
+              <span>${BeastCore.icon("cloud", { size: 26 })}<b>${data.weatherTemp}</b>${escapeHtml(data.weatherLabel)}</span>
+              <span>${BeastCore.icon("shield", { size: 25 })}<b>${escapeHtml(data.securityText)}</b></span>
+            </div>
+            ${screensaver.brightnessEnabled ? `<div class="beast-ambient-brightness">${BeastCore.icon("sun", { size: 16 })}<span>${Number(screensaver.brightnessPercent) || 80}%</span></div>` : ""}
+          </div>
+          <div class="beast-ambient-bottom">${cameraRowHtml}<small>${t("Tryk på skærmen for at åbne dashboardet", "Tap the screen to open the dashboard")}</small></div>
+        </div>
       </div>
-      ${data.hasWeatherData ? "" : `<p class="admin-screensaver-preview-warning">${t("Ingen vejrdata endnu — tjek at Vejr-entity er valgt under Opsætning → Vejr.", "No weather data yet — check that a weather entity is selected under Setup → Weather.")}</p>`}
-    </div>`;
+    </div>
+    ${data.hasWeatherData ? "" : `<p class="admin-screensaver-preview-warning">${t("Ingen vejrdata endnu — tjek at Vejr-entity er valgt under Opsætning → Vejr.", "No weather data yet — check that a weather entity is selected under Setup → Weather.")}</p>`}`;
+  }
+
+  function updateScreensaverPreviewClock() {
+    const host = document.getElementById("adminScreensaverPreviewHost");
+    if (!host) return;
+    const data = screensaverPreviewData();
+    const timeEl = host.querySelector(".beast-ambient-time");
+    const dateEl = host.querySelector(".beast-ambient-date");
+    if (timeEl) timeEl.textContent = data.time;
+    if (dateEl) dateEl.textContent = data.date;
   }
 
   function renderScreensaverView() {
@@ -1148,61 +1302,34 @@
         <label><span>${t("Starttidspunkt", "Start time")}</span><input type="time" id="adminScreensaverStart" value="${escapeHtml(screensaver.startTime || "23:00")}"></label>
         <label><span>${t("Sluttidspunkt", "End time")}</span><input type="time" id="adminScreensaverEnd" value="${escapeHtml(screensaver.endTime || "05:30")}"></label>
         <label><span>${t("Slukker helt efter (minutter)", "Turns off completely after (minutes)")}</span><input type="number" min="1" max="60" id="adminScreensaverOffAfter" value="${Number(screensaver.offAfterMinutes) || 5}"></label>
+      </div></div>
+      <div class="admin-card admin-settings-group"><div class="admin-card-head"><div><h2>${t("Design", "Design")}</h2><p>${t("Et billede har forrang frem for farven, hvis begge er sat.", "An image takes priority over the color if both are set.")}</p></div></div><div class="beast-mqtt-config">
+        <label class="admin-field"><span>${t("Baggrundsbillede — adresse", "Background image — address")}</span><input type="text" id="adminScreensaverBgUrl" value="${escapeHtml(screensaver.backgroundImageUrl || "")}" placeholder="https://…"></label>
+        <label class="admin-field admin-favicon-upload"><span>${t("Vælg billedfil", "Choose an image file")}</span><input type="file" id="adminScreensaverBgFile" accept="image/png,image/jpeg,image/webp"><small>${t("PNG, JPEG eller WebP · højst 1 MB", "PNG, JPEG or WebP · max 1 MB")}</small></label>
+        <label class="admin-security-toggle"><span><strong>${t("Brug baggrundsfarve", "Use background color")}</strong><small>${t("Bruges kun når der ikke er sat et billede.", "Only used when no image is set.")}</small></span><input type="checkbox" id="adminScreensaverBgColorEnabled"${screensaver.backgroundColor ? " checked" : ""}></label>
+        <label><span>${t("Baggrundsfarve", "Background color")}</span><input type="color" id="adminScreensaverBgColor" value="${escapeHtml(screensaver.backgroundColor || "#03060c")}"></label>
+        <button type="button" class="beast-btn" id="adminScreensaverBgClear">${t("Ryd baggrund (brug standard)", "Clear background (use default)")}</button>
+        <label><span>${t("Urets størrelse", "Clock size")}</span>
+          <select id="adminScreensaverClockSize">
+            <option value="small" ${screensaver.clockSize === "small" ? "selected" : ""}>${t("Lille", "Small")}</option>
+            <option value="medium" ${!screensaver.clockSize || screensaver.clockSize === "medium" ? "selected" : ""}>${t("Mellem", "Medium")}</option>
+            <option value="large" ${screensaver.clockSize === "large" ? "selected" : ""}>${t("Stor", "Large")}</option>
+          </select>
+        </label>
+        <label><span>${t("Kameraer i bunden (op til 3)", "Cameras at the bottom (up to 3)")}</span>${BeastEntityPicker.multiSelectHtml({ id: "adminScreensaverCameraEntities", domain: "camera", selectedIds: screensaver.cameraEntities || [] })}</label>
+        <p class="admin-field-hint">${t("Vælg 0-3 kameraer — vises som små felter i bunden af pauseskærmen (1 kamera vises centreret, uden kamera vises uret centreret på skærmen som normalt). Ctrl/Cmd-klik for at vælge flere.", "Pick 0-3 cameras — shown as small tiles at the bottom of the screensaver (1 camera is centered, with none the clock is centered on screen as normal). Ctrl/Cmd-click to pick more than one.")}</p>
+        <label><span>${t("Lysstyrke-skyder på pauseskærmen", "Brightness slider on the screensaver")}</span>
+          <select id="adminScreensaverBrightnessEnabled">
+            <option value="0" ${screensaver.brightnessEnabled ? "" : "selected"}>${t("Fra", "Off")}</option>
+            <option value="1" ${screensaver.brightnessEnabled ? "selected" : ""}>${t("Til — styrer kioskskærmens egen light-entity (sat op under Grundindstillinger → Kiosk & dørklokke)", "On — controls the kiosk screen's own light entity (set up under Basic settings → Kiosk & doorbell)")}</option>
+          </select>
+        </label>
         <button type="button" class="beast-btn beast-btn-primary" id="adminScreensaverSave">${t("Gem pauseskærm", "Save screensaver")}</button>
         <span class="admin-save-state" data-save-state="screensaver"></span>
       </div></div>
-      <div class="admin-card admin-settings-group"><div class="admin-card-head"><div><h2>${t("Forhåndsvisning", "Preview")}</h2><p>${t("Sådan ser pauseskærmen ud lige nu, med rigtige data — nyttigt til at tjekke at vejret rent faktisk vises.", "How the screensaver looks right now, with real data — useful for checking the weather actually shows.")}</p></div></div>
+      <div class="admin-card admin-settings-group"><div class="admin-card-head"><div><h2>${t("Forhåndsvisning", "Preview")}</h2><p>${t("Sådan ser pauseskærmen ud lige nu, med rigtige data — nyttigt til at tjekke at vejret, kamera og design rent faktisk vises.", "How the screensaver looks right now, with real data — useful for checking the weather, camera and design actually show.")}</p></div></div>
         <div id="adminScreensaverPreviewHost">${renderScreensaverPreview()}</div>
       </div>
-    </section>`;
-  }
-
-  function renderLockScreenView() {
-    const lockScreen = BeastConfig.get("lockScreen") || {};
-    const kioskLightConfigured = Boolean(BeastLocalSettings.get("kioskScreenLight", BeastConfig.get("appEntities.kioskScreenLight")));
-    return `<section class="admin-view${activeView === "lockscreen" ? " is-active" : ""}" data-admin-view="lockscreen">
-      <div class="admin-settings-intro"><div><h2>${t("Låseskærm", "Lock screen")}</h2><p>${t("Design af selve låseskærmen, der vises når skærmen er låst med en pinkode.", "Design of the lock screen itself, shown while the screen is locked with a PIN.")}</p></div></div>
-      <div class="admin-card admin-settings-group"><div class="admin-card-head"><div><h2>${t("Baggrund", "Background")}</h2><p>${t("Et billede har forrang frem for farven, hvis begge er sat.", "An image takes priority over the color if both are set.")}</p></div></div><div class="beast-mqtt-config">
-        <label class="admin-field"><span>${t("Baggrundsbillede — adresse", "Background image — address")}</span><input type="text" id="adminLockBgUrl" value="${escapeHtml(lockScreen.backgroundImageUrl || "")}" placeholder="https://…"></label>
-        <label class="admin-field admin-favicon-upload"><span>${t("Vælg billedfil", "Choose an image file")}</span><input type="file" id="adminLockBgFile" accept="image/png,image/jpeg,image/webp"><small>${t("PNG, JPEG eller WebP · højst 1 MB", "PNG, JPEG or WebP · max 1 MB")}</small></label>
-        <label class="admin-security-toggle"><span><strong>${t("Brug baggrundsfarve", "Use background color")}</strong><small>${t("Bruges kun når der ikke er sat et billede.", "Only used when no image is set.")}</small></span><input type="checkbox" id="adminLockBgColorEnabled"${lockScreen.backgroundColor ? " checked" : ""}></label>
-        <label><span>${t("Baggrundsfarve", "Background color")}</span><input type="color" id="adminLockBgColor" value="${escapeHtml(lockScreen.backgroundColor || "#0a0b10")}"></label>
-        <button type="button" class="beast-btn" id="adminLockBgClear">${t("Ryd baggrund (brug standard)", "Clear background (use default)")}</button>
-      </div></div>
-      <div class="admin-card admin-settings-group"><div class="admin-card-head"><div><h2>${t("Ur", "Clock")}</h2></div></div><div class="beast-mqtt-config">
-        <label><span>${t("Vis ur på låseskærmen", "Show clock on the lock screen")}</span>
-          <select id="adminLockClockShow">
-            <option value="1" ${lockScreen.showClock !== false ? "selected" : ""}>${t("Til", "On")}</option>
-            <option value="0" ${lockScreen.showClock === false ? "selected" : ""}>${t("Fra", "Off")}</option>
-          </select>
-        </label>
-        <label><span>${t("Urets størrelse", "Clock size")}</span>
-          <select id="adminLockClockSize">
-            <option value="small" ${lockScreen.clockSize === "small" ? "selected" : ""}>${t("Lille", "Small")}</option>
-            <option value="medium" ${!lockScreen.clockSize || lockScreen.clockSize === "medium" ? "selected" : ""}>${t("Mellem", "Medium")}</option>
-            <option value="large" ${lockScreen.clockSize === "large" ? "selected" : ""}>${t("Stor", "Large")}</option>
-          </select>
-        </label>
-      </div></div>
-      <div class="admin-card admin-settings-group"><div class="admin-card-head"><div><h2>${t("Kamera", "Camera")}</h2><p>${t("Viser et kamera som fuldskærms-baggrund bag koden, med et mørkt lag ovenpå så koden kan læses.", "Shows a camera as a full-screen background behind the code pad, with a dark veil on top so the code stays readable.")}</p></div></div><div class="beast-mqtt-config">
-        <label><span>${t("Vis kamera på låseskærmen", "Show camera on the lock screen")}</span>
-          <select id="adminLockCameraShow">
-            <option value="0" ${lockScreen.showCamera ? "" : "selected"}>${t("Fra", "Off")}</option>
-            <option value="1" ${lockScreen.showCamera ? "selected" : ""}>${t("Til", "On")}</option>
-          </select>
-        </label>
-        <label><span>${t("Kamera", "Camera")}</span>${BeastEntityPicker.selectHtml({ id: "adminLockCameraEntity", domain: "camera", selected: lockScreen.cameraEntity })}</label>
-      </div></div>
-      <div class="admin-card admin-settings-group"><div class="admin-card-head"><div><h2>${t("Lysstyrke", "Brightness")}</h2><p>${t("Tilføjer en lysstyrke-skyder på låseskærmen, der styrer kiosk-skærmens egen light-entity (sat op under Grundindstillinger → Kiosk & dørklokke, lokalt pr. skærm).", "Adds a brightness slider on the lock screen, controlling this kiosk's own screen light entity (set up under Basic settings → Kiosk & doorbell, locally per screen).")}</p></div></div><div class="beast-mqtt-config">
-        <label><span>${t("Lysstyrke-skyder på låseskærmen", "Brightness slider on the lock screen")}</span>
-          <select id="adminLockBrightnessEnabled">
-            <option value="0" ${lockScreen.brightnessEnabled ? "" : "selected"}>${t("Fra", "Off")}</option>
-            <option value="1" ${lockScreen.brightnessEnabled ? "selected" : ""}>${t("Til", "On")}</option>
-          </select>
-        </label>
-        ${kioskLightConfigured ? "" : `<p class="admin-field-hint">${t("Ingen kiosk-skærm-entity sat op på denne skærm endnu — sæt den op under Grundindstillinger → Kiosk & dørklokke, så virker skyderen.", "No kiosk screen entity set up on this screen yet — set it up under Basic settings → Kiosk & doorbell, and the slider will work.")}</p>`}
-      </div></div>
-      <div class="admin-actions"><button type="button" class="beast-btn beast-btn-primary" id="adminLockScreenSave">${t("Gem låseskærm", "Save lock screen")}</button><span class="admin-save-state" data-save-state="lockscreen"></span></div>
     </section>`;
   }
 
@@ -1293,11 +1420,11 @@
   function renderActiveView() {
     if (activeView === "overview") return renderOverview();
     if (activeView === "setup") return renderSetupOverview();
+    if (activeView === "forside") return renderForsideView();
     if (activeView === "settings") return renderSettingsView();
     if (activeView === "security-settings") return renderSecurityView();
     if (activeView === "screensaver") return renderScreensaverView();
     if (activeView === "advarsler") return renderAdvarslerView();
-    if (activeView === "lockscreen") return renderLockScreenView();
     if (activeView === "backup") return renderBackupView();
     if (activeView === "updates") return renderUpdatesView();
     const panel = PANELS.find((item) => item.id === activeView);
@@ -1316,11 +1443,11 @@
             <button class="${activeView === "overview" ? "is-active" : ""}" type="button" data-view="overview">Overblik</button>
             <p class="admin-nav-section">Opsætning</p>
             <button class="${activeView === "setup" ? "is-active" : ""}" type="button" data-view="setup">Grundindstillinger</button>
+            <button class="${activeView === "forside" ? "is-active" : ""}" type="button" data-view="forside">${t("Forside", "Front page")}</button>
             ${PANELS.map((panel) => `<button class="${activeView === panel.id ? "is-active" : ""}" type="button" data-view="${panel.id}">${escapeHtml(panel.title)}</button>`).join("")}
             <p class="admin-nav-section">Indstillinger</p>
             <button class="${activeView === "settings" ? "is-active" : ""}" type="button" data-view="settings">Udseende & enhed</button>
             <button class="${activeView === "security-settings" ? "is-active" : ""}" type="button" data-view="security-settings">Adgang & pinkode</button>
-            <button class="${activeView === "lockscreen" ? "is-active" : ""}" type="button" data-view="lockscreen">${t("Låseskærm", "Lock screen")}</button>
             <button class="${activeView === "screensaver" ? "is-active" : ""}" type="button" data-view="screensaver">${t("Pauseskærm", "Screensaver")}</button>
             <button class="${activeView === "advarsler" ? "is-active" : ""}" type="button" data-view="advarsler">${t("Advarsler", "Alerts")}</button>
             <button class="${activeView === "backup" ? "is-active" : ""}" type="button" data-view="backup">Backup & gendannelse</button>
@@ -1329,7 +1456,7 @@
           <div class="admin-sidebar-foot"><a class="admin-back" href="/">Åbn dashboard</a></div>
         </aside>
         <main class="admin-main">
-          <header class="admin-topbar"><div><h1>${activeView === "updates" ? "Opdatering" : activeView === "backup" ? "Backup & gendannelse" : activeView === "security-settings" ? "Sikkerhed" : activeView === "lockscreen" ? t("Låseskærm", "Lock screen") : activeView === "screensaver" ? t("Pauseskærm", "Screensaver") : activeView === "advarsler" ? t("Advarsler", "Alerts") : activeView === "settings" ? "Udseende & enhed" : activeView === "overview" ? "Overblik" : "Opsætning"}</h1><p>${activeView === "updates" ? "Se hvad der er nyt, og gendan en tidligere version om nødvendigt." : activeView === "security-settings" ? "Lokal adgang, pinkode og beskyttelse af adminpanelet." : activeView === "lockscreen" ? t("Design af selve låseskærmen — baggrund, ur, kamera og lysstyrke.", "Design of the lock screen itself — background, clock, camera and brightness.") : activeView === "screensaver" ? t("Styrer denne skærm/browser — hver kiosk kan have sin egen tidsplan.", "Controls this screen/browser only — each kiosk can have its own schedule.") : activeView === "advarsler" ? t("Alt om post-banneret samlet ét sted — slå til/fra og vælg entities.", "Everything about the post banner in one place — turn it on/off and pick entities.") : "Konfigurationen gemmes centralt på serveren."}</p></div><div class="admin-topbar-tools"><label class="admin-language-picker"><span>${BeastCore.icon("globe", { size: 15 })}</span><select id="adminLanguageSelect" aria-label="Dashboard-sprog"><option value="en"${dashboardLanguage !== "da" ? " selected" : ""}>English</option><option value="da"${dashboardLanguage === "da" ? " selected" : ""}>Dansk</option></select></label><span class="admin-status" id="adminHaStatus" data-state="${connected ? "connected" : "connecting"}">${connected ? "Home Assistant forbundet" : "Forbinder til Home Assistant…"}</span></div></header>
+          <header class="admin-topbar"><div><h1>${activeView === "updates" ? "Opdatering" : activeView === "backup" ? "Backup & gendannelse" : activeView === "security-settings" ? "Sikkerhed" : activeView === "forside" ? t("Forside", "Front page") : activeView === "screensaver" ? t("Pauseskærm", "Screensaver") : activeView === "advarsler" ? t("Advarsler", "Alerts") : activeView === "settings" ? "Udseende & enhed" : activeView === "overview" ? "Overblik" : "Opsætning"}</h1><p>${activeView === "updates" ? "Se hvad der er nyt, og gendan en tidligere version om nødvendigt." : activeView === "security-settings" ? "Lokal adgang, pinkode og beskyttelse af adminpanelet." : activeView === "forside" ? t("Kortene på Oversigt-fanen — indhold, størrelse og rækkefølge, med live-forhåndsvisning.", "The cards on the Overview tab — content, size and order, with a live preview.") : activeView === "screensaver" ? t("Styrer denne skærm/browser — hver kiosk kan have sin egen tidsplan.", "Controls this screen/browser only — each kiosk can have its own schedule.") : activeView === "advarsler" ? t("Alt om post-banneret samlet ét sted — slå til/fra og vælg entities.", "Everything about the post banner in one place — turn it on/off and pick entities.") : "Konfigurationen gemmes centralt på serveren."}</p></div><div class="admin-topbar-tools"><label class="admin-language-picker"><span>${BeastCore.icon("globe", { size: 15 })}</span><select id="adminLanguageSelect" aria-label="Dashboard-sprog"><option value="en"${dashboardLanguage !== "da" ? " selected" : ""}>English</option><option value="da"${dashboardLanguage === "da" ? " selected" : ""}>Dansk</option></select></label><span class="admin-status" id="adminHaStatus" data-state="${connected ? "connected" : "connecting"}">${connected ? "Home Assistant forbundet" : "Forbinder til Home Assistant…"}</span></div></header>
           ${renderActiveView()}
         </main>
       </div>`;
@@ -1389,10 +1516,14 @@
     if (activeView === "updates") loadUpdatesSettings();
     if (screensaverPreviewTimerId) { window.clearInterval(screensaverPreviewTimerId); screensaverPreviewTimerId = null; }
     if (activeView === "screensaver") {
-      screensaverPreviewTimerId = window.setInterval(() => {
-        const host = document.getElementById("adminScreensaverPreviewHost");
-        if (host) host.innerHTML = renderScreensaverPreview();
-      }, 1000);
+      document.querySelectorAll("[data-ambient-preview-picture]").forEach((img) => {
+        window.BeastAuth?.setAuthedImageSrc?.(img, img.dataset.ambientPreviewPicture);
+      });
+      screensaverPreviewTimerId = window.setInterval(updateScreensaverPreviewClock, 1000);
+    }
+    if (overviewVisualPreviewTimerId) { window.clearInterval(overviewVisualPreviewTimerId); overviewVisualPreviewTimerId = null; }
+    if (activeView === "forside") {
+      overviewVisualPreviewTimerId = window.setInterval(updateVisualOverviewPreviewLiveBits, 1000);
     }
     document.querySelector("[data-reload-backups]")?.addEventListener("click", loadBackupSettings);
     document.querySelector("[data-reload-versions]")?.addEventListener("click", loadUpdatesSettings);
@@ -1737,43 +1868,45 @@
       renderShell();
     });
     document.getElementById("adminLockNowBtn")?.addEventListener("click", () => { window.BeastScreenLock.lockNow(); });
+    document.getElementById("adminScreensaverBgFile")?.addEventListener("change", (event) => {
+      const file = event.currentTarget.files?.[0];
+      if (!file) return;
+      const state = document.querySelector('[data-save-state="screensaver"]');
+      if (file.size > 1024 * 1024) { if (state) state.textContent = t("Filen må højst fylde 1 MB", "The file must be at most 1 MB"); event.currentTarget.value = ""; return; }
+      const reader = new FileReader();
+      reader.onload = () => { document.getElementById("adminScreensaverBgUrl").value = reader.result; };
+      reader.readAsDataURL(file);
+    });
+    document.getElementById("adminScreensaverBgClear")?.addEventListener("click", () => {
+      document.getElementById("adminScreensaverBgUrl").value = "";
+      document.getElementById("adminScreensaverBgFile").value = "";
+      document.getElementById("adminScreensaverBgColorEnabled").checked = false;
+      document.getElementById("adminScreensaverBgColor").value = "#03060c";
+    });
+    document.getElementById("adminScreensaverCameraEntities")?.addEventListener("change", (event) => {
+      const select = event.currentTarget;
+      const selected = Array.from(select.selectedOptions);
+      if (selected.length <= 3) return;
+      selected.slice(3).forEach((option) => { option.selected = false; });
+      const state = document.querySelector('[data-save-state="screensaver"]');
+      if (state) { state.textContent = t("Højst 3 kameraer", "3 cameras max"); window.setTimeout(() => { if (state.textContent === t("Højst 3 kameraer", "3 cameras max")) state.textContent = ""; }, 2200); }
+    });
     document.getElementById("adminScreensaverSave")?.addEventListener("click", () => {
       BeastLocalSettings.set("screensaver", {
+        ...(BeastLocalSettings.get("screensaver", BeastConfig.get("screensaver")) || {}),
         enabled: document.getElementById("adminScreensaverEnabled").value === "1",
         schedule: document.getElementById("adminScreensaverSchedule").value,
         startTime: document.getElementById("adminScreensaverStart").value || "23:00",
         endTime: document.getElementById("adminScreensaverEnd").value || "05:30",
-        offAfterMinutes: Math.max(1, Number(document.getElementById("adminScreensaverOffAfter").value) || 5)
+        offAfterMinutes: Math.max(1, Number(document.getElementById("adminScreensaverOffAfter").value) || 5),
+        backgroundImageUrl: document.getElementById("adminScreensaverBgUrl").value.trim() || null,
+        backgroundColor: document.getElementById("adminScreensaverBgColorEnabled").checked ? document.getElementById("adminScreensaverBgColor").value : null,
+        clockSize: document.getElementById("adminScreensaverClockSize").value || "medium",
+        cameraEntities: Array.from(document.getElementById("adminScreensaverCameraEntities").selectedOptions).map((option) => option.value).slice(0, 3),
+        brightnessEnabled: document.getElementById("adminScreensaverBrightnessEnabled").value === "1"
       });
       renderShell();
     });
-    document.getElementById("adminLockBgFile")?.addEventListener("change", (event) => {
-      const file = event.currentTarget.files?.[0];
-      if (!file) return;
-      const state = document.querySelector('[data-save-state="lockscreen"]');
-      if (file.size > 1024 * 1024) { if (state) state.textContent = t("Filen må højst fylde 1 MB", "The file must be at most 1 MB"); event.currentTarget.value = ""; return; }
-      const reader = new FileReader();
-      reader.onload = () => { document.getElementById("adminLockBgUrl").value = reader.result; };
-      reader.readAsDataURL(file);
-    });
-    document.getElementById("adminLockBgClear")?.addEventListener("click", () => {
-      document.getElementById("adminLockBgUrl").value = "";
-      document.getElementById("adminLockBgFile").value = "";
-      document.getElementById("adminLockBgColorEnabled").checked = false;
-      document.getElementById("adminLockBgColor").value = "#0a0b10";
-    });
-    document.getElementById("adminLockScreenSave")?.addEventListener("click", (event) => save(event.currentTarget, "lockscreen", async () => {
-      return BeastConfig.set("lockScreen", {
-        ...(BeastConfig.get("lockScreen") || {}),
-        backgroundImageUrl: document.getElementById("adminLockBgUrl").value.trim() || null,
-        backgroundColor: document.getElementById("adminLockBgColorEnabled").checked ? document.getElementById("adminLockBgColor").value : null,
-        showClock: document.getElementById("adminLockClockShow").value === "1",
-        clockSize: document.getElementById("adminLockClockSize").value || "medium",
-        showCamera: document.getElementById("adminLockCameraShow").value === "1",
-        cameraEntity: document.getElementById("adminLockCameraEntity").value || null,
-        brightnessEnabled: document.getElementById("adminLockBrightnessEnabled").value === "1"
-      });
-    }));
     document.getElementById("adminAdvarslerSave")?.addEventListener("click", (event) => save(event.currentTarget, "advarsler", async () => {
       const features = {
         ...(BeastConfig.get("features") || {}),

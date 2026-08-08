@@ -9,8 +9,6 @@ const BeastScreenLock = (() => {
   const PIN_LENGTH = 4;
 
   let overlayEl = null;
-  let extrasEl = null;
-  let cardSlotEl = null;
   let mode = null; // 'locked' | 'set-first' | 'set-confirm' | 'verify'
   let digits = "";
   let firstEntry = "";
@@ -20,8 +18,6 @@ const BeastScreenLock = (() => {
   let alarmSubscribed = false;
   let promptTitle = "";
   let promptSubtitle = "";
-  let clockTimerId = null;
-  let brightnessDebounceId = null;
 
   // crypto.subtle needs a secure context (HTTPS or localhost); this panel is
   // served over plain HTTP on the LAN, so it's unavailable. This lock is a
@@ -67,23 +63,10 @@ const BeastScreenLock = (() => {
     return mode === "locked";
   }
 
-  // extrasEl (background/clock/camera/brightness) and cardSlotEl (the PIN
-  // pad) are separate persistent children of overlayEl, created once --
-  // render() used to replace overlay.innerHTML wholesale on every mode
-  // change (including a wrong-PIN shake), which would tear down and
-  // recreate the camera <iframe> each time and restart its video stream.
-  // Only cardSlotEl's contents are replaced per-render now; extrasEl is
-  // updated in place by renderExtras().
   function ensureOverlay() {
     if (overlayEl) return overlayEl;
     overlayEl = document.createElement("div");
     overlayEl.className = "beast-lock-overlay";
-    extrasEl = document.createElement("div");
-    extrasEl.className = "beast-lock-extras";
-    cardSlotEl = document.createElement("div");
-    cardSlotEl.className = "beast-lock-card-slot";
-    overlayEl.appendChild(extrasEl);
-    overlayEl.appendChild(cardSlotEl);
     document.body.appendChild(overlayEl);
     return overlayEl;
   }
@@ -110,8 +93,7 @@ const BeastScreenLock = (() => {
     const overlay = ensureOverlay();
     if (!mode) {
       overlay.classList.remove("is-open");
-      cardSlotEl.innerHTML = "";
-      renderExtras();
+      overlay.innerHTML = "";
       return;
     }
     overlay.classList.add("is-open");
@@ -120,7 +102,7 @@ const BeastScreenLock = (() => {
     const showCancel = mode !== "locked";
     const showRecovery = hasPin() && ["locked", "verify"].includes(mode);
 
-    cardSlotEl.innerHTML = `
+    overlay.innerHTML = `
       <div class="beast-lock-card${errorActive ? " is-shaking" : ""}">
         ${BeastCore.icon("lock", { size: 32 })}
         <h2 class="beast-lock-title">${titleFor()}</h2>
@@ -136,108 +118,13 @@ const BeastScreenLock = (() => {
       </div>
     `;
 
-    cardSlotEl.querySelectorAll("[data-digit]").forEach((btn) => {
+    overlay.querySelectorAll("[data-digit]").forEach((btn) => {
       btn.addEventListener("click", () => onDigit(btn.dataset.digit));
     });
-    cardSlotEl.querySelector("[data-action='backspace']")?.addEventListener("click", onBackspace);
-    cardSlotEl.querySelector("[data-action='cancel']")?.addEventListener("click", onCancel);
-    cardSlotEl.querySelector("[data-action='recover']")?.addEventListener("click", startTrustedRecovery);
-    renderExtras();
+    overlay.querySelector("[data-action='backspace']")?.addEventListener("click", onBackspace);
+    overlay.querySelector("[data-action='cancel']")?.addEventListener("click", onCancel);
+    overlay.querySelector("[data-action='recover']")?.addEventListener("click", startTrustedRecovery);
   }
-
-  function updateClockText(host) {
-    if (!host) return;
-    const now = new Date();
-    const h = String(now.getHours()).padStart(2, "0");
-    const m = String(now.getMinutes()).padStart(2, "0");
-    host.innerHTML = `<div class="beast-lock-clock-time">${h}<span class="beast-lock-clock-colon">:</span>${m}</div><div class="beast-lock-clock-date">${BeastCore.formatDate(now)}</div>`;
-  }
-
-  // Design settings (background/clock/camera/brightness) only apply to the
-  // actual "locked" face -- not the PIN-setup or alarm-code-entry flows,
-  // which reuse the same overlay but are transient admin/alarm actions
-  // rather than the lock screen itself.
-  function renderExtras() {
-    const showExtras = mode === "locked";
-    const config = showExtras ? (BeastConfig.get("lockScreen") || {}) : {};
-
-    overlayEl.classList.toggle("has-custom-background", showExtras && Boolean(config.backgroundImageUrl || config.backgroundColor));
-    overlayEl.style.backgroundImage = showExtras && config.backgroundImageUrl ? `url("${config.backgroundImageUrl}")` : "";
-    overlayEl.style.backgroundColor = showExtras && config.backgroundColor ? config.backgroundColor : "";
-
-    const cameraOn = showExtras && config.showCamera && config.cameraEntity;
-    let cameraHost = extrasEl.querySelector(".beast-lock-camera");
-    if (cameraOn) {
-      const camera = (window.BeastCameras?.getAllCameras?.() || []).find((c) => c.entityId === config.cameraEntity);
-      if (!cameraHost) {
-        cameraHost = document.createElement("div");
-        cameraHost.className = "beast-lock-camera";
-        extrasEl.appendChild(cameraHost);
-      }
-      if (camera?.streamName) {
-        const src = `./camera-player.html?v=11&sub=1&src=${encodeURIComponent(camera.streamName)}`;
-        const absoluteSrc = new URL(src, window.location.href).href;
-        let iframe = cameraHost.querySelector("iframe");
-        if (!iframe) {
-          cameraHost.innerHTML = `<iframe class="beast-lock-camera-frame" src="${src}" allow="autoplay"></iframe><div class="beast-lock-camera-veil"></div>`;
-        } else if (iframe.src !== absoluteSrc) {
-          iframe.src = src;
-        }
-      } else if (camera?.entityPicture) {
-        if (!cameraHost.querySelector("img")) {
-          cameraHost.innerHTML = `<img class="beast-lock-camera-frame" alt=""><div class="beast-lock-camera-veil"></div>`;
-        }
-        window.BeastAuth?.setAuthedImageSrc?.(cameraHost.querySelector("img"), camera.entityPicture);
-      } else {
-        cameraHost.innerHTML = "";
-      }
-    } else if (cameraHost) {
-      cameraHost.remove();
-    }
-
-    let clockHost = extrasEl.querySelector(".beast-lock-clock");
-    if (showExtras && config.showClock !== false) {
-      if (!clockHost) {
-        clockHost = document.createElement("div");
-        extrasEl.insertBefore(clockHost, extrasEl.firstChild);
-      }
-      clockHost.className = `beast-lock-clock beast-lock-clock--${config.clockSize || "medium"}`;
-      updateClockText(clockHost);
-      if (!clockTimerId) {
-        clockTimerId = window.setInterval(() => updateClockText(extrasEl.querySelector(".beast-lock-clock")), 1000);
-      }
-    } else {
-      if (clockHost) clockHost.remove();
-      if (clockTimerId) { window.clearInterval(clockTimerId); clockTimerId = null; }
-    }
-
-    const kioskLight = window.KIOSK_SCREEN_ENTITY_ID ? window.KIOSK_SCREEN_ENTITY_ID() : null;
-    let brightnessHost = extrasEl.querySelector(".beast-lock-brightness");
-    if (showExtras && config.brightnessEnabled && kioskLight) {
-      if (!brightnessHost) {
-        brightnessHost = document.createElement("div");
-        brightnessHost.className = "beast-lock-brightness";
-        brightnessHost.innerHTML = `${BeastCore.icon("sun", { size: 16 })}<input type="range" min="5" max="100" value="${Number(config.brightnessPercent) || 80}">`;
-        extrasEl.appendChild(brightnessHost);
-        brightnessHost.querySelector("input").addEventListener("input", (event) => {
-          const pct = Number(event.target.value);
-          window.clearTimeout(brightnessDebounceId);
-          brightnessDebounceId = window.setTimeout(() => {
-            BeastConfig.set("lockScreen.brightnessPercent", pct);
-            window.BeastAuth?.haFetch?.("/api/services/light/turn_on", {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ entity_id: kioskLight, brightness_pct: pct })
-            }).catch(() => {});
-          }, 250);
-        });
-      }
-    } else if (brightnessHost) {
-      brightnessHost.remove();
-    }
-  }
-
-  document.addEventListener("beast:config-changed", () => { if (mode === "locked") renderExtras(); });
 
   function startTrustedRecovery() {
     sessionStorage.setItem("beast_panel_pin_recovery_pending_v1", "1");
