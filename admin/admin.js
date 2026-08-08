@@ -1188,6 +1188,8 @@
             <option value="0" ${features.printerBanner === false ? "selected" : ""}>${t("Fra — vises aldrig", "Off — never shown")}</option>
           </select>
         </label>
+        <label><span>${t("Printer-kamera (valgfri override)", "Printer camera (optional override)")}</span>${BeastEntityPicker.selectHtml({ id: "adminAdvarslerPrinterCamera", domain: "camera", keywordHints: ["printer", "3d", "bambu"], selected: BeastConfig.get("banners.printerCameraOverride") })}</label>
+        <p class="admin-field-hint">${t("Bruges i stedet for printerens eget kamerabillede, hvis valgt — fx et separat Protect-kamera rettet mod printeren.", "Used instead of the printer's own built-in camera image, if set — e.g. a separate Protect camera pointed at the printer.")}</p>
         ${printerConfigured ? "" : `<p class="admin-field-hint">${t("Ingen printer-entities fundet endnu — sæt printeren op under Indstillinger → 3D Printer, så virker banneret automatisk.", "No printer entities found yet — set the printer up under Settings → 3D Printer, and the banner will work automatically.")}</p>`}
       </div></div>
       <div class="admin-card admin-settings-group"><div class="admin-card-head"><div><h2>${t("Døre & låse", "Doors & locks")}</h2><p>${t("Viser en advarsel, hvis en dør eller lås fra Sikkerhed har stået åben/ulåst længere end angivet.", "Shows a warning if a door or lock from Security has been open/unlocked longer than the time set below.")}</p></div></div><div class="beast-mqtt-config">
@@ -1692,7 +1694,8 @@
       };
       const banners = {
         ...(BeastConfig.get("banners") || {}),
-        doorOpenTooLongMinutes: Math.max(1, Number(document.getElementById("adminAdvarslerDoorMinutes").value) || 15)
+        doorOpenTooLongMinutes: Math.max(1, Number(document.getElementById("adminAdvarslerDoorMinutes").value) || 15),
+        printerCameraOverride: document.getElementById("adminAdvarslerPrinterCamera").value || null
       };
       const [featuresResult, appEntitiesResult, bannersResult] = await Promise.all([
         BeastConfig.set("features", features),

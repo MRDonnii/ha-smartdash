@@ -1,5 +1,13 @@
 [
   {
+    "version": "20260808-20",
+    "tag": "v0.5.25",
+    "date": "2026-08-08",
+    "changes": [
+      "Added an optional camera picker to the 3D printer banner (in Administration -> Advarsler): pick any camera entity to use instead of the printer's own built-in camera image -- useful if a separate camera (e.g. a security camera) is pointed at the printer instead of relying on its own onboard one."
+    ]
+  },
+  {
     "version": "20260808-19",
     "tag": "v0.5.24",
     "date": "2026-08-08",

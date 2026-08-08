@@ -90,11 +90,13 @@ const BeastConfig = (() => {
     overviewCards: [],
     hiddenSections: [],
     appEntities: { kioskScreenLight: null, kioskEntities: {}, doorbellBinarySensor: null, doorbellEvent: null, doorbellCamera: null, mailPresent: null, mailCount: null, mailDescription: null, mailImage: null, mailImageCarport: null, mailImageForhaven: null, quickScenes: [] },
-    // Behavior tuning for the overview banners -- which entities each
-    // banner watches is reused from panels.printer/panels.security (already
-    // configured for their own pages), so only cross-cutting knobs live
-    // here rather than duplicating entity pickers.
-    banners: { doorOpenTooLongMinutes: 15 },
+    // Behavior tuning for the overview banners -- most entities each banner
+    // watches are reused from panels.printer/panels.security (already
+    // configured for their own pages). printerCameraOverride is the one
+    // banner-specific entity: an optional camera to show instead of the
+    // printer's own built-in camera image (e.g. a separate Protect camera
+    // pointed at the printer).
+    banners: { doorOpenTooLongMinutes: 15, printerCameraOverride: null },
     screensaver: { enabled: true, schedule: "custom", startTime: "23:00", endTime: "05:30", offAfterMinutes: 5 },
     screenLock: { pinHash: null, autoLockEnabled: false },
     panels: DEFAULT_PANELS
