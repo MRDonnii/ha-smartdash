@@ -565,7 +565,6 @@ function renderOverviewSection() {
             <button type="button" class="beast-ov-camera-menu-toggle" id="beastOvCameraMenuToggle" aria-label="Åbn kameramenu" aria-expanded="false">⋮</button>
             <div class="beast-ov-camera-menu-popover" id="beastOvCameraMenu" hidden>
               <button type="button" id="beastOvCameraPicker">${BeastCore.icon("camera", { size: 17 })}<span>Vælg kameraer</span></button>
-              <button type="button" id="beastOvNotifications">${BeastCore.icon("bell", { size: 17 })}<span>Notifikationer</span><b id="beastOvNotificationCount" hidden>0</b></button>
               <button type="button" id="beastOvEdit">${BeastCore.icon("settings", { size: 17 })}<span>Rediger forsiden</span></button>
             </div>
           </div>
