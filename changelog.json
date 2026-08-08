@@ -1,5 +1,66 @@
 [
   {
+    "version": "20260809-05",
+    "tag": "v0.5.37",
+    "date": "2026-08-09",
+    "changes": [
+      "The front-page visual preview's cards now show real, styled content instead of plain text: a colored icon + big number for weather/energy/security (green when secured, amber when not), and a real-size ticking clock -- much closer to what each card actually looks like on the real front page."
+    ]
+  },
+  {
+    "version": "20260809-04",
+    "tag": "v0.5.36",
+    "date": "2026-08-09",
+    "changes": [
+      "The front-page visual preview (Administration -> Forside) now shows a real live camera feed for the camera card instead of a static snapshot, and the clock card actually ticks -- matching the same live fidelity as the screensaver preview."
+    ]
+  },
+  {
+    "version": "20260809-03",
+    "tag": "v0.5.35",
+    "date": "2026-08-09",
+    "changes": [
+      "Added a real, to-scale visual preview to the front-page builder (Administration -> Forside), alongside the existing labeled-box layout preview -- shows actual card styling/icons, and real data where available (weather, security, a live camera snapshot, a custom card's entity state)."
+    ]
+  },
+  {
+    "version": "20260809-02",
+    "tag": "v0.5.34",
+    "date": "2026-08-09",
+    "changes": [
+      "Moved the front-page card builder (content, size, order, live preview) out of Grundindstillinger into its own \"Forside\" section in Administration."
+    ]
+  },
+  {
+    "version": "20260809-01",
+    "tag": "v0.5.33",
+    "date": "2026-08-09",
+    "changes": [
+      "The screensaver's \"tap to open dashboard\" hint (and camera tiles, if any) now always sit at the bottom of the screen, and the clock/date/summary now always stays centered in the middle -- previously, turning cameras on pushed the clock off-center towards the top.",
+      "Screensaver camera tiles are a bit bigger."
+    ]
+  },
+  {
+    "version": "20260808-27",
+    "tag": "v0.5.32",
+    "date": "2026-08-08",
+    "changes": [
+      "Reworked the screensaver's camera option: instead of a full-screen live background, up to 3 cameras now show as small tiles in a row at the bottom (1 camera is centered, 2-3 sit side by side) -- the clock/date/weather/security summary keeps its original centered design either way.",
+      "With no camera selected, the screensaver's clock and summary are centered on the screen exactly as before this feature was added.",
+      "Active alert banners (post, 3D printer, doors/locks) now also show as small badges on the screensaver, since the rest of the dashboard is hidden while it's up."
+    ]
+  },
+  {
+    "version": "20260808-26",
+    "tag": "v0.5.31",
+    "date": "2026-08-08",
+    "changes": [
+      "The screensaver (the ambient screen shown when the kiosk is idle) is now customizable from Administration -> Pauseskærm: a background image or color, a clock size option, and an optional camera shown as a full-screen live background. An optional brightness slider controls the kiosk's own screen light entity.",
+      "The Pauseskærm preview now shows a real, live, to-scale replica of the actual screensaver (same look, same data) instead of a simplified summary, so background/clock/camera changes can be checked before saving.",
+      "Reverted the previous release's separate PIN lock-screen design settings -- that functionality has moved to the screensaver above instead, where it was actually meant to be."
+    ]
+  },
+  {
     "version": "20260808-25",
     "tag": "v0.5.30",
     "date": "2026-08-08",

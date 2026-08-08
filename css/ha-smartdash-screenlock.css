@@ -3,112 +3,16 @@
   position: fixed;
   inset: 0;
   z-index: 9999;
-  overflow: hidden;
   align-items: center;
   justify-content: center;
   background:
     radial-gradient(circle at 50% 35%, rgba(105, 118, 255, .18), transparent 38%),
     rgba(3, 4, 6, 0.96);
-  background-size: cover;
-  background-position: center;
-  background-repeat: no-repeat;
   backdrop-filter: blur(22px);
-}
-
-.beast-lock-overlay.has-custom-background {
-  backdrop-filter: none;
 }
 
 .beast-lock-overlay.is-open {
   display: flex;
-}
-
-/* Full-bleed layer for the optional camera background, clock and
-   brightness slider -- sits outside normal flow so .beast-lock-card-slot
-   (the PIN pad) keeps centering exactly as before regardless of what's
-   turned on here. */
-.beast-lock-extras {
-  position: absolute;
-  inset: 0;
-  z-index: 0;
-  pointer-events: none;
-}
-
-.beast-lock-card-slot {
-  position: relative;
-  z-index: 1;
-  display: flex;
-}
-
-.beast-lock-camera {
-  position: absolute;
-  inset: 0;
-  overflow: hidden;
-}
-
-.beast-lock-camera-frame {
-  display: block;
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  border: 0;
-}
-
-.beast-lock-camera-veil {
-  position: absolute;
-  inset: 0;
-  background: linear-gradient(180deg, rgba(3, 4, 6, .5) 0%, rgba(3, 4, 6, .72) 55%, rgba(3, 4, 6, .88) 100%);
-}
-
-.beast-lock-clock {
-  position: absolute;
-  top: 64px;
-  left: 50%;
-  transform: translateX(-50%);
-  text-align: center;
-  color: var(--ink);
-  text-shadow: 0 2px 28px rgba(0, 0, 0, .5);
-}
-
-.beast-lock-clock-time {
-  font-weight: 800;
-  line-height: 1;
-  font-variant-numeric: tabular-nums;
-  font-size: 76px;
-}
-
-.beast-lock-clock--small .beast-lock-clock-time { font-size: 48px; }
-.beast-lock-clock--large .beast-lock-clock-time { font-size: 116px; }
-
-.beast-lock-clock-colon { opacity: .6; margin: 0 2px; }
-
-.beast-lock-clock-date {
-  margin-top: 8px;
-  font-size: var(--text-md);
-  color: var(--ink-muted);
-  text-transform: capitalize;
-}
-
-.beast-lock-brightness {
-  position: absolute;
-  left: 50%;
-  bottom: 40px;
-  transform: translateX(-50%);
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  pointer-events: auto;
-  background: rgba(18, 21, 30, .7);
-  border: 1px solid var(--border-strong);
-  border-radius: 999px;
-  padding: 10px 18px;
-  color: var(--ink-muted);
-  backdrop-filter: blur(8px);
-}
-
-.beast-lock-brightness input[type="range"] {
-  width: 170px;
-  accent-color: var(--accent-a);
 }
 
 .beast-lock-card {

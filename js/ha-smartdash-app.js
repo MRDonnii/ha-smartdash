@@ -60,6 +60,8 @@ let lastUserActivityAt = Date.now();
 let buildCheckTimerId = null;
 let cameraHealthTimerId = null;
 let ambientModeTimerId = null;
+let ambientClockTimerId = null;
+let ambientBrightnessDebounceId = null;
 let screenOffTimerId = null;
 let morningWakeTimerId = null;
 let nightStartTimerId = null;
@@ -229,8 +231,86 @@ function ambientWeather() {
 
 function hideAmbientMode() {
   window.clearTimeout(screenOffTimerId);
+  window.clearInterval(ambientClockTimerId);
+  ambientClockTimerId = null;
   document.getElementById("beastAmbientMode")?.classList.remove("is-visible");
   document.body.classList.remove("beast-is-ambient");
+}
+
+// Reuses the same active-banner detection/snooze/schedule logic as the
+// overview page's own banners (exposed via BeastOverview) rather than
+// duplicating it -- the overview page itself is hidden while ambient mode
+// is showing, so this is the only way its alerts (post arrived, printer
+// done, door open too long) stay visible while the kiosk is idle.
+function ambientBannerPillsMarkup() {
+  const banners = window.BeastOverview?.activeBannerSummaries?.() || [];
+  return banners.map((banner) => `<span data-ambient-banner="${banner.type}">${BeastCore.icon(banner.icon, { size: 22 })}<b>${banner.title}</b></span>`).join("");
+}
+
+function updateAmbientClock() {
+  const overlay = document.getElementById("beastAmbientMode");
+  if (!overlay || !overlay.classList.contains("is-visible")) return;
+  const now = new Date();
+  const timeEl = overlay.querySelector(".beast-ambient-time");
+  const dateEl = overlay.querySelector(".beast-ambient-date");
+  if (timeEl) timeEl.textContent = now.toLocaleTimeString("da-DK", { hour: "2-digit", minute: "2-digit" });
+  if (dateEl) dateEl.textContent = now.toLocaleDateString("da-DK", { weekday: "long", day: "numeric", month: "long" });
+  const summary = overlay.querySelector(".beast-ambient-summary");
+  if (summary) {
+    summary.querySelectorAll("[data-ambient-banner]").forEach((el) => el.remove());
+    summary.insertAdjacentHTML("beforeend", ambientBannerPillsMarkup());
+  }
+}
+
+// Small tiles in a row at the bottom, not a full-screen background -- the
+// ambient screen's own look (gradient, centered clock/summary) stays
+// exactly as designed regardless of whether/how many cameras are picked.
+// Up to 3; a row with a single centered tile (or two, or three) falls out
+// of justify-content:center for free, no per-count layout branching
+// needed. Only (re)built when the ambient screen is first shown, not on
+// the clock's periodic tick -- otherwise a live feed would restart its
+// video stream every 30s along with the clock text.
+function ambientCameraMarkup(config) {
+  const ids = (config.cameraEntities || []).filter(Boolean).slice(0, 3);
+  if (!ids.length) return "";
+  const allCameras = window.BeastCameras?.getAllCameras?.() || [];
+  const tiles = ids.map((id) => {
+    const camera = allCameras.find((item) => item.entityId === id);
+    if (!camera) return "";
+    if (camera.streamName) {
+      const src = `./camera-player.html?v=11&sub=1&src=${encodeURIComponent(camera.streamName)}`;
+      return `<div class="beast-ambient-camera-tile"><iframe class="beast-ambient-camera-tile-frame" src="${src}" allow="autoplay"></iframe></div>`;
+    }
+    if (camera.entityPicture) {
+      return `<div class="beast-ambient-camera-tile"><img class="beast-ambient-camera-tile-frame" data-ambient-camera-picture="${camera.entityPicture}" alt=""></div>`;
+    }
+    return "";
+  }).filter(Boolean).join("");
+  return tiles ? `<div class="beast-ambient-camera-row">${tiles}</div>` : "";
+}
+
+function ambientBrightnessMarkup(config) {
+  if (!config.brightnessEnabled || !KIOSK_SCREEN_ENTITY_ID()) return "";
+  return `<div class="beast-ambient-brightness"><label>${BeastCore.icon("sun", { size: 16 })}<input type="range" min="5" max="100" value="${Number(config.brightnessPercent) || 80}"></label></div>`;
+}
+
+function wireAmbientBrightness(overlay) {
+  const input = overlay.querySelector(".beast-ambient-brightness input");
+  if (!input) return;
+  input.addEventListener("input", (event) => {
+    const pct = Number(event.target.value);
+    window.clearTimeout(ambientBrightnessDebounceId);
+    ambientBrightnessDebounceId = window.setTimeout(() => {
+      BeastLocalSettings.set("screensaver", { ...screensaverConfig(), brightnessPercent: pct });
+      const kioskLight = KIOSK_SCREEN_ENTITY_ID();
+      if (!kioskLight || !window.BeastAuth?.haFetch) return;
+      BeastAuth.haFetch("/api/services/light/turn_on", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ entity_id: kioskLight, brightness_pct: pct })
+      }).catch(() => {});
+    }, 250);
+  });
 }
 
 function isNightScreenPeriod(date = new Date()) {
@@ -290,14 +370,25 @@ function showAmbientMode() {
     const value = BeastHaSocket.getState(id)?.state;
     return value && !["locked", "unknown", "unavailable"].includes(value);
   }).length;
-  overlay.innerHTML = `<div class="beast-ambient-time">${now.toLocaleTimeString("da-DK", { hour: "2-digit", minute: "2-digit" })}</div><div class="beast-ambient-date">${now.toLocaleDateString("da-DK", { weekday: "long", day: "numeric", month: "long" })}</div><div class="beast-ambient-summary"><span>${BeastCore.icon("cloud", { size: 26 })}<b>${weather.temperature}</b>${weather.label}</span><span>${BeastCore.icon(unlocked || openDoors ? "unlock" : "shield", { size: 25 })}<b>${unlocked || openDoors ? `${openDoors} åbne · ${unlocked} ulåste` : "Huset er sikret"}</b></span></div><small>Tryk på skærmen for at åbne dashboardet</small>`;
+  const config = screensaverConfig();
+  const clockSizeClass = config.clockSize && config.clockSize !== "medium" ? ` is-size-${config.clockSize}` : "";
+  overlay.classList.toggle("has-custom-background", Boolean(config.backgroundImageUrl || config.backgroundColor));
+  overlay.style.backgroundImage = config.backgroundImageUrl ? `url("${config.backgroundImageUrl}")` : "";
+  overlay.style.backgroundColor = !config.backgroundImageUrl && config.backgroundColor ? config.backgroundColor : "";
+  overlay.innerHTML = `<div class="beast-ambient-main"><div class="beast-ambient-time${clockSizeClass}">${now.toLocaleTimeString("da-DK", { hour: "2-digit", minute: "2-digit" })}</div><div class="beast-ambient-date">${now.toLocaleDateString("da-DK", { weekday: "long", day: "numeric", month: "long" })}</div><div class="beast-ambient-summary"><span>${BeastCore.icon("cloud", { size: 26 })}<b>${weather.temperature}</b>${weather.label}</span><span>${BeastCore.icon(unlocked || openDoors ? "unlock" : "shield", { size: 25 })}<b>${unlocked || openDoors ? `${openDoors} åbne · ${unlocked} ulåste` : "Huset er sikret"}</b></span>${ambientBannerPillsMarkup()}</div>${ambientBrightnessMarkup(config)}</div><div class="beast-ambient-bottom">${ambientCameraMarkup(config)}<small>Tryk på skærmen for at åbne dashboardet</small></div>`;
+  document.querySelectorAll("[data-ambient-camera-picture]").forEach((img) => {
+    window.BeastAuth?.setAuthedImageSrc?.(img, img.dataset.ambientCameraPicture);
+  });
+  wireAmbientBrightness(overlay);
   overlay.classList.add("is-visible");
   document.body.classList.add("beast-is-ambient");
   window.clearTimeout(screenOffTimerId);
-  const offAfterMs = Math.max(1, Number(screensaverConfig().offAfterMinutes) || 5) * 60 * 1000;
+  const offAfterMs = Math.max(1, Number(config.offAfterMinutes) || 5) * 60 * 1000;
   screenOffTimerId = window.setTimeout(() => {
     if (document.body.classList.contains("beast-is-ambient") && !document.hidden) setKioskScreenPower(false);
   }, offAfterMs);
+  window.clearInterval(ambientClockTimerId);
+  ambientClockTimerId = window.setInterval(updateAmbientClock, 30000);
 }
 
 function scheduleAmbientMode() {

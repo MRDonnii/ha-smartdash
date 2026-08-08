@@ -346,14 +346,37 @@ a.beast-rail-btn:visited {
 .beast-data-quality[data-quality="stale"] { color:var(--warning); border-color:rgba(255,200,87,.35); }.beast-data-quality[data-quality="unavailable"] { color:var(--danger); border-color:rgba(255,72,105,.35); }
 
 
-.beast-ambient-mode { position:fixed; inset:0; z-index:2000; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:12px; padding:8vh 8vw; opacity:0; visibility:hidden; pointer-events:none; color:#f7fbff; background:radial-gradient(circle at 50% 35%, color-mix(in srgb, var(--accent-a) 16%, transparent), transparent 38%),rgba(3,6,12,.96); backdrop-filter:blur(24px); transition:opacity .5s ease,visibility .5s ease; }
+/* Two-row grid (not a single centered flex column) so the clock/summary
+   block and the bottom bar are independent: 1fr always gives .beast-
+   ambient-main all the leftover space to center itself within, and auto
+   always sizes .beast-ambient-bottom to just its own content and pins it
+   to the screen's bottom edge -- true regardless of whether the bottom
+   bar has camera tiles in it or is just the hint text alone. A single
+   flex column with one shared justify-content/margin-auto can't do both
+   independently (whichever element claims the free space pushes the
+   other off-center). */
+.beast-ambient-mode { position:fixed; inset:0; z-index:2000; overflow:hidden; display:grid; grid-template-rows: 1fr auto; padding:8vh 8vw; opacity:0; visibility:hidden; pointer-events:none; color:#f7fbff; background:radial-gradient(circle at 50% 35%, color-mix(in srgb, var(--accent-a) 16%, transparent), transparent 38%),rgba(3,6,12,.96); background-size:cover; background-position:center; background-repeat:no-repeat; backdrop-filter:blur(24px); transition:opacity .5s ease,visibility .5s ease; }
 .beast-ambient-mode.is-visible { opacity:1; visibility:visible; pointer-events:auto; }
+.beast-ambient-mode.has-custom-background { backdrop-filter:none; }
+.beast-ambient-main { min-height:0; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:12px; }
 .beast-ambient-time { font-size:clamp(6rem,15vw,13rem); font-weight:800; line-height:.9; letter-spacing:-.055em; font-variant-numeric:tabular-nums; }
+.beast-ambient-time.is-size-small { font-size:clamp(3.2rem,9vw,7rem); }
+.beast-ambient-time.is-size-large { font-size:clamp(8rem,19vw,17rem); }
 .beast-ambient-date { color:rgba(255,255,255,.62); font-size:clamp(1.4rem,2.4vw,2.3rem); text-transform:capitalize; }
-.beast-ambient-summary { display:flex; gap:18px; margin-top:32px; }
+.beast-ambient-summary { display:flex; flex-wrap:wrap; justify-content:center; gap:18px; margin-top:32px; }
 .beast-ambient-summary > span { min-height:64px; display:flex; align-items:center; gap:12px; padding:12px 20px; border:1px solid rgba(255,255,255,.12); border-radius:22px; background:rgba(255,255,255,.055); color:rgba(255,255,255,.68); }
 .beast-ambient-summary b { color:#fff; font-size:1.25rem; }
-.beast-ambient-mode > small { margin-top:auto; color:rgba(255,255,255,.35); font-size:1rem; }
+.beast-ambient-brightness { display:flex; align-items:center; gap:10px; margin-top:18px; background:rgba(10,12,20,.6); border:1px solid rgba(255,255,255,.14); border-radius:999px; padding:10px 18px; color:rgba(255,255,255,.7); backdrop-filter:blur(8px); }
+.beast-ambient-brightness label { display:flex; align-items:center; gap:10px; }
+.beast-ambient-brightness input[type="range"] { width:170px; accent-color:var(--accent-a); }
+/* Always the grid's second row -- always at the bottom, camera tiles or not. */
+.beast-ambient-bottom { display:flex; flex-direction:column; align-items:center; gap:14px; padding-top:20px; }
+.beast-ambient-bottom > small { color:rgba(255,255,255,.35); font-size:1rem; }
+/* Tiles in a row -- up to 3, auto-centered by justify-content regardless
+   of count (1 tile just ends up centered). */
+.beast-ambient-camera-row { display:flex; justify-content:center; align-items:center; flex-wrap:wrap; gap:16px; }
+.beast-ambient-camera-tile { width:280px; height:168px; border-radius:16px; overflow:hidden; border:1px solid rgba(255,255,255,.14); background:rgba(255,255,255,.04); box-shadow:0 14px 40px rgba(0,0,0,.35); }
+.beast-ambient-camera-tile-frame { display:block; width:100%; height:100%; object-fit:cover; border:0; }
 .beast-is-ambient .beast-app { visibility:hidden; }
 
 .beast-doorbell-view { position:fixed; inset:0; z-index:4000; overflow:hidden; background:#020408; }
