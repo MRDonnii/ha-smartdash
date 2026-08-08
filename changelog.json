@@ -1,5 +1,13 @@
 [
   {
+    "version": "20260808-14",
+    "tag": "v0.5.19",
+    "date": "2026-08-08",
+    "changes": [
+      "Fixed the post banner never actually appearing: its container element was never added to the overview page's markup, so the code that shows it had nothing to attach to and silently did nothing every time -- not a new issue from v0.5.18, this container was missing from the start. It now actually shows up when there's post."
+    ]
+  },
+  {
     "version": "20260808-13",
     "tag": "v0.5.18",
     "date": "2026-08-08",
