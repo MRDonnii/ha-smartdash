@@ -1157,6 +1157,55 @@
     </section>`;
   }
 
+  function renderLockScreenView() {
+    const lockScreen = BeastConfig.get("lockScreen") || {};
+    const kioskLightConfigured = Boolean(BeastLocalSettings.get("kioskScreenLight", BeastConfig.get("appEntities.kioskScreenLight")));
+    return `<section class="admin-view${activeView === "lockscreen" ? " is-active" : ""}" data-admin-view="lockscreen">
+      <div class="admin-settings-intro"><div><h2>${t("Låseskærm", "Lock screen")}</h2><p>${t("Design af selve låseskærmen, der vises når skærmen er låst med en pinkode.", "Design of the lock screen itself, shown while the screen is locked with a PIN.")}</p></div></div>
+      <div class="admin-card admin-settings-group"><div class="admin-card-head"><div><h2>${t("Baggrund", "Background")}</h2><p>${t("Et billede har forrang frem for farven, hvis begge er sat.", "An image takes priority over the color if both are set.")}</p></div></div><div class="beast-mqtt-config">
+        <label class="admin-field"><span>${t("Baggrundsbillede — adresse", "Background image — address")}</span><input type="text" id="adminLockBgUrl" value="${escapeHtml(lockScreen.backgroundImageUrl || "")}" placeholder="https://…"></label>
+        <label class="admin-field admin-favicon-upload"><span>${t("Vælg billedfil", "Choose an image file")}</span><input type="file" id="adminLockBgFile" accept="image/png,image/jpeg,image/webp"><small>${t("PNG, JPEG eller WebP · højst 1 MB", "PNG, JPEG or WebP · max 1 MB")}</small></label>
+        <label class="admin-security-toggle"><span><strong>${t("Brug baggrundsfarve", "Use background color")}</strong><small>${t("Bruges kun når der ikke er sat et billede.", "Only used when no image is set.")}</small></span><input type="checkbox" id="adminLockBgColorEnabled"${lockScreen.backgroundColor ? " checked" : ""}></label>
+        <label><span>${t("Baggrundsfarve", "Background color")}</span><input type="color" id="adminLockBgColor" value="${escapeHtml(lockScreen.backgroundColor || "#0a0b10")}"></label>
+        <button type="button" class="beast-btn" id="adminLockBgClear">${t("Ryd baggrund (brug standard)", "Clear background (use default)")}</button>
+      </div></div>
+      <div class="admin-card admin-settings-group"><div class="admin-card-head"><div><h2>${t("Ur", "Clock")}</h2></div></div><div class="beast-mqtt-config">
+        <label><span>${t("Vis ur på låseskærmen", "Show clock on the lock screen")}</span>
+          <select id="adminLockClockShow">
+            <option value="1" ${lockScreen.showClock !== false ? "selected" : ""}>${t("Til", "On")}</option>
+            <option value="0" ${lockScreen.showClock === false ? "selected" : ""}>${t("Fra", "Off")}</option>
+          </select>
+        </label>
+        <label><span>${t("Urets størrelse", "Clock size")}</span>
+          <select id="adminLockClockSize">
+            <option value="small" ${lockScreen.clockSize === "small" ? "selected" : ""}>${t("Lille", "Small")}</option>
+            <option value="medium" ${!lockScreen.clockSize || lockScreen.clockSize === "medium" ? "selected" : ""}>${t("Mellem", "Medium")}</option>
+            <option value="large" ${lockScreen.clockSize === "large" ? "selected" : ""}>${t("Stor", "Large")}</option>
+          </select>
+        </label>
+      </div></div>
+      <div class="admin-card admin-settings-group"><div class="admin-card-head"><div><h2>${t("Kamera", "Camera")}</h2><p>${t("Viser et kamera som fuldskærms-baggrund bag koden, med et mørkt lag ovenpå så koden kan læses.", "Shows a camera as a full-screen background behind the code pad, with a dark veil on top so the code stays readable.")}</p></div></div><div class="beast-mqtt-config">
+        <label><span>${t("Vis kamera på låseskærmen", "Show camera on the lock screen")}</span>
+          <select id="adminLockCameraShow">
+            <option value="0" ${lockScreen.showCamera ? "" : "selected"}>${t("Fra", "Off")}</option>
+            <option value="1" ${lockScreen.showCamera ? "selected" : ""}>${t("Til", "On")}</option>
+          </select>
+        </label>
+        <label><span>${t("Kamera", "Camera")}</span>${BeastEntityPicker.selectHtml({ id: "adminLockCameraEntity", domain: "camera", selected: lockScreen.cameraEntity })}</label>
+      </div></div>
+      <div class="admin-card admin-settings-group"><div class="admin-card-head"><div><h2>${t("Lysstyrke", "Brightness")}</h2><p>${t("Tilføjer en lysstyrke-skyder på låseskærmen, der styrer kiosk-skærmens egen light-entity (sat op under Grundindstillinger → Kiosk & dørklokke, lokalt pr. skærm).", "Adds a brightness slider on the lock screen, controlling this kiosk's own screen light entity (set up under Basic settings → Kiosk & doorbell, locally per screen).")}</p></div></div><div class="beast-mqtt-config">
+        <label><span>${t("Lysstyrke-skyder på låseskærmen", "Brightness slider on the lock screen")}</span>
+          <select id="adminLockBrightnessEnabled">
+            <option value="0" ${lockScreen.brightnessEnabled ? "" : "selected"}>${t("Fra", "Off")}</option>
+            <option value="1" ${lockScreen.brightnessEnabled ? "selected" : ""}>${t("Til", "On")}</option>
+          </select>
+        </label>
+        ${kioskLightConfigured ? "" : `<p class="admin-field-hint">${t("Ingen kiosk-skærm-entity sat op på denne skærm endnu — sæt den op under Grundindstillinger → Kiosk & dørklokke, så virker skyderen.", "No kiosk screen entity set up on this screen yet — set it up under Basic settings → Kiosk & doorbell, and the slider will work.")}</p>`}
+      </div></div>
+      <div class="admin-actions"><button type="button" class="beast-btn beast-btn-primary" id="adminLockScreenSave">${t("Gem låseskærm", "Save lock screen")}</button><span class="admin-save-state" data-save-state="lockscreen"></span></div>
+    </section>`;
+  }
+
   function renderAdvarslerView() {
     const features = BeastConfig.get("features") || {};
     const app = BeastConfig.get("appEntities") || {};
@@ -1248,6 +1297,7 @@
     if (activeView === "security-settings") return renderSecurityView();
     if (activeView === "screensaver") return renderScreensaverView();
     if (activeView === "advarsler") return renderAdvarslerView();
+    if (activeView === "lockscreen") return renderLockScreenView();
     if (activeView === "backup") return renderBackupView();
     if (activeView === "updates") return renderUpdatesView();
     const panel = PANELS.find((item) => item.id === activeView);
@@ -1270,6 +1320,7 @@
             <p class="admin-nav-section">Indstillinger</p>
             <button class="${activeView === "settings" ? "is-active" : ""}" type="button" data-view="settings">Udseende & enhed</button>
             <button class="${activeView === "security-settings" ? "is-active" : ""}" type="button" data-view="security-settings">Adgang & pinkode</button>
+            <button class="${activeView === "lockscreen" ? "is-active" : ""}" type="button" data-view="lockscreen">${t("Låseskærm", "Lock screen")}</button>
             <button class="${activeView === "screensaver" ? "is-active" : ""}" type="button" data-view="screensaver">${t("Pauseskærm", "Screensaver")}</button>
             <button class="${activeView === "advarsler" ? "is-active" : ""}" type="button" data-view="advarsler">${t("Advarsler", "Alerts")}</button>
             <button class="${activeView === "backup" ? "is-active" : ""}" type="button" data-view="backup">Backup & gendannelse</button>
@@ -1278,7 +1329,7 @@
           <div class="admin-sidebar-foot"><a class="admin-back" href="/">Åbn dashboard</a></div>
         </aside>
         <main class="admin-main">
-          <header class="admin-topbar"><div><h1>${activeView === "updates" ? "Opdatering" : activeView === "backup" ? "Backup & gendannelse" : activeView === "security-settings" ? "Sikkerhed" : activeView === "screensaver" ? t("Pauseskærm", "Screensaver") : activeView === "advarsler" ? t("Advarsler", "Alerts") : activeView === "settings" ? "Udseende & enhed" : activeView === "overview" ? "Overblik" : "Opsætning"}</h1><p>${activeView === "updates" ? "Se hvad der er nyt, og gendan en tidligere version om nødvendigt." : activeView === "security-settings" ? "Lokal adgang, pinkode og beskyttelse af adminpanelet." : activeView === "screensaver" ? t("Styrer denne skærm/browser — hver kiosk kan have sin egen tidsplan.", "Controls this screen/browser only — each kiosk can have its own schedule.") : activeView === "advarsler" ? t("Alt om post-banneret samlet ét sted — slå til/fra og vælg entities.", "Everything about the post banner in one place — turn it on/off and pick entities.") : "Konfigurationen gemmes centralt på serveren."}</p></div><div class="admin-topbar-tools"><label class="admin-language-picker"><span>${BeastCore.icon("globe", { size: 15 })}</span><select id="adminLanguageSelect" aria-label="Dashboard-sprog"><option value="en"${dashboardLanguage !== "da" ? " selected" : ""}>English</option><option value="da"${dashboardLanguage === "da" ? " selected" : ""}>Dansk</option></select></label><span class="admin-status" id="adminHaStatus" data-state="${connected ? "connected" : "connecting"}">${connected ? "Home Assistant forbundet" : "Forbinder til Home Assistant…"}</span></div></header>
+          <header class="admin-topbar"><div><h1>${activeView === "updates" ? "Opdatering" : activeView === "backup" ? "Backup & gendannelse" : activeView === "security-settings" ? "Sikkerhed" : activeView === "lockscreen" ? t("Låseskærm", "Lock screen") : activeView === "screensaver" ? t("Pauseskærm", "Screensaver") : activeView === "advarsler" ? t("Advarsler", "Alerts") : activeView === "settings" ? "Udseende & enhed" : activeView === "overview" ? "Overblik" : "Opsætning"}</h1><p>${activeView === "updates" ? "Se hvad der er nyt, og gendan en tidligere version om nødvendigt." : activeView === "security-settings" ? "Lokal adgang, pinkode og beskyttelse af adminpanelet." : activeView === "lockscreen" ? t("Design af selve låseskærmen — baggrund, ur, kamera og lysstyrke.", "Design of the lock screen itself — background, clock, camera and brightness.") : activeView === "screensaver" ? t("Styrer denne skærm/browser — hver kiosk kan have sin egen tidsplan.", "Controls this screen/browser only — each kiosk can have its own schedule.") : activeView === "advarsler" ? t("Alt om post-banneret samlet ét sted — slå til/fra og vælg entities.", "Everything about the post banner in one place — turn it on/off and pick entities.") : "Konfigurationen gemmes centralt på serveren."}</p></div><div class="admin-topbar-tools"><label class="admin-language-picker"><span>${BeastCore.icon("globe", { size: 15 })}</span><select id="adminLanguageSelect" aria-label="Dashboard-sprog"><option value="en"${dashboardLanguage !== "da" ? " selected" : ""}>English</option><option value="da"${dashboardLanguage === "da" ? " selected" : ""}>Dansk</option></select></label><span class="admin-status" id="adminHaStatus" data-state="${connected ? "connected" : "connecting"}">${connected ? "Home Assistant forbundet" : "Forbinder til Home Assistant…"}</span></div></header>
           ${renderActiveView()}
         </main>
       </div>`;
@@ -1696,6 +1747,33 @@
       });
       renderShell();
     });
+    document.getElementById("adminLockBgFile")?.addEventListener("change", (event) => {
+      const file = event.currentTarget.files?.[0];
+      if (!file) return;
+      const state = document.querySelector('[data-save-state="lockscreen"]');
+      if (file.size > 1024 * 1024) { if (state) state.textContent = t("Filen må højst fylde 1 MB", "The file must be at most 1 MB"); event.currentTarget.value = ""; return; }
+      const reader = new FileReader();
+      reader.onload = () => { document.getElementById("adminLockBgUrl").value = reader.result; };
+      reader.readAsDataURL(file);
+    });
+    document.getElementById("adminLockBgClear")?.addEventListener("click", () => {
+      document.getElementById("adminLockBgUrl").value = "";
+      document.getElementById("adminLockBgFile").value = "";
+      document.getElementById("adminLockBgColorEnabled").checked = false;
+      document.getElementById("adminLockBgColor").value = "#0a0b10";
+    });
+    document.getElementById("adminLockScreenSave")?.addEventListener("click", (event) => save(event.currentTarget, "lockscreen", async () => {
+      return BeastConfig.set("lockScreen", {
+        ...(BeastConfig.get("lockScreen") || {}),
+        backgroundImageUrl: document.getElementById("adminLockBgUrl").value.trim() || null,
+        backgroundColor: document.getElementById("adminLockBgColorEnabled").checked ? document.getElementById("adminLockBgColor").value : null,
+        showClock: document.getElementById("adminLockClockShow").value === "1",
+        clockSize: document.getElementById("adminLockClockSize").value || "medium",
+        showCamera: document.getElementById("adminLockCameraShow").value === "1",
+        cameraEntity: document.getElementById("adminLockCameraEntity").value || null,
+        brightnessEnabled: document.getElementById("adminLockBrightnessEnabled").value === "1"
+      });
+    }));
     document.getElementById("adminAdvarslerSave")?.addEventListener("click", (event) => save(event.currentTarget, "advarsler", async () => {
       const features = {
         ...(BeastConfig.get("features") || {}),

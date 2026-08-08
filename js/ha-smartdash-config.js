@@ -110,6 +110,18 @@ const BeastConfig = (() => {
       lockScheduleEnabled: false, lockScheduleStart: "22:00", lockScheduleEnd: "06:00",
       positions: {}
     },
+    // Design of the PIN lock overlay itself -- shared across every kiosk
+    // (like the rest of Administration), except brightnessEnabled just
+    // turns on a slider that drives each device's own local kioskScreenLight
+    // (a per-device local setting, same as the screensaver's screen-power
+    // entity) -- there's no single "brightness" entity that makes sense to
+    // share across different physical screens.
+    lockScreen: {
+      backgroundImageUrl: null, backgroundColor: null,
+      showClock: true, clockSize: "medium",
+      showCamera: false, cameraEntity: null,
+      brightnessEnabled: false, brightnessPercent: 80
+    },
     screensaver: { enabled: true, schedule: "custom", startTime: "23:00", endTime: "05:30", offAfterMinutes: 5 },
     screenLock: { pinHash: null, autoLockEnabled: false },
     panels: DEFAULT_PANELS
