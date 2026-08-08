@@ -38,6 +38,15 @@ function releaseTag($htmlPath) {
   return null;
 }
 
+// Mirrors the same-named function in update.php -- if a rollback here is
+// itself a downgrade, remember the build we rolled back FROM so the
+// dashboard's idle auto-updater won't silently reinstall it the next time
+// GitHub still reports it as latest. See update.php for the full rationale.
+function recordSkippedIfDowngrade($dataDir, $fromBuildId, $toBuildId) {
+  if (!$fromBuildId || !$toBuildId || $toBuildId >= $fromBuildId) return;
+  @file_put_contents($dataDir . "/update-skip.json", json_encode(["skippedBuildId" => $fromBuildId, "skippedAt" => time()]));
+}
+
 function isSafeVersion($version) {
   return is_string($version) && preg_match('/^[A-Za-z0-9._-]{1,64}$/', $version);
 }
@@ -145,6 +154,7 @@ if ($action === "rollback") {
     $from = $src . "/" . $relPath;
     if (file_exists($from)) copyRecursive($from, $root . "/" . $relPath);
   }
+  recordSkippedIfDowngrade($dataDir, $current, $target);
   echo json_encode(["success" => true, "restoredVersion" => $target]);
   exit;
 }

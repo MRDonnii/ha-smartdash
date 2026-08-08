@@ -96,7 +96,15 @@ const BeastConfig = (() => {
     // banner-specific entity: an optional camera to show instead of the
     // printer's own built-in camera image (e.g. a separate Protect camera
     // pointed at the printer).
-    banners: { doorOpenTooLongMinutes: 15, printerCameraOverride: null },
+    // doorSchedule/lockSchedule restrict the "open/unlocked too long" check
+    // to a time window (e.g. only warn about open doors overnight) -- kept
+    // separate because a door left open at night and a door left unlocked
+    // during the day are different concerns for most households.
+    banners: {
+      doorOpenTooLongMinutes: 15, printerCameraOverride: null,
+      doorScheduleEnabled: false, doorScheduleStart: "22:00", doorScheduleEnd: "06:00",
+      lockScheduleEnabled: false, lockScheduleStart: "22:00", lockScheduleEnd: "06:00"
+    },
     screensaver: { enabled: true, schedule: "custom", startTime: "23:00", endTime: "05:30", offAfterMinutes: 5 },
     screenLock: { pinHash: null, autoLockEnabled: false },
     panels: DEFAULT_PANELS
@@ -219,6 +227,20 @@ const BeastConfig = (() => {
     return save(clone);
   }
 
+  // Patches several top-level keys in one write. Prefer this over calling
+  // set() several times in a row (e.g. via Promise.all) -- each set() call
+  // POSTs the *entire* config on its own, so firing three at once sends
+  // three near-simultaneous writes of the same file and only the response
+  // to the one that happens to land last is actually meaningful; a
+  // transient failure on any of the others surfaces as "couldn't save" in
+  // the UI even though the final write on disk was fine.
+  function setMany(patch) {
+    const config = ensureLoaded();
+    const clone = JSON.parse(JSON.stringify(config));
+    Object.keys(patch).forEach((key) => { clone[key] = patch[key]; });
+    return save(clone);
+  }
+
   function setPanel(panelId, patch) {
     const config = ensureLoaded();
     const nextPanel = deepMerge(config.panels[panelId] || {}, patch);
@@ -259,6 +281,7 @@ const BeastConfig = (() => {
     init,
     get,
     set,
+    setMany,
     setPanel,
     isPanelConfigured,
     isSectionHidden,

@@ -15,6 +15,17 @@
   max-height: 100%;
 }
 
+/* Pure JS mount point for the banner cards -- not a real layout box. Left
+   as a plain block element, it's still a direct child of
+   .beast-overview-grid (a grid container), so CSS Grid auto-placement
+   claims a real 1x1 cell for it regardless of the fact it has no visible
+   content of its own (its children are all position:fixed and contribute
+   nothing to its size) -- that stray cell shifts every explicitly-sized
+   card after it by one column under dense packing. display:contents
+   removes it from the box tree entirely so it can never become a grid
+   item, while its position:fixed children keep rendering normally. */
+#beastOvBanners { display: contents; }
+
 .beast-ov-mail-banner {
   /* fixed, not absolute: dragging uses getBoundingClientRect() (viewport-
      relative) coordinates directly as left/top. absolute would resolve

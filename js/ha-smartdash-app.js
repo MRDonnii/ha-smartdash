@@ -428,7 +428,10 @@ async function checkForDashboardUpdate() {
       pendingUpdateChangelog = [{ version: targetVersion, changes: String(data.releaseNotes).split("\n").map((line) => line.replace(/^[-*]\s*/, "").trim()).filter(Boolean) }];
     }
     renderUpdateBanner();
-    if (pendingUpdateVersion && !skippedUpdateVersion() && Date.now() - lastUserActivityAt > UPDATE_IDLE_AUTOAPPLY_MS) {
+    // skipAutoInstall means this exact build is one we (or a rollback)
+    // previously moved away from -- still shown/installable via the manual
+    // "Opdater nu" button above, just not silently reinstalled while idle.
+    if (pendingUpdateVersion && !skippedUpdateVersion() && !data.skipAutoInstall && Date.now() - lastUserActivityAt > UPDATE_IDLE_AUTOAPPLY_MS) {
       installPendingUpdate(updateBannerEl);
     }
   } catch (error) {

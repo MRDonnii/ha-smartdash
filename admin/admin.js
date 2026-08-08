@@ -1201,6 +1201,23 @@
         </label>
         <label><span>${t("Advar efter (minutter)", "Warn after (minutes)")}</span><input type="number" min="1" max="720" id="adminAdvarslerDoorMinutes" value="${Number(banners.doorOpenTooLongMinutes) || 15}"></label>
         ${doorsConfigured ? "" : `<p class="admin-field-hint">${t("Ingen døre/låse fundet endnu — sæt dem op under Sikkerhed, så virker banneret automatisk.", "No doors/locks found yet — set them up under Security, and the banner will work automatically.")}</p>`}
+        <p class="admin-field-hint">${t("Begræns advarslerne til et tidsrum, fx om natten — ellers vises de altid, når tærsklen er nået.", "Restrict the warnings to a time window, e.g. overnight — otherwise they show any time the threshold is reached.")}</p>
+        <label><span>${t("Døre & vinduer — kun i tidsrum", "Doors & windows — only within time window")}</span>
+          <select id="adminAdvarslerDoorScheduleEnabled">
+            <option value="0" ${banners.doorScheduleEnabled ? "" : "selected"}>${t("Fra — advar altid", "Off — always warn")}</option>
+            <option value="1" ${banners.doorScheduleEnabled ? "selected" : ""}>${t("Til — kun i tidsrum", "On — only within time window")}</option>
+          </select>
+        </label>
+        <label><span>${t("Døre & vinduer — starttidspunkt", "Doors & windows — start time")}</span><input type="time" id="adminAdvarslerDoorScheduleStart" value="${escapeHtml(banners.doorScheduleStart || "22:00")}"></label>
+        <label><span>${t("Døre & vinduer — sluttidspunkt", "Doors & windows — end time")}</span><input type="time" id="adminAdvarslerDoorScheduleEnd" value="${escapeHtml(banners.doorScheduleEnd || "06:00")}"></label>
+        <label><span>${t("Låse — kun i tidsrum", "Locks — only within time window")}</span>
+          <select id="adminAdvarslerLockScheduleEnabled">
+            <option value="0" ${banners.lockScheduleEnabled ? "" : "selected"}>${t("Fra — advar altid", "Off — always warn")}</option>
+            <option value="1" ${banners.lockScheduleEnabled ? "selected" : ""}>${t("Til — kun i tidsrum", "On — only within time window")}</option>
+          </select>
+        </label>
+        <label><span>${t("Låse — starttidspunkt", "Locks — start time")}</span><input type="time" id="adminAdvarslerLockScheduleStart" value="${escapeHtml(banners.lockScheduleStart || "22:00")}"></label>
+        <label><span>${t("Låse — sluttidspunkt", "Locks — end time")}</span><input type="time" id="adminAdvarslerLockScheduleEnd" value="${escapeHtml(banners.lockScheduleEnd || "06:00")}"></label>
       </div></div>
       <div class="admin-actions"><button type="button" class="beast-btn beast-btn-primary" id="adminAdvarslerSave">${t("Gem advarsler", "Save alerts")}</button><span class="admin-save-state" data-save-state="advarsler"></span></div>
     </section>`;
@@ -1502,10 +1519,12 @@
     });
     document.querySelector("[data-save-title]")?.addEventListener("click", (event) => save(event.currentTarget, "title", async () => {
       const haBaseUrl = document.getElementById("adminHaBaseUrl").value.trim();
-      await BeastConfig.set("haBaseUrl", haBaseUrl || null);
       if (haBaseUrl) BeastAuth.setHaBaseUrl(haBaseUrl);
-      await BeastConfig.set("dashboardTitle", document.getElementById("adminDashboardTitle").value.trim() || "HA Smartdash");
-      const result = await BeastConfig.set("faviconUrl", document.getElementById("adminFaviconUrl").value.trim() || "/favicon.svg");
+      const result = await BeastConfig.setMany({
+        haBaseUrl: haBaseUrl || null,
+        dashboardTitle: document.getElementById("adminDashboardTitle").value.trim() || "HA Smartdash",
+        faviconUrl: document.getElementById("adminFaviconUrl").value.trim() || "/favicon.svg"
+      });
       document.title = BeastConfig.get("dashboardTitle") || "HA Smartdash";
       const favicon = document.querySelector('link[rel="icon"]');
       if (favicon) favicon.href = BeastConfig.get("faviconUrl") || "/favicon.svg";
@@ -1518,8 +1537,9 @@
     document.querySelector("[data-save-features]")?.addEventListener("click", (event) => save(event.currentTarget, "features", async () => {
       const features = {};
       FEATURE_OPTIONS.forEach(([key]) => { features[key] = Boolean(document.querySelector(`[data-feature="${key}"]`)?.checked); });
-      const result = await BeastConfig.set("features", features);
-      if (features.quickScenarios) await BeastConfig.set("appEntities", { ...BeastConfig.get("appEntities"), quickScenes: Array.from(checkListSelections.get("admin_features_quickScenes") || []) });
+      const patch = { features };
+      if (features.quickScenarios) patch.appEntities = { ...BeastConfig.get("appEntities"), quickScenes: Array.from(checkListSelections.get("admin_features_quickScenes") || []) };
+      const result = await BeastConfig.setMany(patch);
       window.setTimeout(renderShell, 350);
       return result;
     }));
@@ -1695,14 +1715,16 @@
       const banners = {
         ...(BeastConfig.get("banners") || {}),
         doorOpenTooLongMinutes: Math.max(1, Number(document.getElementById("adminAdvarslerDoorMinutes").value) || 15),
-        printerCameraOverride: document.getElementById("adminAdvarslerPrinterCamera").value || null
+        printerCameraOverride: document.getElementById("adminAdvarslerPrinterCamera").value || null,
+        doorScheduleEnabled: document.getElementById("adminAdvarslerDoorScheduleEnabled").value === "1",
+        doorScheduleStart: document.getElementById("adminAdvarslerDoorScheduleStart").value || "22:00",
+        doorScheduleEnd: document.getElementById("adminAdvarslerDoorScheduleEnd").value || "06:00",
+        lockScheduleEnabled: document.getElementById("adminAdvarslerLockScheduleEnabled").value === "1",
+        lockScheduleStart: document.getElementById("adminAdvarslerLockScheduleStart").value || "22:00",
+        lockScheduleEnd: document.getElementById("adminAdvarslerLockScheduleEnd").value || "06:00"
       };
-      const [featuresResult, appEntitiesResult, bannersResult] = await Promise.all([
-        BeastConfig.set("features", features),
-        BeastConfig.set("appEntities", appEntities),
-        BeastConfig.set("banners", banners)
-      ]);
-      return { success: featuresResult?.success !== false && appEntitiesResult?.success !== false && bannersResult?.success !== false };
+      const result = await BeastConfig.setMany({ features, appEntities, banners });
+      return { success: result?.success !== false };
     }));
     document.getElementById("beastMqttSave")?.addEventListener("click", () => {
       const next = {
