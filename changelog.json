@@ -1,5 +1,13 @@
 [
   {
+    "version": "20260808-11",
+    "tag": "v0.5.16",
+    "date": "2026-08-08",
+    "changes": [
+      "Fixed the camera card sometimes only filling about half its container instead of the full card: its height came from a percentage (height: 100%) nested inside a flex chain, which can fail to resolve to a definite value on some browser engines and silently collapse. It's now anchored directly to the card's own box instead, which doesn't depend on that chain resolving correctly. Verified the camera menu button stays on top and clickable, and all camera tiles stay evenly sized."
+    ]
+  },
+  {
     "version": "20260808-10",
     "tag": "v0.5.15",
     "date": "2026-08-08",
