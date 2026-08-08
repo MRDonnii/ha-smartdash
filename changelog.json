@@ -1,5 +1,13 @@
 [
   {
+    "version": "20260808-10",
+    "tag": "v0.5.15",
+    "date": "2026-08-08",
+    "changes": [
+      "Fixed the overview cutting off roughly a third of the way down in the dynamic card layout mode: a hidden placeholder element for the floating music player is a permanent last child of the overview grid, and while empty (no music playing) it was still being placed into its own grid row, pushing the real cards into the remaining space and leaving the rest blank. The placeholder no longer takes up a grid row while empty; the floating player itself is unaffected once music is actually playing."
+    ]
+  },
+  {
     "version": "20260808-09",
     "tag": "v0.5.14",
     "date": "2026-08-08",

@@ -184,6 +184,16 @@
   text-transform: capitalize;
 }
 
+/* #beastOvClockMusic is a permanent trailing child of .beast-overview-grid
+   (see renderOverviewSection() in ha-smartdash-app.js) that only becomes a
+   floating player once populated -- while empty (music inactive) it still
+   participates in grid auto-placement as a bare, unstyled item and gets
+   pushed into its own implicit row, stealing a third of the grid's height
+   for nothing in modes with a real grid-auto-rows (e.g. is-dynamic). */
+#beastOvClockMusic:empty {
+  display: none;
+}
+
 .beast-ov-clock-music {
   position: fixed;
   left: calc(50% + 56px);
