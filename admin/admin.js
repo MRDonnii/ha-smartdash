@@ -907,7 +907,7 @@
     if (!entries.length) return `<p class="admin-empty">Ingen ændringslog fundet.</p>`;
     return entries.map((entry) => `
       <article class="admin-changelog-entry">
-        <header><strong>${escapeHtml(entry.version)}</strong><span>${escapeHtml(entry.date || "")}</span></header>
+        <header><strong>${escapeHtml(entry.tag || entry.version)}</strong><span>${escapeHtml(entry.date || "")}</span></header>
         ${Array.isArray(entry.changes) && entry.changes.length ? `<ul>${entry.changes.map((change) => `<li>${escapeHtml(change)}</li>`).join("")}</ul>` : ""}
       </article>
     `).join("");
@@ -939,10 +939,11 @@
       const changelog = changelogRes.ok ? await changelogRes.json() : [];
       const github = githubRes && githubRes.ok ? await githubRes.json() : null;
       const current = versionsPayload.currentVersion || "ukendt";
+      const currentTag = versionsPayload.currentTag || null;
       const valueEl = tile?.querySelector(".beast-stat-tile-value");
       const metaEl = tile?.querySelector(".beast-stat-tile-meta");
-      if (valueEl) valueEl.textContent = formatVersionLabel(current);
-      if (metaEl) metaEl.textContent = current;
+      if (valueEl) valueEl.textContent = currentTag || formatVersionLabel(current);
+      if (metaEl) metaEl.textContent = currentTag ? current : "";
       if (changelogEl) changelogEl.innerHTML = renderChangelogEntries(Array.isArray(changelog) ? changelog : []);
 
       const versions = versionsPayload.versions || [];
@@ -962,7 +963,8 @@
             : (latestEntry?.changes?.length ? `<ul>${latestEntry.changes.slice(0, 4).map((change) => `<li>${escapeHtml(change)}</li>`).join("")}</ul>` : "");
           const installSource = githubIsNewer ? "github" : "local";
           const installTag = githubIsNewer ? escapeHtml(github.tag || "") : "";
-          installLatestEl.innerHTML = `<div class="admin-install-latest"><div><strong>${t("Ny version klar", "New version ready")}</strong><span>${escapeHtml(formatVersionLabel(latestVersion))}</span>${changesHtml}</div><button type="button" class="beast-btn beast-btn-primary" data-rollback-version="${escapeHtml(latestVersion)}" data-is-newer="true" data-is-latest="true" data-install-source="${installSource}" data-install-tag="${installTag}">${t("Installer ny version", "Install new version")}</button></div>`;
+          const latestLabel = (githubIsNewer ? github.tag : latestEntry?.tag) || formatVersionLabel(latestVersion);
+          installLatestEl.innerHTML = `<div class="admin-install-latest"><div><strong>${t("Ny version klar", "New version ready")}</strong><span>${escapeHtml(latestLabel)}</span>${changesHtml}</div><button type="button" class="beast-btn beast-btn-primary" data-rollback-version="${escapeHtml(latestVersion)}" data-is-newer="true" data-is-latest="true" data-install-source="${installSource}" data-install-tag="${installTag}">${t("Installer ny version", "Install new version")}</button></div>`;
         } else {
           installLatestEl.innerHTML = `<p class="admin-empty">${t("Du kører den nyeste version.", "You're on the latest version.")}</p>`;
         }
@@ -973,7 +975,8 @@
         oldSelect.innerHTML = oldVersions.length
           ? oldVersions.map((item) => {
             const size = item.sizeKb < 1024 ? `${item.sizeKb} KB` : `${(item.sizeKb / 1024).toFixed(1)} MB`;
-            return `<option value="${escapeHtml(item.version)}">${escapeHtml(formatVersionLabel(item.version))} · ${size}</option>`;
+            const label = item.tag || formatVersionLabel(item.version);
+            return `<option value="${escapeHtml(item.version)}">${escapeHtml(label)} · ${size}</option>`;
           }).join("")
           : `<option value="">${t("Ingen andre versioner gemt", "No other versions saved")}</option>`;
       }
@@ -987,7 +990,8 @@
       }
       const checkedAt = new Date().toLocaleTimeString();
       if (latestVersion && latestVersion > current) {
-        setUpdateStatus("outdated", t(`Ny version tilgængelig: ${latestVersion} · tjekket ${checkedAt}`, `New version available: ${latestVersion} · checked ${checkedAt}`));
+        const latestStatusLabel = (githubIsNewer ? github.tag : latestEntry?.tag) || latestVersion;
+        setUpdateStatus("outdated", t(`Ny version tilgængelig: ${latestStatusLabel} · tjekket ${checkedAt}`, `New version available: ${latestStatusLabel} · checked ${checkedAt}`));
       } else if (!github) {
         setUpdateStatus("current", t(`Du kører den nyeste version (kunne ikke tjekke GitHub) · tjekket ${checkedAt}`, `You're on the latest version (couldn't reach GitHub) · checked ${checkedAt}`));
       } else {

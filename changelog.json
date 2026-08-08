@@ -1,5 +1,13 @@
 [
   {
+    "version": "20260808-06",
+    "tag": "v0.5.11",
+    "date": "2026-08-08",
+    "changes": [
+      "The version number shown in Administration -> Update (both the current version and version history) now matches the release tag on GitHub (e.g. \"v0.5.11\") instead of the internal date-based build ID -- easier to tell which release you're actually looking at, and to compare notes with someone else's install."
+    ]
+  },
+  {
     "version": "20260808-05",
     "date": "2026-08-08",
     "changes": [
