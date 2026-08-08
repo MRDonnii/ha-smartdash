@@ -38,6 +38,26 @@ function isSafeVersion($version) {
   return is_string($version) && preg_match('/^[A-Za-z0-9._-]{1,64}$/', $version);
 }
 
+// If installing $toBuildId is actually a downgrade from $fromBuildId,
+// remember $fromBuildId so the dashboard's own idle auto-updater (in
+// ha-smartdash-app.js) won't silently reinstall it the next time GitHub
+// still reports it as the latest release -- that's exactly what "a
+// rollback fixes it, then the kiosk quietly re-breaks itself an hour
+// later" looks like from the outside. Not a permanent block: build IDs
+// sort as plain strings (YYYYMMDD-NN), so this only matters for as long
+// as GitHub's latest happens to equal this exact build; a genuinely new
+// release naturally supersedes it and check() stops suppressing anything.
+function recordSkippedIfDowngrade($dataDir, $fromBuildId, $toBuildId) {
+  if (!$fromBuildId || !$toBuildId || $toBuildId >= $fromBuildId) return;
+  @file_put_contents($dataDir . "/update-skip.json", json_encode(["skippedBuildId" => $fromBuildId, "skippedAt" => time()]));
+}
+
+function skippedBuildId($dataDir) {
+  $raw = @file_get_contents($dataDir . "/update-skip.json");
+  $decoded = $raw ? json_decode($raw, true) : null;
+  return is_array($decoded) ? ($decoded["skippedBuildId"] ?? null) : null;
+}
+
 function isSafeTag($tag) {
   return is_string($tag) && preg_match('/^v?[0-9]+\.[0-9]+\.[0-9]+$/', $tag);
 }
@@ -182,6 +202,7 @@ if ($action === "check") {
   // right now -- only the GitHub half of the answer is cached.
   $cacheFile = $dataDir . "/update-check-cache.json";
   $cacheTtlSeconds = 300;
+  $skippedId = skippedBuildId($dataDir);
   $cached = null;
   if (is_file($cacheFile)) {
     $raw = @file_get_contents($cacheFile);
@@ -203,6 +224,7 @@ if ($action === "check") {
       "releaseNotes" => $cached["releaseNotes"],
       "publishedAt" => $cached["publishedAt"],
       "cached" => true,
+      "skipAutoInstall" => $skippedId !== null && $skippedId === $remoteBuildId,
     ]);
     exit;
   }
@@ -227,6 +249,7 @@ if ($action === "check") {
           "publishedAt" => $stale["publishedAt"],
           "cached" => true,
           "stale" => true,
+          "skipAutoInstall" => $skippedId !== null && $skippedId === $stale["remoteVersion"],
         ]);
         exit;
       }
@@ -252,6 +275,7 @@ if ($action === "check") {
     "currentVersion" => $current,
     "updateAvailable" => $remoteBuildId > $current,
     "cached" => false,
+    "skipAutoInstall" => $skippedId !== null && $skippedId === $remoteBuildId,
   ] + $payload);
   exit;
 }
@@ -354,6 +378,7 @@ if ($action === "install") {
 
     $installedVersion = currentBuildId($root);
     snapshotCurrent($root, $snapshotsDir, $excludeTopLevel, $installedVersion);
+    recordSkippedIfDowngrade($dataDir, $current, $installedVersion);
 
     echo json_encode(["success" => true, "installedVersion" => $installedVersion, "tag" => $tag]);
   } finally {

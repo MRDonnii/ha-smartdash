@@ -1,5 +1,16 @@
 [
   {
+    "version": "20260808-23",
+    "tag": "v0.5.28",
+    "date": "2026-08-08",
+    "changes": [
+      "Fixed a layout bug where overview cards could shift out of place or leave large unused gaps -- caused by an internal banner-system element that was unintentionally being treated as part of the grid layout.",
+      "The updater no longer silently reinstalls a version you just rolled back from during its idle auto-update check -- rolling back (via Administration or a manual restore) now sticks until a genuinely newer release comes along. The manual \"Update now\" button is unaffected.",
+      "The doors/windows and locks alert can now each be restricted to a configurable time window (e.g. only warn overnight, between 22:00 and 06:00) -- set independently in Administration -> Advarsler, since a door left open at night and one left open during the day are usually different concerns.",
+      "Fixed a bug where saving settings that write more than one field at once (e.g. Advarsler, or the dashboard title/favicon) could report \"couldn't save\" even though the save actually went through -- these now write in a single request instead of several racing ones."
+    ]
+  },
+  {
     "version": "20260808-22",
     "tag": "v0.5.27",
     "date": "2026-08-08",

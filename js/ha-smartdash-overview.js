@@ -368,6 +368,18 @@
     return typeof value === "string" && !["unknown", "unavailable", ""].includes(value) ? value : null;
   }
 
+  // Mirrors app.js's isNightScreenPeriod() window logic (handles a range
+  // that wraps past midnight, e.g. 22:00-06:00) but keyed to its own
+  // start/end pair rather than the screensaver's.
+  function isWithinBannerSchedule(startTime, endTime) {
+    const minutes = new Date().getHours() * 60 + new Date().getMinutes();
+    const start = parseTimeToMinutes(startTime, 22 * 60);
+    const end = parseTimeToMinutes(endTime, 6 * 60);
+    if (start === end) return true;
+    if (start > end) return minutes >= start || minutes < end;
+    return minutes >= start && minutes < end;
+  }
+
   function mailImages() {
     return {
       indkorsel: validText(BeastHaSocket.getState(MAIL_IMAGE_ID)?.state),
@@ -465,16 +477,20 @@
         const changedAt = new Date(state?.last_changed || 0).getTime();
         return Number.isFinite(changedAt) && now - changedAt >= thresholdMs;
       };
-      const longOpen = DOOR_IDS.map((id, index) => {
+      const doorScheduleOk = !BeastConfig.get("banners.doorScheduleEnabled") ||
+        isWithinBannerSchedule(BeastConfig.get("banners.doorScheduleStart"), BeastConfig.get("banners.doorScheduleEnd"));
+      const lockScheduleOk = !BeastConfig.get("banners.lockScheduleEnabled") ||
+        isWithinBannerSchedule(BeastConfig.get("banners.lockScheduleStart"), BeastConfig.get("banners.lockScheduleEnd"));
+      const longOpen = doorScheduleOk ? DOOR_IDS.map((id) => {
         const state = BeastHaSocket.getState(id);
         if (state?.state !== "on" || !tooLong(state)) return null;
-        return LOCKS[index]?.label || BeastEntityPicker.friendlyName(id);
-      }).filter(Boolean);
-      const longUnlocked = LOCKS.filter((entry) => {
+        return BeastEntityPicker.friendlyName(id);
+      }).filter(Boolean) : [];
+      const longUnlocked = lockScheduleOk ? LOCKS.filter((entry) => {
         const state = BeastHaSocket.getState(entry.id);
         const value = state?.state;
         return value && !["locked", "unknown", "unavailable"].includes(value) && tooLong(state);
-      }).map((entry) => entry.label);
+      }).map((entry) => entry.label) : [];
       if (longOpen.length || longUnlocked.length) {
         const rows = [
           ...longOpen.map((label) => `${label} — åben`),
