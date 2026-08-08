@@ -1192,8 +1192,8 @@
         <p class="admin-field-hint">${t("Bruges i stedet for printerens eget kamerabillede, hvis valgt — fx et separat Protect-kamera rettet mod printeren.", "Used instead of the printer's own built-in camera image, if set — e.g. a separate Protect camera pointed at the printer.")}</p>
         ${printerConfigured ? "" : `<p class="admin-field-hint">${t("Ingen printer-entities fundet endnu — sæt printeren op under Indstillinger → 3D Printer, så virker banneret automatisk.", "No printer entities found yet — set the printer up under Settings → 3D Printer, and the banner will work automatically.")}</p>`}
       </div></div>
-      <div class="admin-card admin-settings-group"><div class="admin-card-head"><div><h2>${t("Døre & låse", "Doors & locks")}</h2><p>${t("Viser en advarsel, hvis en dør eller lås fra Sikkerhed har stået åben/ulåst længere end angivet.", "Shows a warning if a door or lock from Security has been open/unlocked longer than the time set below.")}</p></div></div><div class="beast-mqtt-config">
-        <label><span>${t("Døre & låse-banner", "Doors & locks banner")}</span>
+      <div class="admin-card admin-settings-group"><div class="admin-card-head"><div><h2>${t("Døre, vinduer & låse", "Doors, windows & locks")}</h2><p>${t("Viser en kompakt advarsel, hvis en dør, et vindue eller en lås fra Sikkerhed har stået åben/ulåst længere end angivet.", "Shows a compact warning if a door, window or lock from Security has been open/unlocked longer than the time set below.")}</p></div></div><div class="beast-mqtt-config">
+        <label><span>${t("Døre, vinduer & låse-banner", "Doors, windows & locks banner")}</span>
           <select id="adminAdvarslerDoorBanner">
             <option value="1" ${features.doorBanner !== false ? "selected" : ""}>${t("Til", "On")}</option>
             <option value="0" ${features.doorBanner === false ? "selected" : ""}>${t("Fra — vises aldrig", "Off — never shown")}</option>

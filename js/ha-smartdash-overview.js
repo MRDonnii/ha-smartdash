@@ -214,17 +214,30 @@
   }
 
   // Multiple banners can be visible at once now; each remembers its own
-  // dragged position independently (keyed by type). Undragged banners stack
-  // vertically by default (12px + index * 222px, still horizontally
-  // centered via CSS) rather than all landing on top of each other.
+  // dragged position independently (keyed by type). This only ever applies
+  // a *saved* (dragged) position -- the undragged default stack is handled
+  // separately by stackDefaultBanners(), once every visible banner's real
+  // content/height is in the DOM, so banners of different heights (e.g. the
+  // compact doors banner vs. the taller image banners) sit flush against
+  // each other instead of leaving a gap sized for the tallest one.
   function positionBanner(host, type) {
     const saved = savedBannerPosition(type);
-    if (saved) { applyBannerPosition(host, saved); return; }
-    const index = Number(host.dataset.bannerIndex || 0);
-    host.style.left = "";
-    host.style.top = `${12 + index * 222}px`;
-    host.style.transform = "";
-    host.classList.remove("has-custom-position");
+    if (saved) applyBannerPosition(host, saved);
+  }
+
+  // Stacks every banner that hasn't been individually dragged directly
+  // beneath the previous one, using each one's actual measured height --
+  // "hænger sammen" (stick together) rather than fixed-size slots.
+  function stackDefaultBanners(container, banners) {
+    let top = 12;
+    banners.forEach((banner) => {
+      const host = container.querySelector(`[data-banner-type="${banner.type}"]`);
+      if (!host || host.classList.contains("has-custom-position")) return;
+      host.style.left = "";
+      host.style.transform = "";
+      host.style.top = `${top}px`;
+      top += host.getBoundingClientRect().height + 12;
+    });
   }
 
   function wireBannerDrag(host, type) {
@@ -264,7 +277,6 @@
     };
     host.addEventListener("pointerup", finishDrag);
     host.addEventListener("pointercancel", finishDrag);
-    window.addEventListener("resize", () => positionBanner(host, type));
   }
 
   function renderClock() {
@@ -470,7 +482,7 @@
         ];
         banners.push({
           type: "doors", title: `${rows.length} ${rows.length === 1 ? "indgang har" : "indgange har"} stået åbne/ulåste længe`,
-          detail: rows.join(" · "), icon: "unlock", image: null, rows
+          detail: rows.join(" · "), icon: "unlock", image: null, rows, compact: true
         });
       }
     }
@@ -496,7 +508,7 @@
     container.querySelectorAll("[data-banner-type]").forEach((el) => {
       if (!activeTypes.has(el.dataset.bannerType)) el.remove();
     });
-    banners.forEach((banner, index) => {
+    banners.forEach((banner) => {
       let host = container.querySelector(`[data-banner-type="${banner.type}"]`);
       if (!host) {
         host = document.createElement("div");
@@ -504,13 +516,21 @@
         host.dataset.bannerType = banner.type;
         container.appendChild(host);
       }
-      host.dataset.bannerIndex = String(index);
       host.classList.toggle("has-image", Boolean(banner.image));
-      host.innerHTML = `
-        <span class="beast-ov-mail-banner-drag" aria-hidden="true"></span>
-        ${banner.image ? `<img class="beast-ov-mail-banner-photo" src="${escapeHtml(banner.image)}" alt="">` : `<span class="beast-ov-mail-banner-icon">${BeastCore.icon(banner.icon, { size: 32 })}</span>`}
-        <div><strong>${escapeHtml(banner.title)}</strong><small>${escapeHtml(banner.detail)}</small></div>
-      `;
+      host.classList.toggle("is-compact", Boolean(banner.compact));
+      host.innerHTML = banner.compact
+        ? `
+          <span class="beast-ov-mail-banner-drag" aria-hidden="true"></span>
+          <div class="beast-ov-mail-banner-row">
+            <span class="beast-ov-mail-banner-icon-sm">${BeastCore.icon(banner.icon, { size: 18 })}</span>
+            <div><strong>${escapeHtml(banner.title)}</strong><small>${escapeHtml(banner.detail)}</small></div>
+          </div>
+        `
+        : `
+          <span class="beast-ov-mail-banner-drag" aria-hidden="true"></span>
+          ${banner.image ? `<img class="beast-ov-mail-banner-photo" src="${escapeHtml(banner.image)}" alt="">` : `<span class="beast-ov-mail-banner-icon">${BeastCore.icon(banner.icon, { size: 32 })}</span>`}
+          <div><strong>${escapeHtml(banner.title)}</strong><small>${escapeHtml(banner.detail)}</small></div>
+        `;
       host.onclick = (event) => {
         event.stopPropagation();
         if (Date.now() < (bannerDraggedUntil[banner.type] || 0)) return;
@@ -518,6 +538,7 @@
       };
       wireBannerDrag(host, banner.type);
     });
+    stackDefaultBanners(container, banners);
   }
 
   function openBannerDetail(banner) {
@@ -1630,6 +1651,11 @@
     // state-based -- a door that's been open past the threshold needs its
     // banner to appear even without a NEW state change firing this second.
     window.setInterval(renderBanners, 60000);
+    let bannerResizeTimerId = null;
+    window.addEventListener("resize", () => {
+      window.clearTimeout(bannerResizeTimerId);
+      bannerResizeTimerId = window.setTimeout(renderBanners, 150);
+    });
     [CAR_BATTERY_ID, CAR_RANGE_ID, CAR_CHARGING_ID, POOL_TEMPERATURE_ID].filter(Boolean).forEach((id) => BeastHaSocket.subscribeEntity(id, renderClock));
     BeastHaSocket.subscribeDomain("calendar", renderClock);
     BeastHaSocket.subscribeDomain("light", renderSecurity);
