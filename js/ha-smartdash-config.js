@@ -100,10 +100,15 @@ const BeastConfig = (() => {
     // to a time window (e.g. only warn about open doors overnight) -- kept
     // separate because a door left open at night and a door left unlocked
     // during the day are different concerns for most households.
+    // positions: dragged screen position per banner type (e.g. { mail: {x,y} }).
+    // Stored centrally (not per-browser localStorage) so it's the same
+    // wherever the dashboard is opened, and isn't lost if a browser's local
+    // storage ever gets cleared.
     banners: {
       doorOpenTooLongMinutes: 15, printerCameraOverride: null,
       doorScheduleEnabled: false, doorScheduleStart: "22:00", doorScheduleEnd: "06:00",
-      lockScheduleEnabled: false, lockScheduleStart: "22:00", lockScheduleEnd: "06:00"
+      lockScheduleEnabled: false, lockScheduleStart: "22:00", lockScheduleEnd: "06:00",
+      positions: {}
     },
     screensaver: { enabled: true, schedule: "custom", startTime: "23:00", endTime: "05:30", offAfterMinutes: 5 },
     screenLock: { pinHash: null, autoLockEnabled: false },

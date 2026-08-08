@@ -193,13 +193,32 @@
     window.addEventListener("resize", () => positionOverviewPlayer(host));
   }
 
+  function validPosition(value) {
+    return Number.isFinite(value?.x) && Number.isFinite(value?.y) ? value : null;
+  }
+
+  // Positions live in BeastConfig (server-side) so they're the same on
+  // every browser/device and survive a browser's local storage being
+  // cleared -- previously each browser tracked its own position in
+  // localStorage, which reset the instant the banner was opened somewhere
+  // new. Older saved positions from that localStorage-only era are
+  // migrated in transparently the first time they're read.
   function savedBannerPosition(type) {
+    const stored = validPosition(BeastConfig.get(`banners.positions.${type}`));
+    if (stored) return stored;
     try {
-      const value = JSON.parse(localStorage.getItem(bannerPositionKey(type)) || "null");
-      return Number.isFinite(value?.x) && Number.isFinite(value?.y) ? value : null;
-    } catch (error) {
-      return null;
-    }
+      const legacy = validPosition(JSON.parse(localStorage.getItem(bannerPositionKey(type)) || "null"));
+      if (legacy) {
+        saveBannerPosition(type, legacy);
+        localStorage.removeItem(bannerPositionKey(type));
+        return legacy;
+      }
+    } catch (error) { /* ignore malformed legacy value */ }
+    return null;
+  }
+
+  function saveBannerPosition(type, position) {
+    BeastConfig.set("banners.positions", { ...(BeastConfig.get("banners.positions") || {}), [type]: position });
   }
 
   function applyBannerPosition(host, position) {
@@ -270,7 +289,7 @@
       host.classList.remove("is-dragging");
       if (drag.moved) {
         const rect = host.getBoundingClientRect();
-        localStorage.setItem(bannerPositionKey(type), JSON.stringify({ x: Math.round(rect.left), y: Math.round(rect.top) }));
+        saveBannerPosition(type, { x: Math.round(rect.left), y: Math.round(rect.top) });
         bannerDraggedUntil[type] = Date.now() + 450;
       }
       drag = null;

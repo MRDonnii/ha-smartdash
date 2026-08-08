@@ -1,5 +1,13 @@
 [
   {
+    "version": "20260808-24",
+    "tag": "v0.5.29",
+    "date": "2026-08-08",
+    "changes": [
+      "Alert banner positions (post, 3D printer, doors/locks) are now remembered centrally instead of per-browser -- dragging a banner to a spot now sticks no matter which browser or device the dashboard is opened on, instead of resetting the moment it's opened somewhere new. Existing per-browser positions are carried over automatically the first time this version loads."
+    ]
+  },
+  {
     "version": "20260808-23",
     "tag": "v0.5.28",
     "date": "2026-08-08",
