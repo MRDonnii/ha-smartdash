@@ -16,7 +16,12 @@
 }
 
 .beast-ov-mail-banner {
-  position: absolute;
+  /* fixed, not absolute: dragging uses getBoundingClientRect() (viewport-
+     relative) coordinates directly as left/top. absolute would resolve
+     those against .beast-overview-grid's own box, which is offset from the
+     viewport by the nav rail's width -- shifting the banner right by that
+     exact amount the moment a drag (or any reposition) applied it. */
+  position: fixed;
   top: 12px;
   left: 50%;
   z-index: 25;
@@ -83,8 +88,13 @@
 .beast-ov-layout-options button { min-height:60px; display:flex; align-items:center; justify-content:center; gap:8px; padding:10px 12px; border:1px solid var(--border-strong); border-radius:var(--radius-md); background:var(--surface-solid); color:var(--ink-muted); font:750 var(--text-xs) var(--font-sans); text-align:center; }
 .beast-ov-layout-options button.is-active { border-color:var(--accent-a); background:var(--accent-soft); color:var(--ink); box-shadow:var(--accent-glow); }
 
+/* opacity-only on purpose: animating transform here too, with no explicit
+   "to" state, made the browser hold the implicit end value (the element's
+   base translateX(-50%)) for as long as fill-mode keeps it applied --
+   which silently overrode any inline transform set for dragging, since a
+   running/completed animation wins the cascade over inline style. */
 @keyframes beast-mail-in {
-  from { opacity: 0; transform: translate(-50%, -12px); }
+  from { opacity: 0; }
 }
 
 .beast-ov-card-kicker {
