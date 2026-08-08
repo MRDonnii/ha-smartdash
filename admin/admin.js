@@ -17,7 +17,8 @@
     ["quickScenarios", "Hurtigscenarier", "Vis sikre genveje til valgte Home Assistant-scenes."],
     ["idleMode", "Tomgangstilstand", "Vis rolig klokke-, vejr- og sikkerhedsvisning efter inaktivitet."],
     ["adminPreview", "Admin-forhåndsvisning", "Vis den valgte entitys aktuelle navn, værdi og datastatus."],
-    ["configAudit", "Konfigurationskontrol", "Find manglende, forkerte og utilgængelige entities."]
+    ["configAudit", "Konfigurationskontrol", "Find manglende, forkerte og utilgængelige entities."],
+    ["postBanner", "Post-banner med billede", "Vis en banner med billede af postkassen, når der registreres post. Slå fra for helt at skjule den, uanset entity-opsætning."]
   ];
   const OVERVIEW_SLOT_OPTIONS = [
     ["empty","Tom plads"],["cameras","Kameraer"],["clock","Ur, kalender og affald"],["weather","Vejr"],["security","Sikkerhed"],["energy","Energi"],
@@ -727,6 +728,9 @@
             <label class="admin-field"><span>Post registreret (valgfri)</span>${BeastEntityPicker.selectHtml({ id: "adminMailPresent", domain: "input_boolean", keywordHints: ["post", "mail"], selected: BeastConfig.get("appEntities.mailPresent") })}</label>
             <label class="admin-field"><span>Antal post (valgfri)</span>${BeastEntityPicker.selectHtml({ id: "adminMailCount", domain: "sensor", keywordHints: ["post", "mail"], selected: BeastConfig.get("appEntities.mailCount") })}</label>
             <label class="admin-field"><span>Postbeskrivelse (valgfri)</span>${BeastEntityPicker.selectHtml({ id: "adminMailDescription", domain: "sensor", keywordHints: ["post", "mail"], selected: BeastConfig.get("appEntities.mailDescription") })}</label>
+            <label class="admin-field"><span>Postkasse-billede · Indkørsel (primær, valgfri)</span>${BeastEntityPicker.selectHtml({ id: "adminMailImage", domain: "input_text", keywordHints: ["indkorsel", "indkørsel", "post", "mail", "billede", "snapshot", "foto", "postkasse"], selected: BeastConfig.get("appEntities.mailImage") })}</label>
+            <label class="admin-field"><span>Postkasse-billede · Carport (valgfri)</span>${BeastEntityPicker.selectHtml({ id: "adminMailImageCarport", domain: "input_text", keywordHints: ["carport", "post", "mail", "billede", "snapshot", "foto", "postkasse"], selected: BeastConfig.get("appEntities.mailImageCarport") })}</label>
+            <label class="admin-field"><span>Postkasse-billede · Forhaven (valgfri)</span>${BeastEntityPicker.selectHtml({ id: "adminMailImageForhaven", domain: "input_text", keywordHints: ["forhaven", "post", "mail", "billede", "snapshot", "foto", "postkasse"], selected: BeastConfig.get("appEntities.mailImageForhaven") })}</label>
           </div>
           <div class="admin-actions"><button class="admin-save" type="button" data-save-app-entities>Gem kiosk & dørklokke</button><span class="admin-save-state" data-save-state="appEntities"></span></div>
         </div>
@@ -1572,7 +1576,10 @@
         doorbellCamera: document.getElementById("adminDoorbellCamera").value || null,
         mailPresent: document.getElementById("adminMailPresent").value || null,
         mailCount: document.getElementById("adminMailCount").value || null,
-        mailDescription: document.getElementById("adminMailDescription").value || null
+        mailDescription: document.getElementById("adminMailDescription").value || null,
+        mailImage: document.getElementById("adminMailImage").value || null,
+        mailImageCarport: document.getElementById("adminMailImageCarport").value || null,
+        mailImageForhaven: document.getElementById("adminMailImageForhaven").value || null
       });
     }));
     document.querySelectorAll("[data-save-panel]").forEach((button) => button.addEventListener("click", async () => {

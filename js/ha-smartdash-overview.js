@@ -7,6 +7,9 @@
   let MAIL_PRESENT_ID = null;
   let MAIL_COUNT_ID = null;
   let MAIL_DESCRIPTION_ID = null;
+  let MAIL_IMAGE_ID = null;
+  let MAIL_IMAGE_CARPORT_ID = null;
+  let MAIL_IMAGE_FORHAVEN_ID = null;
   let CAR_BATTERY_ID = null;
   let CAR_RANGE_ID = null;
   let CAR_CHARGING_ID = null;
@@ -46,6 +49,9 @@
     MAIL_PRESENT_ID = app.mailPresent;
     MAIL_COUNT_ID = app.mailCount;
     MAIL_DESCRIPTION_ID = app.mailDescription;
+    MAIL_IMAGE_ID = app.mailImage;
+    MAIL_IMAGE_CARPORT_ID = app.mailImageCarport;
+    MAIL_IMAGE_FORHAVEN_ID = app.mailImageForhaven;
     CAR_BATTERY_ID = car.battery; CAR_RANGE_ID = car.range; CAR_CHARGING_ID = car.charging;
     POOL_TEMPERATURE_ID = pool.waterTemp;
     LOCK_IDS = Array.isArray(security.locks) ? security.locks.filter(Boolean) : [];
@@ -263,13 +269,34 @@
     renderMusic();
   }
 
+  function validText(value) {
+    return typeof value === "string" && !["unknown", "unavailable", ""].includes(value) ? value : null;
+  }
+
+  function mailImages() {
+    return {
+      indkorsel: validText(BeastHaSocket.getState(MAIL_IMAGE_ID)?.state),
+      carport: validText(BeastHaSocket.getState(MAIL_IMAGE_CARPORT_ID)?.state),
+      forhaven: validText(BeastHaSocket.getState(MAIL_IMAGE_FORHAVEN_ID)?.state)
+    };
+  }
+
   function notificationItems() {
     const items = [];
-    const add = (id, priority, title, detail, icon = "bell") => items.push({ id, priority, title, detail, icon });
-    const hasMail = BeastHaSocket.getState(MAIL_PRESENT_ID)?.state === "on";
+    const add = (id, priority, title, detail, icon = "bell", image = null) => items.push({ id, priority, title, detail, icon, image });
+    const hasMail = featureEnabled("postBanner") && BeastHaSocket.getState(MAIL_PRESENT_ID)?.state === "on";
     const mailCount = Number(BeastHaSocket.getState(MAIL_COUNT_ID)?.state);
-    const mailDescription = BeastHaSocket.getState(MAIL_DESCRIPTION_ID)?.state;
-    if (hasMail) add("mail", 1, "Der er post", typeof mailDescription === "string" && !["unknown", "unavailable", ""].includes(mailDescription) ? mailDescription : (Number.isFinite(mailCount) && mailCount > 0 ? `${mailCount} registreringer` : "Post registreret"));
+    const mailDescription = validText(BeastHaSocket.getState(MAIL_DESCRIPTION_ID)?.state);
+    if (hasMail) {
+      const images = mailImages();
+      items.push({
+        id: "mail", priority: 1, title: "Der er post",
+        detail: mailDescription || (Number.isFinite(mailCount) && mailCount > 0 ? `${mailCount} registreringer` : "Post registreret"),
+        icon: "bell",
+        image: images.indkorsel,
+        images
+      });
+    }
     const openNames = DOOR_IDS.map((id, index) => BeastHaSocket.getState(id)?.state === "on" ? (LOCKS[index]?.label || BeastEntityPicker.friendlyName(id)) : null).filter(Boolean);
     const unlockedNames = LOCKS.filter((entry) => {
       const value = BeastHaSocket.getState(entry.id)?.state;
@@ -307,12 +334,45 @@
     host.hidden = !top;
     if (!top) return;
     host.dataset.priority = String(top.priority);
+    host.classList.toggle("has-image", Boolean(top.image));
     host.innerHTML = `
-      <span>${BeastCore.icon(top.icon, { size: 20 })}</span>
+      ${top.image ? `<img class="beast-ov-mail-banner-photo" src="${escapeHtml(top.image)}" alt="">` : `<span>${BeastCore.icon(top.icon, { size: 20 })}</span>`}
       <div><strong>${escapeHtml(top.title)}</strong><small>${escapeHtml(top.detail)}</small></div>
       <b>${items.length > 1 ? `+${items.length - 1}` : ""}</b>
     `;
-    host.onclick = (event) => { event.stopPropagation(); openNotificationCenter(); };
+    host.onclick = (event) => {
+      event.stopPropagation();
+      if (top.id === "mail") openMailDetail(top);
+      else openNotificationCenter();
+    };
+  }
+
+  const MAIL_CAMERA_LABELS = { indkorsel: "Indkørsel", carport: "Carport", forhaven: "Forhaven" };
+
+  function openMailDetail(item, activeCamera = "indkorsel") {
+    document.getElementById("beastOvNotificationModal")?.remove();
+    document.getElementById("beastOvMailModal")?.remove();
+    const images = item.images || mailImages();
+    const available = Object.entries(images).filter(([, url]) => url);
+    if (!available.length) { openNotificationCenter(); return; }
+    const current = images[activeCamera] ? activeCamera : available[0][0];
+    const overlay = document.createElement("div");
+    overlay.id = "beastOvMailModal";
+    overlay.className = "beast-modal-overlay";
+    overlay.innerHTML = `<div class="beast-modal beast-ov-mail-modal" role="dialog" aria-modal="true">
+      <div class="beast-modal-header"><div><h3>Postkassen</h3><p>${escapeHtml(item.detail)}</p></div><button type="button" class="beast-modal-close" data-close>${BeastCore.icon("close", { size: 22 })}</button></div>
+      <div class="beast-modal-body">
+        <div class="beast-ov-mail-modal-image"><img src="${escapeHtml(images[current])}" alt="${escapeHtml(MAIL_CAMERA_LABELS[current] || current)}"></div>
+        ${available.length > 1 ? `<div class="beast-ov-mail-modal-switch">${available.map(([key]) => `<button type="button" data-camera="${key}"${key === current ? " class=\"is-active\"" : ""}>${escapeHtml(MAIL_CAMERA_LABELS[key] || key)}</button>`).join("")}</div>` : ""}
+      </div>
+    </div>`;
+    document.body.appendChild(overlay);
+    const close = () => overlay.remove();
+    overlay.addEventListener("click", (event) => {
+      if (event.target === overlay || event.target.closest("[data-close]")) { close(); return; }
+      const button = event.target.closest("[data-camera]");
+      if (button) openMailDetail(item, button.dataset.camera);
+    });
   }
 
   function openNotificationCenter() {
@@ -321,11 +381,17 @@
     const overlay = document.createElement("div");
     overlay.id = "beastOvNotificationModal";
     overlay.className = "beast-modal-overlay";
-    overlay.innerHTML = `<div class="beast-modal beast-ov-notification-modal" role="dialog" aria-modal="true"><div class="beast-modal-header"><div><h3>Husets notifikationer</h3><p>Samlet overblik over det, der kræver opmærksomhed</p></div><button type="button" class="beast-modal-close" data-close>${BeastCore.icon("close", { size: 22 })}</button></div><div class="beast-ov-notification-list">${items.map((item) => `<article data-priority="${item.priority}"><span>${BeastCore.icon(item.icon, { size: 20 })}</span><div><strong>${escapeHtml(item.title)}</strong><small>${escapeHtml(item.detail)}</small></div><button type="button" data-snooze="${escapeHtml(item.id)}">Skjul 30 min.</button></article>`).join("") || `<div class="beast-ov-all-good">${BeastCore.icon("check", { size: 26 })}<strong>Alt ser godt ud</strong><span>Der er ingen aktive notifikationer.</span></div>`}</div></div>`;
+    overlay.innerHTML = `<div class="beast-modal beast-ov-notification-modal" role="dialog" aria-modal="true"><div class="beast-modal-header"><div><h3>Husets notifikationer</h3><p>Samlet overblik over det, der kræver opmærksomhed</p></div><button type="button" class="beast-modal-close" data-close>${BeastCore.icon("close", { size: 22 })}</button></div><div class="beast-ov-notification-list">${items.map((item) => `<article data-priority="${item.priority}"${item.id === "mail" ? ` data-open-mail="true"` : ""}>${item.image ? `<img class="beast-ov-notification-photo" src="${escapeHtml(item.image)}" alt="">` : `<span>${BeastCore.icon(item.icon, { size: 20 })}</span>`}<div><strong>${escapeHtml(item.title)}</strong><small>${escapeHtml(item.detail)}</small></div><button type="button" data-snooze="${escapeHtml(item.id)}">Skjul 30 min.</button></article>`).join("") || `<div class="beast-ov-all-good">${BeastCore.icon("check", { size: 26 })}<strong>Alt ser godt ud</strong><span>Der er ingen aktive notifikationer.</span></div>`}</div></div>`;
     document.body.appendChild(overlay);
     const close = () => overlay.remove();
-    overlay.addEventListener("click", (event) => { if (event.target === overlay || event.target.closest("[data-close]")) close(); });
-    overlay.querySelectorAll("[data-snooze]").forEach((button) => button.addEventListener("click", () => {
+    overlay.addEventListener("click", (event) => {
+      if (event.target === overlay || event.target.closest("[data-close]")) { close(); return; }
+      if (event.target.closest("[data-snooze]")) return;
+      const mailArticle = event.target.closest("[data-open-mail]");
+      if (mailArticle) { const item = items.find((entry) => entry.id === "mail"); close(); if (item) openMailDetail(item); }
+    });
+    overlay.querySelectorAll("[data-snooze]").forEach((button) => button.addEventListener("click", (event) => {
+      event.stopPropagation();
       const snoozed = snoozedNotifications();
       snoozed[button.dataset.snooze] = Date.now() + 30 * 60 * 1000;
       localStorage.setItem(NOTIFICATION_SNOOZE_KEY, JSON.stringify(snoozed));
@@ -1319,7 +1385,7 @@
     ROBOT_IDS.forEach((robot) => BeastHaSocket.subscribeEntity(robot.id, renderSecurity));
     [PRINTER_STATUS_ID, PRINTER_PROGRESS_ID, PRINTER_REMAINING_ID].filter(Boolean).forEach((id) => BeastHaSocket.subscribeEntity(id, () => { renderAttentionSystem(); renderSecurity(); }));
     WASTE_SENSORS.forEach((id) => BeastHaSocket.subscribeEntity(id, renderClock));
-    [MAIL_PRESENT_ID, MAIL_COUNT_ID, MAIL_DESCRIPTION_ID, POWER_ENTITY_ID, PRICE_ENTITY_ID, ...LOCK_IDS, ...DOOR_IDS, ...ALARM_IDS].filter(Boolean).forEach((id) => BeastHaSocket.subscribeEntity(id, renderAttentionSystem));
+    [MAIL_PRESENT_ID, MAIL_COUNT_ID, MAIL_DESCRIPTION_ID, MAIL_IMAGE_ID, MAIL_IMAGE_CARPORT_ID, MAIL_IMAGE_FORHAVEN_ID, POWER_ENTITY_ID, PRICE_ENTITY_ID, ...LOCK_IDS, ...DOOR_IDS, ...ALARM_IDS].filter(Boolean).forEach((id) => BeastHaSocket.subscribeEntity(id, renderAttentionSystem));
     [CAR_BATTERY_ID, CAR_RANGE_ID, CAR_CHARGING_ID, POOL_TEMPERATURE_ID].filter(Boolean).forEach((id) => BeastHaSocket.subscribeEntity(id, renderClock));
     BeastHaSocket.subscribeDomain("calendar", renderClock);
     BeastHaSocket.subscribeDomain("light", renderSecurity);
