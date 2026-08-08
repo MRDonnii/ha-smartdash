@@ -151,6 +151,7 @@
     if (!grid) {
       containerEl.innerHTML = `<div class="beast-rooms-grid" id="beastRoomsGrid"></div><div id="beastRoomModalHost"></div>`;
       grid = document.getElementById("beastRoomsGrid");
+      observeGridResize(grid);
     }
 
     areas.forEach((area) => {
@@ -199,6 +200,37 @@
       const img = card.querySelector("img[data-ha-path]");
       if (img) BeastAuth.setAuthedImageSrc(img, img.dataset.haPath);
     });
+    balanceGridColumns(grid);
+  }
+
+  const GRID_MIN_CARD_WIDTH = 280;
+
+  // grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)) fills rows
+  // left-to-right and just stops -- a trailing row with far fewer cards
+  // than fit width-wise (e.g. 7, 7, 1) still reserves the same column
+  // tracks as a full row, leaving most of it visibly empty instead of
+  // stretching to fill it. Picking an explicit column count that divides
+  // the actual card count as evenly as possible (e.g. 5, 5, 5 for the same
+  // 15 cards) removes that dead space instead.
+  function balanceGridColumns(grid) {
+    const itemCount = grid.children.length;
+    if (!itemCount) return;
+    const containerWidth = grid.clientWidth;
+    if (!containerWidth) return;
+    const gapPx = parseFloat(getComputedStyle(grid).columnGap) || 0;
+    const maxColumnsThatFit = Math.max(1, Math.floor((containerWidth + gapPx) / (GRID_MIN_CARD_WIDTH + gapPx)));
+    const rows = Math.ceil(itemCount / maxColumnsThatFit);
+    const columns = Math.ceil(itemCount / rows);
+    grid.style.gridTemplateColumns = `repeat(${columns}, minmax(min(${GRID_MIN_CARD_WIDTH}px, 100%), 1fr))`;
+  }
+
+  let gridResizeObserver = null;
+
+  function observeGridResize(grid) {
+    if (!window.ResizeObserver) { balanceGridColumns(grid); return; }
+    if (gridResizeObserver) gridResizeObserver.disconnect();
+    gridResizeObserver = new ResizeObserver(() => balanceGridColumns(grid));
+    gridResizeObserver.observe(grid);
   }
 
   function buildLightsSection(areaId) {

@@ -1,5 +1,13 @@
 [
   {
+    "version": "20260808-12",
+    "tag": "v0.5.17",
+    "date": "2026-08-08",
+    "changes": [
+      "The Rooms grid no longer leaves a mostly-empty trailing row when the room count doesn't divide evenly into a full row (e.g. 15 rooms as 7, 7, 1). It now picks a column count that divides the actual number of rooms as evenly as possible -- the same 15 rooms now lay out as 5, 5, 5, with every card the same size and no wasted space, and it recalculates automatically if the window is resized or the room count changes."
+    ]
+  },
+  {
     "version": "20260808-11",
     "tag": "v0.5.16",
     "date": "2026-08-08",
