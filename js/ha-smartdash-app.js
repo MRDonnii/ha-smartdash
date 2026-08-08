@@ -580,7 +580,7 @@ function renderOverviewSection() {
   const hasEmptySlots = !freeform && Object.values(slots).some((slot) => slot?.type === "empty");
   return `
     <div class="beast-overview-grid is-configurable${freeform ? " is-freeform" : ""}${hasEmptySlots ? " has-empty-slots" : ""}" id="beastOverviewZone">
-      <div id="beastOvMailBanner" class="beast-ov-mail-banner" hidden></div>
+      <div id="beastOvBanners"></div>
       ${(freeform ? configuredCards : ["main","compactTop","compactBottom","wideTop","wideBottom"]).map(widget).join("")}
       <div id="beastOvClockMusic"></div>
     </div>

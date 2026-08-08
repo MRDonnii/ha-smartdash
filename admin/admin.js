@@ -1160,8 +1160,13 @@
   function renderAdvarslerView() {
     const features = BeastConfig.get("features") || {};
     const app = BeastConfig.get("appEntities") || {};
+    const banners = BeastConfig.get("banners") || {};
+    const printer = BeastConfig.get("panels.printer") || {};
+    const security = BeastConfig.get("panels.security") || {};
+    const printerConfigured = Boolean(printer.statusSensor);
+    const doorsConfigured = Boolean((security.locks || []).length || (security.openingSensors || []).length);
     return `<section class="admin-view${activeView === "advarsler" ? " is-active" : ""}" data-admin-view="advarsler">
-      <div class="admin-settings-intro"><div><h2>${t("Advarsler", "Alerts")}</h2><p>${t("Samlet sted for de forskellige advarsler på dashboardet — lige nu kun post-banneret. Slå til/fra og vælg entities herfra.", "One place for the dashboard's alerts — currently just the post banner. Turn it on/off and pick entities from here.")}</p></div></div>
+      <div class="admin-settings-intro"><div><h2>${t("Advarsler", "Alerts")}</h2><p>${t("Samlet sted for dashboardets banner-advarsler. Flere kan være synlige på samme tid, hver kan trækkes rundt på skærmen og huskes hver for sig.", "One place for the dashboard's banner alerts. Several can be visible at once, each can be dragged around the screen and remembers its own position.")}</p></div></div>
       <div class="admin-card admin-settings-group"><div class="admin-card-head"><div><h2>${t("Post-banner", "Post banner")}</h2><p>${t("Viser et billede af postkassen og en kort beskrivelse, når der registreres post.", "Shows a picture of the mailbox and a short description when post is registered.")}</p></div></div><div class="beast-mqtt-config">
         <label><span>${t("Post-banner", "Post banner")}</span>
           <select id="adminAdvarslerPostBanner">
@@ -1175,9 +1180,27 @@
         <label><span>${t("Postkasse-billede · Indkørsel (primær, valgfri)", "Mailbox picture · Driveway (primary, optional)")}</span>${BeastEntityPicker.selectHtml({ id: "adminAdvarslerMailImage", domain: "input_text", keywordHints: ["indkorsel", "indkørsel", "post", "mail", "billede", "snapshot", "foto", "postkasse"], selected: app.mailImage })}</label>
         <label><span>${t("Postkasse-billede · Carport (valgfri)", "Mailbox picture · Carport (optional)")}</span>${BeastEntityPicker.selectHtml({ id: "adminAdvarslerMailImageCarport", domain: "input_text", keywordHints: ["carport", "post", "mail", "billede", "snapshot", "foto", "postkasse"], selected: app.mailImageCarport })}</label>
         <label><span>${t("Postkasse-billede · Forhaven (valgfri)", "Mailbox picture · Front yard (optional)")}</span>${BeastEntityPicker.selectHtml({ id: "adminAdvarslerMailImageForhaven", domain: "input_text", keywordHints: ["forhaven", "post", "mail", "billede", "snapshot", "foto", "postkasse"], selected: app.mailImageForhaven })}</label>
-        <button type="button" class="beast-btn beast-btn-primary" id="adminAdvarslerSave">${t("Gem advarsler", "Save alerts")}</button>
-        <span class="admin-save-state" data-save-state="advarsler"></span>
       </div></div>
+      <div class="admin-card admin-settings-group"><div class="admin-card-head"><div><h2>${t("3D-printer", "3D printer")}</h2><p>${t("Viser printerens kamerabillede og fremgang, mens den printer eller er på pause.", "Shows the printer's camera image and progress while it's printing or paused.")}</p></div></div><div class="beast-mqtt-config">
+        <label><span>${t("3D-printer-banner", "3D printer banner")}</span>
+          <select id="adminAdvarslerPrinterBanner">
+            <option value="1" ${features.printerBanner !== false ? "selected" : ""}>${t("Til", "On")}</option>
+            <option value="0" ${features.printerBanner === false ? "selected" : ""}>${t("Fra — vises aldrig", "Off — never shown")}</option>
+          </select>
+        </label>
+        ${printerConfigured ? "" : `<p class="admin-field-hint">${t("Ingen printer-entities fundet endnu — sæt printeren op under Indstillinger → 3D Printer, så virker banneret automatisk.", "No printer entities found yet — set the printer up under Settings → 3D Printer, and the banner will work automatically.")}</p>`}
+      </div></div>
+      <div class="admin-card admin-settings-group"><div class="admin-card-head"><div><h2>${t("Døre & låse", "Doors & locks")}</h2><p>${t("Viser en advarsel, hvis en dør eller lås fra Sikkerhed har stået åben/ulåst længere end angivet.", "Shows a warning if a door or lock from Security has been open/unlocked longer than the time set below.")}</p></div></div><div class="beast-mqtt-config">
+        <label><span>${t("Døre & låse-banner", "Doors & locks banner")}</span>
+          <select id="adminAdvarslerDoorBanner">
+            <option value="1" ${features.doorBanner !== false ? "selected" : ""}>${t("Til", "On")}</option>
+            <option value="0" ${features.doorBanner === false ? "selected" : ""}>${t("Fra — vises aldrig", "Off — never shown")}</option>
+          </select>
+        </label>
+        <label><span>${t("Advar efter (minutter)", "Warn after (minutes)")}</span><input type="number" min="1" max="720" id="adminAdvarslerDoorMinutes" value="${Number(banners.doorOpenTooLongMinutes) || 15}"></label>
+        ${doorsConfigured ? "" : `<p class="admin-field-hint">${t("Ingen døre/låse fundet endnu — sæt dem op under Sikkerhed, så virker banneret automatisk.", "No doors/locks found yet — set them up under Security, and the banner will work automatically.")}</p>`}
+      </div></div>
+      <div class="admin-actions"><button type="button" class="beast-btn beast-btn-primary" id="adminAdvarslerSave">${t("Gem advarsler", "Save alerts")}</button><span class="admin-save-state" data-save-state="advarsler"></span></div>
     </section>`;
   }
 
@@ -1652,7 +1675,12 @@
       renderShell();
     });
     document.getElementById("adminAdvarslerSave")?.addEventListener("click", (event) => save(event.currentTarget, "advarsler", async () => {
-      const features = { ...(BeastConfig.get("features") || {}), postBanner: document.getElementById("adminAdvarslerPostBanner").value === "1" };
+      const features = {
+        ...(BeastConfig.get("features") || {}),
+        postBanner: document.getElementById("adminAdvarslerPostBanner").value === "1",
+        printerBanner: document.getElementById("adminAdvarslerPrinterBanner").value === "1",
+        doorBanner: document.getElementById("adminAdvarslerDoorBanner").value === "1"
+      };
       const appEntities = {
         ...(BeastConfig.get("appEntities") || {}),
         mailPresent: document.getElementById("adminAdvarslerMailPresent").value || null,
@@ -1662,11 +1690,16 @@
         mailImageCarport: document.getElementById("adminAdvarslerMailImageCarport").value || null,
         mailImageForhaven: document.getElementById("adminAdvarslerMailImageForhaven").value || null
       };
-      const [featuresResult, appEntitiesResult] = await Promise.all([
+      const banners = {
+        ...(BeastConfig.get("banners") || {}),
+        doorOpenTooLongMinutes: Math.max(1, Number(document.getElementById("adminAdvarslerDoorMinutes").value) || 15)
+      };
+      const [featuresResult, appEntitiesResult, bannersResult] = await Promise.all([
         BeastConfig.set("features", features),
-        BeastConfig.set("appEntities", appEntities)
+        BeastConfig.set("appEntities", appEntities),
+        BeastConfig.set("banners", banners)
       ]);
-      return { success: featuresResult?.success !== false && appEntitiesResult?.success !== false };
+      return { success: featuresResult?.success !== false && appEntitiesResult?.success !== false && bannersResult?.success !== false };
     }));
     document.getElementById("beastMqttSave")?.addEventListener("click", () => {
       const next = {
