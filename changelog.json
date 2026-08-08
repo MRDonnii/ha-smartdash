@@ -1,5 +1,14 @@
 [
   {
+    "version": "20260808-07",
+    "tag": "v0.5.12",
+    "date": "2026-08-08",
+    "changes": [
+      "The v0.5.11 version-tag fix didn't actually show up for anyone with the dashboard already open: static files (admin.js, admin.css, and several other scripts/stylesheets) are served with a cache-busting version number in the URL, and it hadn't been bumped, so browsers kept using their already-cached old copies. All files touched in the last few releases now have a fresh cache-busting number.",
+      "The current-version card in Administration now reads \"HA Smartdash v0.5.12\" (matching the exact GitHub release title) instead of just the bare tag."
+    ]
+  },
+  {
     "version": "20260808-06",
     "tag": "v0.5.11",
     "date": "2026-08-08",
