@@ -17,8 +17,7 @@
     ["quickScenarios", "Hurtigscenarier", "Vis sikre genveje til valgte Home Assistant-scenes."],
     ["idleMode", "Tomgangstilstand", "Vis rolig klokke-, vejr- og sikkerhedsvisning efter inaktivitet."],
     ["adminPreview", "Admin-forhåndsvisning", "Vis den valgte entitys aktuelle navn, værdi og datastatus."],
-    ["configAudit", "Konfigurationskontrol", "Find manglende, forkerte og utilgængelige entities."],
-    ["postBanner", "Post-banner med billede", "Vis en banner med billede af postkassen, når der registreres post. Slå fra for helt at skjule den, uanset entity-opsætning."]
+    ["configAudit", "Konfigurationskontrol", "Find manglende, forkerte og utilgængelige entities."]
   ];
   const OVERVIEW_SLOT_OPTIONS = [
     ["empty","Tom plads"],["cameras","Kameraer"],["clock","Ur, kalender og affald"],["weather","Vejr"],["security","Sikkerhed"],["energy","Energi"],
@@ -725,12 +724,6 @@
             <label class="admin-field"><span>Dørklokke (binary_sensor)</span>${BeastEntityPicker.selectHtml({ id: "adminDoorbellBinary", domain: "binary_sensor", keywordHints: ["doorbell", "dørklokke", "ring"], selected: BeastConfig.get("appEntities.doorbellBinarySensor") })}</label>
             <label class="admin-field"><span>Dørklokke (event, valgfri)</span>${BeastEntityPicker.selectHtml({ id: "adminDoorbellEvent", domain: "event", keywordHints: ["doorbell", "dørklokke", "ring"], selected: BeastConfig.get("appEntities.doorbellEvent") })}</label>
             <label class="admin-field"><span>Dørkamera (valgfri)</span>${BeastEntityPicker.selectHtml({ id: "adminDoorbellCamera", domain: "camera", keywordHints: ["doorbell", "dørklokke", "front", "hoveddor", "fordor"], selected: BeastConfig.get("appEntities.doorbellCamera") })}</label>
-            <label class="admin-field"><span>Post registreret (valgfri)</span>${BeastEntityPicker.selectHtml({ id: "adminMailPresent", domain: "input_boolean", keywordHints: ["post", "mail"], selected: BeastConfig.get("appEntities.mailPresent") })}</label>
-            <label class="admin-field"><span>Antal post (valgfri)</span>${BeastEntityPicker.selectHtml({ id: "adminMailCount", domain: "sensor", keywordHints: ["post", "mail"], selected: BeastConfig.get("appEntities.mailCount") })}</label>
-            <label class="admin-field"><span>Postbeskrivelse (valgfri)</span>${BeastEntityPicker.selectHtml({ id: "adminMailDescription", domain: "sensor", keywordHints: ["post", "mail"], selected: BeastConfig.get("appEntities.mailDescription") })}</label>
-            <label class="admin-field"><span>Postkasse-billede · Indkørsel (primær, valgfri)</span>${BeastEntityPicker.selectHtml({ id: "adminMailImage", domain: "input_text", keywordHints: ["indkorsel", "indkørsel", "post", "mail", "billede", "snapshot", "foto", "postkasse"], selected: BeastConfig.get("appEntities.mailImage") })}</label>
-            <label class="admin-field"><span>Postkasse-billede · Carport (valgfri)</span>${BeastEntityPicker.selectHtml({ id: "adminMailImageCarport", domain: "input_text", keywordHints: ["carport", "post", "mail", "billede", "snapshot", "foto", "postkasse"], selected: BeastConfig.get("appEntities.mailImageCarport") })}</label>
-            <label class="admin-field"><span>Postkasse-billede · Forhaven (valgfri)</span>${BeastEntityPicker.selectHtml({ id: "adminMailImageForhaven", domain: "input_text", keywordHints: ["forhaven", "post", "mail", "billede", "snapshot", "foto", "postkasse"], selected: BeastConfig.get("appEntities.mailImageForhaven") })}</label>
           </div>
           <div class="admin-actions"><button class="admin-save" type="button" data-save-app-entities>Gem kiosk & dørklokke</button><span class="admin-save-state" data-save-state="appEntities"></span></div>
         </div>
@@ -1164,6 +1157,30 @@
     </section>`;
   }
 
+  function renderAdvarslerView() {
+    const features = BeastConfig.get("features") || {};
+    const app = BeastConfig.get("appEntities") || {};
+    return `<section class="admin-view${activeView === "advarsler" ? " is-active" : ""}" data-admin-view="advarsler">
+      <div class="admin-settings-intro"><div><h2>${t("Advarsler", "Alerts")}</h2><p>${t("Samlet sted for de forskellige advarsler på dashboardet — lige nu kun post-banneret. Slå til/fra og vælg entities herfra.", "One place for the dashboard's alerts — currently just the post banner. Turn it on/off and pick entities from here.")}</p></div></div>
+      <div class="admin-card admin-settings-group"><div class="admin-card-head"><div><h2>${t("Post-banner", "Post banner")}</h2><p>${t("Viser et billede af postkassen og en kort beskrivelse, når der registreres post.", "Shows a picture of the mailbox and a short description when post is registered.")}</p></div></div><div class="beast-mqtt-config">
+        <label><span>${t("Post-banner", "Post banner")}</span>
+          <select id="adminAdvarslerPostBanner">
+            <option value="1" ${features.postBanner !== false ? "selected" : ""}>${t("Til", "On")}</option>
+            <option value="0" ${features.postBanner === false ? "selected" : ""}>${t("Fra — vises aldrig", "Off — never shown")}</option>
+          </select>
+        </label>
+        <label><span>${t("Post registreret (valgfri)", "Post registered (optional)")}</span>${BeastEntityPicker.selectHtml({ id: "adminAdvarslerMailPresent", domain: "input_boolean", keywordHints: ["post", "mail"], selected: app.mailPresent })}</label>
+        <label><span>${t("Antal post (valgfri)", "Post count (optional)")}</span>${BeastEntityPicker.selectHtml({ id: "adminAdvarslerMailCount", domain: "sensor", keywordHints: ["post", "mail"], selected: app.mailCount })}</label>
+        <label><span>${t("Postbeskrivelse (valgfri)", "Post description (optional)")}</span>${BeastEntityPicker.selectHtml({ id: "adminAdvarslerMailDescription", domain: "sensor", keywordHints: ["post", "mail"], selected: app.mailDescription })}</label>
+        <label><span>${t("Postkasse-billede · Indkørsel (primær, valgfri)", "Mailbox picture · Driveway (primary, optional)")}</span>${BeastEntityPicker.selectHtml({ id: "adminAdvarslerMailImage", domain: "input_text", keywordHints: ["indkorsel", "indkørsel", "post", "mail", "billede", "snapshot", "foto", "postkasse"], selected: app.mailImage })}</label>
+        <label><span>${t("Postkasse-billede · Carport (valgfri)", "Mailbox picture · Carport (optional)")}</span>${BeastEntityPicker.selectHtml({ id: "adminAdvarslerMailImageCarport", domain: "input_text", keywordHints: ["carport", "post", "mail", "billede", "snapshot", "foto", "postkasse"], selected: app.mailImageCarport })}</label>
+        <label><span>${t("Postkasse-billede · Forhaven (valgfri)", "Mailbox picture · Front yard (optional)")}</span>${BeastEntityPicker.selectHtml({ id: "adminAdvarslerMailImageForhaven", domain: "input_text", keywordHints: ["forhaven", "post", "mail", "billede", "snapshot", "foto", "postkasse"], selected: app.mailImageForhaven })}</label>
+        <button type="button" class="beast-btn beast-btn-primary" id="adminAdvarslerSave">${t("Gem advarsler", "Save alerts")}</button>
+        <span class="admin-save-state" data-save-state="advarsler"></span>
+      </div></div>
+    </section>`;
+  }
+
   function renderSecurityView() {
     const hasPin = window.BeastScreenLock?.hasPin();
     const autoLockOn = window.BeastScreenLock?.isAutoLockEnabled();
@@ -1188,6 +1205,7 @@
     if (activeView === "settings") return renderSettingsView();
     if (activeView === "security-settings") return renderSecurityView();
     if (activeView === "screensaver") return renderScreensaverView();
+    if (activeView === "advarsler") return renderAdvarslerView();
     if (activeView === "backup") return renderBackupView();
     if (activeView === "updates") return renderUpdatesView();
     const panel = PANELS.find((item) => item.id === activeView);
@@ -1211,13 +1229,14 @@
             <button class="${activeView === "settings" ? "is-active" : ""}" type="button" data-view="settings">Udseende & enhed</button>
             <button class="${activeView === "security-settings" ? "is-active" : ""}" type="button" data-view="security-settings">Adgang & pinkode</button>
             <button class="${activeView === "screensaver" ? "is-active" : ""}" type="button" data-view="screensaver">${t("Pauseskærm", "Screensaver")}</button>
+            <button class="${activeView === "advarsler" ? "is-active" : ""}" type="button" data-view="advarsler">${t("Advarsler", "Alerts")}</button>
             <button class="${activeView === "backup" ? "is-active" : ""}" type="button" data-view="backup">Backup & gendannelse</button>
             <button class="${activeView === "updates" ? "is-active" : ""}" type="button" data-view="updates">Opdatering</button>
           </nav>
           <div class="admin-sidebar-foot"><a class="admin-back" href="/">Åbn dashboard</a></div>
         </aside>
         <main class="admin-main">
-          <header class="admin-topbar"><div><h1>${activeView === "updates" ? "Opdatering" : activeView === "backup" ? "Backup & gendannelse" : activeView === "security-settings" ? "Sikkerhed" : activeView === "screensaver" ? t("Pauseskærm", "Screensaver") : activeView === "settings" ? "Udseende & enhed" : activeView === "overview" ? "Overblik" : "Opsætning"}</h1><p>${activeView === "updates" ? "Se hvad der er nyt, og gendan en tidligere version om nødvendigt." : activeView === "security-settings" ? "Lokal adgang, pinkode og beskyttelse af adminpanelet." : activeView === "screensaver" ? t("Styrer denne skærm/browser — hver kiosk kan have sin egen tidsplan.", "Controls this screen/browser only — each kiosk can have its own schedule.") : "Konfigurationen gemmes centralt på serveren."}</p></div><div class="admin-topbar-tools"><label class="admin-language-picker"><span>${BeastCore.icon("globe", { size: 15 })}</span><select id="adminLanguageSelect" aria-label="Dashboard-sprog"><option value="en"${dashboardLanguage !== "da" ? " selected" : ""}>English</option><option value="da"${dashboardLanguage === "da" ? " selected" : ""}>Dansk</option></select></label><span class="admin-status" id="adminHaStatus" data-state="${connected ? "connected" : "connecting"}">${connected ? "Home Assistant forbundet" : "Forbinder til Home Assistant…"}</span></div></header>
+          <header class="admin-topbar"><div><h1>${activeView === "updates" ? "Opdatering" : activeView === "backup" ? "Backup & gendannelse" : activeView === "security-settings" ? "Sikkerhed" : activeView === "screensaver" ? t("Pauseskærm", "Screensaver") : activeView === "advarsler" ? t("Advarsler", "Alerts") : activeView === "settings" ? "Udseende & enhed" : activeView === "overview" ? "Overblik" : "Opsætning"}</h1><p>${activeView === "updates" ? "Se hvad der er nyt, og gendan en tidligere version om nødvendigt." : activeView === "security-settings" ? "Lokal adgang, pinkode og beskyttelse af adminpanelet." : activeView === "screensaver" ? t("Styrer denne skærm/browser — hver kiosk kan have sin egen tidsplan.", "Controls this screen/browser only — each kiosk can have its own schedule.") : activeView === "advarsler" ? t("Alt om post-banneret samlet ét sted — slå til/fra og vælg entities.", "Everything about the post banner in one place — turn it on/off and pick entities.") : "Konfigurationen gemmes centralt på serveren."}</p></div><div class="admin-topbar-tools"><label class="admin-language-picker"><span>${BeastCore.icon("globe", { size: 15 })}</span><select id="adminLanguageSelect" aria-label="Dashboard-sprog"><option value="en"${dashboardLanguage !== "da" ? " selected" : ""}>English</option><option value="da"${dashboardLanguage === "da" ? " selected" : ""}>Dansk</option></select></label><span class="admin-status" id="adminHaStatus" data-state="${connected ? "connected" : "connecting"}">${connected ? "Home Assistant forbundet" : "Forbinder til Home Assistant…"}</span></div></header>
           ${renderActiveView()}
         </main>
       </div>`;
@@ -1573,13 +1592,7 @@
         ...BeastConfig.get("appEntities"),
         doorbellBinarySensor: document.getElementById("adminDoorbellBinary").value || null,
         doorbellEvent: document.getElementById("adminDoorbellEvent").value || null,
-        doorbellCamera: document.getElementById("adminDoorbellCamera").value || null,
-        mailPresent: document.getElementById("adminMailPresent").value || null,
-        mailCount: document.getElementById("adminMailCount").value || null,
-        mailDescription: document.getElementById("adminMailDescription").value || null,
-        mailImage: document.getElementById("adminMailImage").value || null,
-        mailImageCarport: document.getElementById("adminMailImageCarport").value || null,
-        mailImageForhaven: document.getElementById("adminMailImageForhaven").value || null
+        doorbellCamera: document.getElementById("adminDoorbellCamera").value || null
       });
     }));
     document.querySelectorAll("[data-save-panel]").forEach((button) => button.addEventListener("click", async () => {
@@ -1638,6 +1651,23 @@
       });
       renderShell();
     });
+    document.getElementById("adminAdvarslerSave")?.addEventListener("click", (event) => save(event.currentTarget, "advarsler", async () => {
+      const features = { ...(BeastConfig.get("features") || {}), postBanner: document.getElementById("adminAdvarslerPostBanner").value === "1" };
+      const appEntities = {
+        ...(BeastConfig.get("appEntities") || {}),
+        mailPresent: document.getElementById("adminAdvarslerMailPresent").value || null,
+        mailCount: document.getElementById("adminAdvarslerMailCount").value || null,
+        mailDescription: document.getElementById("adminAdvarslerMailDescription").value || null,
+        mailImage: document.getElementById("adminAdvarslerMailImage").value || null,
+        mailImageCarport: document.getElementById("adminAdvarslerMailImageCarport").value || null,
+        mailImageForhaven: document.getElementById("adminAdvarslerMailImageForhaven").value || null
+      };
+      const [featuresResult, appEntitiesResult] = await Promise.all([
+        BeastConfig.set("features", features),
+        BeastConfig.set("appEntities", appEntities)
+      ]);
+      return { success: featuresResult?.success !== false && appEntitiesResult?.success !== false };
+    }));
     document.getElementById("beastMqttSave")?.addEventListener("click", () => {
       const next = {
         target: document.getElementById("beastMqttTarget").value,
