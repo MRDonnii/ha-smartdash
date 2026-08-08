@@ -8,6 +8,7 @@
     ["music", "Musik"], ["energy", "Energi"], ["heating", "Varme"], ["car", "Bil"],
     ["pool", "Pool"], ["waste", "Kalender"], ["robots", "Robotter"], ["printer", "3D Printer"]
   ];
+  const GITHUB_REPO = "MRDonnii/ha-smartdash";
   const FEATURE_OPTIONS = [
     ["eventFocus", "Automatisk fokusvisning", "Vis vigtige hændelser som alarm, pool, opladning og printer midlertidigt."],
     ["dynamicOverview", "Dynamisk kortlayout", "Skjul tomme kort og lad de øvrige kort overtage pladsen."],
@@ -889,6 +890,15 @@
               <button type="button" class="beast-btn" id="adminOldVersionRestoreBtn" data-rollback-version="" data-is-newer="false" data-is-latest="false" disabled>Gendan valgte version</button>
             </div>
           </div>
+          <div class="admin-old-versions admin-manual-install">
+            <span class="admin-field-label">${t("Installer bestemt version fra GitHub", "Install a specific version from GitHub")}</span>
+            <p class="admin-field-hint">${t("Til hvis auto-tjek ikke virker, eller du vil have en bestemt version. Indsæt et GitHub release-link eller bare versionsnummeret, fx v0.5.9.", "For when auto-check isn't working, or you want a specific version. Paste a GitHub release link or just the version number, e.g. v0.5.9.")}</p>
+            <div class="admin-old-versions-row">
+              <input type="text" id="adminManualTagInput" placeholder="v0.5.9 eller https://github.com/${escapeHtml(GITHUB_REPO)}/releases/tag/v0.5.9">
+              <button type="button" class="beast-btn" id="adminManualInstallBtn" data-rollback-version="" data-install-source="github" data-install-tag="" data-is-newer="false" data-is-latest="false" disabled>${t("Installer denne version", "Install this version")}</button>
+            </div>
+            <span class="admin-save-state" id="adminManualTagState"></span>
+          </div>
         </div>
         <div class="admin-progress-track" id="adminRollbackProgress" hidden><div class="admin-progress-fill" id="adminRollbackProgressFill"></div></div>
         <div class="admin-save-state" id="adminRollbackState"></div>
@@ -1274,6 +1284,22 @@
     document.getElementById("adminOldVersionSelect")?.addEventListener("change", (event) => {
       const restoreBtn = document.getElementById("adminOldVersionRestoreBtn");
       if (restoreBtn) restoreBtn.dataset.rollbackVersion = event.target.value;
+    });
+    document.getElementById("adminManualTagInput")?.addEventListener("input", (event) => {
+      const installBtn = document.getElementById("adminManualInstallBtn");
+      const stateEl = document.getElementById("adminManualTagState");
+      const raw = event.target.value.trim();
+      // Accepts either a bare tag ("v0.5.9", "0.5.9") or a full GitHub
+      // release URL -- pulls the tag segment out of the URL if present.
+      const urlMatch = raw.match(/\/releases\/tag\/([^/?#]+)/);
+      const candidate = urlMatch ? decodeURIComponent(urlMatch[1]) : raw;
+      const tag = /^v?\d+\.\d+\.\d+$/.test(candidate) ? candidate : "";
+      if (installBtn) {
+        installBtn.disabled = !tag;
+        installBtn.dataset.rollbackVersion = tag;
+        installBtn.dataset.installTag = tag;
+      }
+      if (stateEl) stateEl.textContent = raw && !tag ? t("Kunne ikke genkende et versionsnummer i det du indsatte.", "Couldn't recognize a version number in what you pasted.") : "";
     });
     document.getElementById("adminVersionSection")?.addEventListener("click", async (event) => {
       const button = event.target.closest("[data-rollback-version]");

@@ -1,5 +1,14 @@
 [
   {
+    "version": "20260808-08",
+    "tag": "v0.5.13",
+    "date": "2026-08-08",
+    "changes": [
+      "Fixed a likely cause of persistent update-check failures: the dashboard checked GitHub for a new release every 60 seconds, a leftover interval from when this was a same-server comparison. Against a real GitHub API call, that alone is enough to exhaust GitHub's 60-requests-per-hour limit for unauthenticated requests from a single always-on kiosk -- shared by every kiosk and every open Administration tab on the same network. The check now runs every 30 minutes instead, and the server also caches GitHub's answer for a few minutes so multiple kiosks/tabs checking around the same time only cost one real request.",
+      "Administration -> Update now has an \"Install a specific version from GitHub\" field: paste a release link or just a version number (e.g. v0.5.9) to install that exact version directly, without waiting on or depending on the automatic check -- useful if auto-update isn't working, or you specifically want an older or newer version."
+    ]
+  },
+  {
     "version": "20260808-07",
     "tag": "v0.5.12",
     "date": "2026-08-08",

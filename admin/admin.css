@@ -157,8 +157,11 @@ button { cursor: pointer; }
 .admin-old-versions { margin-top: 16px; }
 .admin-field-label { display: block; margin-bottom: 8px; color: var(--ink-muted); font-size: 12px; font-weight: 800; }
 .admin-old-versions-row { display: flex; gap: 10px; }
-.admin-old-versions-row select { flex: 1 1 auto; min-width: 0; min-height: 44px; padding: 10px 12px; border: 1px solid var(--border-strong); border-radius: 10px; background: #090c10; color: var(--ink); }
+.admin-old-versions-row select,
+.admin-old-versions-row input { flex: 1 1 auto; min-width: 0; min-height: 44px; padding: 10px 12px; border: 1px solid var(--border-strong); border-radius: 10px; background: #090c10; color: var(--ink); }
 .admin-old-versions-row button { flex: 0 0 auto; }
+.admin-manual-install { margin-top: 22px; padding-top: 18px; border-top: 1px solid var(--border); }
+.admin-field-hint { margin: 0 0 10px; color: var(--ink-muted); font-size: 12.5px; line-height: 1.5; }
 .admin-overview-card-row { display:grid; gap:12px; padding:16px; }
 .admin-overview-row-head { display:flex; align-items:center; justify-content:space-between; gap:12px; }
 .admin-icon-actions { display:flex; gap:7px; }
