@@ -20,14 +20,12 @@
   top: 12px;
   left: 50%;
   z-index: 25;
-  min-width: min(340px, calc(100vw - 24px));
-  max-width: 620px;
-  min-height: 62px;
-  display: grid;
-  grid-template-columns: 42px minmax(0, 1fr) auto;
+  width: min(230px, calc(100vw - 24px));
+  display: flex;
+  flex-direction: column;
   align-items: center;
-  gap: 12px;
-  padding: 10px 14px;
+  gap: 6px;
+  padding: 7px 10px 10px;
   border: 1px solid rgba(255, 200, 87, 0.55);
   border-radius: var(--radius-md);
   background: rgba(48, 36, 13, 0.94);
@@ -35,18 +33,23 @@
   backdrop-filter: blur(14px);
   transform: translateX(-50%);
   color: #fff;
+  cursor: pointer;
   animation: beast-mail-in 300ms ease both;
 }
 
+.beast-ov-mail-banner.is-dragging { user-select: none; cursor: grabbing; transition: none; box-shadow: 0 22px 64px rgba(0,0,0,.58); }
+.beast-ov-mail-banner.has-custom-position { transform: none; }
 .beast-ov-mail-banner[hidden] { display: none; }
-.beast-ov-mail-banner > span { width: 42px; height: 42px; display: flex; align-items: center; justify-content: center; border-radius: 12px; color: var(--warning); background: var(--warning-soft); }
-.beast-ov-mail-banner-photo { width: 42px; height: 42px; border-radius: 12px; object-fit: cover; flex: 0 0 auto; background: var(--warning-soft); }
-.beast-ov-mail-banner strong { display: block; font-size: 15px; }
-.beast-ov-mail-banner small { display: block; margin-top: 2px; color: rgba(255,255,255,.68); font-size: 12px; }
-.beast-ov-mail-banner > b { color: var(--warning); font-size: 1.45rem; }
-.beast-ov-mail-banner { cursor: pointer; }
-.beast-ov-mail-banner[data-priority="4"] { border-color:rgba(255,72,105,.72); background:rgba(70,16,27,.96); }
-.beast-ov-mail-banner[data-priority="3"] { border-color:rgba(255,153,72,.7); background:rgba(62,35,17,.96); }
+.beast-ov-mail-banner-drag { width: 64px; height: 20px; flex: 0 0 auto; display: flex; align-items: center; justify-content: center; cursor: grab; touch-action: none; }
+.beast-ov-mail-banner-drag::before { content: ""; width: 64px; height: 7px; border-radius: 999px; background: rgba(255,255,255,.28); }
+.beast-ov-mail-banner.is-dragging .beast-ov-mail-banner-drag::before { background: rgba(255,255,255,.5); }
+.beast-ov-mail-banner-icon,
+.beast-ov-mail-banner-photo { width: 100%; height: 132px; border-radius: 10px; object-fit: cover; }
+.beast-ov-mail-banner-icon { display: flex; align-items: center; justify-content: center; color: var(--warning); background: var(--warning-soft); }
+.beast-ov-mail-banner-photo { background: var(--warning-soft); }
+.beast-ov-mail-banner > div { width: 100%; }
+.beast-ov-mail-banner strong { display: block; font-size: 13px; line-height: 1.3; }
+.beast-ov-mail-banner small { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; margin-top: 2px; color: rgba(255,255,255,.68); font-size: 11px; line-height: 1.35; }
 
 .beast-ov-toolbar { position:absolute; top:12px; right:12px; z-index:24; display:flex; gap:8px; }
 .beast-ov-toolbar button { position:relative; width:46px; height:46px; display:grid; place-items:center; border:1px solid var(--border-strong); border-radius:50%; background:color-mix(in srgb,var(--surface-2-solid) 92%,transparent); color:var(--ink-muted); box-shadow:0 10px 28px rgba(0,0,0,.28); backdrop-filter:blur(14px); }
@@ -58,27 +61,13 @@
 .beast-ov-edit-label.is-fixed { background:rgba(9,12,18,.9); color:var(--ink-muted); }
 .beast-overview-grid.is-editing .beast-ov-card::after { content:""; position:absolute; inset:0; z-index:15; border-radius:inherit; background:rgba(3,5,9,.38); pointer-events:none; }
 
-.beast-ov-notification-modal { max-width:760px; }
-.beast-ov-notification-list { min-height:180px; max-height:62vh; display:flex; flex-direction:column; gap:10px; overflow-y:auto; padding:4px; }
-.beast-ov-notification-list article { min-height:76px; display:grid; grid-template-columns:46px minmax(0,1fr) auto; align-items:center; gap:12px; padding:11px 14px; border:1px solid var(--border); border-radius:var(--radius-md); background:var(--surface-solid); }
-.beast-ov-notification-list article > span { width:42px; height:42px; display:grid; place-items:center; border-radius:13px; color:var(--warning); background:var(--warning-soft); }
-.beast-ov-notification-photo { width:46px; height:46px; border-radius:13px; object-fit:cover; flex:0 0 auto; background:var(--warning-soft); }
-.beast-ov-notification-list article[data-priority="4"] > span { color:var(--danger); background:var(--danger-soft); }
-.beast-ov-notification-list article strong,.beast-ov-notification-list article small { display:block; }
-.beast-ov-notification-list article small { margin-top:3px; color:var(--ink-muted); }
-.beast-ov-notification-list article button { min-height:44px; padding:0 14px; border:1px solid var(--border-strong); border-radius:999px; background:transparent; color:var(--ink-muted); font-weight:750; }
-.beast-ov-all-good { min-height:230px; display:grid; place-items:center; align-content:center; gap:10px; color:var(--success); text-align:center; }
-.beast-ov-all-good strong { color:var(--ink); font-size:1.35rem; }
-.beast-ov-all-good span { color:var(--ink-muted); }
-
-.beast-ov-notification-list article[data-open-mail] { cursor:pointer; transition:border-color var(--transition-fast); }
-.beast-ov-notification-list article[data-open-mail]:hover { border-color:var(--border-strong); }
-
 .beast-ov-mail-modal { max-width:640px; }
 .beast-ov-mail-modal .beast-modal-body { padding:var(--space-5); gap:var(--space-4); }
 .beast-ov-mail-modal-image { width:100%; aspect-ratio:16/10; border-radius:var(--radius-md); overflow:hidden; background:#000; }
 .beast-ov-mail-modal-image img { width:100%; height:100%; object-fit:cover; display:block; }
 .beast-ov-mail-modal-switch { display:flex; gap:8px; margin-top:var(--space-3); }
+.beast-ov-mail-modal-actions { display:flex; gap:10px; margin-top:var(--space-4); }
+.beast-ov-mail-modal-actions .beast-btn { flex:1; display:inline-flex; align-items:center; justify-content:center; gap:8px; }
 .beast-ov-mail-modal-switch button { flex:1; min-height:44px; padding:0 14px; border:1px solid var(--border-strong); border-radius:999px; background:transparent; color:var(--ink-muted); font-weight:750; }
 .beast-ov-mail-modal-switch button.is-active { border-color:var(--accent-a); background:var(--accent-soft); color:var(--ink); box-shadow:var(--accent-glow); }
 .beast-ov-editor-modal { max-width:820px; overflow-y:auto; }

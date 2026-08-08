@@ -1,5 +1,16 @@
 [
   {
+    "version": "20260808-15",
+    "tag": "v0.5.20",
+    "date": "2026-08-08",
+    "changes": [
+      "The post banner is now post-only: it no longer competes with (or gets replaced by) open-door, unlocked-door, alarm, price, or power notifications -- that status is already visible on the Security and Energy cards, so mixing it into this banner just meant it sometimes wasn't about the mailbox at all.",
+      "Redesigned as a compact card: a drag handle at the top, a bigger picture below it, and shorter, tighter text underneath -- narrower overall than before.",
+      "The banner can now be dragged anywhere on screen by its handle, and remembers where you left it.",
+      "The detail popup now has a \"Posten er hentet\" button that clears the mailbox status directly from the dashboard, and the snooze button now matches the rest of the app's button styling instead of being a plain unstyled one."
+    ]
+  },
+  {
     "version": "20260808-14",
     "tag": "v0.5.19",
     "date": "2026-08-08",

@@ -87,6 +87,8 @@
   let lastOverviewPlaybackAt = 0;
   let overviewPlayerHideTimerId = null;
   let overviewPlayerDraggedUntil = 0;
+  let mailBannerDraggedUntil = 0;
+  const MAIL_BANNER_POSITION_KEY = "beast_mail_banner_position_v1";
   let cameraRecoveryActive = false;
   let overviewEditing = false;
   let contextualFocusTimerId = null;
@@ -182,6 +184,67 @@
     host.addEventListener("pointerup", finishDrag);
     host.addEventListener("pointercancel", finishDrag);
     window.addEventListener("resize", () => positionOverviewPlayer(host));
+  }
+
+  function savedMailBannerPosition() {
+    try {
+      const value = JSON.parse(localStorage.getItem(MAIL_BANNER_POSITION_KEY) || "null");
+      return Number.isFinite(value?.x) && Number.isFinite(value?.y) ? value : null;
+    } catch (error) {
+      return null;
+    }
+  }
+
+  function positionMailBanner(host, position = savedMailBannerPosition()) {
+    if (!position) return;
+    const rect = host.getBoundingClientRect();
+    const edge = 12;
+    const x = Math.max(edge, Math.min(window.innerWidth - rect.width - edge, position.x));
+    const y = Math.max(edge, Math.min(window.innerHeight - rect.height - edge, position.y));
+    host.style.left = `${x}px`;
+    host.style.top = `${y}px`;
+    host.style.transform = "none";
+    host.classList.add("has-custom-position");
+  }
+
+  function wireMailBannerDrag(host) {
+    positionMailBanner(host);
+    if (host.dataset.dragWired === "true") return;
+    host.dataset.dragWired = "true";
+    let drag = null;
+    host.addEventListener("pointerdown", (event) => {
+      if (event.button !== undefined && event.button !== 0) return;
+      if (!event.target.closest(".beast-ov-mail-banner-drag")) return;
+      event.preventDefault();
+      event.stopPropagation();
+      const rect = host.getBoundingClientRect();
+      drag = { pointerId: event.pointerId, startX: event.clientX, startY: event.clientY, x: rect.left, y: rect.top, moved: false };
+      host.setPointerCapture?.(event.pointerId);
+      host.classList.add("is-dragging");
+    });
+    host.addEventListener("pointermove", (event) => {
+      if (!drag || event.pointerId !== drag.pointerId) return;
+      const dx = event.clientX - drag.startX;
+      const dy = event.clientY - drag.startY;
+      if (!drag.moved && Math.hypot(dx, dy) < 8) return;
+      drag.moved = true;
+      event.preventDefault();
+      positionMailBanner(host, { x: drag.x + dx, y: drag.y + dy });
+    });
+    const finishDrag = (event) => {
+      if (!drag || event.pointerId !== drag.pointerId) return;
+      host.releasePointerCapture?.(event.pointerId);
+      host.classList.remove("is-dragging");
+      if (drag.moved) {
+        const rect = host.getBoundingClientRect();
+        localStorage.setItem(MAIL_BANNER_POSITION_KEY, JSON.stringify({ x: Math.round(rect.left), y: Math.round(rect.top) }));
+        mailBannerDraggedUntil = Date.now() + 450;
+      }
+      drag = null;
+    };
+    host.addEventListener("pointerup", finishDrag);
+    host.addEventListener("pointercancel", finishDrag);
+    window.addEventListener("resize", () => positionMailBanner(host));
   }
 
   function renderClock() {
@@ -281,37 +344,26 @@
     };
   }
 
+  // This used to be a shared "attention system" mixing in open/unlocked
+  // doors, triggered alarms, high power price/usage, and camera-recovery --
+  // all of that is already visible on the Security/Energy/Cameras cards, and
+  // mixing it in here just meant the post banner sometimes got replaced by
+  // something else entirely, which defeated the point of a banner you can
+  // glance at and immediately know it's about the mailbox. This is now
+  // post-only, on purpose.
   function notificationItems() {
-    const items = [];
-    const add = (id, priority, title, detail, icon = "bell", image = null) => items.push({ id, priority, title, detail, icon, image });
     const hasMail = featureEnabled("postBanner") && BeastHaSocket.getState(MAIL_PRESENT_ID)?.state === "on";
+    if (!hasMail) return [];
     const mailCount = Number(BeastHaSocket.getState(MAIL_COUNT_ID)?.state);
     const mailDescription = validText(BeastHaSocket.getState(MAIL_DESCRIPTION_ID)?.state);
-    if (hasMail) {
-      const images = mailImages();
-      items.push({
-        id: "mail", priority: 1, title: "Der er post",
-        detail: mailDescription || (Number.isFinite(mailCount) && mailCount > 0 ? `${mailCount} registreringer` : "Post registreret"),
-        icon: "bell",
-        image: images.indkorsel,
-        images
-      });
-    }
-    const openNames = DOOR_IDS.map((id, index) => BeastHaSocket.getState(id)?.state === "on" ? (LOCKS[index]?.label || BeastEntityPicker.friendlyName(id)) : null).filter(Boolean);
-    const unlockedNames = LOCKS.filter((entry) => {
-      const value = BeastHaSocket.getState(entry.id)?.state;
-      return value && !["locked", "unknown", "unavailable"].includes(value);
-    }).map((entry) => entry.label);
-    if (openNames.length) add("doors-open", 3, `${openNames.length} ${openNames.length === 1 ? "dør er" : "døre er"} åben`, openNames.join(" · "), "unlock");
-    if (unlockedNames.length) add("doors-unlocked", 2, `${unlockedNames.length} ${unlockedNames.length === 1 ? "dør er" : "døre er"} ulåst`, unlockedNames.join(" · "), "unlock");
-    const triggered = ALARM_IDS.filter((id) => BeastHaSocket.getState(id)?.state === "triggered");
-    if (triggered.length) add("alarm", 4, "Alarm aktiveret", "Åbn sikkerhed for at se detaljer", "shield");
-    const price = Number(BeastHaSocket.getState(PRICE_ENTITY_ID)?.state);
-    if (Number.isFinite(price) && price >= 3) add("price-high", 2, "Høj strømpris lige nu", `${price.toFixed(2)} kr/kWh · udsæt større forbrug`, "bolt");
-    const power = Number(BeastHaSocket.getState(POWER_ENTITY_ID)?.state);
-    if (Number.isFinite(power) && power >= 5000) add("power-high", 2, "Højt strømforbrug", `${(power / 1000).toFixed(1)} kW lige nu`, "bolt");
-    if (cameraRecoveryActive) add("camera-recovery", 2, "Kamera genopretter forbindelse", "Streamen forsøges startet igen", "camera");
-    return items.sort((a, b) => b.priority - a.priority);
+    const images = mailImages();
+    return [{
+      id: "mail", priority: 1, title: "Der er post",
+      detail: mailDescription || (Number.isFinite(mailCount) && mailCount > 0 ? `${mailCount} registreringer` : "Post registreret"),
+      icon: "bell",
+      image: images.indkorsel,
+      images
+    }];
   }
 
   function snoozedNotifications() {
@@ -326,78 +378,65 @@
 
   function renderAttentionSystem() {
     const host = document.getElementById("beastOvMailBanner");
-    const items = visibleNotifications();
-    const top = items[0];
-    const count = document.getElementById("beastOvNotificationCount");
-    if (count) { count.hidden = !items.length; count.textContent = String(items.length); }
+    const top = visibleNotifications()[0];
     if (!host) return;
     host.hidden = !top;
     if (!top) return;
-    host.dataset.priority = String(top.priority);
     host.classList.toggle("has-image", Boolean(top.image));
     host.innerHTML = `
-      ${top.image ? `<img class="beast-ov-mail-banner-photo" src="${escapeHtml(top.image)}" alt="">` : `<span>${BeastCore.icon(top.icon, { size: 20 })}</span>`}
+      <span class="beast-ov-mail-banner-drag" aria-hidden="true"></span>
+      ${top.image ? `<img class="beast-ov-mail-banner-photo" src="${escapeHtml(top.image)}" alt="">` : `<span class="beast-ov-mail-banner-icon">${BeastCore.icon(top.icon, { size: 32 })}</span>`}
       <div><strong>${escapeHtml(top.title)}</strong><small>${escapeHtml(top.detail)}</small></div>
-      <b>${items.length > 1 ? `+${items.length - 1}` : ""}</b>
     `;
     host.onclick = (event) => {
       event.stopPropagation();
-      if (top.id === "mail") openMailDetail(top);
-      else openNotificationCenter();
+      if (Date.now() < mailBannerDraggedUntil) return;
+      openMailDetail(top);
     };
+    wireMailBannerDrag(host);
   }
 
   const MAIL_CAMERA_LABELS = { indkorsel: "Indkørsel", carport: "Carport", forhaven: "Forhaven" };
 
   function openMailDetail(item, activeCamera = "indkorsel") {
-    document.getElementById("beastOvNotificationModal")?.remove();
     document.getElementById("beastOvMailModal")?.remove();
     const images = item.images || mailImages();
     const available = Object.entries(images).filter(([, url]) => url);
-    if (!available.length) { openNotificationCenter(); return; }
-    const current = images[activeCamera] ? activeCamera : available[0][0];
+    const current = available.length ? (images[activeCamera] ? activeCamera : available[0][0]) : null;
     const overlay = document.createElement("div");
     overlay.id = "beastOvMailModal";
     overlay.className = "beast-modal-overlay";
     overlay.innerHTML = `<div class="beast-modal beast-ov-mail-modal" role="dialog" aria-modal="true">
       <div class="beast-modal-header"><div><h3>Postkassen</h3><p>${escapeHtml(item.detail)}</p></div><button type="button" class="beast-modal-close" data-close>${BeastCore.icon("close", { size: 22 })}</button></div>
       <div class="beast-modal-body">
-        <div class="beast-ov-mail-modal-image"><img src="${escapeHtml(images[current])}" alt="${escapeHtml(MAIL_CAMERA_LABELS[current] || current)}"></div>
+        ${current ? `<div class="beast-ov-mail-modal-image"><img src="${escapeHtml(images[current])}" alt="${escapeHtml(MAIL_CAMERA_LABELS[current] || current)}"></div>` : ""}
         ${available.length > 1 ? `<div class="beast-ov-mail-modal-switch">${available.map(([key]) => `<button type="button" data-camera="${key}"${key === current ? " class=\"is-active\"" : ""}>${escapeHtml(MAIL_CAMERA_LABELS[key] || key)}</button>`).join("")}</div>` : ""}
+        <div class="beast-ov-mail-modal-actions">
+          <button type="button" class="beast-btn beast-btn-primary" data-mail-collected>${BeastCore.icon("check", { size: 17 })}<span>Posten er hentet</span></button>
+          <button type="button" class="beast-btn" data-snooze="${escapeHtml(item.id)}">Skjul 30 min.</button>
+        </div>
       </div>
     </div>`;
     document.body.appendChild(overlay);
     const close = () => overlay.remove();
     overlay.addEventListener("click", (event) => {
       if (event.target === overlay || event.target.closest("[data-close]")) { close(); return; }
-      const button = event.target.closest("[data-camera]");
-      if (button) openMailDetail(item, button.dataset.camera);
+      const cameraButton = event.target.closest("[data-camera]");
+      if (cameraButton) { openMailDetail(item, cameraButton.dataset.camera); return; }
+      if (event.target.closest("[data-mail-collected]")) {
+        if (MAIL_PRESENT_ID) callService("input_boolean", "turn_off", MAIL_PRESENT_ID);
+        close();
+        renderAttentionSystem();
+        return;
+      }
+      if (event.target.closest("[data-snooze]")) {
+        const snoozed = snoozedNotifications();
+        snoozed[item.id] = Date.now() + 30 * 60 * 1000;
+        localStorage.setItem(NOTIFICATION_SNOOZE_KEY, JSON.stringify(snoozed));
+        close();
+        renderAttentionSystem();
+      }
     });
-  }
-
-  function openNotificationCenter() {
-    document.getElementById("beastOvNotificationModal")?.remove();
-    const items = notificationItems();
-    const overlay = document.createElement("div");
-    overlay.id = "beastOvNotificationModal";
-    overlay.className = "beast-modal-overlay";
-    overlay.innerHTML = `<div class="beast-modal beast-ov-notification-modal" role="dialog" aria-modal="true"><div class="beast-modal-header"><div><h3>Husets notifikationer</h3><p>Samlet overblik over det, der kræver opmærksomhed</p></div><button type="button" class="beast-modal-close" data-close>${BeastCore.icon("close", { size: 22 })}</button></div><div class="beast-ov-notification-list">${items.map((item) => `<article data-priority="${item.priority}"${item.id === "mail" ? ` data-open-mail="true"` : ""}>${item.image ? `<img class="beast-ov-notification-photo" src="${escapeHtml(item.image)}" alt="">` : `<span>${BeastCore.icon(item.icon, { size: 20 })}</span>`}<div><strong>${escapeHtml(item.title)}</strong><small>${escapeHtml(item.detail)}</small></div><button type="button" data-snooze="${escapeHtml(item.id)}">Skjul 30 min.</button></article>`).join("") || `<div class="beast-ov-all-good">${BeastCore.icon("check", { size: 26 })}<strong>Alt ser godt ud</strong><span>Der er ingen aktive notifikationer.</span></div>`}</div></div>`;
-    document.body.appendChild(overlay);
-    const close = () => overlay.remove();
-    overlay.addEventListener("click", (event) => {
-      if (event.target === overlay || event.target.closest("[data-close]")) { close(); return; }
-      if (event.target.closest("[data-snooze]")) return;
-      const mailArticle = event.target.closest("[data-open-mail]");
-      if (mailArticle) { const item = items.find((entry) => entry.id === "mail"); close(); if (item) openMailDetail(item); }
-    });
-    overlay.querySelectorAll("[data-snooze]").forEach((button) => button.addEventListener("click", (event) => {
-      event.stopPropagation();
-      const snoozed = snoozedNotifications();
-      snoozed[button.dataset.snooze] = Date.now() + 30 * 60 * 1000;
-      localStorage.setItem(NOTIFICATION_SNOOZE_KEY, JSON.stringify(snoozed));
-      close();
-      renderAttentionSystem();
-    }));
   }
 
   function savedOverviewLayout() {
@@ -514,7 +553,6 @@
       if (event.target.closest("button")) closeMenu();
     });
     document.addEventListener("click", closeMenu);
-    document.getElementById("beastOvNotifications")?.addEventListener("click", (event) => { event.stopPropagation(); closeMenu(); openNotificationCenter(); });
     document.getElementById("beastOvEdit")?.addEventListener("click", (event) => { event.stopPropagation(); closeMenu(); openOverviewEditor(); });
     applyOverviewLayout();
   }
@@ -1385,7 +1423,7 @@
     ROBOT_IDS.forEach((robot) => BeastHaSocket.subscribeEntity(robot.id, renderSecurity));
     [PRINTER_STATUS_ID, PRINTER_PROGRESS_ID, PRINTER_REMAINING_ID].filter(Boolean).forEach((id) => BeastHaSocket.subscribeEntity(id, () => { renderAttentionSystem(); renderSecurity(); }));
     WASTE_SENSORS.forEach((id) => BeastHaSocket.subscribeEntity(id, renderClock));
-    [MAIL_PRESENT_ID, MAIL_COUNT_ID, MAIL_DESCRIPTION_ID, MAIL_IMAGE_ID, MAIL_IMAGE_CARPORT_ID, MAIL_IMAGE_FORHAVEN_ID, POWER_ENTITY_ID, PRICE_ENTITY_ID, ...LOCK_IDS, ...DOOR_IDS, ...ALARM_IDS].filter(Boolean).forEach((id) => BeastHaSocket.subscribeEntity(id, renderAttentionSystem));
+    [MAIL_PRESENT_ID, MAIL_COUNT_ID, MAIL_DESCRIPTION_ID, MAIL_IMAGE_ID, MAIL_IMAGE_CARPORT_ID, MAIL_IMAGE_FORHAVEN_ID].filter(Boolean).forEach((id) => BeastHaSocket.subscribeEntity(id, renderAttentionSystem));
     [CAR_BATTERY_ID, CAR_RANGE_ID, CAR_CHARGING_ID, POOL_TEMPERATURE_ID].filter(Boolean).forEach((id) => BeastHaSocket.subscribeEntity(id, renderClock));
     BeastHaSocket.subscribeDomain("calendar", renderClock);
     BeastHaSocket.subscribeDomain("light", renderSecurity);
