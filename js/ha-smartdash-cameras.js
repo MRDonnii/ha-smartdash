@@ -28,6 +28,31 @@
       .replace(/_medium_resolution_channel$/, "");
   }
 
+  // Shared per-entity lookup used both by discoverCameras() (filtered by
+  // the "Kameraer" panel's allowlist, for the camera strip/picker) and by
+  // resolveCamera() below (unfiltered -- for features with their own
+  // independent camera picker, like the screensaver and front-page
+  // preview, where a camera the admin explicitly chose there shouldn't
+  // silently fail to render just because it isn't also in the separate
+  // Kameraer allowlist).
+  function cameraInfoFor(entityId) {
+    const state = BeastHaSocket.getState(entityId);
+    if (!state) return null;
+    const slug = getCameraSlug(entityId);
+    const streamName = STREAM_NAME_MAP[slug] || null;
+    const motionEntityId = `binary_sensor.${slug}_motion`;
+    const motionState = BeastHaSocket.getState(motionEntityId);
+    return {
+      slug,
+      entityId,
+      streamName,
+      entityPicture: state.attributes.entity_picture || null,
+      label: (state.attributes.friendly_name || slug).split(" - ")[0],
+      motion: Boolean(motionState && motionState.state === "on"),
+      motionChangedAt: motionState ? new Date(motionState.last_changed).getTime() : 0
+    };
+  }
+
   function discoverCameras() {
     const states = BeastHaSocket.getAllStates();
     const cameras = [];
@@ -41,21 +66,8 @@
       // configured yet, show everything so there's something to narrow.
       if (!entityId.startsWith("camera.")) return;
       if (configuredCameraIds && !configuredCameraIds.has(entityId)) return;
-      const slug = getCameraSlug(entityId);
-      // go2rtc gives a faster, lower-latency snapshot/stream when this
-      // specific camera has a mapping for it -- optional, not required.
-      const streamName = STREAM_NAME_MAP[slug] || null;
-      const motionEntityId = `binary_sensor.${slug}_motion`;
-      const motionState = BeastHaSocket.getState(motionEntityId);
-      cameras.push({
-        slug,
-        entityId,
-        streamName,
-        entityPicture: state.attributes.entity_picture || null,
-        label: (state.attributes.friendly_name || slug).split(" - ")[0],
-        motion: Boolean(motionState && motionState.state === "on"),
-        motionChangedAt: motionState ? new Date(motionState.last_changed).getTime() : 0
-      });
+      const info = cameraInfoFor(entityId);
+      if (info) cameras.push(info);
     });
     cameras.sort((a, b) => {
       if (a.motion !== b.motion) return a.motion ? -1 : 1;
@@ -242,6 +254,7 @@
   window.BeastCameras = {
     getAllCameras: () => discoverCameras(),
     getTopCameras: (n) => discoverCameras().slice(0, n),
+    resolveCamera: (entityId) => cameraInfoFor(entityId),
     snapshotUrl,
     swapSnapshot
   };

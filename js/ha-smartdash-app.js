@@ -233,8 +233,20 @@ function hideAmbientMode() {
   window.clearTimeout(screenOffTimerId);
   window.clearInterval(ambientClockTimerId);
   ambientClockTimerId = null;
-  document.getElementById("beastAmbientMode")?.classList.remove("is-visible");
+  const overlay = document.getElementById("beastAmbientMode");
+  const wasShowing = Boolean(overlay?.classList.contains("is-visible"));
+  overlay?.classList.remove("is-visible");
   document.body.classList.remove("beast-is-ambient");
+  // Waking from the screensaver should land back on Overview, not
+  // whatever section happened to be open before the kiosk went idle --
+  // setupNavigation()'s own 3-minute auto-return timer is meant to handle
+  // this, but it gets cancelled the moment the page goes hidden (see its
+  // visibilitychange listener) and isn't rescheduled until the *next*
+  // activity, by which point the just-woken screen has already shown the
+  // stale section for a moment. hideAmbientMode() runs on every tap
+  // (noteUserActivity() calls it defensively even when nothing was
+  // showing), so this only fires for a genuine wake, not every tap.
+  if (wasShowing) document.dispatchEvent(new CustomEvent("beast:navigate", { detail: { section: "overview" } }));
 }
 
 // Reuses the same active-banner detection/snooze/schedule logic as the
@@ -273,9 +285,14 @@ function updateAmbientClock() {
 function ambientCameraMarkup(config) {
   const ids = (config.cameraEntities || []).filter(Boolean).slice(0, 3);
   if (!ids.length) return "";
-  const allCameras = window.BeastCameras?.getAllCameras?.() || [];
+  // resolveCamera(), not getAllCameras().find() -- the latter is filtered
+  // down to the "Kameraer" panel's own allowlist (Administration ->
+  // Kameraer -> Kamera-entities), which is a separate, independent
+  // selection from the screensaver's own camera picker. A camera picked
+  // here but not also in that other allowlist would otherwise silently
+  // fail to render.
   const tiles = ids.map((id) => {
-    const camera = allCameras.find((item) => item.entityId === id);
+    const camera = window.BeastCameras?.resolveCamera?.(id);
     if (!camera) return "";
     if (camera.streamName) {
       const src = `./camera-player.html?v=11&sub=1&src=${encodeURIComponent(camera.streamName)}`;
@@ -818,6 +835,24 @@ function setupNavigation() {
       scheduleAutoReturn();
     }, { passive: true });
   });
+  // The tap that dismisses the screensaver was also landing as a real
+  // click on whatever card/rail-button happened to be underneath it (e.g.
+  // the Energy card), immediately re-navigating away from Overview right
+  // after noteUserActivity() had just returned there. Cause: the generic
+  // pointerdown listener above removes .is-visible (and with it, pointer-
+  // events:auto) synchronously, but the browser computes the *following*
+  // click event's target via a fresh hit-test at pointerup time -- with
+  // pointer-events already back to none, that hit-test finds the newly-
+  // exposed element beneath instead of the overlay. preventDefault() here
+  // suppresses that synthetic click for this one gesture; only matters
+  // while the overlay actually has pointer-events:auto (i.e. is visible),
+  // so normal dashboard taps elsewhere are untouched.
+  document.getElementById("beastAmbientMode")?.addEventListener("pointerdown", (event) => {
+    event.preventDefault();
+    event.stopPropagation();
+    noteUserActivity();
+    scheduleAutoReturn();
+  }, { passive: false });
   document.addEventListener("visibilitychange", () => {
     if (document.hidden) window.clearTimeout(autoReturnTimerId);
     else scheduleAutoReturn();
