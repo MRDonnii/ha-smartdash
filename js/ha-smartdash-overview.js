@@ -29,6 +29,7 @@
   let PRINTER_REMAINING_ID = null;
   let PRINTER_TASK_ID = null;
   let PRINTER_CAMERA_IMAGE_ID = null;
+  let PRINTER_BANNER_CAMERA_ID = null;
   const NOTIFICATION_SNOOZE_KEY = "beast_notification_snooze_v1";
   const OVERVIEW_CAMERA_LIMIT = 3;
   let UTILITY_VIEWS = {};
@@ -42,6 +43,7 @@
     const pool = BeastConfig.get("panels.pool") || {};
     const robots = BeastConfig.get("panels.robots") || {};
     const printer = BeastConfig.get("panels.printer") || {};
+    const bannerSettings = BeastConfig.get("banners") || {};
     const app = BeastConfig.get("appEntities") || {};
     WEATHER_ENTITY_ID = weather.entity;
     POWER_ENTITY_ID = energy.powerSensor;
@@ -65,6 +67,7 @@
     ROBOT_IDS = [...(robots.vacuums || []), ...(robots.mowers || [])].filter(Boolean).map((id) => ({ id, label: BeastEntityPicker.friendlyName(id) }));
     PRINTER_STATUS_ID = printer.statusSensor; PRINTER_PROGRESS_ID = printer.progressSensor; PRINTER_REMAINING_ID = printer.remainingSensor;
     PRINTER_TASK_ID = printer.taskName; PRINTER_CAMERA_IMAGE_ID = printer.cameraImage;
+    PRINTER_BANNER_CAMERA_ID = bannerSettings.printerCameraOverride || null;
     UTILITY_VIEWS = {
       electric: { label: "El", current: energy.powerSensor, today: energy.totalEnergySensor, history: energy.powerSensor, mode: "average", unit: "W", todayUnit: "kWh" },
       heat: { label: "Varme", current: energy.heatPowerSensor, today: energy.heatEnergySensor, history: energy.heatEnergySensor, mode: "delta", unit: "kW", todayUnit: "kWh" },
@@ -93,6 +96,7 @@
   let bannerDraggedUntil = {};
   let printerImageObjectUrl = null;
   let printerImageLastFetchAt = 0;
+  let printerImageSourceId = null;
   const PRINTER_IMAGE_REFRESH_MS = 5000;
   function bannerPositionKey(type) { return `beast_banner_position_${type}_v1`; }
   let overviewEditing = false;
@@ -370,8 +374,20 @@
   // glance at and immediately know it's about the mailbox. This is now
   // post-only, on purpose.
   function refreshPrinterImage() {
-    if (!PRINTER_CAMERA_IMAGE_ID) return;
-    const path = BeastHaSocket.getState(PRINTER_CAMERA_IMAGE_ID)?.attributes?.entity_picture;
+    // An external camera (e.g. a Protect camera pointed at the printer) can
+    // be chosen instead of the printer's own built-in camera image -- both
+    // expose the same authenticated entity_picture attribute, so either
+    // works through the same fetch. Switching source invalidates the cache
+    // immediately instead of waiting out the throttle window.
+    const sourceId = PRINTER_BANNER_CAMERA_ID || PRINTER_CAMERA_IMAGE_ID;
+    if (!sourceId) return;
+    if (sourceId !== printerImageSourceId) {
+      if (printerImageObjectUrl) URL.revokeObjectURL(printerImageObjectUrl);
+      printerImageObjectUrl = null;
+      printerImageSourceId = sourceId;
+      printerImageLastFetchAt = 0;
+    }
+    const path = BeastHaSocket.getState(sourceId)?.attributes?.entity_picture;
     if (!path) return;
     const now = Date.now();
     if (printerImageObjectUrl && now - printerImageLastFetchAt < PRINTER_IMAGE_REFRESH_MS) return;
@@ -1592,7 +1608,7 @@
     [PRICE_ENTITY_ID, PRICE_FORECAST_ENTITY_ID, PRICE_TOMORROW_ID].filter(Boolean).forEach((id) => BeastHaSocket.subscribeEntity(id, () => { renderEnergy(); applyOverviewLayout(); }));
     [...LOCK_IDS, ...DOOR_IDS, ...ALARM_IDS].forEach((id) => BeastHaSocket.subscribeEntity(id, () => { renderSecurity(); applyOverviewLayout(); renderBanners(); }));
     ROBOT_IDS.forEach((robot) => BeastHaSocket.subscribeEntity(robot.id, renderSecurity));
-    [PRINTER_STATUS_ID, PRINTER_PROGRESS_ID, PRINTER_REMAINING_ID, PRINTER_TASK_ID, PRINTER_CAMERA_IMAGE_ID].filter(Boolean).forEach((id) => BeastHaSocket.subscribeEntity(id, () => { renderBanners(); renderSecurity(); }));
+    [PRINTER_STATUS_ID, PRINTER_PROGRESS_ID, PRINTER_REMAINING_ID, PRINTER_TASK_ID, PRINTER_CAMERA_IMAGE_ID, PRINTER_BANNER_CAMERA_ID].filter(Boolean).forEach((id) => BeastHaSocket.subscribeEntity(id, () => { renderBanners(); renderSecurity(); }));
     WASTE_SENSORS.forEach((id) => BeastHaSocket.subscribeEntity(id, renderClock));
     [MAIL_PRESENT_ID, MAIL_COUNT_ID, MAIL_DESCRIPTION_ID, MAIL_IMAGE_ID, MAIL_IMAGE_CARPORT_ID, MAIL_IMAGE_FORHAVEN_ID].filter(Boolean).forEach((id) => BeastHaSocket.subscribeEntity(id, renderBanners));
     // The "open/unlocked too long" door banner is duration-based, not just
