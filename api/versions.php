@@ -25,6 +25,19 @@ function currentBuildId($root) {
   return "legacy";
 }
 
+// The build ID (e.g. "20260808-05") is what actually drives update
+// comparisons -- it sorts correctly as a plain string, which a semver-style
+// tag like "v0.5.10" doesn't ("v0.5.10" < "v0.5.9" lexicographically). This
+// tag is display-only, read straight from the shipped beast.html, so
+// Administration can show the same version number GitHub shows without
+// needing a network call. Older snapshots taken before this existed won't
+// have it -- callers should fall back to the build ID in that case.
+function releaseTag($htmlPath) {
+  $html = @file_get_contents($htmlPath);
+  if ($html && preg_match('/<meta name="beast-release-tag" content="([^"]+)"/', $html, $m)) return $m[1];
+  return null;
+}
+
 function isSafeVersion($version) {
   return is_string($version) && preg_match('/^[A-Za-z0-9._-]{1,64}$/', $version);
 }
@@ -84,6 +97,7 @@ function listSnapshots($snapshotsDir, $changelog) {
     $entry = $changelogByVersion[$name] ?? null;
     $versions[] = [
       "version" => $name,
+      "tag" => releaseTag($path . "/beast.html"),
       "date" => $entry["date"] ?? gmdate("Y-m-d", filemtime($path) ?: time()),
       "changes" => $entry["changes"] ?? [],
       "sizeKb" => dirSizeKb($path),
@@ -100,6 +114,7 @@ $method = $_SERVER["REQUEST_METHOD"];
 if ($method === "GET") {
   echo json_encode([
     "currentVersion" => $current,
+    "currentTag" => releaseTag($root . "/beast.html"),
     "hasCurrentSnapshot" => is_dir($snapshotsDir . "/" . $current),
     "versions" => listSnapshots($snapshotsDir, readChangelog($changelogFile))
   ]);
