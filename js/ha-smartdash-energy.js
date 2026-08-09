@@ -1,11 +1,31 @@
 (function () {
+  const ENERGY_NATIVE_DEFAULTS = [
+    { id: "energy-summary", kind: "energy-summary", type: "energy-summary", templateId: "overview-energy", label: "Nøgletal", enabled: true, desktop: { x: 1, y: 2, w: 3, h: 7 }, bindings: {} },
+    { id: "energy-recommendation", kind: "energy-recommendation", type: "energy-recommendation", label: "Energiassistent", enabled: true, desktop: { x: 4, y: 2, w: 9, h: 1 }, bindings: {} },
+    { id: "energy-price-chart", kind: "energy-price-chart", type: "energy-price-card", templateId: "energy-price-card", label: "Elpris time for time", enabled: true, desktop: { x: 4, y: 3, w: 9, h: 3 }, bindings: {} },
+    { id: "energy-usage-chart", kind: "energy-usage-chart", type: "energy-usage-card", templateId: "energy-usage-card", label: "Forbrug seneste 24 timer", enabled: true, desktop: { x: 4, y: 6, w: 9, h: 3 }, bindings: {} },
+    { id: "energy-now-summary", kind: "energy-now-summary", type: "energy-now-summary", label: "Forbrug lige nu", enabled: true, desktop: { x: 1, y: 2, w: 12, h: 1 }, bindings: {} },
+    { id: "energy-devices", kind: "energy-devices", type: "energy-devices", label: "Forbrug pr. enhed", enabled: true, desktop: { x: 1, y: 3, w: 12, h: 5 }, bindings: {} },
+  ];
+
+  function energyNativeCards() {
+    const saved = BeastConfig.get("pageLayouts.energy.nativeCards");
+    const cards = Array.isArray(saved) && saved.length ? saved : ENERGY_NATIVE_DEFAULTS;
+    return cards.map((card) => {
+      const fallback = ENERGY_NATIVE_DEFAULTS.find((item) => item.id === card.id || item.kind === card.kind || item.kind === card.type) || {};
+      return { ...fallback, ...card, kind: card.kind || fallback.kind || card.type || card.id, bindings: { ...(fallback.bindings || {}), ...(card.bindings || {}) }, desktop: { ...(fallback.desktop || {}), ...(card.desktop || {}) } };
+    });
+  }
+
+  function nativeCard(id) { return energyNativeCards().find((card) => card.id === id || card.kind === id); }
+  function nativeBinding(id, key, fallback) { return nativeCard(id)?.bindings?.[key] || fallback; }
   function energyConfig() { return BeastConfig.get("panels.energy") || {}; }
-  function POWER_ENTITY_ID() { return energyConfig().powerSensor; }
-  function PRICE_ENTITY_ID() { return energyConfig().priceSensor; }
-  function PRICE_FORECAST_ENTITY_ID() { return energyConfig().priceForecastSensor; }
-  function TOMORROW_ENTITY_ID() { return energyConfig().tomorrowAvailableSensor; }
-  function TOTAL_ENERGY_ID() { return energyConfig().totalEnergySensor; }
-  function TOTAL_COST_ID() { return energyConfig().totalCostSensor; }
+  function POWER_ENTITY_ID() { return nativeBinding("energy-summary", "power", nativeBinding("energy-usage-chart", "power", energyConfig().powerSensor)); }
+  function PRICE_ENTITY_ID() { return nativeBinding("energy-summary", "price", nativeBinding("energy-price-chart", "price", energyConfig().priceSensor)); }
+  function PRICE_FORECAST_ENTITY_ID() { return nativeBinding("energy-price-chart", "forecast", energyConfig().priceForecastSensor); }
+  function TOMORROW_ENTITY_ID() { return nativeBinding("energy-price-chart", "tomorrow", energyConfig().tomorrowAvailableSensor); }
+  function TOTAL_ENERGY_ID() { return nativeBinding("energy-summary", "today", nativeBinding("energy-usage-chart", "energy", energyConfig().totalEnergySensor)); }
+  function TOTAL_COST_ID() { return nativeBinding("energy-summary", "cost", nativeBinding("energy-usage-chart", "cost", energyConfig().totalCostSensor)); }
   function NOW_GROUPS() { return energyConfig().nowGroups || []; }
   function NOW_SUMMARY_IDS() { return [energyConfig().powerSensor, energyConfig().nowMeasuredSensor, energyConfig().nowUnmeasuredSensor]; }
 
@@ -19,6 +39,8 @@
   let priceView = "today";
   let energyView = "overview";
   let todayRefreshTimerId = null;
+  let nativeEditing = false;
+  let nativeDraftCards = null;
 
   function escapeHtml(value) {
     return String(value ?? "").replace(/[&<>"']/g, (char) => ({
@@ -246,8 +268,126 @@
         <button type="button" data-energy-view="overview" class="${energyView === "overview" ? "is-active" : ""}">Overblik</button>
         <button type="button" data-energy-view="now" class="${energyView === "now" ? "is-active" : ""}">Nu</button>
       </div>
-      <button type="button" class="beast-energy-layout-btn" data-energy-layout aria-label="Rediger energilayout">⋮</button>
     </div>`;
+  }
+
+  function applyNativeLayout(cardsOverride = null) {
+    if (!containerEl) return;
+    const selectors = {
+      "energy-summary": ".beast-stat-grid",
+      "energy-recommendation": ".beast-energy-recommendation",
+      "energy-price-chart": ".beast-energy-chart-price",
+      "energy-usage-chart": ".beast-energy-chart-usage",
+      "energy-now-summary": ".beast-energy-now-summary",
+      "energy-devices": ".beast-energy-now-groups",
+    };
+    containerEl.querySelectorAll(":scope > .beast-energy-native-clone").forEach((element) => element.remove());
+    containerEl.classList.add("has-native-layout");
+    const usedKinds = new Set();
+    (cardsOverride || energyNativeCards()).forEach((card, index) => {
+      const kind = card.kind || card.type || card.id;
+      const source = containerEl.querySelector(selectors[kind]);
+      let element = source;
+      if (source && usedKinds.has(kind)) {
+        element = source.cloneNode(true);
+        element.classList.add("beast-energy-native-clone");
+        element.querySelectorAll(".beast-energy-native-drag,.beast-energy-native-resize").forEach((control) => control.remove());
+        containerEl.appendChild(element);
+      }
+      if (!element) return;
+      usedKinds.add(kind);
+      element.classList.add("beast-energy-native-card");
+      element.dataset.energyNativeCard = card.id;
+      element.dataset.energyNativeKind = kind;
+      element.style.setProperty("--energy-native-order", String(index));
+      element.style.setProperty("--energy-native-w", String(Math.max(1, Math.min(12, Number(card.desktop?.w) || 12))));
+      element.style.setProperty("--energy-native-h", String(Math.max(1, Math.min(8, Number(card.desktop?.h) || 1))));
+      element.style.setProperty("--energy-native-x", String(Math.max(1, Math.min(12, Number(card.desktop?.x) || 1))));
+      element.style.setProperty("--energy-native-y", String(Math.max(2, Number(card.desktop?.y) || 2)));
+      element.classList.toggle("is-layout-hidden", card.enabled === false);
+      const title = element.querySelector(".beast-panel-title"); if (title && card.label) title.textContent = card.label;
+    });
+  }
+
+  function exitNativeEditor(save) {
+    if (!nativeEditing) return;
+    if (save && nativeDraftCards) BeastConfig.set("pageLayouts.energy.nativeCards", nativeDraftCards);
+    nativeEditing = false;
+    nativeDraftCards = null;
+    window.beastCardEditorActive = false;
+    containerEl?.classList.remove("is-native-editing");
+    containerEl?.querySelectorAll(".beast-energy-native-drag,.beast-energy-native-resize").forEach((control) => control.remove());
+    document.getElementById("beastEnergyNativeEditBar")?.remove();
+    // The Nu view normally updates values in place instead of rebuilding its
+    // DOM. Reapply the persisted model explicitly so Cancel immediately
+    // restores temporary drag/resize changes there as well.
+    applyNativeLayout(energyNativeCards());
+    render();
+  }
+
+  function syncNativeOrderFromDom() {
+    if (!nativeDraftCards) return;
+    const visible = Array.from(containerEl.querySelectorAll(":scope > .beast-energy-native-card")).map((element) => element.dataset.energyNativeCard);
+    const visibleSet = new Set(visible);
+    const orderedVisible = visible.map((id) => nativeDraftCards.find((card) => card.id === id)).filter(Boolean);
+    nativeDraftCards = [...orderedVisible, ...nativeDraftCards.filter((card) => !visibleSet.has(card.id))];
+    applyNativeLayout(nativeDraftCards);
+  }
+
+  function wireNativeCardEdit(element) {
+    const card = nativeDraftCards.find((item) => item.id === element.dataset.energyNativeCard);
+    if (!card) return;
+    const drag = document.createElement("span"); drag.className = "beast-energy-native-drag"; drag.innerHTML = BeastCore.icon("grip", { size: 18 });
+    const resize = document.createElement("span"); resize.className = "beast-energy-native-resize";
+    element.append(drag, resize);
+    let dragging = null;
+    drag.addEventListener("pointerdown", (event) => { event.preventDefault(); event.stopPropagation(); dragging = event.pointerId; drag.setPointerCapture?.(event.pointerId); element.classList.add("is-dragging"); });
+    drag.addEventListener("pointermove", (event) => {
+      if (dragging !== event.pointerId) return;
+      const target = document.elementFromPoint(event.clientX, event.clientY)?.closest(".beast-energy-native-card");
+      if (!target || target === element || target.parentElement !== containerEl) return;
+      const targetCard = nativeDraftCards.find((item) => item.id === target.dataset.energyNativeCard);
+      if (targetCard) {
+        const sourcePosition = { x: card.desktop?.x || 1, y: card.desktop?.y || 2 };
+        card.desktop = { ...(card.desktop || {}), x: targetCard.desktop?.x || 1, y: targetCard.desktop?.y || 2 };
+        targetCard.desktop = { ...(targetCard.desktop || {}), ...sourcePosition };
+      }
+      const before = target.compareDocumentPosition(element) & Node.DOCUMENT_POSITION_FOLLOWING;
+      target.parentNode.insertBefore(element, before ? target : target.nextSibling);
+      syncNativeOrderFromDom();
+    });
+    const finishDrag = (event) => { if (dragging !== event.pointerId) return; drag.releasePointerCapture?.(event.pointerId); element.classList.remove("is-dragging"); dragging = null; };
+    drag.addEventListener("pointerup", finishDrag); drag.addEventListener("pointercancel", finishDrag);
+    let sizing = null;
+    resize.addEventListener("pointerdown", (event) => {
+      event.preventDefault(); event.stopPropagation();
+      const rect = element.getBoundingClientRect();
+      sizing = { pointerId: event.pointerId, x: event.clientX, y: event.clientY, w: Number(card.desktop?.w) || 12, h: Number(card.desktop?.h) || 1, col: rect.width / (Number(card.desktop?.w) || 12), row: rect.height / (Number(card.desktop?.h) || 1) };
+      resize.setPointerCapture?.(event.pointerId); element.classList.add("is-resizing");
+    });
+    resize.addEventListener("pointermove", (event) => {
+      if (!sizing || sizing.pointerId !== event.pointerId) return;
+      const w = Math.max(1, Math.min(12, Math.round(sizing.w + (event.clientX - sizing.x) / sizing.col)));
+      const h = Math.max(1, Math.min(8, Math.round(sizing.h + (event.clientY - sizing.y) / sizing.row)));
+      card.desktop = { ...(card.desktop || {}), w, h };
+      element.style.setProperty("--energy-native-w", String(w)); element.style.setProperty("--energy-native-h", String(h));
+    });
+    const finishResize = (event) => { if (!sizing || sizing.pointerId !== event.pointerId) return; resize.releasePointerCapture?.(event.pointerId); element.classList.remove("is-resizing"); sizing = null; };
+    resize.addEventListener("pointerup", finishResize); resize.addEventListener("pointercancel", finishResize);
+  }
+
+  function enterNativeEditor() {
+    if (nativeEditing || !containerEl) return;
+    nativeEditing = true; window.beastCardEditorActive = true;
+    nativeDraftCards = JSON.parse(JSON.stringify(energyNativeCards()));
+    containerEl.classList.add("is-native-editing"); applyNativeLayout(nativeDraftCards);
+    containerEl.querySelectorAll(":scope > .beast-energy-native-card").forEach(wireNativeCardEdit);
+    const bar = document.createElement("div"); bar.id = "beastEnergyNativeEditBar"; bar.className = "beast-ov-edit-bar";
+    bar.innerHTML = `<span>${BeastCore.icon("bolt", { size: 17 })}Redigerer energikort</span><div class="beast-ov-edit-bar-actions"><button type="button" data-energy-native-settings>Navne og entities</button><button type="button" data-energy-native-cancel>Annullér</button><button type="button" class="beast-btn beast-btn-primary" data-energy-native-save>Gem</button></div>`;
+    document.body.appendChild(bar);
+    bar.querySelector("[data-energy-native-cancel]").addEventListener("click", () => exitNativeEditor(false));
+    bar.querySelector("[data-energy-native-save]").addEventListener("click", () => exitNativeEditor(true));
+    bar.querySelector("[data-energy-native-settings]").addEventListener("click", () => { BeastConfig.set("pageLayouts.energy.nativeCards", nativeDraftCards); exitNativeEditor(false); openEnergyLayout(BeastConfig.get("pageLayouts.energy.energyLayout") || {}); });
   }
 
   function wireEnergyLayout() {
@@ -255,21 +395,58 @@
     const hidden = new Set(Array.isArray(layout.hidden) ? layout.hidden : []);
     const map = { recommendation: ".beast-energy-recommendation", summary: ".beast-stat-grid, .beast-energy-now-summary", price: ".beast-energy-chart-price", usage: ".beast-energy-chart-usage", devices: ".beast-energy-now-groups" };
     Object.entries(map).forEach(([id, selector]) => containerEl.querySelectorAll(selector).forEach((el) => el.classList.toggle("is-layout-hidden", hidden.has(id))));
+    applyNativeLayout();
     containerEl.querySelector("[data-energy-layout]")?.addEventListener("click", () => openEnergyLayout(layout));
   }
 
   function openEnergyLayout(layout) {
     document.getElementById("beastEnergyLayoutEditor")?.remove();
     const hidden = new Set(Array.isArray(layout.hidden) ? layout.hidden : []);
-    const items = [["recommendation", "Anbefaling"], ["summary", "Nøgletal"], ["price", "Strømprisgraf"], ["usage", "Forbrugsgraf"], ["devices", "Forbrug pr. enhed"]];
+    const legacyIds = { "energy-recommendation": "recommendation", "energy-summary": "summary", "energy-price-chart": "price", "energy-usage-chart": "usage", "energy-now-summary": "summary", "energy-devices": "devices" };
+    const cards = energyNativeCards().map((card) => ({ ...card, enabled: card.enabled !== false && !hidden.has(legacyIds[card.id]) }));
+    const entities = BeastCardEditor.allEntities();
+    const safe = escapeHtml;
+    const cardRows = cards.map((card, index) => {
+      const template = BeastCardTemplates?.get?.(card.templateId);
+      const fields = template?.fields || [];
+      return `<article class="beast-energy-native-editor-card" data-energy-native-card="${safe(card.id)}">
+        <div class="beast-energy-native-editor-head">
+          <span class="beast-energy-native-editor-grip">${BeastCore.icon("grip", { size: 18 })}</span>
+          <label><input type="checkbox" data-native-enabled ${card.enabled ? "checked" : ""}><strong>${safe(card.label || card.id)}</strong><small>${safe(template?.description || "Originalt energikort")}</small></label>
+          <div><button type="button" data-native-up aria-label="Flyt op" ${index === 0 ? "disabled" : ""}>↑</button><button type="button" data-native-down aria-label="Flyt ned" ${index === cards.length - 1 ? "disabled" : ""}>↓</button></div>
+        </div>
+        <div class="beast-energy-native-editor-fields">
+          <label>Navn<input type="text" data-native-label value="${safe(card.label || "")}"></label>
+          <label>Bredde<select data-native-width>${Array.from({ length: 12 }, (_, value) => `<option value="${value + 1}" ${Number(card.desktop?.w) === value + 1 ? "selected" : ""}>${value + 1} / 12</option>`).join("")}</select></label>
+          <label>Højde<select data-native-height>${Array.from({ length: 8 }, (_, value) => `<option value="${value + 1}" ${Number(card.desktop?.h) === value + 1 ? "selected" : ""}>${value + 1}</option>`).join("")}</select></label>
+          ${fields.map((field) => `<label>${safe(field.label)}<input type="search" data-native-binding="${safe(field.key)}" list="beastEnergyEntityList" value="${safe(card.bindings?.[field.key] || "")}" placeholder="Brug standard eller vælg entity"></label>`).join("")}
+        </div>
+      </article>`;
+    }).join("");
     const overlay = document.createElement("div"); overlay.id = "beastEnergyLayoutEditor"; overlay.className = "beast-modal-overlay";
-    overlay.innerHTML = `<div class="beast-modal beast-energy-layout-modal"><div class="beast-modal-header"><h3>Rediger energilayout</h3><button type="button" class="beast-modal-close" data-close>×</button></div><div class="beast-modal-body"><div class="beast-energy-layout-list">${items.map(([id,label]) => `<label><input type="checkbox" data-energy-section="${id}" ${hidden.has(id) ? "" : "checked"}><strong>${label}</strong></label>`).join("")}</div><button type="button" class="beast-btn beast-btn-primary" data-save-energy-layout>Gem layout</button></div></div>`;
+    overlay.innerHTML = `<div class="beast-modal beast-energy-layout-modal"><div class="beast-modal-header"><div><small>Native energikort</small><h3>Rediger energilayout</h3></div><button type="button" class="beast-modal-close" data-close>×</button></div><div class="beast-modal-body"><p class="beast-page-editor-hint">Vælg navn, størrelse og egne Home Assistant-entities. Tomme entityfelter bruger serverens standardkonfiguration.</p><datalist id="beastEnergyEntityList">${entities.map((entity) => `<option value="${safe(entity.id)}">${safe(entity.name)}</option>`).join("")}</datalist><div class="beast-energy-layout-list">${cardRows}</div><button type="button" class="beast-btn beast-btn-primary" data-save-energy-layout>Gem layout</button></div></div>`;
     document.body.appendChild(overlay);
     overlay.addEventListener("click", (event) => {
       if (event.target === overlay || event.target.closest("[data-close]")) return overlay.remove();
+      const move = event.target.closest("[data-native-up], [data-native-down]");
+      if (move) {
+        const row = move.closest("[data-energy-native-card]");
+        const sibling = move.hasAttribute("data-native-up") ? row.previousElementSibling : row.nextElementSibling;
+        if (sibling) move.hasAttribute("data-native-up") ? row.parentNode.insertBefore(row, sibling) : row.parentNode.insertBefore(sibling, row);
+        overlay.querySelectorAll("[data-energy-native-card]").forEach((item, itemIndex, list) => { item.querySelector("[data-native-up]").disabled = itemIndex === 0; item.querySelector("[data-native-down]").disabled = itemIndex === list.length - 1; });
+        return;
+      }
       if (!event.target.closest("[data-save-energy-layout]")) return;
-      const nextHidden = items.filter(([id]) => !overlay.querySelector(`[data-energy-section="${id}"]`).checked).map(([id]) => id);
-      BeastConfig.set("pageLayouts.energy.energyLayout", { ...layout, hidden: nextHidden }); overlay.remove(); render();
+      const nextCards = Array.from(overlay.querySelectorAll("[data-energy-native-card]")).map((row) => {
+        const current = cards.find((card) => card.id === row.dataset.energyNativeCard);
+        const bindings = {}; row.querySelectorAll("[data-native-binding]").forEach((input) => { if (input.value.trim()) bindings[input.dataset.nativeBinding] = input.value.trim(); });
+        return { ...current, label: row.querySelector("[data-native-label]").value.trim() || current.label, enabled: row.querySelector("[data-native-enabled]").checked, bindings, desktop: { ...(current.desktop || {}), w: Number(row.querySelector("[data-native-width]").value), h: Number(row.querySelector("[data-native-height]").value) } };
+      });
+      const nextHidden = [...new Set(nextCards.filter((card) => !card.enabled).map((card) => legacyIds[card.id]).filter(Boolean))];
+      BeastConfig.set("pageLayouts.energy.nativeCards", nextCards);
+      BeastConfig.set("pageLayouts.energy.energyLayout", { ...layout, hidden: nextHidden });
+      applyNativeLayout(nextCards);
+      overlay.remove(); render();
     });
   }
 
@@ -437,7 +614,7 @@
       </div>
       <div class="beast-energy-chart-wrap beast-energy-chart-price">
         <div class="beast-energy-chart-head">
-          <span class="beast-panel-title">Elpris time for time</span>
+          <span class="beast-panel-title">${escapeHtml(nativeCard("energy-price-chart")?.label || "Elpris time for time")}</span>
           <div class="beast-content-toggle beast-energy-day-toggle">
             ${priceDays.map((day) => `<button type="button" class="beast-content-toggle-btn${priceView === day.key ? " is-active" : ""}" data-view="${day.key}">${day.label}</button>`).join("")}
           </div>
@@ -454,7 +631,7 @@
       </div>
       <div class="beast-energy-chart-wrap beast-energy-chart-usage">
         <div class="beast-energy-chart-head">
-          <span class="beast-panel-title">Forbrug seneste 24 timer</span>
+          <span class="beast-panel-title">${escapeHtml(nativeCard("energy-usage-chart")?.label || "Forbrug seneste 24 timer")}</span>
           <div class="beast-energy-price-range">
             ${historyAvg !== null ? `<span>Snit <strong>${historyAvg.toFixed(2)} kW</strong></span><span>Top <strong>${historyMax.toFixed(2)} kW</strong></span><span>Bund <strong>${historyMin.toFixed(2)} kW</strong></span>` : ""}
           </div>
@@ -506,4 +683,5 @@
   }
 
   BeastCore.registerPanel("energy", "beastEnergyZone", init);
+  window.BeastEnergyEditor = { open: enterNativeEditor };
 })();

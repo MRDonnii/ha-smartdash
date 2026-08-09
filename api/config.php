@@ -36,11 +36,21 @@ if ($method === "POST") {
     echo json_encode(["error" => "invalid_json"]);
     exit;
   }
-  // Write to a temp file then rename — avoids a reader ever seeing a
-  // half-written file if a save happens to land mid-read.
-  $tmpFile = $configFile . ".tmp";
-  $written = file_put_contents($tmpFile, json_encode($decoded, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE));
-  if ($written === false || !rename($tmpFile, $configFile)) {
+  // The dashboard commonly lives on a mounted appdata volume where rename
+  // over an existing, longer file can leave trailing NUL bytes. Lock the
+  // real file and truncate it explicitly before writing the new document.
+  $json = json_encode($decoded, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
+  $handle = fopen($configFile, "c+");
+  $written = false;
+  if ($handle && flock($handle, LOCK_EX)) {
+    ftruncate($handle, 0);
+    rewind($handle);
+    $written = fwrite($handle, $json);
+    fflush($handle);
+    flock($handle, LOCK_UN);
+  }
+  if ($handle) fclose($handle);
+  if ($written === false || $written !== strlen($json)) {
     http_response_code(500);
     echo json_encode(["error" => "write_failed"]);
     exit;

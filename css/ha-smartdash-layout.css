@@ -334,7 +334,7 @@ a.beast-rail-btn:visited {
 }
 .beast-overview-grid.is-freeform > .beast-ov-card {
   grid-column: span min(var(--desktop-w), 12) !important;
-  grid-row: span min(var(--desktop-h), 2) !important;
+  grid-row: span min(var(--desktop-h), 6) !important;
   align-self: stretch;
   height: auto;
   min-width: 0;

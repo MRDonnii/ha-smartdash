@@ -205,7 +205,10 @@
     const hidden = new Set(Array.isArray(layout.hidden) ? layout.hidden : []);
     const selectors = { rooms: ".beast-heating-room-grid", pumps: ".beast-heating-pumps-head, .beast-heatpump-grid", dantherm: ".beast-dantherm-card", district: ".beast-district-compact" };
     Object.entries(selectors).forEach(([id, selector]) => containerEl.querySelectorAll(selector).forEach((el) => el.classList.toggle("is-layout-hidden", hidden.has(id))));
-    containerEl.querySelector("#beastHeatingLayoutEdit")?.addEventListener("click", () => openHeatingLayout(layout));
+    BeastNativePageEditor.mount({ section:"heating", label:"Varme", root:()=>containerEl, host:()=>containerEl, trigger:"#beastHeatingLayoutEdit", cards:()=>[
+      { id:"main", label:"Komfortzoner og varmepumper", selector:".beast-heating-main", titleSelector:".beast-heating-hero h2", enabled:!hidden.has("rooms") || !hidden.has("pumps"), desktop:{x:1,y:1,w:9,h:12} },
+      { id:"sidebar", label:"Ventilation og fjernvarme", selector:".beast-heating-sidebar", enabled:!hidden.has("dantherm") || !hidden.has("district"), desktop:{x:10,y:1,w:3,h:12} }
+    ] });
   }
 
   function openHeatingLayout(layout) {

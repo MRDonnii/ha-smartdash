@@ -75,7 +75,10 @@ const BeastCore = (() => {
   function isUserInteracting() {
     const focused = document.activeElement;
     const editing = focused && focused.matches?.("input:not([type='button']):not([type='submit']), textarea");
-    return pointerIsDown || editing || Date.now() < interactionUntil;
+    // Card editing is a long-running interaction. Treat the entire edit
+    // session as busy so HA state events cannot repaint the panel, remove
+    // its editor host and discard an in-progress drag/resize operation.
+    return pointerIsDown || editing || window.beastCardEditorActive === true || Date.now() < interactionUntil;
   }
 
   function whenUserIdle(callback) {

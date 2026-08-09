@@ -1,5 +1,188 @@
 [
   {
+    "version": "20260810-87",
+    "tag": "v0.7.9",
+    "date": "2026-08-10",
+    "changes": [
+      "Tre-prik-menuens responsive valg er redesignet med et sikkert ikon, fuld kortbredde og korrekt tekstplacering.",
+      "Rediger side og Tilpas side har nu ens touchflader, tydeligere visuel opdeling og bedre læsbarhed i både lyse og mørke temaer.",
+      "Tilpas side bruger en kortere forklaring, så teksten ikke brydes uhensigtsmæssigt på dashboardskærmen."
+    ]
+  },
+  {
+    "version": "20260810-86",
+    "tag": "v0.7.8",
+    "date": "2026-08-10",
+    "changes": [
+      "De eksisterende tre prikker åbner nu en enkel touchmenu med valgene Rediger side og Tilpas side, så der ikke kommer flere knapper i toppen.",
+      "Tilpasning pakker kort inden for 12 kolonner og beregner rækkehøjden efter den aktuelle skærm, så Kamera og Pool igen udnytter højden naturligt.",
+      "Hvis der er flere eller højere kort end skærmen kan rumme, bevares størrelsen og viewet får lodret scrolling i stedet for afskæring eller vandret overflow.",
+      "Det tilpassede native layout gemmes centralt og genberegnes ved senere visninger på den aktuelle skærmstørrelse.",
+      "Ekstra kort, Robotter og 3D-printer får samme breddebeskyttelse og responsive resize-signal."
+    ]
+  },
+  {
+    "version": "20260810-85",
+    "tag": "v0.7.7",
+    "date": "2026-08-10",
+    "changes": [
+      "Kortbyggeren prioriterer nu relevante og tilgængelige Home Assistant-entities efter korttype, område og view, mens søgning stadig dækker alle entities.",
+      "Alle kortlayouts får en lokal historik med de seneste otte gemninger og kan gendannes direkte fra redigeringslinjen.",
+      "Store kamera-, graf- og kontrolkort kan nu ændres op til tolv rækker og får altid scrollplads under sig, så resize-håndtaget ikke klippes af.",
+      "Sideadministrationen tager sikkerhedskopi af navigationen før ændringer og kræver bekræftelse før en side fjernes.",
+      "Touchstyring i genbrugelige funktionskort viser nu tydeligt, når en kommando sendes, lykkes eller fejler, og beskytter mod dobbelte tryk.",
+      "Kilde og live-kopi bruger nye cacheversioner, så kioskbrowseren henter editorforbedringerne uden at genbruge gamle filer."
+    ]
+  },
+  {
+    "version": "20260810-84",
+    "tag": "v0.7.6",
+    "date": "2026-08-10",
+    "changes": [
+      "Kortgalleriet indeholder nu komplette funktionsskabeloner til termostater, sikkerhed, rum, medieafspillere, pool, bil, robotter, vejr og 3D-printere.",
+      "Skabelonerne har egne professionelle renderere med relevante nøgletal og touchstyring i stedet for den tidligere generiske tabelvisning.",
+      "Galleriet viser kategori, antal entityfelter og krævede felter, mens kortindstillinger markerer manglende obligatoriske entities tydeligt.",
+      "Hvert ekstrakort kan nu flyttes, ændres i størrelse, omdøbes, skjules, duplikeres, nulstilles eller slettes direkte i editoren.",
+      "Gemte ekstrakort renderes nu straks efter en genindlæsning, og ældre enkelt-entity-kort migreres automatisk til skabelonens nye bindingsstruktur.",
+      "Kameraer beholder kvalitetsvalg, grafer bruger HA-historik, og styringskort sender de korrekte Home Assistant-services."
+    ]
+  },
+  {
+    "version": "20260810-83",
+    "tag": "v0.7.5",
+    "date": "2026-08-10",
+    "changes": [
+      "Varme, Pool, Bil, Vejr, Musik, Kalender, Kameraer og Rum bruger nu samme direkte layouteditor som de øvrige professionelle views.",
+      "Indbyggede områder kan flyttes, ændres i størrelse, omdøbes og skjules med touchvenlige håndtag samt fælles Gem og Annullér.",
+      "Den samme tre-prik-knap giver adgang til både indbyggede områder og ekstra kort fra den fælles kortbygger uden dobbelte redigeringsknapper.",
+      "Hvert view har fået et skærmtilpasset 12-kolonne standardlayout, der kan vokse nedad med scrolling i stedet for at klippe kort af.",
+      "Styringsknapper, kameraer og medieelementer modtager ikke tryk under layoutredigering, så touch-flytning er sikker.",
+      "Serverkonfigurationen gemmes nu i en kø og med låst, eksplicit filafkortning, så hurtige layoutgemninger ikke kan beskadige config.json på monterede appdata-drev."
+    ]
+  },
+  {
+    "version": "20260810-82",
+    "tag": "v0.7.4",
+    "date": "2026-08-10",
+    "changes": [
+      "Sikkerhedskortene kan nu flyttes og ændres i størrelse direkte på siden med touchvenlige håndtag og fælles Gem/Annullér-linje.",
+      "Navn, synlighed, bredde, højde samt alarm-, låse- og åbningsentities kan redigeres for hvert af de tre indbyggede sikkerhedskort.",
+      "Alarm- og låseknapper er deaktiveret under layoutredigering, så flytning ikke kan sende utilsigtede kommandoer.",
+      "Kortgalleriet har fået skabeloner til samlet sikkerhedsstatus, alarmsystemer og kombinerede indgange/låse.",
+      "Den dobbelte åbningsmåling i sikkerhedsstatus er erstattet af en særskilt tæller for åbne døre og vinduer."
+    ]
+  },
+  {
+    "version": "20260810-81",
+    "tag": "v0.7.3",
+    "date": "2026-08-10",
+    "changes": [
+      "Sikkerhed-viewet er migreret til en native kortmodel med særskilte kort for samlet status, alarmsystemer og indgange/åbninger.",
+      "Eksisterende serverkonfiguration migreres automatisk og kan fremover overskrives med kortspecifikke alarm-, låse- og åbningsentities.",
+      "Standardlayoutet udnytter nu hele skærmen uden overlap: samlet status til venstre og systemer samt indgange i højre side.",
+      "Det tidligere dobbelte redigeringspunkt er fjernet, mens den næste del af den direkte sikkerhedsredigering bygges på den nye model."
+    ]
+  },
+  {
+    "version": "20260810-80",
+    "tag": "v0.7.2",
+    "date": "2026-08-10",
+    "changes": [
+      "Energi-layoutet bruger nu faste gemte koordinater, så nøgletal, energiassistent og begge grafer står korrekt uden tomme områder eller overlap.",
+      "Flytning bytter kortenes placering, mens touch-resize gemmer bredde og højde og kan annulleres øjeblikkeligt i både Overblik og Nu.",
+      "Indstillingsdialogen anvender ændringer straks, også i den optimerede Nu-visning, og gem/reload er verificeret.",
+      "Kortgalleriet indeholder nu komplette energiskabeloner til prisgraf, forbrugsgraf, energiassistent, Nu-overblik og enhedsforbrug med egne HA-bindings.",
+      "Genbrugelige pris- og forbrugsgrafer har fået dedikerede renderere med prisbjælker, nøgletal og rigtig Home Assistant-historik."
+    ]
+  },
+  {
+    "version": "20260810-79",
+    "tag": "v0.7.1",
+    "date": "2026-08-10",
+    "changes": [
+      "Energi-viewet har nu en fælles native kortmodel for nøgletal, energiassistent, prisgraf, forbrugsgraf, Nu-overblik og enhedsforbrug.",
+      "Eksisterende energikort kan flyttes og ændres i størrelse direkte på siden med touchvenlige greb og fælles gem/annullér-linje.",
+      "Navn, rækkefølge, synlighed, størrelse og relevante Home Assistant-entities kan konfigureres pr. energikort med fallback til serverens standardopsætning.",
+      "Den ene tre-prik-menu samler redigering af native energikort og tilføjelse af ekstra kort fra skabelongalleriet.",
+      "Både Overblik og Nu bevarer live-opdateringer og deres aktive visning under det nye layoutsystem."
+    ]
+  },
+  {
+    "version": "20260810-78",
+    "tag": "v0.7.0",
+    "date": "2026-08-10",
+    "changes": [
+      "Kortbyggeren understøtter nu skabeloner med flere navngivne HA-enheder, så komplette energi-, varme-, sikkerheds-, pool-, bil- og printerkort kan konfigureres samlet.",
+      "Grafkort henter nu rigtig 24-timers historik fra Home Assistant i stedet for eksempeldata og genbruger data i en kort cache.",
+      "Touch-knapper kan nu vælge konkret service, kræve bekræftelse og vise en sikker optaget-tilstand mens kommandoen sendes.",
+      "Kort kan vises betinget ud fra en valgfri HA-entity og state, men forbliver synlige i redigeringstilstand.",
+      "Live-opdateringer sættes nu sikkert i kø under hele redigeringstilstanden, så kortbyggeren ikke forsvinder midt i flytning eller resize."
+    ]
+  },
+  {
+    "version": "20260809-77",
+    "tag": "v0.6.9",
+    "date": "2026-08-09",
+    "changes": [
+      "Kvalitetsmenuen viser nu kun de to reelle go2rtc-livekilder: Høj hovedstream og Lav substream.",
+      "Tidligere medium-indstillinger migreres automatisk til Lav, da begge pegede på samme substream.",
+      "Det aktive streamvalg markeres tydeligt, og kvalitetsskift genopretter afspilleren med det nye streamnavn."
+    ]
+  },
+  {
+    "version": "20260809-76",
+    "tag": "v0.6.8",
+    "date": "2026-08-09",
+    "changes": [
+      "Forsiden og kamerasiden bruger nu den samme fælles kamerakomponent med navn, bevægelse og kvalitetsmenu.",
+      "Kvalitetsskift ændrer nu den reelle go2rtc-livekilde mellem hovedstream og substream.",
+      "Hvert kamera på forsiden har en tre-prik-menu, og den gemte startkvalitet anvendes på tværs af dashboardet.",
+      "Kameravælgeren på forsiden viser fortsat ét fysisk kamera ad gangen uden dublerede kvalitetsentities."
+    ]
+  },
+  {
+    "version": "20260809-75",
+    "tag": "v0.6.7",
+    "date": "2026-08-09",
+    "changes": [
+      "Sider kan nu flyttes direkte med et stort touchvenligt trækhåndtag i sidestyringen.",
+      "Pilene er bevaret til præcis flytning, og den nye rækkefølge gemmes centralt for alle dashboardklienter."
+    ]
+  },
+  {
+    "version": "20260809-74",
+    "tag": "v0.6.6",
+    "date": "2026-08-09",
+    "changes": [
+      "Nyt centralt sidebibliotek gør det muligt at oprette, omdøbe, flytte og fjerne sider direkte fra navigationen.",
+      "Egne tomme sider får automatisk det fælles kortgalleri, redigering, resize og scrolling.",
+      "Fjernede standardsider bevares som skabeloner og kan altid oprettes igen med deres oprindelige funktioner.",
+      "Kameragruppering understøtter nu flere almindelige kvalitetsnavne, herunder resolution channel, high/medium/low og HD/SD/main/sub streams."
+    ]
+  },
+  {
+    "version": "20260809-73",
+    "tag": "v0.6.5",
+    "date": "2026-08-09",
+    "changes": [
+      "Kameraentities med høj, mellem og lav opløsning samles nu automatisk under ét fysisk kameranavn.",
+      "Tre-prik-menuen på kameraet vælger og gemmer startkvaliteten uden kvalitetsnavne i kameratitlen.",
+      "Kameraskabeloner viser kun ét valg pr. fysisk kamera og får samme kvalitetsmenu direkte i kortet.",
+      "Skabelongalleriet indeholder nu genbrugelige kopier af de indbyggede kortdesigns fra alle dashboardets views."
+    ]
+  },
+  {
+    "version": "20260809-72",
+    "tag": "v0.6.4",
+    "date": "2026-08-09",
+    "changes": [
+      "Nye kort oprettes nu fra et fælles touchvenligt skabelongalleri med søgning og kategorier fra hele dashboardet.",
+      "Skabeloner kopieres som selvstændige kort og kan redigeres med navn, ikon, entity, bredde og højde.",
+      "Robot- og printer-specialkort vises kun på sider, der understøtter deres fulde funktioner.",
+      "Kamerakort bruger korrekt billedformat, kan fylde op til seks rækker og resize-håndtaget kan scrolles fri af redigeringsmenuen."
+    ]
+  },
+  {
     "version": "20260809-71",
     "tag": "v0.6.3",
     "date": "2026-08-09",
