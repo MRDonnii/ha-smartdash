@@ -102,18 +102,17 @@ const BeastConfig = (() => {
     // banner-specific entity: an optional camera to show instead of the
     // printer's own built-in camera image (e.g. a separate Protect camera
     // pointed at the printer).
-    // doorSchedule/lockSchedule restrict the "open/unlocked too long" check
-    // to a time window (e.g. only warn about open doors overnight) -- kept
-    // separate because a door left open at night and a door left unlocked
-    // during the day are different concerns for most households.
+    // schedule restricts the "open/unlocked too long" check (doors and
+    // locks together) to a time window, e.g. only warn overnight -- a
+    // single on/off switch plus start/end, not a separate one per banner
+    // type, so it reads as one setting instead of a duplicated pair.
     // positions: dragged screen position per banner type (e.g. { mail: {x,y} }).
     // Stored centrally (not per-browser localStorage) so it's the same
     // wherever the dashboard is opened, and isn't lost if a browser's local
     // storage ever gets cleared.
     banners: {
       doorOpenTooLongMinutes: 15, printerCameraOverride: null,
-      doorScheduleEnabled: false, doorScheduleStart: "22:00", doorScheduleEnd: "06:00",
-      lockScheduleEnabled: false, lockScheduleStart: "22:00", lockScheduleEnd: "06:00",
+      scheduleEnabled: false, scheduleStart: "22:00", scheduleEnd: "06:00",
       positions: {}
     },
     // Per-device (each kiosk can have its own look), same as the schedule

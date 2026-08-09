@@ -1,5 +1,13 @@
 [
   {
+    "version": "20260809-16",
+    "tag": "v0.5.48",
+    "date": "2026-08-09",
+    "changes": [
+      "Simplified the doors/windows/locks alert time window (Administration -> Advarsler) to one on/off switch with the two time fields appearing only once it's turned on, instead of a separate on/off dropdown for doors and another for locks with the time fields always visible whether or not the schedule was actually active. That made it easy to fill in a start/end time and assume it was working, when the schedule itself was still off and the alert kept showing all day."
+    ]
+  },
+  {
     "version": "20260809-15",
     "tag": "v0.5.47",
     "date": "2026-08-09",
