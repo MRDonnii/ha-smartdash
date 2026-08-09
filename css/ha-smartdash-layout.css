@@ -688,7 +688,7 @@ a.beast-rail-btn:visited {
 }
 .beast-login-form { display:grid; gap:14px; text-align:left; }
 .beast-login-form label { display:grid; gap:7px; color:var(--ink-muted); font-size:12px; font-weight:800; }
-.beast-login-form input { width:100%; min-height:48px; padding:0 13px; border:1px solid var(--border-strong); border-radius:11px; outline:none; background:#090c10; color:var(--ink); }
+.beast-login-form input { width:100%; min-height:48px; padding:0 13px; border:1px solid var(--border-strong); border-radius:11px; outline:none; background:var(--surface-solid); color:var(--ink); }
 .beast-login-form input:focus { border-color:var(--accent-b); box-shadow:0 0 0 3px color-mix(in srgb,var(--accent-b) 16%,transparent); }
 .beast-login-form button { width:100%; min-height:48px; }
 .beast-section-quality { position:absolute; z-index:30; top:8px; right:8px; padding:5px 8px; border:1px solid rgba(47,224,168,.28); border-radius:999px; background:rgba(5,9,12,.76); color:var(--success); font-size:9px; font-weight:800; backdrop-filter:blur(8px); pointer-events:none; }
