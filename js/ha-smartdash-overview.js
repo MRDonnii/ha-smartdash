@@ -812,6 +812,14 @@
     });
     document.addEventListener("click", closeMenu);
     document.getElementById("beastOvEdit")?.addEventListener("click", (event) => { event.stopPropagation(); closeMenu(); openOverviewEditor(); });
+    // showAmbientMode() lives in app.js (a plain global function, not an
+    // IIFE export) -- force=true so it shows on demand even outside the
+    // configured schedule, since this is a manual preview action.
+    document.getElementById("beastOvStartScreensaver")?.addEventListener("click", (event) => {
+      event.stopPropagation();
+      closeMenu();
+      window.showAmbientMode?.(true);
+    });
     applyOverviewLayout();
   }
 

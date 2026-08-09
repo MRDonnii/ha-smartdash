@@ -31,14 +31,18 @@ const MOUNTED_SECTION_ZONES = {
 };
 
 const AUTO_RETURN_TO_OVERVIEW_MS = 3 * 60 * 1000;
-// Checks GitHub Releases (rate-limited to 60 requests/hour per source IP,
-// shared by every kiosk on this network). This used to be 60 seconds, left
-// over from when it was a same-server comparison -- against a real external
-// API that alone was enough to exhaust the entire hourly quota from a
-// single always-on kiosk. api/update.php also caches its GitHub response
-// for a few minutes as a second layer of protection, but there's no reason
-// to poll for a new *release* anywhere near this often regardless.
-const BUILD_CHECK_INTERVAL_MS = 12 * 60 * 60 * 1000;
+// Checks GitHub Releases for a new build. Safe to poll fairly often
+// despite GitHub's unauthenticated 60 requests/hour-per-IP limit (shared
+// by every kiosk and admin tab on this network): api/update.php caches
+// its own GitHub-derived answer for 5 minutes server-side, so any number
+// of clients polling this often only cost GitHub one real request per
+// cache window, not one per poll. This used to be 12 hours, which meant
+// an always-on kiosk that's never manually refreshed could sit on a stale
+// build for most of a day after a new release shipped -- 10 minutes
+// means the idle auto-install (UPDATE_IDLE_AUTOAPPLY_MS below) actually
+// gets a chance to run soon after a release goes out, not the next time
+// someone happens to touch the screen and reload it themselves.
+const BUILD_CHECK_INTERVAL_MS = 10 * 60 * 1000;
 const CAMERA_HEALTH_CHECK_INTERVAL_MS = 10 * 1000;
 const CAMERA_RECONNECT_AFTER_MS = 20 * 1000;
 const CAMERA_RELOAD_AFTER_MS = 48 * 1000;
@@ -272,6 +276,16 @@ function updateAmbientClock() {
     summary.querySelectorAll("[data-ambient-banner]").forEach((el) => el.remove());
     summary.insertAdjacentHTML("beforeend", ambientBannerPillsMarkup());
   }
+  // Camera tiles without a go2rtc stream fall back to a snapshot fetch via
+  // HA's own camera_proxy (see ambientCameraMarkup) -- that only ever ran
+  // once, when the screen first went idle; if that single fetch hiccuped
+  // (or the entity's signed proxy token had already rotated), the tile
+  // stayed blank for the rest of the idle period. Retrying here re-uses
+  // the same img element/src rather than rebuilding it, so this can't
+  // disturb a tile that's already showing something.
+  overlay.querySelectorAll("[data-ambient-camera-picture]").forEach((img) => {
+    if (!img.getAttribute("src")) window.BeastAuth?.setAuthedImageSrc?.(img, img.dataset.ambientCameraPicture);
+  });
 }
 
 // Small tiles in a row at the bottom, not a full-screen background -- the
@@ -295,7 +309,7 @@ function ambientCameraMarkup(config) {
     const camera = window.BeastCameras?.resolveCamera?.(id);
     if (!camera) return "";
     if (camera.streamName) {
-      const src = `./camera-player.html?v=11&sub=1&src=${encodeURIComponent(camera.streamName)}`;
+      const src = `./camera-player.html?v=11&transport=mse&sub=1&src=${encodeURIComponent(camera.streamName)}`;
       return `<div class="beast-ambient-camera-tile"><iframe class="beast-ambient-camera-tile-frame" src="${src}" allow="autoplay"></iframe></div>`;
     }
     if (camera.entityPicture) {
@@ -376,9 +390,13 @@ function scheduleNightStart() {
   }, night.getTime() - now.getTime());
 }
 
-function showAmbientMode() {
+// force=true skips the schedule check (isNightScreenPeriod/enabled) --
+// used by the manual "Start pauseskærm" button in the overview camera
+// menu, so someone can preview the screensaver on demand regardless of
+// its configured time window.
+function showAmbientMode(force = false) {
   const overlay = document.getElementById("beastAmbientMode");
-  if (!isNightScreenPeriod() || !overlay || document.hidden || document.querySelector(".beast-screen-lock")) return;
+  if ((!force && !isNightScreenPeriod()) || !overlay || document.hidden || document.querySelector(".beast-screen-lock")) return;
   const now = new Date();
   const weather = ambientWeather();
   const securityConfig = BeastConfig.get("panels.security") || {};
@@ -392,7 +410,9 @@ function showAmbientMode() {
   overlay.classList.toggle("has-custom-background", Boolean(config.backgroundImageUrl || config.backgroundColor));
   overlay.style.backgroundImage = config.backgroundImageUrl ? `url("${config.backgroundImageUrl}")` : "";
   overlay.style.backgroundColor = !config.backgroundImageUrl && config.backgroundColor ? config.backgroundColor : "";
-  overlay.innerHTML = `<div class="beast-ambient-main"><div class="beast-ambient-time${clockSizeClass}">${now.toLocaleTimeString("da-DK", { hour: "2-digit", minute: "2-digit" })}</div><div class="beast-ambient-date">${now.toLocaleDateString("da-DK", { weekday: "long", day: "numeric", month: "long" })}</div><div class="beast-ambient-summary"><span>${BeastCore.icon("cloud", { size: 26 })}<b>${weather.temperature}</b>${weather.label}</span><span>${BeastCore.icon(unlocked || openDoors ? "unlock" : "shield", { size: 25 })}<b>${unlocked || openDoors ? `${openDoors} åbne · ${unlocked} ulåste` : "Huset er sikret"}</b></span>${ambientBannerPillsMarkup()}</div>${ambientBrightnessMarkup(config)}</div><div class="beast-ambient-bottom">${ambientCameraMarkup(config)}<small>Tryk på skærmen for at åbne dashboardet</small></div>`;
+  const cameraRowHtml = ambientCameraMarkup(config);
+  overlay.classList.toggle("has-camera-row", Boolean(cameraRowHtml));
+  overlay.innerHTML = `<div class="beast-ambient-main"><div class="beast-ambient-time${clockSizeClass}">${now.toLocaleTimeString("da-DK", { hour: "2-digit", minute: "2-digit" })}</div><div class="beast-ambient-date">${now.toLocaleDateString("da-DK", { weekday: "long", day: "numeric", month: "long" })}</div><div class="beast-ambient-summary"><span>${BeastCore.icon("cloud", { size: 26 })}<b>${weather.temperature}</b>${weather.label}</span><span>${BeastCore.icon(unlocked || openDoors ? "unlock" : "shield", { size: 25 })}<b>${unlocked || openDoors ? `${openDoors} åbne · ${unlocked} ulåste` : "Huset er sikret"}</b></span>${ambientBannerPillsMarkup()}</div>${ambientBrightnessMarkup(config)}</div><div class="beast-ambient-bottom${cameraRowHtml ? " has-cameras" : ""}">${cameraRowHtml}<small>Tryk på skærmen for at åbne dashboardet</small></div>`;
   document.querySelectorAll("[data-ambient-camera-picture]").forEach((img) => {
     window.BeastAuth?.setAuthedImageSrc?.(img, img.dataset.ambientCameraPicture);
   });
@@ -677,6 +697,7 @@ function renderOverviewSection() {
             <div class="beast-ov-camera-menu-popover" id="beastOvCameraMenu" hidden>
               <button type="button" id="beastOvCameraPicker">${BeastCore.icon("camera", { size: 17 })}<span>Vælg kameraer</span></button>
               <button type="button" id="beastOvEdit">${BeastCore.icon("settings", { size: 17 })}<span>Rediger forsiden</span></button>
+              <button type="button" id="beastOvStartScreensaver">${BeastCore.icon("moon", { size: 17 })}<span>Start pauseskærm</span></button>
             </div>
           </div>
         </div>

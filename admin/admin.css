@@ -59,21 +59,37 @@ button { cursor: pointer; }
    particular) that broke scrolling across every admin page the one time
    this was tried. Keep these two copies in sync by hand if the ambient
    screen's design changes. */
-.admin-ambient-preview-canvas .beast-ambient-mode { position: absolute; inset: 0; overflow: hidden; display: grid; grid-template-rows: 1fr auto; padding: 8vh 8vw; opacity: 1; visibility: visible; pointer-events: none; transition: none; color: #f7fbff; background: radial-gradient(circle at 50% 35%, color-mix(in srgb, var(--accent-a) 16%, transparent), transparent 38%), rgba(3,6,12,.96); background-size: cover; background-position: center; background-repeat: no-repeat; backdrop-filter: blur(24px); }
+/* 58px/102px, not the real screen's 8vh/8vw -- vh/vw resolve against the
+   actual browser viewport, not this 1280x720 canvas, which would give
+   the preview a different available width than the real kiosk screen
+   actually has (breaking the camera row's edge-to-edge math below). 58 =
+   8% of 720, 102 = 8% of 1280. */
+.admin-ambient-preview-canvas .beast-ambient-mode { position: absolute; inset: 0; overflow: hidden; display: grid; grid-template-rows: 1fr auto; padding: 58px 102px; opacity: 1; visibility: visible; pointer-events: none; transition: none; color: #f7fbff; background: radial-gradient(circle at 50% 35%, color-mix(in srgb, var(--accent-a) 16%, transparent), transparent 38%), rgba(3,6,12,.96); background-size: cover; background-position: center; background-repeat: no-repeat; backdrop-filter: blur(24px); }
 .admin-ambient-preview-canvas .beast-ambient-mode.has-custom-background { backdrop-filter: none; }
+/* 331.2px = 46vh at the 1280x720 canvas -- min-height on the *item*
+   below doesn't reliably force its auto track to grow, same reasoning as
+   layout.css's .has-camera-row. */
+.admin-ambient-preview-canvas .beast-ambient-mode.has-camera-row { grid-template-rows: 1fr minmax(331.2px, auto); }
 .admin-ambient-preview-canvas .beast-ambient-main { min-height: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; }
-.admin-ambient-preview-canvas .beast-ambient-time { color: #f7fbff; font-size: clamp(6rem,15vw,13rem); font-weight: 800; line-height: .9; letter-spacing: -.055em; font-variant-numeric: tabular-nums; }
-.admin-ambient-preview-canvas .beast-ambient-time.is-size-small { font-size: clamp(3.2rem,9vw,7rem); }
-.admin-ambient-preview-canvas .beast-ambient-time.is-size-large { font-size: clamp(8rem,19vw,17rem); }
-.admin-ambient-preview-canvas .beast-ambient-date { color: rgba(255,255,255,.62); font-size: clamp(1.4rem,2.4vw,2.3rem); text-transform: capitalize; }
+/* clamp() middle values are the vw ones from layout.css evaluated at the
+   1280px canvas width (e.g. 15vw -> 192px), not vw itself -- same
+   viewport-vs-canvas mismatch as the padding/min-height above. */
+.admin-ambient-preview-canvas .beast-ambient-time { color: #f7fbff; font-size: clamp(6rem,192px,13rem); font-weight: 800; line-height: .9; letter-spacing: -.055em; font-variant-numeric: tabular-nums; }
+.admin-ambient-preview-canvas .beast-ambient-time.is-size-small { font-size: clamp(3.2rem,115.2px,7rem); }
+.admin-ambient-preview-canvas .beast-ambient-time.is-size-large { font-size: clamp(8rem,243.2px,17rem); }
+.admin-ambient-preview-canvas .beast-ambient-date { color: rgba(255,255,255,.62); font-size: clamp(1.4rem,30.72px,2.3rem); text-transform: capitalize; }
 .admin-ambient-preview-canvas .beast-ambient-summary { display: flex; flex-wrap: wrap; justify-content: center; gap: 18px; margin-top: 32px; }
 .admin-ambient-preview-canvas .beast-ambient-summary > span { min-height: 64px; display: flex; align-items: center; gap: 12px; padding: 12px 20px; border: 1px solid rgba(255,255,255,.12); border-radius: 22px; background: rgba(255,255,255,.055); color: rgba(255,255,255,.68); }
 .admin-ambient-preview-canvas .beast-ambient-summary b { color: #fff; font-size: 1.25rem; }
 .admin-ambient-preview-canvas .beast-ambient-brightness { display: flex; align-items: center; gap: 10px; margin-top: 18px; background: rgba(10,12,20,.6); border: 1px solid rgba(255,255,255,.14); border-radius: 999px; padding: 10px 18px; color: rgba(255,255,255,.7); backdrop-filter: blur(8px); }
-.admin-ambient-preview-canvas .beast-ambient-bottom { display: flex; flex-direction: column; align-items: center; gap: 14px; padding-top: 20px; }
+.admin-ambient-preview-canvas .beast-ambient-bottom { display: flex; flex-direction: column; align-items: center; gap: 18px; padding-top: 18px; }
+.admin-ambient-preview-canvas .beast-ambient-bottom.has-cameras { justify-content: center; }
 .admin-ambient-preview-canvas .beast-ambient-bottom > small { color: rgba(255,255,255,.35); font-size: 1rem; }
-.admin-ambient-preview-canvas .beast-ambient-camera-row { display: flex; justify-content: center; align-items: center; flex-wrap: wrap; gap: 16px; }
-.admin-ambient-preview-canvas .beast-ambient-camera-tile { width: 280px; height: 168px; border-radius: 16px; overflow: hidden; border: 1px solid rgba(255,255,255,.14); background: rgba(255,255,255,.04); box-shadow: 0 14px 40px rgba(0,0,0,.35); }
+/* -102.4px/+204.8px = -8vw/+16vw at the 1280px canvas width, canceling
+   out .beast-ambient-mode's own 102px side padding so this row's 16px is
+   the only margin from the true (canvas) edge, same as layout.css. */
+.admin-ambient-preview-canvas .beast-ambient-camera-row { display: flex; justify-content: center; align-items: center; gap: 24px; width: calc(100% + 204.8px); margin: 0 -102.4px; padding: 0 16px; box-sizing: border-box; }
+.admin-ambient-preview-canvas .beast-ambient-camera-tile { flex: 0 0 calc((100% - 48px) / 3); max-width: 680px; aspect-ratio: 5 / 3; border-radius: 18px; overflow: hidden; border: 1px solid rgba(255,255,255,.14); background: rgba(255,255,255,.04); box-shadow: 0 14px 40px rgba(0,0,0,.35); }
 .admin-ambient-preview-canvas .beast-ambient-camera-tile-frame { display: block; width: 100%; height: 100%; object-fit: cover; border: 0; }
 .admin-screensaver-preview-warning { margin: 16px 0 0; padding: 10px 14px; border: 1px solid color-mix(in srgb, #e2a03f 40%, var(--border)); border-radius: 10px; background: color-mix(in srgb, #e2a03f 12%, transparent); color: #e2a03f; font-size: 12.5px; line-height: 1.5; }
 .admin-security-warning { margin-top: 13px; padding: 13px 15px; border: 1px solid color-mix(in srgb, var(--warning) 46%, var(--border)); border-radius: 12px; color: var(--warning); background: color-mix(in srgb, var(--warning) 9%, transparent); }
