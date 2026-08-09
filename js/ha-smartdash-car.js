@@ -95,7 +95,7 @@
       ? new Date(finishState.state).toLocaleTimeString("da-DK", { hour: "2-digit", minute: "2-digit" }) : null;
 
     containerEl.innerHTML = `
-      <div class="beast-car-top">
+      <button type="button" class="beast-page-edit-trigger" id="beastCarLayoutEdit" aria-label="Rediger billayout">⋮</button><div class="beast-car-top">
         <div class="beast-car-battery">
           <div class="beast-car-liquid-battery${charging ? " is-charging" : ""}" style="--battery-level:${batteryLevel}%; --battery-hue:${Math.round(batteryLevel * 1.2)}" role="img" aria-label="Batteri ${batteryPct} procent">
             <i class="beast-car-battery-terminal"></i>
@@ -139,9 +139,32 @@
         ${buildTpms()}
       </div>
     `;
+    wireCarLayout();
 
     document.getElementById("beastCarLockBtn")?.addEventListener("click", () => {
       callService("lock", locked ? "unlock" : "lock", IDS.lock).then(() => window.setTimeout(render, 400));
+    });
+  }
+
+  function wireCarLayout() {
+    const layout = BeastConfig.get("pageLayouts.car.carLayout") || {};
+    const hidden = new Set(Array.isArray(layout.hidden) ? layout.hidden : []);
+    containerEl.querySelector(".beast-car-top")?.classList.toggle("is-layout-hidden", hidden.has("battery"));
+    containerEl.querySelector(".beast-stat-grid")?.classList.toggle("is-layout-hidden", hidden.has("details"));
+    containerEl.querySelector("#beastCarLayoutEdit")?.addEventListener("click", () => openCarLayout(layout));
+  }
+
+  function openCarLayout(layout) {
+    const hidden = new Set(Array.isArray(layout.hidden) ? layout.hidden : []);
+    const items = [["battery", "Batteri og rækkevidde"], ["details", "Status, opladning og dæktryk"]];
+    const overlay = document.createElement("div"); overlay.className = "beast-modal-overlay";
+    overlay.innerHTML = `<div class="beast-modal beast-car-layout-modal"><div class="beast-modal-header"><h3>Rediger billayout</h3><button type="button" class="beast-modal-close" data-close>×</button></div><div class="beast-modal-body"><div class="beast-car-layout-list">${items.map(([id,label]) => `<label><input type="checkbox" data-car-section="${id}" ${hidden.has(id) ? "" : "checked"}><strong>${label}</strong></label>`).join("")}</div><button type="button" class="beast-btn beast-btn-primary" data-save-car-layout>Gem layout</button></div></div>`;
+    document.body.appendChild(overlay);
+    overlay.addEventListener("click", (event) => {
+      if (event.target === overlay || event.target.closest("[data-close]")) return overlay.remove();
+      if (!event.target.closest("[data-save-car-layout]")) return;
+      const nextHidden = items.filter(([id]) => !overlay.querySelector(`[data-car-section="${id}"]`).checked).map(([id]) => id);
+      BeastConfig.set("pageLayouts.car.carLayout", { ...layout, hidden: nextHidden }); overlay.remove(); render();
     });
   }
 

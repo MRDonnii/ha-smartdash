@@ -162,6 +162,7 @@
     const alreadyShowingFeatured = previousIframe && previousIframe.dataset.slug === featured.slug && featured.streamName;
 
     containerEl.innerHTML = `
+      <button type="button" class="beast-page-edit-trigger" id="beastCamerasLayoutEdit" aria-label="Rediger kameralayout">⋮</button>
       <div class="beast-camera-featured">
         <div class="beast-camera-featured-frame" id="beastCameraFeaturedFrame"></div>
         <span class="beast-camera-featured-label">${escapeHtml(featured.label)}</span>
@@ -170,6 +171,7 @@
       </div>
       <div class="beast-camera-strip" id="beastCameraStrip"></div>
     `;
+    wireCameraLayout();
 
     const frame = document.getElementById("beastCameraFeaturedFrame");
     if (featured.streamName) {
@@ -228,6 +230,23 @@
       });
       strip.appendChild(tile);
     });
+  }
+
+  function wireCameraLayout() {
+    const layout = BeastConfig.get("pageLayouts.cameras.cameraLayout") || {};
+    const hidden = new Set(Array.isArray(layout.hidden) ? layout.hidden : []);
+    containerEl.querySelector(".beast-camera-featured")?.classList.toggle("is-layout-hidden", hidden.has("featured"));
+    containerEl.querySelector(".beast-camera-strip")?.classList.toggle("is-layout-hidden", hidden.has("grid"));
+    containerEl.querySelector("#beastCamerasLayoutEdit")?.addEventListener("click", () => openCameraLayout(layout));
+  }
+
+  function openCameraLayout(layout) {
+    const hidden = new Set(Array.isArray(layout.hidden) ? layout.hidden : []);
+    const items = [["featured","Stort kamera"],["grid","Kameragrid"]];
+    const overlay = document.createElement("div"); overlay.className = "beast-modal-overlay";
+    overlay.innerHTML = `<div class="beast-modal"><div class="beast-modal-header"><h3>Rediger kameralayout</h3><button type="button" class="beast-modal-close" data-close>×</button></div><div class="beast-modal-body"><div class="beast-camera-layout-list">${items.map(([id,label]) => `<label><input type="checkbox" data-camera-section="${id}" ${hidden.has(id)?"":"checked"}><strong>${label}</strong></label>`).join("")}</div><button type="button" class="beast-btn beast-btn-primary" data-save-camera-layout>Gem layout</button></div></div>`;
+    document.body.appendChild(overlay);
+    overlay.addEventListener("click", (event) => { if(event.target===overlay||event.target.closest("[data-close]")) return overlay.remove(); if(!event.target.closest("[data-save-camera-layout]")) return; const nextHidden=items.filter(([id])=>!overlay.querySelector(`[data-camera-section="${id}"]`).checked).map(([id])=>id); BeastConfig.set("pageLayouts.cameras.cameraLayout", {...layout,hidden:nextHidden}); overlay.remove(); render(); });
   }
 
   function init(root) {

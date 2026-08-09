@@ -1,5 +1,306 @@
 [
   {
+    "version": "20260809-71",
+    "tag": "v0.6.3",
+    "date": "2026-08-09",
+    "changes": [
+      "Kamera-watchdoggen genindlæser ikke længere hele dashboardet efter gentagne streamfejl.",
+      "Recovery genstarter nu kun kamerarammer og HA-forbindelsen, så aktivt view, scroll og touch-arbejde bevares."
+    ]
+  },
+  {
+    "version": "20260809-70",
+    "tag": "v0.6.2",
+    "date": "2026-08-09",
+    "changes": [
+      "Flyttet layoutknapperne på Sikkerhed, Pool og Bil uden for skjulbare sektioner, så layout altid kan åbnes og gendannes."
+    ]
+  },
+  {
+    "version": "20260809-69",
+    "tag": "v0.6.1",
+    "date": "2026-08-09",
+    "changes": [
+      "Kameraer har nu layoutstyring til featured kamera og kameragrid.",
+      "Valgt kamera, lyd, bevægelsesstatus og streamlogik er bevaret."
+    ]
+  },
+  {
+    "version": "20260809-68",
+    "tag": "v0.6.0",
+    "date": "2026-08-09",
+    "changes": [
+      "Vejr har nu layoutstyring til aktuelt vejr, timeudsigt, ugeudsigt og radar.",
+      "Radarens iframe forbliver monteret ved almindelige vejr-opdateringer."
+    ]
+  },
+  {
+    "version": "20260809-67",
+    "tag": "v0.5.99",
+    "date": "2026-08-09",
+    "changes": [
+      "Musik har nu en layoutdialog til afspiller/højttalere og bibliotek/søgning/album.",
+      "Music Assistant-afspilning, grupper og volumen er bevaret."
+    ]
+  },
+  {
+    "version": "20260809-66",
+    "tag": "v0.5.98",
+    "date": "2026-08-09",
+    "changes": [
+      "Kalender har nu en layoutdialog til affald/afhentning og kommende kalenderaftaler.",
+      "Eksisterende kalendere og affaldssensorer er bevaret."
+    ]
+  },
+  {
+    "version": "20260809-65",
+    "tag": "v0.5.97",
+    "date": "2026-08-09",
+    "changes": [
+      "Views med egne kort bliver nu automatisk lodret scrollbare, når indholdet er højere end skærmen.",
+      "Kamerakort på blandt andet Sikkerhed beskæres ikke længere ved store kortstørrelser."
+    ]
+  },
+  {
+    "version": "20260809-64",
+    "tag": "v0.5.96",
+    "date": "2026-08-09",
+    "changes": [
+      "Bil har nu en layoutdialog til batteri/rækkevidde og status, opladning samt dæktryk.",
+      "Tesla-data og låsestyring er bevaret."
+    ]
+  },
+  {
+    "version": "20260809-63",
+    "tag": "v0.5.95",
+    "date": "2026-08-09",
+    "changes": [
+      "Pool har nu en layoutdialog til status/styring, livekamera samt temperatur- og driftsindsigt.",
+      "Pumpe, automatik, kamera og temperaturhistorik er bevaret."
+    ]
+  },
+  {
+    "version": "20260809-62",
+    "tag": "v0.5.94",
+    "date": "2026-08-09",
+    "changes": [
+      "Varme har nu en layoutdialog til komfortzoner, varmepumper, Dantherm og fjernvarme.",
+      "Eksisterende temperatur- og varmepumpestyring er bevaret."
+    ]
+  },
+  {
+    "version": "20260809-61",
+    "tag": "v0.5.93",
+    "date": "2026-08-09",
+    "changes": [
+      "Energi har nu en layoutdialog til anbefaling, nøgletal, strømprisgraf, forbrugsgraf og forbrug pr. enhed.",
+      "Eksisterende grafer og Overblik/Nu-funktion er bevaret."
+    ]
+  },
+  {
+    "version": "20260809-60",
+    "tag": "v0.5.92",
+    "date": "2026-08-09",
+    "changes": [
+      "Sikkerhed har nu en touch-venlig layoutdialog til at vise eller skjule status, alarmsystemer og indgange.",
+      "Alarm-, låse- og dør/vinduesstyring er uændret."
+    ]
+  },
+  {
+    "version": "20260809-59",
+    "tag": "v0.5.91",
+    "date": "2026-08-09",
+    "changes": [
+      "Rumkort kan nu redigeres direkte: skjul rum og ændr rækkefølgen med touch-venlige op/ned-knapper.",
+      "Rum-popup, lysstyring, termostater og live-status er uændret."
+    ]
+  },
+  {
+    "version": "20260809-58",
+    "tag": "v0.5.90",
+    "date": "2026-08-09",
+    "changes": [
+      "Rettet Rum-viewet efter en syntaksfejl i den nye kortstørrelsesberegning, som forhindrede hele Rum-scriptet i at indlæse."
+    ]
+  },
+  {
+    "version": "20260809-57",
+    "tag": "v0.5.89",
+    "date": "2026-08-09",
+    "changes": [
+      "Fase 2 Sikkerhed-migrering startet: hero, alarmsystemer og indgange kan nu styres via fælles layoutindstillinger uden at ændre alarm- eller låsestyringen."
+    ]
+  },
+  {
+    "version": "20260809-56",
+    "tag": "v0.5.88",
+    "date": "2026-08-09",
+    "changes": [
+      "Fase 2 Rum-migrering startet: rumkort læser nu fælles layoutdata for rækkefølge, skjulte rum og kortstørrelse, mens popup- og live-styring forbliver uændret."
+    ]
+  },
+  {
+    "version": "20260809-55",
+    "tag": "v0.5.87",
+    "date": "2026-08-09",
+    "changes": [
+      "Tilføjet fælles specialkort-kontrakt til fase 2-migreringen, så eksisterende widgets kan få layout, størrelse, synlighed og settings uden at miste deres side-specifikke renderer."
+    ]
+  },
+  {
+    "version": "20260809-54",
+    "tag": "v0.5.86",
+    "date": "2026-08-09",
+    "changes": [
+      "Fase 3-kortbiblioteket udvidet med Graf, Kamera, Medieafspiller og Kalender.",
+      "De nye kort bruger samme entity-søgning, layout, redigering og live-opdatering som de eksisterende kort."
+    ]
+  },
+  {
+    "version": "20260809-53",
+    "tag": "v0.5.85",
+    "date": "2026-08-09",
+    "changes": [
+      "Brugerdefinerede kortnavne bruges nu også direkte i statistik- og touch-kort i stedet for kun at stå som separat label."
+    ]
+  },
+  {
+    "version": "20260809-52",
+    "tag": "v0.5.84",
+    "date": "2026-08-09",
+    "changes": [
+      "Tilføjet Vis/skjul-kort til egne entity-kort, så kort kan deaktiveres uden at blive slettet.",
+      "Skjulte kort bevarer entity, navn, ikon, type og layout og kan aktiveres igen fra indstillinger."
+    ]
+  },
+  {
+    "version": "20260809-51",
+    "tag": "v0.5.83",
+    "date": "2026-08-09",
+    "changes": [
+      "Editorbaren er gjort touch- og kioskvenlig med vandret scroll, faste 48 px touchmål og responsiv placering.",
+      "Editorbaren kan ikke længere skubbe eller ændre højden på det aktive view."
+    ]
+  },
+  {
+    "version": "20260809-50",
+    "tag": "v0.5.82",
+    "date": "2026-08-09",
+    "changes": [
+      "Tilføjet eksport og import af den aktive sides egne kort som JSON.",
+      "Importerede kort får nye id'er, så de ikke kolliderer med eksisterende kort eller overskriver dem utilsigtet."
+    ]
+  },
+  {
+    "version": "20260809-49",
+    "tag": "v0.5.81",
+    "date": "2026-08-09",
+    "changes": [
+      "Tilføjet Ryd egne kort i editoren med bekræftelse; faste specialkort og sidens originale indhold påvirkes ikke.",
+      "Rydning kan fortrydes i samme redigeringssession før layoutet gemmes."
+    ]
+  },
+  {
+    "version": "20260809-48",
+    "tag": "v0.5.80",
+    "date": "2026-08-09",
+    "changes": [
+      "Brugerdefinerede kort kan nu få eget ikon ud over kortnavn, korttype og entity.",
+      "Ikonet bruges i statistik- og entity-visningen og gemmes sammen med kortets layout."
+    ]
+  },
+  {
+    "version": "20260809-47",
+    "tag": "v0.5.79",
+    "date": "2026-08-09",
+    "changes": [
+      "Rettet touch-interaktion i editoren, så Dupliker kort er klikbar sammen med indstillinger, fjern, flyt og skaler.",
+      "Editorens klikblokering tillader nu alle aktive redigerings-handles uden at gøre kortindhold utilsigtet interaktivt."
+    ]
+  },
+  {
+    "version": "20260809-46",
+    "tag": "v0.5.78",
+    "date": "2026-08-09",
+    "changes": [
+      "Tilføjet Dupliker kort i editoren, så ens kort kan bygges hurtigt videre med samme størrelse og layout.",
+      "Duplikerede kort får et nyt id og kan ændres separat uden at påvirke originalen."
+    ]
+  },
+  {
+    "version": "20260809-45",
+    "tag": "v0.5.77",
+    "date": "2026-08-09",
+    "changes": [
+      "Tilføjet central validering og migreringsgrundlag for alle side-layouts, så ugyldige eller gamle kortdata ikke kan ødelægge et helt view.",
+      "Kortdata normaliseres med sikre standarder for id, type, entity og navn før siderne monteres."
+    ]
+  },
+  {
+    "version": "20260809-44",
+    "tag": "v0.5.76",
+    "date": "2026-08-09",
+    "changes": [
+      "Rettet højde-regression i side-editoren: det ekstra custom-kort-grid kan ikke længere arve fuld højde eller dele eksisterende views i to.",
+      "Tilføjet permanent CSS-regressionsværn mod 100%-højde på editorens hjælpe-grid."
+    ]
+  },
+  {
+    "version": "20260809-43",
+    "tag": "v0.5.75",
+    "date": "2026-08-09",
+    "changes": [
+      "Eksisterende brugerdefinerede kort kan nu skifte mellem Entity/sensor, Statistik og Touch-knap direkte fra kortets indstillinger.",
+      "Korttype, kortnavn og entity gemmes samlet, så kort kan bygges videre på uden at blive slettet og oprettet igen."
+    ]
+  },
+  {
+    "version": "20260809-42",
+    "tag": "v0.5.74",
+    "date": "2026-08-09",
+    "changes": [
+      "Udvidet kortbiblioteket med Statistik og touch-venlig Touch-knap til switch, låse og covers.",
+      "Touch-kort bruger Home Assistant-servicekald og opdaterer sig sammen med den valgte entity."
+    ]
+  },
+  {
+    "version": "20260809-41",
+    "tag": "v0.5.73",
+    "date": "2026-08-09",
+    "changes": [
+      "Fælles kort-editor har nu Fortryd, Nulstil og tydeligere gem-flow, så layoutændringer kan afprøves sikkert før de gemmes.",
+      "Ændringer i kort, entity-valg og kortnavne gemmes som redigeringshistorik under den aktive session."
+    ]
+  },
+  {
+    "version": "20260809-40",
+    "tag": "v0.5.72",
+    "date": "2026-08-09",
+    "changes": [
+      "Rettet entity-kort så de bliver vist efter de er gemt, ikke kun mens redigering er åben.",
+      "Tilføjet redigering af kortnavn og valgt entity på de nye kort."
+    ]
+  },
+  {
+    "version": "20260809-39",
+    "tag": "v0.5.71",
+    "date": "2026-08-09",
+    "changes": [
+      "Rettet editoren så et view ikke automatisk får oprettet kort, når redigering åbnes; kort tilføjes nu kun efter brugerens valg.",
+      "Rettet fuldhøjde-fejlen hvor et tomt editor-grid skubbede eksisterende view-indhold ned. Editor-området er nu skjult uden for redigering og fylder kun plads under aktiv redigering."
+    ]
+  },
+  {
+    "version": "20260809-38",
+    "tag": "v0.5.70",
+    "date": "2026-08-09",
+    "changes": [
+      "Tilføjet fælles redigering til de øvrige views: vælg, flyt, skaler og fjern entity-kort direkte på siden.",
+      "Entity-kort viser først relevante forslag for det aktuelle område, men kan altid søge i alle Home Assistant-entiteter til special- og custom-sensorer.",
+      "Editoren genkobler automatisk efter live-opdateringer, så et view ikke mister sine redigeringsmuligheder når data genindlæses."
+    ]
+  },
+  {
     "version": "20260809-37",
     "tag": "v0.5.69",
     "date": "2026-08-09",

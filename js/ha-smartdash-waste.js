@@ -77,17 +77,40 @@
   function render() {
     if (!containerEl) return;
     containerEl.innerHTML = `
-      <section class="beast-waste-section">
+      <button type="button" class="beast-page-edit-trigger" id="beastCalendarLayoutEdit" aria-label="Rediger kalenderlayout">⋮</button>
+      <section class="beast-waste-section" data-calendar-section="waste">
         <p class="beast-panel-title">Affaldskalender</p>
         <div class="beast-stat-grid">${buildWasteMarkup()}</div>
       </section>
-      <section class="beast-waste-section">
+      <section class="beast-waste-section" data-calendar-section="events">
         <p class="beast-panel-title">Kommende begivenheder</p>
         <div class="beast-stat-grid" id="beastCalendarEvents"><p class="beast-music-empty">Henter…</p></div>
       </section>
     `;
+    wireCalendarLayout();
 
     loadCalendarEvents().then(renderCalendarEvents);
+  }
+
+  function wireCalendarLayout() {
+    const layout = BeastConfig.get("pageLayouts.waste.calendarLayout") || {};
+    const hidden = new Set(Array.isArray(layout.hidden) ? layout.hidden : []);
+    containerEl.querySelectorAll("[data-calendar-section]").forEach((el) => el.classList.toggle("is-layout-hidden", hidden.has(el.dataset.calendarSection)));
+    containerEl.querySelector("#beastCalendarLayoutEdit")?.addEventListener("click", () => openCalendarLayout(layout));
+  }
+
+  function openCalendarLayout(layout) {
+    const hidden = new Set(Array.isArray(layout.hidden) ? layout.hidden : []);
+    const items = [["waste", "Affald og afhentning"], ["events", "Kommende kalenderaftaler"]];
+    const overlay = document.createElement("div"); overlay.className = "beast-modal-overlay";
+    overlay.innerHTML = `<div class="beast-modal beast-calendar-layout-modal"><div class="beast-modal-header"><h3>Rediger kalenderlayout</h3><button type="button" class="beast-modal-close" data-close>×</button></div><div class="beast-modal-body"><div class="beast-calendar-layout-list">${items.map(([id,label]) => `<label><input type="checkbox" data-calendar-layout-section="${id}" ${hidden.has(id) ? "" : "checked"}><strong>${label}</strong></label>`).join("")}</div><button type="button" class="beast-btn beast-btn-primary" data-save-calendar-layout>Gem layout</button></div></div>`;
+    document.body.appendChild(overlay);
+    overlay.addEventListener("click", (event) => {
+      if (event.target === overlay || event.target.closest("[data-close]")) return overlay.remove();
+      if (!event.target.closest("[data-save-calendar-layout]")) return;
+      const nextHidden = items.filter(([id]) => !overlay.querySelector(`[data-calendar-layout-section="${id}"]`).checked).map(([id]) => id);
+      BeastConfig.set("pageLayouts.waste.calendarLayout", { ...layout, hidden: nextHidden }); overlay.remove(); render();
+    });
   }
 
   function init(root) {
