@@ -595,7 +595,13 @@ function runCameraHealthCheck() {
       const lastFullRecovery = Number(sessionStorage.getItem("beast_last_camera_full_recovery") || 0);
       if (reloads >= 3 && now - lastUserActivityAt > 60000 && now - lastFullRecovery > FULL_RECOVERY_COOLDOWN_MS) {
         sessionStorage.setItem("beast_last_camera_full_recovery", String(now));
-        window.location.reload();
+        // Never reload the whole dashboard for a camera failure: that loses
+        // the active view, scroll position and in-progress touch work. The
+        // affected frame has already been restarted above; refresh HA and
+        // ask every visible player to reconnect as the broader recovery.
+        BeastHaSocket.connect?.(true);
+        reconnectVisibleCameraPlayers();
+        BeastCore.log("Kamera-watchdog: bred lokal reconnect uden sidegenindlæsning.");
       }
     } else if (silentFor > CAMERA_RECONNECT_AFTER_MS && now - health.lastReconnectAt > CAMERA_RECONNECT_AFTER_MS) {
       health.lastReconnectAt = now;
@@ -826,6 +832,11 @@ function renderAppShell(root) {
   setupQuickScenarios();
   setupDataQuality();
   BeastCore.mountPanels();
+  // Attach the shared entity-card editor after page panels have rendered.
+  // A short delay also lets panels that start in a loading state finish their
+  // first markup pass before the editor adds its persistent host.
+  window.setTimeout(() => window.BeastPageEditor?.mountAll(), 80);
+  document.addEventListener("beast:navigate", () => window.setTimeout(() => window.BeastPageEditor?.mountAll(), 80));
   BeastHaSocket.connect();
   setupEventFocus();
   window.BeastScreenLock?.init();

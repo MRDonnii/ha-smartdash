@@ -134,6 +134,7 @@
           <button type="button" class="beast-heating-auto${automationOn ? " is-on" : ""}" id="beastHeatingAutoBtn">
             ${BeastCore.icon("bolt", { size: 20 })}<span><small>Automatisk styring</small><strong>${automationOn ? "Aktiv" : "Slået fra"}</strong></span>
           </button>
+          <button type="button" class="beast-heating-layout-btn" id="beastHeatingLayoutEdit" aria-label="Rediger varmelayout">⋮</button>
         </div>
         <div class="beast-heating-room-grid">${ROOMS.map(buildRoomCard).join("")}</div>
         <div class="beast-heating-pumps-head"><span>Varmepumper</span><small>Fuld direkte styring</small></div>
@@ -164,6 +165,7 @@
         </section>
       </aside>
     `;
+    wireHeatingLayout();
 
     containerEl.querySelectorAll("[data-action='heat-up'], [data-action='heat-down']").forEach((btn) => {
       btn.addEventListener("click", () => {
@@ -195,6 +197,29 @@
 
     document.getElementById("beastHeatingAutoBtn")?.addEventListener("click", () => {
       callService("input_boolean", automationOn ? "turn_off" : "turn_on", AUTOMATION_ID).then(() => window.setTimeout(render, 400));
+    });
+  }
+
+  function wireHeatingLayout() {
+    const layout = BeastConfig.get("pageLayouts.heating.heatingLayout") || {};
+    const hidden = new Set(Array.isArray(layout.hidden) ? layout.hidden : []);
+    const selectors = { rooms: ".beast-heating-room-grid", pumps: ".beast-heating-pumps-head, .beast-heatpump-grid", dantherm: ".beast-dantherm-card", district: ".beast-district-compact" };
+    Object.entries(selectors).forEach(([id, selector]) => containerEl.querySelectorAll(selector).forEach((el) => el.classList.toggle("is-layout-hidden", hidden.has(id))));
+    containerEl.querySelector("#beastHeatingLayoutEdit")?.addEventListener("click", () => openHeatingLayout(layout));
+  }
+
+  function openHeatingLayout(layout) {
+    document.getElementById("beastHeatingLayoutEditor")?.remove();
+    const hidden = new Set(Array.isArray(layout.hidden) ? layout.hidden : []);
+    const items = [["rooms", "Komfortzoner"], ["pumps", "Varmepumper"], ["dantherm", "Dantherm ventilation"], ["district", "Fjernvarme"]];
+    const overlay = document.createElement("div"); overlay.id = "beastHeatingLayoutEditor"; overlay.className = "beast-modal-overlay";
+    overlay.innerHTML = `<div class="beast-modal beast-heating-layout-modal"><div class="beast-modal-header"><h3>Rediger varmelayout</h3><button type="button" class="beast-modal-close" data-close>×</button></div><div class="beast-modal-body"><div class="beast-heating-layout-list">${items.map(([id,label]) => `<label><input type="checkbox" data-heating-section="${id}" ${hidden.has(id) ? "" : "checked"}><strong>${label}</strong></label>`).join("")}</div><button type="button" class="beast-btn beast-btn-primary" data-save-heating-layout>Gem layout</button></div></div>`;
+    document.body.appendChild(overlay);
+    overlay.addEventListener("click", (event) => {
+      if (event.target === overlay || event.target.closest("[data-close]")) return overlay.remove();
+      if (!event.target.closest("[data-save-heating-layout]")) return;
+      const nextHidden = items.filter(([id]) => !overlay.querySelector(`[data-heating-section="${id}"]`).checked).map(([id]) => id);
+      BeastConfig.set("pageLayouts.heating.heatingLayout", { ...layout, hidden: nextHidden }); overlay.remove(); render();
     });
   }
 
