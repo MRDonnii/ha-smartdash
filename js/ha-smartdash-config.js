@@ -96,7 +96,10 @@ const BeastConfig = (() => {
     overviewCards: [],
     pageLayouts: {
       robots: { cards: [] },
-      printer: { cards: [] }
+      printer: { cards: [] },
+      rooms: { cards: [] }, cameras: { cards: [] }, security: { cards: [] }, music: { cards: [] },
+      energy: { cards: [] }, heating: { cards: [] }, car: { cards: [] }, pool: { cards: [] },
+      waste: { cards: [] }, weather: { cards: [] }
     },
     // The two small tiles under the clock/calendar card -- each is one of
     // "car"/"pool"/"robots"/"printer" (same set as the top-level generic
@@ -189,6 +192,27 @@ const BeastConfig = (() => {
     return config;
   }
 
+  // Layouts are user data, so keep malformed/old entries from breaking a
+  // whole page. This also gives future card migrations one stable place to
+  // evolve from instead of scattering compatibility checks across views.
+  function normalizePageLayouts(config) {
+    if (!isPlainObject(config.pageLayouts)) config.pageLayouts = {};
+    Object.keys(DEFAULTS.pageLayouts).forEach((pageId) => {
+      const layout = config.pageLayouts[pageId];
+      if (!isPlainObject(layout)) config.pageLayouts[pageId] = { cards: [] };
+      if (!Array.isArray(config.pageLayouts[pageId].cards)) config.pageLayouts[pageId].cards = [];
+      config.pageLayouts[pageId].cards = config.pageLayouts[pageId].cards
+        .filter((card) => isPlainObject(card) && typeof card.id === "string" && card.id)
+        .map((card) => ({
+          ...card,
+          type: typeof card.type === "string" ? card.type : "custom",
+          entity: typeof card.entity === "string" ? card.entity : null,
+          label: typeof card.label === "string" ? card.label : ""
+        }));
+    });
+    return config;
+  }
+
   // Called once at boot, before any panel mounts, so every later get() call
   // is a plain synchronous object read — panels never need to know config
   // is backed by a network request.
@@ -201,7 +225,7 @@ const BeastConfig = (() => {
         return readLocalFallback();
       })
       .then((remote) => {
-        cache = deepMerge(DEFAULTS, remote || {});
+        cache = normalizePageLayouts(deepMerge(DEFAULTS, remote || {}));
         writeLocalFallback(cache);
         return cache;
       });
@@ -212,7 +236,7 @@ const BeastConfig = (() => {
   // init() resolves — shouldn't happen since the boot sequence awaits it,
   // but a stale local cache beats throwing.
   function ensureLoaded() {
-    if (!cache) cache = deepMerge(DEFAULTS, readLocalFallback());
+    if (!cache) cache = normalizePageLayouts(deepMerge(DEFAULTS, readLocalFallback()));
     return cache;
   }
 

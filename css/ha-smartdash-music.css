@@ -969,3 +969,8 @@
     grid-template-rows: minmax(0, 1fr);
   }
 }
+.beast-music-panel .is-layout-hidden { display: none !important; }
+.beast-music-layout-modal { width: min(620px, calc(100vw - 32px)); }
+.beast-music-layout-list { display: grid; gap: 10px; margin-bottom: 18px; }
+.beast-music-layout-list label { display: flex; align-items: center; gap: 12px; min-height: 56px; padding: 10px 14px; border: 1px solid var(--border); border-radius: var(--radius-md); background: var(--surface-2); }
+.beast-music-layout-list input { width: 24px; height: 24px; accent-color: var(--accent); }

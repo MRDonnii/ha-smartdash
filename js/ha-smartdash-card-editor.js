@@ -61,6 +61,8 @@ window.BeastCardEditor = (function () {
 
     let editing = false;
     let draftCards = null;
+    let originalCards = null;
+    let history = [];
 
     function renderCardsDom(cards) {
       if (!zoneEl) return;
@@ -76,6 +78,10 @@ window.BeastCardEditor = (function () {
         renderAddCardTile(anchor);
         applyEditModeChrome();
       }
+    }
+
+    function rememberDraft() {
+      if (draftCards) history.push(JSON.parse(JSON.stringify(draftCards)));
     }
 
     // "+ Tilføj kort" -- not a real card, never part of draftCards, always
@@ -104,6 +110,7 @@ window.BeastCardEditor = (function () {
         card.querySelector(".beast-ov-card-resize")?.remove();
         card.querySelector(".beast-ov-card-remove")?.remove();
         card.querySelector(".beast-ov-card-configure")?.remove();
+        card.querySelector(".beast-ov-card-duplicate")?.remove();
         const drag = document.createElement("span");
         drag.className = "beast-ov-card-drag";
         drag.setAttribute("aria-hidden", "true");
@@ -134,16 +141,35 @@ window.BeastCardEditor = (function () {
               if (!updatedCard) return;
               const index = draftCards.findIndex((item) => item.id === current.id);
               if (index < 0) return;
+              rememberDraft();
               draftCards[index] = { ...draftCards[index], ...updatedCard, id: current.id };
               renderCardsDom(draftCards);
             });
           });
         }
+        const duplicate = document.createElement("button");
+        duplicate.type = "button";
+        duplicate.className = "beast-ov-card-duplicate";
+        duplicate.setAttribute("aria-label", "Dupliker kort");
+        duplicate.innerHTML = BeastCore.icon("plus", { size: 15 });
+        card.appendChild(duplicate);
+        duplicate.addEventListener("click", (event) => {
+          event.stopPropagation();
+          rememberDraft();
+          const source = draftCards.find((item) => item.id === card.dataset.builderCard);
+          if (!source) return;
+          const clone = JSON.parse(JSON.stringify(source));
+          clone.id = `card_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
+          clone.label = clone.label ? `${clone.label} kopi` : "";
+          draftCards.push(clone);
+          renderCardsDom(draftCards);
+        });
         wireCardDrag(card, drag);
         wireCardResize(card, resize);
         remove.addEventListener("click", (event) => {
           event.stopPropagation();
           const id = card.dataset.builderCard;
+          rememberDraft();
           draftCards = draftCards.filter((c) => c.id !== id);
           renderCardsDom(draftCards);
         });
@@ -277,6 +303,7 @@ window.BeastCardEditor = (function () {
         if (typeButton) {
           const type = typeButton.dataset.addCardType;
           if (!entityPickerTypes.includes(type)) {
+            rememberDraft();
             draftCards.push(newCard(type));
             close();
             renderCardsDom(draftCards);
@@ -301,6 +328,7 @@ window.BeastCardEditor = (function () {
           const select = overlay.querySelector(".beast-ov-add-card-select");
           const entity = select?.value;
           if (!entity) return;
+          rememberDraft();
           draftCards.push(newCard(overlay.dataset.pendingEntityType || "custom", entity));
           close();
           renderCardsDom(draftCards);
@@ -313,10 +341,62 @@ window.BeastCardEditor = (function () {
       const bar = document.createElement("div");
       bar.id = "beastCardEditorBar";
       bar.className = "beast-ov-edit-bar";
-      bar.innerHTML = `<span>${BeastCore.icon("grid", { size: 16 })}${editLabel}</span><div class="beast-ov-edit-bar-actions"><button type="button" data-ov-edit-cancel>Annullér</button><button type="button" class="beast-btn beast-btn-primary" data-ov-edit-save>Gem</button></div>`;
+      bar.innerHTML = `<span>${BeastCore.icon("grid", { size: 16 })}${editLabel}</span><div class="beast-ov-edit-bar-actions"><button type="button" data-ov-edit-undo ${history.length ? "" : "disabled"}>Fortryd</button><button type="button" data-ov-edit-reset>Nulstil</button><button type="button" data-ov-edit-clear>Ryd egne kort</button><button type="button" data-ov-edit-export>Eksportér</button><button type="button" data-ov-edit-import>Importér</button><button type="button" data-ov-edit-cancel>Annullér</button><button type="button" class="beast-btn beast-btn-primary" data-ov-edit-save>Gem</button></div>`;
       document.body.appendChild(bar);
       bar.querySelector("[data-ov-edit-cancel]").addEventListener("click", () => exit(false));
       bar.querySelector("[data-ov-edit-save]").addEventListener("click", () => exit(true));
+      bar.querySelector("[data-ov-edit-undo]").addEventListener("click", () => {
+        const previous = history.pop();
+        if (!previous) return;
+        draftCards = previous;
+        renderCardsDom(draftCards);
+        renderEditBar();
+      });
+      bar.querySelector("[data-ov-edit-reset]").addEventListener("click", () => {
+        if (!window.confirm("Nulstil kortene på denne side til layoutet før redigering?")) return;
+        history.push(JSON.parse(JSON.stringify(draftCards || [])));
+        draftCards = JSON.parse(JSON.stringify(originalCards || []));
+        renderCardsDom(draftCards);
+        renderEditBar();
+      });
+      bar.querySelector("[data-ov-edit-clear]").addEventListener("click", () => {
+        if (!draftCards?.length || !window.confirm("Fjern alle egne kort fra denne side?")) return;
+        rememberDraft();
+        draftCards = [];
+        renderCardsDom(draftCards);
+        renderEditBar();
+      });
+      bar.querySelector("[data-ov-edit-export]").addEventListener("click", async () => {
+        const payload = JSON.stringify({ smartdash: "card-layout", version: 1, cards: draftCards || [] }, null, 2);
+        try {
+          await navigator.clipboard.writeText(payload);
+          bar.querySelector("[data-ov-edit-export]").textContent = "Kopieret";
+          window.setTimeout(() => renderEditBar(), 1000);
+        } catch (error) {
+          window.prompt("Kopiér layout-JSON:", payload);
+        }
+      });
+      bar.querySelector("[data-ov-edit-import]").addEventListener("click", () => {
+        const input = document.createElement("input");
+        input.type = "file"; input.accept = "application/json,.json";
+        input.addEventListener("change", () => {
+          const file = input.files?.[0]; if (!file) return;
+          const reader = new FileReader();
+          reader.onload = () => {
+            try {
+              const parsed = JSON.parse(String(reader.result || ""));
+              const cards = Array.isArray(parsed) ? parsed : parsed.cards;
+              if (!Array.isArray(cards)) throw new Error("Ugyldigt layout");
+              if (!cards.every((card) => card && typeof card === "object" && typeof card.id === "string")) throw new Error("Ugyldigt kortformat");
+              rememberDraft();
+              draftCards = cards.map((card) => ({ ...card, id: `card_${Date.now()}_${Math.random().toString(36).slice(2, 7)}` }));
+              renderCardsDom(draftCards); renderEditBar();
+            } catch (error) { window.alert("Layoutet kunne ikke importeres. Kontrollér JSON-filen."); }
+          };
+          reader.readAsText(file);
+        });
+        input.click();
+      });
     }
 
     function enter() {
@@ -325,6 +405,8 @@ window.BeastCardEditor = (function () {
       window.beastCardEditorActive = true;
       const existing = BeastConfig.get(configPath) || [];
       draftCards = existing.length ? JSON.parse(JSON.stringify(existing)) : seedCards();
+      originalCards = JSON.parse(JSON.stringify(draftCards));
+      history = [];
       renderEditBar();
       renderCardsDom(draftCards);
     }
@@ -335,6 +417,8 @@ window.BeastCardEditor = (function () {
       editing = false;
       window.beastCardEditorActive = false;
       draftCards = null;
+      originalCards = null;
+      history = [];
       document.getElementById("beastCardEditorBar")?.remove();
       if (!nextCards.length && renderEmptyState) {
         renderEmptyState();

@@ -121,7 +121,7 @@
     }
 
     containerEl.innerHTML = `
-      <div class="beast-pool-dashboard">
+      <button type="button" class="beast-page-edit-trigger" id="beastPoolLayoutEdit" aria-label="Rediger poollayout">⋮</button><div class="beast-pool-dashboard">
         <section class="beast-pool-hero">
           <header><span>${BeastCore.icon("droplet", { size: 22 })} Pool</span><em id="beastPoolHeaderStatus">${escapeHtml(status?.state || "Ukendt status")}</em></header>
           <div class="beast-pool-water-orb">
@@ -155,6 +155,7 @@
         </section>
       </div>
     `;
+    wirePoolLayout();
     renderTemperatureHistory();
 
     document.getElementById("beastPoolPumpBtn")?.addEventListener("click", () => {
@@ -164,6 +165,28 @@
     document.getElementById("beastPoolAutoBtn")?.addEventListener("click", () => {
       const button = document.getElementById("beastPoolAutoBtn");
       callService("input_boolean", button.dataset.on === "true" ? "turn_off" : "turn_on", IDS.automation);
+    });
+  }
+
+  function wirePoolLayout() {
+    const layout = BeastConfig.get("pageLayouts.pool.poolLayout") || {};
+    const hidden = new Set(Array.isArray(layout.hidden) ? layout.hidden : []);
+    const selectors = { hero: ".beast-pool-hero", camera: ".beast-pool-live", insights: ".beast-pool-insights" };
+    Object.entries(selectors).forEach(([id, selector]) => containerEl.querySelectorAll(selector).forEach((el) => el.classList.toggle("is-layout-hidden", hidden.has(id))));
+    containerEl.querySelector("#beastPoolLayoutEdit")?.addEventListener("click", () => openPoolLayout(layout));
+  }
+
+  function openPoolLayout(layout) {
+    const hidden = new Set(Array.isArray(layout.hidden) ? layout.hidden : []);
+    const items = [["hero", "Poolstatus og styring"], ["camera", "Livekamera"], ["insights", "Temperatur og driftsindsigt"]];
+    const overlay = document.createElement("div"); overlay.className = "beast-modal-overlay";
+    overlay.innerHTML = `<div class="beast-modal beast-pool-layout-modal"><div class="beast-modal-header"><h3>Rediger poollayout</h3><button type="button" class="beast-modal-close" data-close>×</button></div><div class="beast-modal-body"><div class="beast-pool-layout-list">${items.map(([id,label]) => `<label><input type="checkbox" data-pool-section="${id}" ${hidden.has(id) ? "" : "checked"}><strong>${label}</strong></label>`).join("")}</div><button type="button" class="beast-btn beast-btn-primary" data-save-pool-layout>Gem layout</button></div></div>`;
+    document.body.appendChild(overlay);
+    overlay.addEventListener("click", (event) => {
+      if (event.target === overlay || event.target.closest("[data-close]")) return overlay.remove();
+      if (!event.target.closest("[data-save-pool-layout]")) return;
+      const nextHidden = items.filter(([id]) => !overlay.querySelector(`[data-pool-section="${id}"]`).checked).map(([id]) => id);
+      BeastConfig.set("pageLayouts.pool.poolLayout", { ...layout, hidden: nextHidden }); overlay.remove(); render();
     });
   }
 

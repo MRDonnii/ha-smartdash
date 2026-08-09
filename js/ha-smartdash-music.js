@@ -337,7 +337,7 @@
     const visibleGroupCount = stereoGroupInfo(activePlayer.entity_id)?.speakers || new Set([...nativeGroupIds, ...linkedPlayerIds(groupLeaderId)]).size;
 
     containerEl.innerHTML = `
-      <div class="beast-music-dashboard">
+      <button type="button" class="beast-page-edit-trigger" id="beastMusicLayoutEdit" aria-label="Rediger musiklayout">⋮</button><div class="beast-music-dashboard">
         <aside class="beast-music-control">
           <header class="beast-music-section-head">
             <button type="button" class="beast-speaker-toggle" id="beastSpeakerToggle" aria-expanded="${speakerPanelOpen}">
@@ -397,6 +397,7 @@
         </main>
       </div>
     `;
+    wireMusicLayout();
 
     renderPlayerChips(players, activePlayer);
     renderGroupVolume(players, activePlayer);
@@ -413,6 +414,28 @@
     } else {
       loadTabsAndGrid(activePlayer);
     }
+  }
+
+  function wireMusicLayout() {
+    const layout = BeastConfig.get("pageLayouts.music.musicLayout") || {};
+    const hidden = new Set(Array.isArray(layout.hidden) ? layout.hidden : []);
+    containerEl.querySelector(".beast-music-control")?.classList.toggle("is-layout-hidden", hidden.has("player"));
+    containerEl.querySelector(".beast-music-library")?.classList.toggle("is-layout-hidden", hidden.has("library"));
+    containerEl.querySelector("#beastMusicLayoutEdit")?.addEventListener("click", () => openMusicLayout(layout));
+  }
+
+  function openMusicLayout(layout) {
+    const hidden = new Set(Array.isArray(layout.hidden) ? layout.hidden : []);
+    const items = [["player", "Afspiller og højttalere"], ["library", "Bibliotek, søgning og album"]];
+    const overlay = document.createElement("div"); overlay.className = "beast-modal-overlay";
+    overlay.innerHTML = `<div class="beast-modal beast-music-layout-modal"><div class="beast-modal-header"><h3>Rediger musiklayout</h3><button type="button" class="beast-modal-close" data-close>×</button></div><div class="beast-modal-body"><div class="beast-music-layout-list">${items.map(([id,label]) => `<label><input type="checkbox" data-music-section="${id}" ${hidden.has(id) ? "" : "checked"}><strong>${label}</strong></label>`).join("")}</div><button type="button" class="beast-btn beast-btn-primary" data-save-music-layout>Gem layout</button></div></div>`;
+    document.body.appendChild(overlay);
+    overlay.addEventListener("click", (event) => {
+      if (event.target === overlay || event.target.closest("[data-close]")) return overlay.remove();
+      if (!event.target.closest("[data-save-music-layout]")) return;
+      const nextHidden = items.filter(([id]) => !overlay.querySelector(`[data-music-section="${id}"]`).checked).map(([id]) => id);
+      BeastConfig.set("pageLayouts.music.musicLayout", { ...layout, hidden: nextHidden }); overlay.remove(); render();
+    });
   }
 
   function wireSearchInput(activePlayer) {
