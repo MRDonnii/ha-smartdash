@@ -383,6 +383,20 @@
   grid-column: span 2;
 }
 
+/* "stat" standard card (js/ha-smartdash-standard-cards.js) inside the
+   live card editor's grid -- stretches the tile to fill whatever size
+   the card was resized to, instead of sitting at its own min-height. */
+.beast-ov-card--stat .beastStandardCardBody {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+}
+.beast-ov-card--stat .beast-stat-tile {
+  flex: 1;
+  min-height: 0;
+  width: 100%;
+}
+
 /* Shared bar chart (today's price curve, etc.) */
 .beast-bar-chart {
   display: flex;

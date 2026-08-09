@@ -1,5 +1,21 @@
 [
   {
+    "version": "20260809-31",
+    "tag": "v0.5.63",
+    "date": "2026-08-09",
+    "changes": [
+      "Internal groundwork for bringing live card editing to more tabs -- adds a shared library of reusable card types (a simple stat tile and a pick-any-entity card) that any tab's editor can offer, on top of last update's shared engine. No visible change on its own yet."
+    ]
+  },
+  {
+    "version": "20260809-30",
+    "tag": "v0.5.62",
+    "date": "2026-08-09",
+    "changes": [
+      "Internal refactor of the front page's live card editor -- no visible change on its own, but it's now built as a shared engine so the same drag/resize/add/remove card editing can be brought to other tabs going forward."
+    ]
+  },
+  {
     "version": "20260809-29",
     "tag": "v0.5.61",
     "date": "2026-08-09",
