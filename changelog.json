@@ -1,5 +1,101 @@
 [
   {
+    "version": "20260809-29",
+    "tag": "v0.5.61",
+    "date": "2026-08-09",
+    "changes": [
+      "The camera menu now sits directly beside the camera card (right against its edge) when there's room, instead of always defaulting to the corner of the page -- it measures the card's actual position rather than assuming one, so it adapts correctly whether the front page uses the classic layout, the freeform card builder, or a narrow/portrait screen. Falls back to the card's own inside corner only when it's flush against the edge of the screen with nowhere else to go."
+    ]
+  },
+  {
+    "version": "20260809-28",
+    "tag": "v0.5.60",
+    "date": "2026-08-09",
+    "changes": [
+      "The camera menu (formerly on top of, then beside, the live picture) is now a standalone floating button in the top-right corner of the front page -- completely detached from the camera card, so the picture always fills the card's full width and height. Stays in the same corner regardless of where the camera card is placed or resized."
+    ]
+  },
+  {
+    "version": "20260809-27",
+    "tag": "v0.5.59",
+    "date": "2026-08-09",
+    "changes": [
+      "Fixed the PIN screen staying hardcoded dark everywhere it's used -- entering/setting/changing/removing a PIN from Administration is a normal in-context prompt and now follows the light/dark theme like every other admin dialog, with correctly adapted button and text colors in both. Only the actual \"screen is now locked\" ambient lock (triggered by idle or a manual lock) stays deliberately always-dark, matching the screensaver's own look."
+    ]
+  },
+  {
+    "version": "20260809-26",
+    "tag": "v0.5.58",
+    "date": "2026-08-09",
+    "changes": [
+      "Fixed alert photos looking stretched when a banner was dragged wider -- the photo now keeps its original proportions and just gets bigger, instead of only widening while its height stayed fixed.",
+      "Fixed the camera menu column overlapping the live picture instead of sitting beside it -- an insetting bug meant the reserved space was being subtracted twice, leaving the picture and the menu overlapping rather than separated. The menu column also now has its own visible background so it reads as a clearly separate area from the picture."
+    ]
+  },
+  {
+    "version": "20260809-25",
+    "tag": "v0.5.57",
+    "date": "2026-08-09",
+    "changes": [
+      "The camera menu (the ⋮ button on the front page's camera card) no longer floats on top of the live picture -- it now sits in its own narrow column to the right of it, so nothing is covered.",
+      "The camera menu button now follows the light/dark theme (dark in light mode, light in dark mode) instead of always being white."
+    ]
+  },
+  {
+    "version": "20260809-24",
+    "tag": "v0.5.56",
+    "date": "2026-08-09",
+    "changes": [
+      "Post and 3D-printer alerts now always show their full-size photo, even in the combined alert layout -- previously shrunk to a small thumbnail there, which defeated the point of a photo alert.",
+      "Alert boxes (separate or combined) can now be dragged wider from a handle in the bottom-right corner, for anyone who wants to see more detail -- never smaller than today's default size."
+    ]
+  },
+  {
+    "version": "20260809-23",
+    "tag": "v0.5.55",
+    "date": "2026-08-09",
+    "changes": [
+      "Fixed the HA Smartdash logo/branding text (admin sidebar, About card, and the first-login screen) being unreadable in light mode -- it's part of an image file with hardcoded near-white text, which is now built inline so the text can follow the theme like everything else. The icon mark itself keeps its own fixed colors.",
+      "Moved the two \"what shows in the clock card\" toggles (Naeste aftaler / Affald) from the Kalender & affald panel into Administration -> Forside, next to the new car/pool/robot/printer tile settings -- everything that controls what appears on the front page now lives in one place, separate from picking the underlying calendars/sensors."
+    ]
+  },
+  {
+    "version": "20260809-22",
+    "tag": "v0.5.54",
+    "date": "2026-08-09",
+    "changes": [
+      "Fixed the doors/windows/locks alert schedule not reliably appearing or disappearing exactly at its start/end time -- banners were previously only re-checked when a door/lock actually changed state, so a schedule boundary (or an expired 30-minute snooze) could sit stale until something unrelated happened to trigger a refresh. Now re-checked every 30 seconds on its own.",
+      "Post and 3D-printer alerts now always show their photo as a small thumbnail when the combined alert layout is used, instead of falling back to a plain icon."
+    ]
+  },
+  {
+    "version": "20260809-21",
+    "tag": "v0.5.53",
+    "date": "2026-08-09",
+    "changes": [
+      "The two small tiles under the clock's calendar (previously always Bil/Pool) can now each be set to show car, pool, robots or 3D-printer status, or be turned off entirely -- Administration -> Forside -> Ur-widgets."
+    ]
+  },
+  {
+    "version": "20260809-20",
+    "tag": "v0.5.52",
+    "date": "2026-08-09",
+    "changes": [
+      "The \"Naeste aftaler\" and \"Affald\" sections under the clock can each be turned off individually (Administration -> Kalender & affald) for households that don't use one of them -- when only one is on, it takes over the space the other would have used instead of leaving a gap.",
+      "The calendar list under the clock now respects the calendar selection already set under Administration -> Kalender & affald, instead of always showing every calendar entity found -- leave the selection empty to keep showing all of them."
+    ]
+  },
+  {
+    "version": "20260809-19",
+    "tag": "v0.5.51",
+    "date": "2026-08-09",
+    "changes": [
+      "Alerts (post/printer/doors) can now be shown either as separate floating cards (as before) or stacked together in one shared card -- choose under Administration -> Advarsler -> Visning.",
+      "The front page finally gets a real, live edit mode: tap \"Rediger forsiden\" to drag cards to reorder them, resize them, add new cards (any of the existing card types, or any HA entity), and remove cards -- directly on the dashboard itself, with an explicit Gem/Annuller step so nothing saves by accident on a shared touchscreen. The old preset-picker editor (which no longer matched the current layout system) is gone.",
+      "The front page's per-card rendering was refactored into a single shared function used by both the initial page load and the new live editor, so they can never drift out of sync with each other."
+    ]
+  },
+  {
     "version": "20260809-18",
     "tag": "v0.5.50",
     "date": "2026-08-09",

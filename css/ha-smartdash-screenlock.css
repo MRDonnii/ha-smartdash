@@ -5,35 +5,51 @@
   z-index: 9999;
   align-items: center;
   justify-content: center;
-  background:
-    radial-gradient(circle at 50% 35%, rgba(105, 118, 255, .18), transparent 38%),
-    rgba(3, 4, 6, 0.96);
-  backdrop-filter: blur(22px);
+  background: rgba(3, 4, 6, 0.72);
+  backdrop-filter: blur(6px);
 }
 
 .beast-lock-overlay.is-open {
   display: flex;
 }
 
-/* This overlay's own backdrop (above) is always dark regardless of the
-   site's light/dark theme -- a deliberate, dramatic full-screen look, the
-   same reasoning as the ambient screensaver staying dark always. Text and
-   controls below are hardcoded to match that fixed-dark backdrop instead
-   of pulling from the theme's --ink/--border tokens, which flip to dark-
-   on-dark (illegible) the moment someone picks the light theme. */
+/* Only the true "the screen is now locked" ambient state (mode==="locked",
+   set by lockNow() on idle/manual lock) gets the heavier, always-dark
+   backdrop matching the screensaver's own look -- a deliberate, dramatic
+   full-screen presentation. Every other use of this same overlay (verify a
+   PIN before an action, set/change/remove a PIN) is a normal in-context
+   prompt layered over whatever page triggered it -- kiosk or Administration
+   -- so it follows the page's own theme like every other modal instead. */
+.beast-lock-overlay.is-ambient {
+  background:
+    radial-gradient(circle at 50% 35%, rgba(105, 118, 255, .18), transparent 38%),
+    rgba(3, 4, 6, 0.96);
+  backdrop-filter: blur(22px);
+}
+
 .beast-lock-card {
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: var(--space-3);
-  color: #f5f6f8;
+  color: var(--ink);
   animation: beast-lock-fade-in 200ms ease;
   min-width: 420px;
   padding: 34px 42px;
-  border: 1px solid rgba(255, 255, 255, .16);
+  border: 1px solid var(--border-strong);
   border-radius: var(--radius-lg);
-  background: rgba(18, 21, 30, .88);
+  background: var(--surface-2-solid, #161923);
   box-shadow: 0 28px 90px rgba(0, 0, 0, .55);
+}
+
+/* Ambient mode's card keeps hardcoded (not theme-token) colors, always
+   matching its own always-dark backdrop above -- theme tokens would flip
+   to dark-on-dark (illegible) the moment someone picks the light theme
+   while the backdrop itself stays fixed-dark. */
+.is-ambient .beast-lock-card {
+  color: #f5f6f8;
+  border-color: rgba(255, 255, 255, .16);
+  background: rgba(18, 21, 30, .88);
 }
 
 .beast-lock-card .beast-icon {
@@ -66,8 +82,10 @@
 .beast-lock-subtitle {
   margin: 0 0 var(--space-2);
   font-size: var(--text-sm);
-  color: #939aab;
+  color: var(--ink-muted);
 }
+
+.is-ambient .beast-lock-subtitle { color: #939aab; }
 
 .beast-lock-dots {
   display: flex;
@@ -79,10 +97,12 @@
   width: 16px;
   height: 16px;
   border-radius: 50%;
-  border: 2px solid rgba(255, 255, 255, .16);
+  border: 2px solid var(--border-strong);
   background: transparent;
   transition: background var(--transition-fast), border-color var(--transition-fast);
 }
+
+.is-ambient .beast-lock-dot { border-color: rgba(255, 255, 255, .16); }
 
 .beast-lock-dot.is-filled {
   background: var(--accent-gradient);
@@ -98,9 +118,9 @@
 
 .beast-lock-key {
   appearance: none;
-  border: 1px solid rgba(255, 255, 255, .16);
-  background: #161923;
-  color: #f5f6f8;
+  border: 1px solid var(--border-strong);
+  background: var(--surface-2);
+  color: var(--ink);
   border-radius: 50%;
   font-size: var(--text-xl);
   font-weight: 700;
@@ -112,15 +132,28 @@
   transition: background var(--transition-fast), transform var(--transition-fast);
 }
 
-.beast-lock-key:active {
-  transform: scale(0.94);
-  background: rgba(28, 32, 48, .78);
+.is-ambient .beast-lock-key {
+  border-color: rgba(255, 255, 255, .16);
+  background: #161923;
+  color: #f5f6f8;
 }
 
+.beast-lock-key:active {
+  transform: scale(0.94);
+  background: var(--surface-hover);
+}
+
+.is-ambient .beast-lock-key:active { background: rgba(28, 32, 48, .78); }
+
 .beast-lock-key-cancel {
-  color: #565c6c;
+  color: var(--ink-faint);
   background: transparent;
   border-color: transparent;
 }
-.beast-lock-forgot { margin-top: 18px; padding: 10px 14px; border: 0; border-radius: 10px; background: transparent; color: #64dcff; font: 700 13px/1.4 var(--font-sans); cursor: pointer; }
-.beast-lock-forgot:hover, .beast-lock-forgot:focus-visible { background: rgba(28, 32, 48, .78); outline: 1px solid rgba(255, 255, 255, .16); }
+
+.is-ambient .beast-lock-key-cancel { color: #565c6c; }
+
+.beast-lock-forgot { margin-top: 18px; padding: 10px 14px; border: 0; border-radius: 10px; background: transparent; color: var(--accent-b); font: 700 13px/1.4 var(--font-sans); cursor: pointer; }
+.beast-lock-forgot:hover, .beast-lock-forgot:focus-visible { background: var(--surface-hover); outline: 1px solid var(--border-strong); }
+.is-ambient .beast-lock-forgot { color: #64dcff; }
+.is-ambient .beast-lock-forgot:hover, .is-ambient .beast-lock-forgot:focus-visible { background: rgba(28, 32, 48, .78); outline-color: rgba(255, 255, 255, .16); }

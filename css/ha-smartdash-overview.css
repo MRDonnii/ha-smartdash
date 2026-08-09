@@ -59,8 +59,22 @@
 .beast-ov-mail-banner-drag { width: 64px; height: 20px; flex: 0 0 auto; display: flex; align-items: center; justify-content: center; cursor: grab; touch-action: none; }
 .beast-ov-mail-banner-drag::before { content: ""; width: 64px; height: 7px; border-radius: 999px; background: rgba(255,255,255,.28); }
 .beast-ov-mail-banner.is-dragging .beast-ov-mail-banner-drag::before { background: rgba(255,255,255,.5); }
+/* Bottom-right corner handle -- drag to make the card/combined card wider
+   than its CSS default; wireBannerResize() clamps the drag to never go
+   below that default, so this only ever makes a banner bigger, never
+   smaller than what it already looks like today. */
+.beast-ov-mail-banner-resize { position: absolute; right: 4px; bottom: 4px; width: 26px; height: 26px; display: grid; place-items: center; cursor: nwse-resize; touch-action: none; }
+.beast-ov-mail-banner-resize::before { content: ""; width: 10px; height: 10px; border-right: 2px solid rgba(255,255,255,.4); border-bottom: 2px solid rgba(255,255,255,.4); }
+.beast-ov-mail-banner.is-resizing { transition: none; }
+.beast-ov-mail-banner.is-resizing .beast-ov-mail-banner-resize::before { border-color: rgba(255,255,255,.75); }
+/* aspect-ratio instead of a fixed height -- a fixed 132px meant widening
+   the card via the resize handle grew the image's width but not its
+   height, visibly stretching/cropping it more aggressively instead of
+   just showing a bigger version of the same picture. 230/132 matches
+   today's actual default proportions exactly, so nothing changes at the
+   default size -- only resizing now keeps the same ratio. */
 .beast-ov-mail-banner-icon,
-.beast-ov-mail-banner-photo { width: 100%; height: 132px; border-radius: 10px; object-fit: cover; }
+.beast-ov-mail-banner-photo { width: 100%; aspect-ratio: 230 / 132; border-radius: 10px; object-fit: cover; }
 .beast-ov-mail-banner-icon { display: flex; align-items: center; justify-content: center; color: var(--warning); background: var(--warning-soft); }
 .beast-ov-mail-banner-photo { background: var(--warning-soft); }
 .beast-ov-mail-banner > div { width: 100%; }
@@ -75,6 +89,31 @@
 .beast-ov-mail-banner-icon-sm { width: 34px; height: 34px; flex: 0 0 auto; border-radius: 10px; display: flex; align-items: center; justify-content: center; color: var(--warning); background: var(--warning-soft); }
 .beast-ov-mail-banner.is-compact small { -webkit-line-clamp: 1; }
 
+/* Combined layout mode (Administration -> Advarsler): every active banner
+   is one row in this single card instead of its own separate floating
+   card -- rows are separated by a hairline divider so it still reads as
+   distinct entries, not one merged block of text. */
+.beast-ov-mail-banner-group { width: min(260px, calc(100vw - 24px)); padding: 6px 12px 8px; gap: 0; }
+/* Each stacked banner's own natural layout (vertical photo+text for
+   mail/printer, horizontal icon+text for doors, via bannerBodyMarkup())
+   is untouched here -- this class only adds the per-item spacing/divider/
+   click-target that turns a list of them into one card. */
+.beast-ov-mail-banner-group-item { padding: 10px 0; cursor: pointer; }
+.beast-ov-mail-banner-group-item + .beast-ov-mail-banner-group-item { border-top: 1px solid rgba(255,255,255,.08); }
+.beast-ov-mail-banner-group-item.is-compact { padding: 7px 0; }
+.beast-ov-mail-banner-group-item .beast-ov-mail-banner-photo,
+.beast-ov-mail-banner-group-item .beast-ov-mail-banner-icon { margin-bottom: 6px; }
+
+/* Persistent bar shown only while the live front-page editor is open --
+   deliberately explicit Gem/Annullér rather than autosave, since this is a
+   shared household touchscreen where an accidental drag must never
+   silently persist. */
+.beast-ov-edit-bar { position:fixed; left:50%; bottom:20px; z-index:60; display:flex; align-items:center; gap:16px; padding:12px 14px 12px 20px; transform:translateX(-50%); border:1px solid var(--border-strong); border-radius:999px; background:color-mix(in srgb,var(--surface-2-solid) 96%,transparent); color:var(--ink); font-weight:750; box-shadow:0 18px 46px rgba(0,0,0,.5); backdrop-filter:blur(16px); }
+.beast-ov-edit-bar span { display:flex; align-items:center; gap:8px; }
+.beast-ov-edit-bar-actions { display:flex; gap:10px; }
+.beast-ov-edit-bar-actions button { min-height:40px; padding:0 18px; border-radius:999px; font-weight:750; }
+.beast-ov-edit-bar-actions button[data-ov-edit-cancel] { border:1px solid var(--border-strong); background:transparent; color:var(--ink-muted); }
+
 .beast-ov-toolbar { position:absolute; top:12px; right:12px; z-index:24; display:flex; gap:8px; }
 .beast-ov-toolbar button { position:relative; width:46px; height:46px; display:grid; place-items:center; border:1px solid var(--border-strong); border-radius:50%; background:color-mix(in srgb,var(--surface-2-solid) 92%,transparent); color:var(--ink-muted); box-shadow:0 10px 28px rgba(0,0,0,.28); backdrop-filter:blur(14px); }
 .beast-ov-toolbar b { position:absolute; top:-5px; right:-4px; min-width:22px; height:22px; display:grid; place-items:center; padding:0 5px; border:2px solid var(--surface-solid); border-radius:999px; background:var(--danger); color:#fff; font-size:11px; }
@@ -83,7 +122,29 @@
 .beast-overview-grid[data-columns="wide-compact-camera"] .beast-ov-camera-picker-btn { right:112px; }
 .beast-ov-edit-label { position:absolute; z-index:18; left:50%; top:50%; min-height:48px; display:flex; align-items:center; gap:8px; padding:10px 16px; transform:translate(-50%,-50%); border:1px solid var(--accent-border); border-radius:999px; background:var(--accent-gradient); color:#fff; font-weight:800; box-shadow:0 12px 32px rgba(0,0,0,.46); pointer-events:none; }
 .beast-ov-edit-label.is-fixed { background:rgba(9,12,18,.9); color:var(--ink-muted); }
-.beast-overview-grid.is-editing .beast-ov-card::after { content:""; position:absolute; inset:0; z-index:15; border-radius:inherit; background:rgba(3,5,9,.38); pointer-events:none; }
+.beast-overview-grid.is-editing .beast-ov-card:not(.beast-ov-card-add)::after { content:""; position:absolute; inset:0; z-index:15; border-radius:inherit; background:rgba(3,5,9,.38); pointer-events:none; }
+/* Only the new drag/resize/remove handles stay clickable while editing --
+   pointer-events:none on everything else is the belt-and-suspenders
+   guarantee (on top of the JS-level beastOverviewEditing check in
+   ha-smartdash-app.js) that nothing inside a card can be tapped by
+   accident, including buttons/links this stylesheet doesn't know about. */
+.beast-overview-grid.is-editing .beast-ov-card:not(.beast-ov-card-add) > *:not(.beast-ov-card-drag):not(.beast-ov-card-resize):not(.beast-ov-card-remove) { pointer-events: none; }
+.beast-ov-card-drag, .beast-ov-card-resize, .beast-ov-card-remove { position: absolute; z-index: 20; display: grid; place-items: center; touch-action: none; pointer-events: auto; }
+.beast-ov-card-drag { top: 8px; left: 8px; width: 32px; height: 32px; border-radius: 50%; background: rgba(9,12,18,.72); color: #fff; cursor: grab; }
+.beast-ov-card.is-dragging { opacity: .7; box-shadow: 0 22px 60px rgba(0,0,0,.5); z-index: 50; cursor: grabbing; }
+.beast-ov-card-remove { top: 8px; right: 8px; width: 30px; height: 30px; border: 0; border-radius: 50%; background: var(--danger); color: #fff; }
+.beast-ov-card-resize { bottom: 6px; right: 6px; width: 30px; height: 30px; border-radius: 8px; background: rgba(9,12,18,.72); cursor: nwse-resize; }
+.beast-ov-card-resize::before { content: ""; width: 10px; height: 10px; border-right: 2px solid rgba(255,255,255,.7); border-bottom: 2px solid rgba(255,255,255,.7); }
+.beast-ov-card.is-resizing { z-index: 50; }
+.beast-ov-card-add { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; border: 2px dashed var(--border-strong); background: transparent; color: var(--ink-muted); font-weight: 750; font-size: 13px; cursor: pointer; }
+.beast-ov-card-add:hover, .beast-ov-card-add:focus-visible { border-color: var(--accent-a); color: var(--ink); }
+.beast-ov-add-card-types { display: flex; flex-wrap: wrap; gap: 8px; }
+.beast-ov-add-card-types button { min-height: 40px; padding: 0 14px; border: 1px solid var(--border-strong); border-radius: 999px; background: var(--surface-2); color: var(--ink); font-weight: 700; }
+.beast-ov-add-card-types button:hover { border-color: var(--accent-a); color: var(--accent-a); }
+.beast-ov-add-card-entity { display: grid; gap: 10px; margin-top: 14px; }
+.beast-ov-add-card-entity[hidden] { display: none; }
+.beast-ov-add-card-search { min-height: 44px; padding: 0 12px; border: 1px solid var(--border-strong); border-radius: 10px; background: var(--surface-2); color: var(--ink); }
+.beast-ov-add-card-select { padding: 6px; border: 1px solid var(--border-strong); border-radius: 10px; background: var(--surface-2); color: var(--ink); }
 
 .beast-ov-mail-modal { max-width:640px; }
 .beast-ov-mail-modal .beast-modal-body { padding:var(--space-5); gap:var(--space-4); }
@@ -375,55 +436,47 @@
 }
 
 /* Cameras mini strip */
-.beast-ov-card--wide > .beast-ov-camera-header {
-  position: absolute;
-  inset: 0 0 auto 0;
-  z-index: 30;
-  width: 100%;
-  height: 46px;
-  min-height: 0;
-  display: flex;
-  align-items: center;
-  justify-content: flex-end;
-  padding: 7px 7px 0 0;
-  border: 0;
-  background: transparent;
-  pointer-events: none;
-}
-
-.beast-ov-camera-header .beast-ov-card-kicker {
-  display: none;
+/* This used to live inside the cameras card itself -- first as an overlay
+   on top of the picture, then as a reserved column eating into its width.
+   It's now a standalone element positioned against .beast-overview-grid
+   (not any specific card, see overviewCameraMenuMarkup() in app.js), fixed
+   to the same corner regardless of where the cameras card is placed or
+   resized -- the picture underneath is free to use the card's full space. */
+/* left/top are set by positionCameraMenu() in ha-smartdash-overview.js,
+   measured against the actual rendered cameras card -- position:fixed
+   (viewport-relative) matches getBoundingClientRect()'s own coordinate
+   space. The values below are only a same-corner fallback for the first
+   paint before that JS has run once. */
+.beast-ov-camera-header {
+  position: fixed;
+  top: 12px;
+  right: 12px;
+  z-index: 35;
 }
 
 .beast-ov-camera-menu {
-  position: absolute;
-  top: 7px;
-  right: 7px;
-  width: auto;
-  height: auto;
-  margin-left: auto;
-  pointer-events: auto;
+  position: relative;
 }
 
 .beast-ov-camera-menu-toggle {
   appearance: none;
-  width: 28px;
-  height: 34px;
+  width: 40px;
+  height: 40px;
   display: grid;
   place-items: center;
-  padding: 0 0 5px;
-  border: 0;
-  border-radius: 0;
-  background: transparent;
-  box-shadow: none;
-  backdrop-filter: none;
-  color: rgba(255, 255, 255, .76);
-  font: 800 25px/1 var(--font-sans);
+  border: 1px solid var(--border-strong);
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--surface-2-solid) 92%, transparent);
+  box-shadow: 0 10px 28px rgba(0, 0, 0, .28);
+  backdrop-filter: blur(14px);
+  color: var(--ink-muted);
+  font: 800 22px/1 var(--font-sans);
   cursor: pointer;
 }
 
 .beast-ov-camera-menu-toggle[aria-expanded="true"] {
-  color: #fff;
+  color: var(--accent-b);
+  border-color: var(--accent-a);
 }
 
 .beast-ov-camera-menu-popover {
@@ -488,12 +541,19 @@
    resolve to a definite value on some browser engines, silently
    collapsing to roughly half the card instead of filling it. Anchoring
    directly to the card's own box (established as the containing block by
-   .beast-panel's position:relative) sidesteps that chain entirely. The
-   camera header/menu stay on top via their own explicit z-index (30),
-   unaffected since this has none.
+   .beast-panel's position:relative) sidesteps that chain entirely.
    Reported and diagnosed against a separate install running this
-   dashboard, on hardware where the flex/height:100% chain failed. */
-.beast-ov-card--wide > #beastOvCameras,
+   dashboard, on hardware where the flex/height:100% chain failed.
+   Both #beastOvCameras and .beast-ov-camera-strip fill the whole card
+   (inset:0) -- the camera menu no longer reserves any space here at all,
+   it's a standalone element positioned against the grid instead (see
+   .beast-ov-camera-header above), so the picture gets the card's full
+   width and height back. */
+.beast-ov-card--wide > #beastOvCameras {
+  position: absolute;
+  inset: 0;
+}
+
 .beast-ov-camera-strip {
   position: absolute;
   inset: 0;
@@ -1001,6 +1061,13 @@
   gap: 8px;
   margin-top: 6px;
 }
+.beast-ov-clock-planner[hidden] { display: none; }
+/* "Næste aftaler" and "Affald" are both optional (Administration ->
+   Kalender & affald) -- with only one row left, the implicit grid already
+   collapses to that row's own height (no explicit row-count/height is set
+   above), so the remaining section naturally takes over the freed space;
+   this just gives it a little extra breathing room since it's now alone. */
+.beast-ov-clock-planner.has-single-section .beast-ov-planner-section { padding: 10px; }
 
 .beast-ov-planner-section {
   padding: 8px;
@@ -1086,6 +1153,7 @@
   gap: 8px;
   margin-top: 10px;
 }
+.beast-ov-home-quick[hidden] { display: none; }
 .beast-ov-home-quick .beast-ov-car-compact { margin-top: 0; }
 .beast-ov-pool-compact .beast-ov-car-icon {
   color: #35c7f0;

@@ -55,7 +55,7 @@ const BeastConfig = (() => {
     robots: {
       vacuums: [], mowers: [], roomSelectors: [], leonoraImage: null, poulImage: null
     },
-    waste: { sensors: [], calendars: [] },
+    waste: { sensors: [], calendars: [], showCalendarCard: true, showWasteCard: true },
     heating: {
       rooms: [], heatPumps: [], heatPumpUnits: {}, automation: null, districtSensors: [], ventilationSensors: []
     },
@@ -94,6 +94,10 @@ const BeastConfig = (() => {
       wideBottom: { type: "energy", entity: null, label: "" }
     },
     overviewCards: [],
+    // The two small tiles under the clock/calendar card -- each is one of
+    // "car"/"pool"/"robots"/"printer" (same set as the top-level generic
+    // overview card types) or omitted entirely to turn that tile off.
+    overviewQuickTiles: ["car", "pool"],
     hiddenSections: [],
     appEntities: { kioskScreenLight: null, kioskEntities: {}, doorbellBinarySensor: null, doorbellEvent: null, doorbellCamera: null, mailPresent: null, mailCount: null, mailDescription: null, mailImage: null, mailImageCarport: null, mailImageForhaven: null, quickScenes: [] },
     // Behavior tuning for the overview banners -- most entities each banner
@@ -113,7 +117,7 @@ const BeastConfig = (() => {
     banners: {
       doorOpenTooLongMinutes: 15, printerCameraOverride: null,
       scheduleEnabled: false, scheduleStart: "22:00", scheduleEnd: "06:00",
-      positions: {}
+      positions: {}, layoutMode: "separate", groupPosition: null, sizes: {}
     },
     // Per-device (each kiosk can have its own look), same as the schedule
     // fields above -- actually read/written via BeastLocalSettings, this is
