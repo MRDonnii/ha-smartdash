@@ -123,7 +123,11 @@
     const selectors = { current: ".beast-weather-current", hourly: ".beast-weather-hourly", week: ".beast-weather-week", radar: ".beast-weather-radar" };
     Object.entries(selectors).forEach(([id, selector]) => rootEl.querySelector(selector)?.classList.toggle("is-layout-hidden", hidden.has(id)));
     const button = rootEl.querySelector("#beastWeatherLayoutEdit");
-    if (button && !button.dataset.wired) { button.dataset.wired = "true"; button.addEventListener("click", () => openWeatherLayout(layout)); }
+    if (button) BeastNativePageEditor.mount({ section:"weather", label:"Vejr", root:()=>rootEl, host:()=>rootEl.querySelector(".beast-weather-dashboard"), trigger:"#beastWeatherLayoutEdit", cards:()=>[
+      { id:"summary", label:"Aktuelt vejr og timeudsigt", selector:".beast-weather-left", enabled:!hidden.has("current") || !hidden.has("hourly"), desktop:{x:1,y:1,w:5,h:9} },
+      { id:"radar", label:"Vejrradar", selector:".beast-weather-radar", titleSelector:"header strong", enabled:!hidden.has("radar"), desktop:{x:6,y:1,w:7,h:9} },
+      { id:"week", label:"Ugeudsigt", selector:".beast-weather-week", titleSelector:"header strong", enabled:!hidden.has("week"), desktop:{x:1,y:10,w:12,h:3} }
+    ] });
   }
 
   function openWeatherLayout(layout) {

@@ -96,7 +96,10 @@
     const layout = BeastConfig.get("pageLayouts.waste.calendarLayout") || {};
     const hidden = new Set(Array.isArray(layout.hidden) ? layout.hidden : []);
     containerEl.querySelectorAll("[data-calendar-section]").forEach((el) => el.classList.toggle("is-layout-hidden", hidden.has(el.dataset.calendarSection)));
-    containerEl.querySelector("#beastCalendarLayoutEdit")?.addEventListener("click", () => openCalendarLayout(layout));
+    BeastNativePageEditor.mount({ section:"waste", label:"Kalender", root:()=>containerEl, host:()=>containerEl, trigger:"#beastCalendarLayoutEdit", cards:()=>[
+      { id:"waste", label:"Affald og afhentning", selector:'[data-calendar-section="waste"]', titleSelector:".beast-panel-title", enabled:!hidden.has("waste"), desktop:{x:1,y:1,w:5,h:12} },
+      { id:"events", label:"Kommende kalenderaftaler", selector:'[data-calendar-section="events"]', titleSelector:".beast-panel-title", enabled:!hidden.has("events"), desktop:{x:6,y:1,w:7,h:12} }
+    ] });
   }
 
   function openCalendarLayout(layout) {
