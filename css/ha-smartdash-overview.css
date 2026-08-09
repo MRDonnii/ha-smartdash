@@ -128,11 +128,12 @@
    guarantee (on top of the JS-level beastOverviewEditing check in
    ha-smartdash-app.js) that nothing inside a card can be tapped by
    accident, including buttons/links this stylesheet doesn't know about. */
-.beast-overview-grid.is-editing .beast-ov-card:not(.beast-ov-card-add) > *:not(.beast-ov-card-drag):not(.beast-ov-card-resize):not(.beast-ov-card-remove) { pointer-events: none; }
-.beast-ov-card-drag, .beast-ov-card-resize, .beast-ov-card-remove { position: absolute; z-index: 20; display: grid; place-items: center; touch-action: none; pointer-events: auto; }
+.beast-overview-grid.is-editing .beast-ov-card:not(.beast-ov-card-add) > *:not(.beast-ov-card-drag):not(.beast-ov-card-resize):not(.beast-ov-card-remove):not(.beast-ov-card-configure) { pointer-events: none; }
+.beast-ov-card-drag, .beast-ov-card-resize, .beast-ov-card-remove, .beast-ov-card-configure { position: absolute; z-index: 20; display: grid; place-items: center; touch-action: none; pointer-events: auto; }
 .beast-ov-card-drag { top: 8px; left: 8px; width: 32px; height: 32px; border-radius: 50%; background: rgba(9,12,18,.72); color: #fff; cursor: grab; }
 .beast-ov-card.is-dragging { opacity: .7; box-shadow: 0 22px 60px rgba(0,0,0,.5); z-index: 50; cursor: grabbing; }
 .beast-ov-card-remove { top: 8px; right: 8px; width: 30px; height: 30px; border: 0; border-radius: 50%; background: var(--danger); color: #fff; }
+.beast-ov-card-configure { top: 8px; right: 46px; width: 34px; height: 34px; border: 1px solid rgba(255,255,255,.22); border-radius: 50%; background: rgba(9,12,18,.82); color: #fff; }
 .beast-ov-card-resize { bottom: 6px; right: 6px; width: 30px; height: 30px; border-radius: 8px; background: rgba(9,12,18,.72); cursor: nwse-resize; }
 .beast-ov-card-resize::before { content: ""; width: 10px; height: 10px; border-right: 2px solid rgba(255,255,255,.7); border-bottom: 2px solid rgba(255,255,255,.7); }
 .beast-ov-card.is-resizing { z-index: 50; }
@@ -449,8 +450,8 @@
    paint before that JS has run once. */
 .beast-ov-camera-header {
   position: fixed;
-  top: 12px;
-  right: 12px;
+  top: 30px;
+  right: 8px;
   z-index: 35;
 }
 
@@ -460,23 +461,23 @@
 
 .beast-ov-camera-menu-toggle {
   appearance: none;
-  width: 40px;
-  height: 40px;
+  width: 44px;
+  height: 44px;
   display: grid;
   place-items: center;
-  border: 1px solid var(--border-strong);
-  border-radius: 50%;
-  background: color-mix(in srgb, var(--surface-2-solid) 92%, transparent);
-  box-shadow: 0 10px 28px rgba(0, 0, 0, .28);
-  backdrop-filter: blur(14px);
+  padding: 0 0 8px;
+  border: 0;
+  border-radius: 14px;
+  background: transparent;
+  box-shadow: none;
   color: var(--ink-muted);
-  font: 800 22px/1 var(--font-sans);
+  font: 800 30px/1 var(--font-sans);
   cursor: pointer;
+  touch-action: manipulation;
 }
 
 .beast-ov-camera-menu-toggle[aria-expanded="true"] {
   color: var(--accent-b);
-  border-color: var(--accent-a);
 }
 
 .beast-ov-camera-menu-popover {

@@ -122,7 +122,7 @@
     "Oplader": "Charging", "PNG, SVG, ICO eller WebP · højst 256 KB": "PNG, SVG, ICO, or WebP · 256 KB max",
     "Pauseknap": "Pause button", "Person i vandet": "Person in water", "Pinkode": "PIN",
     "Pinkode og skærmlås": "PIN and screen lock",
-    "Pinkoden gemmes kun på denne maskine og følger ikke med centrale backups.": "The PIN is stored on this machine only and is not included in central backups.",
+    "Pinkoden gemmes i serverkonfigurationen og gælder på alle skærme.": "The PIN is stored in the server configuration and applies to every screen.",
     "Placering": "Location", "Plade-måltemperatur": "Bed target temperature", "Pladetemperatur": "Bed temperature",
     "Poolautomatik": "Pool automation", "Poolpumpe": "Pool pump",
     "Post registreret (valgfri)": "Mail registered (optional)", "Postbeskrivelse (valgfri)": "Mail description (optional)",

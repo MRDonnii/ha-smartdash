@@ -46,13 +46,16 @@
 //                     grid before anything's ever been saved. Optional;
 //                     omit for pages with no such legacy format to fall
 //                     back to.
+//   configureCard(card, commit) optional page-specific card settings UI.
+//                     When supplied, each card gets a settings button;
+//                     call commit(updatedCard) to update the live draft.
 window.BeastCardEditor = (function () {
   function attach(options) {
     const {
       zoneEl, configPath, cardTypes = [], singleInstanceTypes = [],
       renderCardMarkup, seedCards = () => [], onAfterRender = () => {},
       allEntities = () => [], editLabel = "Redigerer", renderEmptyState = null,
-      entityPickerTypes = ["custom"],
+      entityPickerTypes = ["custom"], configureCard = null,
     } = options;
     const defaultCardSize = options.defaultCardSize || { desktop: { w: 3, h: 1 }, tablet: { w: 1, h: 1 }, portrait: { h: 1 } };
 
@@ -64,6 +67,7 @@ window.BeastCardEditor = (function () {
       const anchor = zoneEl.querySelector(":scope > [data-card-editor-anchor]");
       zoneEl.querySelectorAll(":scope > .beast-ov-card, :scope > .beast-ov-card-add").forEach((el) => el.remove());
       zoneEl.classList.toggle("is-freeform", cards.length > 0);
+      zoneEl.classList.toggle("is-editing", editing);
       const wrap = document.createElement("div");
       wrap.innerHTML = cards.map((card) => renderCardMarkup(card)).join("");
       Array.from(wrap.children).forEach((el) => zoneEl.insertBefore(el, anchor));
@@ -99,6 +103,7 @@ window.BeastCardEditor = (function () {
         card.querySelector(".beast-ov-card-drag")?.remove();
         card.querySelector(".beast-ov-card-resize")?.remove();
         card.querySelector(".beast-ov-card-remove")?.remove();
+        card.querySelector(".beast-ov-card-configure")?.remove();
         const drag = document.createElement("span");
         drag.className = "beast-ov-card-drag";
         drag.setAttribute("aria-hidden", "true");
@@ -114,6 +119,26 @@ window.BeastCardEditor = (function () {
         remove.setAttribute("aria-label", "Fjern kort");
         remove.innerHTML = BeastCore.icon("close", { size: 14 });
         card.appendChild(remove);
+        if (configureCard) {
+          const configure = document.createElement("button");
+          configure.type = "button";
+          configure.className = "beast-ov-card-configure";
+          configure.setAttribute("aria-label", "Indstil kort");
+          configure.innerHTML = BeastCore.icon("settings", { size: 16 });
+          card.appendChild(configure);
+          configure.addEventListener("click", (event) => {
+            event.stopPropagation();
+            const current = draftCards?.find((item) => item.id === card.dataset.builderCard);
+            if (!current) return;
+            configureCard(JSON.parse(JSON.stringify(current)), (updatedCard) => {
+              if (!updatedCard) return;
+              const index = draftCards.findIndex((item) => item.id === current.id);
+              if (index < 0) return;
+              draftCards[index] = { ...draftCards[index], ...updatedCard, id: current.id };
+              renderCardsDom(draftCards);
+            });
+          });
+        }
         wireCardDrag(card, drag);
         wireCardResize(card, resize);
         remove.addEventListener("click", (event) => {
@@ -261,7 +286,7 @@ window.BeastCardEditor = (function () {
           overlay.querySelector(".beast-ov-add-card-types").hidden = true;
           const entityPane = overlay.querySelector(".beast-ov-add-card-entity");
           entityPane.hidden = false;
-          const entities = allEntities();
+          const entities = allEntities(type);
           const select = overlay.querySelector(".beast-ov-add-card-select");
           select.innerHTML = entities.map((entity) => `<option value="${entity.id}">${entity.name}</option>`).join("");
           overlay.querySelector(".beast-ov-add-card-search").addEventListener("input", (inputEvent) => {
