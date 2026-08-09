@@ -9,6 +9,28 @@
     ["pool", "Pool"], ["waste", "Kalender"], ["robots", "Robotter"], ["printer", "3D Printer"]
   ];
   const GITHUB_REPO = "MRDonnii/ha-smartdash";
+  // Inlined (not <img src="...">) specifically so the two text elements
+  // can be styled with the page's own theme tokens via CSS -- the SVG file
+  // itself hardcodes near-white fill for both, which was unreadable
+  // against the light-theme sidebar/cards. The icon mark's own colors stay
+  // fixed (it's a consistent brand mark, not something meant to invert).
+  // idSuffix keeps each instance's gradient <defs> id unique, since this
+  // renders more than once on the same admin page (sidebar + About card).
+  function brandLogoMarkup(idSuffix) {
+    return `<svg class="beast-brand-logo" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 360 88" role="img" aria-label="HA Smartdash">
+      <defs>
+        <linearGradient id="logo-bg-${idSuffix}" x1="4" y1="4" x2="80" y2="84" gradientUnits="userSpaceOnUse"><stop stop-color="#172a37"/><stop offset=".52" stop-color="#123c3a"/><stop offset="1" stop-color="#0b171e"/></linearGradient>
+        <linearGradient id="logo-accent-${idSuffix}" x1="17" y1="20" x2="69" y2="69" gradientUnits="userSpaceOnUse"><stop stop-color="#72f4d0"/><stop offset="1" stop-color="#27aee4"/></linearGradient>
+      </defs>
+      <rect x="4" y="4" width="80" height="80" rx="24" fill="url(#logo-bg-${idSuffix})"/>
+      <rect x="5.5" y="5.5" width="77" height="77" rx="22.5" fill="none" stroke="#b7fff0" stroke-opacity=".16" stroke-width="3"/>
+      <path d="M17 42 44 19l27 23v25a5 5 0 0 1-5 5H22a5 5 0 0 1-5-5z" fill="none" stroke="url(#logo-accent-${idSuffix})" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/>
+      <path d="M27 54h9l4.5-10 7.5 18 5-8h8" fill="none" stroke="#f4fffc" stroke-width="4.5" stroke-linecap="round" stroke-linejoin="round"/>
+      <circle cx="69" cy="20" r="6" fill="#72f4d0"/>
+      <text x="104" y="42" class="beast-brand-logo-title" font-family="Inter, ui-sans-serif, system-ui, sans-serif" font-size="31" font-weight="780" letter-spacing="-.7">HA Smartdash</text>
+      <text x="106" y="65" class="beast-brand-logo-subtitle" font-family="Inter, ui-sans-serif, system-ui, sans-serif" font-size="12" font-weight="700" letter-spacing="2.3">HOME ASSISTANT DASHBOARD</text>
+    </svg>`;
+  }
   const FEATURE_OPTIONS = [
     ["eventFocus", "Automatisk fokusvisning", "Vis vigtige hændelser som alarm, pool, opladning og printer midlertidigt."],
     ["dynamicOverview", "Dynamisk kortlayout", "Skjul tomme kort og lad de øvrige kort overtage pladsen."],
@@ -35,8 +57,8 @@
     { id: "weather", title: "Vejr", description: "Vejrudsigt og aktuelle vejrdata.", fields: [
       { key: "entity", label: "Vejr-entity", type: "single", domain: "weather" }
     ]},
-    { id: "waste", title: "Kalender & affald", description: "Kalendere og affaldssensorer.", fields: [
-      { key: "calendars", label: "Kalendere", type: "multi", domain: "calendar" },
+    { id: "waste", title: "Kalender & affald", description: "Kalendere og affaldssensorer. Om de vises på forsiden styres under Forside.", fields: [
+      { key: "calendars", label: "Kalendere (bruges også af forsidens \"Næste aftaler\" -- tomt viser alle kalendere)", type: "multi", domain: "calendar" },
       { key: "sensors", label: "Affaldssensorer", type: "multi", domain: "sensor", hints: ["affald", "waste", "trash", "bin"] }
     ]},
     { id: "music", title: "Musik", description: "Music Assistant-integration til bibliotek og søgning.", fields: [
@@ -388,6 +410,10 @@
     if (field.type === "text") {
       return `<input type="text" id="${fieldId(panel.id, field.key)}" value="${escapeHtml(selected || "")}" placeholder="${escapeHtml(field.placeholder || "")}">`;
     }
+    if (field.type === "boolean") {
+      const checked = selected !== false;
+      return `<select id="${fieldId(panel.id, field.key)}"><option value="1"${checked ? " selected" : ""}>Til</option><option value="0"${checked ? "" : " selected"}>Fra</option></select>`;
+    }
     if (field.type === "areas") {
       const ids = Array.isArray(selected) ? selected : [];
       const areas = BeastRegistry.getAllAreas().map((area) => ({ id: area.area_id, name: area.name || area.area_id }));
@@ -677,7 +703,7 @@
         </div>
         <div class="admin-card admin-project-intro">
           <div class="admin-project-heading">
-            <img src="/assets/ha-smartdash-logo.svg" alt="HA Smartdash">
+            ${brandLogoMarkup("about")}
             <div><h2>Om HA Smartdash</h2><p>Et lokalt, konfigurationsdrevet kiosk-dashboard til Home Assistant, oprindeligt bygget til en privat installation og udviklet med hjælp fra AI.</p></div>
           </div>
           <div class="admin-project-grid">
@@ -771,10 +797,32 @@
     return `<div class="admin-card"><div class="admin-card-head"><div><h2>Visuel forsidebygger</h2><p>Træk kortene for at flytte dem rundt. Skift indhold, titel og størrelse nedenfor — forhåndsvisningerne opdateres med det samme.</p></div></div><div class="admin-overview-visual-preview" id="adminOverviewVisualPreview"></div><div class="admin-overview-preview" id="adminOverviewPreview"></div><div class="admin-overview-builder" data-overview-card-list>${cards.map(row).join("")}</div><div class="admin-actions"><button type="button" class="beast-btn" data-add-overview-card>+ Tilføj kort</button><button class="admin-save" type="button" data-save-overview-cards>Gem og anvend forside</button><span class="admin-save-state" data-save-state="overviewCards"></span></div></div>`;
   }
 
+  const QUICK_TILE_OPTIONS = [["", "Skjult"], ["car", "Bil"], ["pool", "Pool"], ["robots", "Robotter"], ["printer", "3D-printer"]];
+
+  // Everything that controls what's visible in the clock card (top-left of
+  // the front page) lives together here, rather than split across the
+  // panels that happen to own the underlying data -- "what shows on the
+  // front page" and "which entities feed it" are different questions, and
+  // keeping the former all in one place (Forside) is what makes it findable.
+  function renderQuickTileSettings() {
+    const tiles = BeastConfig.get("overviewQuickTiles");
+    const [tile1 = "", tile2 = ""] = Array.isArray(tiles) ? tiles : ["car", "pool"];
+    const waste = BeastConfig.get("panels.waste") || {};
+    const select = (id, selected) => `<select id="${id}">${QUICK_TILE_OPTIONS.map(([value, label]) => `<option value="${value}"${value === selected ? " selected" : ""}>${label}</option>`).join("")}</select>`;
+    const toggle = (id, checked) => `<select id="${id}"><option value="1"${checked ? " selected" : ""}>${t("Til", "On")}</option><option value="0"${checked ? "" : " selected"}>${t("Fra", "Off")}</option></select>`;
+    return `<div class="admin-card admin-settings-group"><div class="admin-card-head"><div><h2>${t("Urkortet", "The clock card")}</h2><p>${t("Hvad der vises i kortet med ur, kalender og affald øverst på forsiden. Kalendere og affaldssensorer vælges under Kalender & affald.", "What shows in the clock/calendar/waste card at the top of the front page. Calendars and waste sensors are picked under Calendar & waste.")}</p></div></div><div class="beast-mqtt-config">
+      <label><span>${t("Vis \"Næste aftaler\"", "Show \"Next appointments\"")}</span>${toggle("adminShowCalendarCard", waste.showCalendarCard !== false)}</label>
+      <label><span>${t("Vis \"Affald\"", "Show \"Waste\"")}</span>${toggle("adminShowWasteCard", waste.showWasteCard !== false)}</label>
+      <label><span>${t("Venstre ur-widget", "Left clock tile")}</span>${select("adminQuickTile1", tile1)}</label>
+      <label><span>${t("Højre ur-widget", "Right clock tile")}</span>${select("adminQuickTile2", tile2)}</label>
+      </div><div class="admin-actions"><button type="button" class="admin-save" data-save-quick-tiles>${t("Gem urkortet", "Save the clock card")}</button><span class="admin-save-state" data-save-state="quickTiles"></span></div></div>`;
+  }
+
   function renderForsideView() {
     return `<section class="admin-view${activeView === "forside" ? " is-active" : ""}" data-admin-view="forside">
       <div class="admin-settings-intro"><div><h2>${t("Forside", "Front page")}</h2><p>${t("Byg og forhåndsvis Oversigt-fanen — kortene, deres størrelser og hvad de viser.", "Build and preview the Overview tab — its cards, their sizes, and what they show.")}</p></div></div>
       ${renderOverviewBuilder()}
+      ${renderQuickTileSettings()}
     </section>`;
   }
 
@@ -1370,6 +1418,14 @@
     const doorsConfigured = Boolean((security.locks || []).length || (security.openingSensors || []).length);
     return `<section class="admin-view${activeView === "advarsler" ? " is-active" : ""}" data-admin-view="advarsler">
       <div class="admin-settings-intro"><div><h2>${t("Advarsler", "Alerts")}</h2><p>${t("Samlet sted for dashboardets banner-advarsler. Flere kan være synlige på samme tid, hver kan trækkes rundt på skærmen og huskes hver for sig.", "One place for the dashboard's banner alerts. Several can be visible at once, each can be dragged around the screen and remembers its own position.")}</p></div></div>
+      <div class="admin-card admin-settings-group"><div class="admin-card-head"><div><h2>${t("Visning", "Layout")}</h2><p>${t("Vælg om flere samtidige advarsler vises som separate kort, eller stakket i ét fælles kort.", "Choose whether several alerts at once show as separate cards, or stacked in one shared card.")}</p></div></div><div class="beast-mqtt-config">
+        <label><span>${t("Advarsel-layout", "Alert layout")}</span>
+          <select id="adminAdvarslerLayoutMode">
+            <option value="separate" ${banners.layoutMode !== "stacked" ? "selected" : ""}>${t("Separate kort", "Separate cards")}</option>
+            <option value="stacked" ${banners.layoutMode === "stacked" ? "selected" : ""}>${t("Ét samlet kort", "One combined card")}</option>
+          </select>
+        </label>
+      </div></div>
       <div class="admin-card admin-settings-group"><div class="admin-card-head"><div><h2>${t("Post-banner", "Post banner")}</h2><p>${t("Viser et billede af postkassen og en kort beskrivelse, når der registreres post.", "Shows a picture of the mailbox and a short description when post is registered.")}</p></div></div><div class="beast-mqtt-config">
         <label><span>${t("Post-banner", "Post banner")}</span>
           <select id="adminAdvarslerPostBanner">
@@ -1454,7 +1510,7 @@
     root.innerHTML = `
       <div class="admin-shell">
         <aside class="admin-sidebar">
-          <div class="admin-brand"><img src="/assets/ha-smartdash-logo.svg" alt="HA Smartdash"><strong>Administration</strong></div>
+          <div class="admin-brand">${brandLogoMarkup("sidebar")}<strong>Administration</strong></div>
           <nav class="admin-nav">
             <button class="${activeView === "overview" ? "is-active" : ""}" type="button" data-view="overview">Overblik</button>
             <p class="admin-nav-section">Opsætning</p>
@@ -1498,6 +1554,8 @@
             ids: Array.from(checkListSelections.get(row.dataset.selectionId) || [])
           }))
           .filter((group) => group.ids.length);
+      } else if (field.type === "boolean") {
+        patch[field.key] = document.getElementById(id)?.value !== "0";
       } else {
         patch[field.key] = document.getElementById(id)?.value.trim() || null;
       }
@@ -1877,6 +1935,18 @@
       if (note) note.hidden = event.currentTarget.checked;
     });
     document.querySelector("[data-save-admin-access]")?.addEventListener("click", (event) => save(event.currentTarget, "adminAccess", () => BeastConfig.set("showAdminButton", Boolean(document.getElementById("adminShowAdminButton")?.checked))));
+    document.querySelector("[data-save-quick-tiles]")?.addEventListener("click", (event) => save(event.currentTarget, "quickTiles", () => {
+      const tiles = [document.getElementById("adminQuickTile1")?.value, document.getElementById("adminQuickTile2")?.value].filter(Boolean);
+      const panels = {
+        ...(BeastConfig.get("panels") || {}),
+        waste: {
+          ...(BeastConfig.get("panels.waste") || {}),
+          showCalendarCard: document.getElementById("adminShowCalendarCard")?.value !== "0",
+          showWasteCard: document.getElementById("adminShowWasteCard")?.value !== "0"
+        }
+      };
+      return BeastConfig.setMany({ overviewQuickTiles: tiles, panels });
+    }));
     document.getElementById("adminPinSet")?.addEventListener("click", () => { window.BeastScreenLock.startSetPin(() => renderShell()); });
     document.getElementById("adminPinRemove")?.addEventListener("click", () => { window.BeastScreenLock.startRemovePin(() => renderShell()); });
     document.getElementById("adminPinRecover")?.addEventListener("click", () => {
@@ -1955,7 +2025,8 @@
         printerCameraOverride: document.getElementById("adminAdvarslerPrinterCamera").value || null,
         scheduleEnabled: document.getElementById("adminAdvarslerScheduleEnabled").checked,
         scheduleStart: document.getElementById("adminAdvarslerScheduleStart").value || "22:00",
-        scheduleEnd: document.getElementById("adminAdvarslerScheduleEnd").value || "06:00"
+        scheduleEnd: document.getElementById("adminAdvarslerScheduleEnd").value || "06:00",
+        layoutMode: document.getElementById("adminAdvarslerLayoutMode").value === "stacked" ? "stacked" : "separate"
       };
       const result = await BeastConfig.setMany({ features, appEntities, banners });
       return { success: result?.success !== false };
@@ -2067,7 +2138,7 @@
   });
 
   function renderLogin(message) {
-    root.innerHTML = `<div class="admin-login"><div class="admin-login-card"><img class="admin-login-logo" src="/assets/ha-smartdash-logo.svg" alt="HA Smartdash"><small>Administration</small><h1>Forbind Home Assistant</h1><p>${escapeHtml(message || "Admin bruger din Home Assistant-login til at hente områder og entities. Login-oplysninger gemmes kun i browseren.")}</p><form id="adminLoginForm"><input type="url" id="adminHaUrl" value="${escapeHtml(BeastAuth.getHaBaseUrl() || `${window.location.origin}/ha`)}" placeholder="Home Assistant-adresse" required><button type="submit">Log ind med Home Assistant</button></form></div></div>`;
+    root.innerHTML = `<div class="admin-login"><div class="admin-login-card"><div class="admin-login-logo">${brandLogoMarkup("login")}</div><small>Administration</small><h1>Forbind Home Assistant</h1><p>${escapeHtml(message || "Admin bruger din Home Assistant-login til at hente områder og entities. Login-oplysninger gemmes kun i browseren.")}</p><form id="adminLoginForm"><input type="url" id="adminHaUrl" value="${escapeHtml(BeastAuth.getHaBaseUrl() || `${window.location.origin}/ha`)}" placeholder="Home Assistant-adresse" required><button type="submit">Log ind med Home Assistant</button></form></div></div>`;
     document.getElementById("adminLoginForm").addEventListener("submit", (event) => {
       event.preventDefault();
       BeastAuth.setHaBaseUrl(document.getElementById("adminHaUrl").value);

@@ -676,6 +676,33 @@ function renderLoginScreen(root, message) {
 }
 
 function overviewEscape(value) { const el = document.createElement("span"); el.textContent = String(value || ""); return el.innerHTML; }
+// Shared by the initial mount (renderOverviewSection) and the live
+// front-page editor (ha-smartdash-overview.js's edit mode) so both render
+// a card from exactly the same markup -- position/size are passed in
+// separately since legacy 5-slot cards and freeform cards compute them
+// differently (see overviewCardMarkup for the freeform case).
+function overviewSlotMarkup(slot, position, size) {
+  if (slot.type === "empty") return "";
+  if (slot.type === "cameras") return `<section class="beast-panel beast-ov-card ${position} beast-ov-card--flush"${size} data-nav="cameras" data-card="cameras" data-fixed="true" aria-label="Åbn alle kameraer">
+      <div id="beastOvCameras"></div>
+    </section>`;
+  const builtins = {
+    clock:["overview","beastOvClock","Tid, kalender og affald"], weather:["weather","beastOvWeather","Vejr"], security:["security","beastOvSecurity","Sikkerhed"], energy:["energy","beastOvEnergy","Energi"]
+  };
+  if (builtins[slot.type]) { const [nav,id,label] = builtins[slot.type]; return `<section class="beast-panel beast-ov-card ${position}"${size} data-nav="${nav}" data-card="${slot.type}" aria-label="${overviewEscape(slot.label || label)}"><div id="${id}"></div></section>`; }
+  return `<section class="beast-panel beast-ov-card ${position} beast-ov-card--generic"${size} data-nav="${slot.type === "custom" ? "overview" : slot.type}" data-card="generic" data-widget="${overviewEscape(slot.type)}" data-entity="${overviewEscape(slot.entity)}" data-label="${overviewEscape(slot.label)}"><div class="beastOvGeneric"></div></section>`;
+}
+
+// A freeform card (overviewCards entry) always computes its own position
+// class from its own type and carries builder/sizing attributes -- unlike
+// a legacy 5-slot card, whose position class comes from its fixed slot key
+// and which has no per-card sizing at all.
+function overviewCardMarkup(card) {
+  const position = `beast-ov-card--${card.type}`;
+  const size = ` data-builder-card="${overviewEscape(card.id)}" style="--desktop-w:${Number(card.desktop?.w)||4};--desktop-h:${Number(card.desktop?.h)||1};--tablet-w:${Number(card.tablet?.w)||1};--tablet-h:${Number(card.tablet?.h)||1};--portrait-h:${Number(card.portrait?.h)||1};"`;
+  return overviewSlotMarkup(card, position, size);
+}
+
 function renderOverviewSection() {
   const defaults = { main:{type:"cameras"}, compactTop:{type:"clock"}, compactBottom:{type:"security"}, wideTop:{type:"weather"}, wideBottom:{type:"energy"} };
   const slots = { ...defaults, ...(BeastConfig.get("overviewSlots") || {}) };
@@ -684,39 +711,41 @@ function renderOverviewSection() {
   const positionClasses = { main:"beast-ov-card--wide", compactTop:"beast-ov-card--clock", compactBottom:"beast-ov-card--security", wideTop:"beast-ov-card--weather", wideBottom:"beast-ov-card--energy" };
   const widget = (keyOrCard) => {
     const isCard = typeof keyOrCard === "object";
-    const key = isCard ? keyOrCard.id : keyOrCard;
-    const slot = isCard ? keyOrCard : (slots[key] || {type:"empty"});
-    const position = isCard ? `beast-ov-card--${slot.type}` : positionClasses[key];
-    const size = isCard ? ` data-builder-card="${overviewEscape(key)}" style="--desktop-w:${Number(slot.desktop?.w)||4};--desktop-h:${Number(slot.desktop?.h)||1};--tablet-w:${Number(slot.tablet?.w)||1};--tablet-h:${Number(slot.tablet?.h)||1};--portrait-h:${Number(slot.portrait?.h)||1};"` : "";
-    if (slot.type === "empty") return "";
-    if (slot.type === "cameras") return `<section class="beast-panel beast-ov-card ${position} beast-ov-card--flush"${size} data-nav="cameras" data-card="cameras" data-fixed="true" aria-label="Åbn alle kameraer">
-        <div class="beast-ov-camera-header">
-          <span class="beast-ov-card-kicker">${BeastCore.icon("camera", { size: 14 })} Live kameraer</span>
-          <div class="beast-ov-camera-menu">
-            <button type="button" class="beast-ov-camera-menu-toggle" id="beastOvCameraMenuToggle" aria-label="Åbn kameramenu" aria-expanded="false">⋮</button>
-            <div class="beast-ov-camera-menu-popover" id="beastOvCameraMenu" hidden>
-              <button type="button" id="beastOvCameraPicker">${BeastCore.icon("camera", { size: 17 })}<span>Vælg kameraer</span></button>
-              <button type="button" id="beastOvEdit">${BeastCore.icon("settings", { size: 17 })}<span>Rediger forsiden</span></button>
-              <button type="button" id="beastOvStartScreensaver">${BeastCore.icon("moon", { size: 17 })}<span>Start pauseskærm</span></button>
-            </div>
-          </div>
-        </div>
-        <div id="beastOvCameras"></div>
-      </section>`;
-    const builtins = {
-      clock:["overview","beastOvClock","Tid, kalender og affald"], weather:["weather","beastOvWeather","Vejr"], security:["security","beastOvSecurity","Sikkerhed"], energy:["energy","beastOvEnergy","Energi"]
-    };
-    if (builtins[slot.type]) { const [nav,id,label] = builtins[slot.type]; return `<section class="beast-panel beast-ov-card ${position}"${size} data-nav="${nav}" data-card="${slot.type}" aria-label="${overviewEscape(slot.label || label)}"><div id="${id}"></div></section>`; }
-    return `<section class="beast-panel beast-ov-card ${position} beast-ov-card--generic"${size} data-nav="${slot.type === "custom" ? "overview" : slot.type}" data-card="generic" data-widget="${overviewEscape(slot.type)}" data-entity="${overviewEscape(slot.entity)}" data-label="${overviewEscape(slot.label)}"><div class="beastOvGeneric"></div></section>`;
+    if (isCard) return overviewCardMarkup(keyOrCard);
+    const key = keyOrCard;
+    const slot = slots[key] || {type:"empty"};
+    return overviewSlotMarkup(slot, positionClasses[key], "");
   };
   const hasEmptySlots = !freeform && Object.values(slots).some((slot) => slot?.type === "empty");
+  const hasCameras = freeform ? configuredCards.some((card) => card.type === "cameras") : Object.values(slots).some((slot) => slot?.type === "cameras");
   return `
     <div class="beast-overview-grid is-configurable${freeform ? " is-freeform" : ""}${hasEmptySlots ? " has-empty-slots" : ""}" id="beastOverviewZone">
       <div id="beastOvBanners"></div>
       ${(freeform ? configuredCards : ["main","compactTop","compactBottom","wideTop","wideBottom"]).map(widget).join("")}
+      ${overviewCameraMenuMarkup(hasCameras)}
       <div id="beastOvClockMusic"></div>
     </div>
   `;
+}
+
+// A standalone element, not nested inside the cameras card -- it used to be
+// an overlay/reserved column inside that card, which either covered part of
+// the live picture or ate into its width depending on how it was built.
+// Positioned relative to .beast-overview-grid itself (see CSS) so it stays
+// in the same screen corner regardless of where the cameras card is placed
+// or resized, and the picture underneath can use the card's full space.
+function overviewCameraMenuMarkup(hasCameras) {
+  if (!hasCameras) return "";
+  return `<div class="beast-ov-camera-header">
+      <div class="beast-ov-camera-menu">
+        <button type="button" class="beast-ov-camera-menu-toggle" id="beastOvCameraMenuToggle" aria-label="Åbn kameramenu" aria-expanded="false">⋮</button>
+        <div class="beast-ov-camera-menu-popover" id="beastOvCameraMenu" hidden>
+          <button type="button" id="beastOvCameraPicker">${BeastCore.icon("camera", { size: 17 })}<span>Vælg kameraer</span></button>
+          <button type="button" id="beastOvEdit">${BeastCore.icon("settings", { size: 17 })}<span>Rediger forsiden</span></button>
+          <button type="button" id="beastOvStartScreensaver">${BeastCore.icon("moon", { size: 17 })}<span>Start pauseskærm</span></button>
+        </div>
+      </div>
+    </div>`;
 }
 
 function renderSectionMarkup(item) {
@@ -837,8 +866,18 @@ function setupNavigation() {
   document.addEventListener("beast:navigate", (event) => activate(event.detail?.section || "overview"));
 
   railButtons.forEach((btn) => btn.addEventListener("click", () => activate(btn.dataset.section)));
-  content.querySelectorAll("[data-nav]").forEach((el) => {
-    el.addEventListener("click", () => activate(el.dataset.nav));
+  // Delegated instead of wired per-element: the front page's live edit
+  // mode (ha-smartdash-overview.js) adds/removes/rebuilds [data-nav] cards
+  // on the fly, so a one-time forEach would silently miss any card added
+  // after the initial mount. window.beastOverviewEditing/
+  // beastOverviewCardDraggedUntil let edit mode suppress navigation while
+  // active or right after a drag, the same drag-vs-click pattern already
+  // used for banner dragging.
+  content.addEventListener("click", (event) => {
+    if (window.beastOverviewEditing) return;
+    if (Date.now() < (window.beastOverviewCardDraggedUntil || 0)) return;
+    const el = event.target.closest("[data-nav]");
+    if (el) activate(el.dataset.nav);
   });
 
   const adminLink = rail.querySelector('a.beast-rail-btn[href="/admin/"]');

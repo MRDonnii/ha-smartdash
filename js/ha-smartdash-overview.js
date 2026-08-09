@@ -78,6 +78,7 @@
   let zoneEl = null;
   let clockTimerId = null;
   let cameraRefreshTimerId = null;
+  let bannerRefreshTimerId = null;
   let pendingAlarmAction = null;
   let pendingAlarmTimerId = null;
   let pendingUnlockId = null;
@@ -98,6 +99,10 @@
   const PRINTER_IMAGE_REFRESH_MS = 5000;
   function bannerPositionKey(type) { return `beast_banner_position_${type}_v1`; }
   let overviewEditing = false;
+  // Working copy of overviewCards while the live front-page editor is
+  // open -- every add/move/resize/remove mutates this array and re-renders
+  // from it; nothing reaches BeastConfig until the user taps Gem.
+  let draftCards = null;
   let contextualFocusTimerId = null;
   let motionFocusSlug = null;
   let motionFocusTimerId = null;
@@ -203,22 +208,29 @@
   // localStorage, which reset the instant the banner was opened somewhere
   // new. Older saved positions from that localStorage-only era are
   // migrated in transparently the first time they're read.
-  function savedBannerPosition(type) {
-    const stored = validPosition(BeastConfig.get(`banners.positions.${type}`));
+  // configKey is the path under "banners." holding this position -- either
+  // "positions.<type>" for an individually-dragged banner, or
+  // "groupPosition" for the single combined card used in stacked layout
+  // mode. Legacy per-browser localStorage migration only ever applies to
+  // the former (the combined card is new and never had a localStorage era).
+  function savedBannerPosition(configKey) {
+    const stored = validPosition(BeastConfig.get(`banners.${configKey}`));
     if (stored) return stored;
+    const legacyType = configKey.startsWith("positions.") ? configKey.slice("positions.".length) : null;
+    if (!legacyType) return null;
     try {
-      const legacy = validPosition(JSON.parse(localStorage.getItem(bannerPositionKey(type)) || "null"));
+      const legacy = validPosition(JSON.parse(localStorage.getItem(bannerPositionKey(legacyType)) || "null"));
       if (legacy) {
-        saveBannerPosition(type, legacy);
-        localStorage.removeItem(bannerPositionKey(type));
+        saveBannerPosition(configKey, legacy);
+        localStorage.removeItem(bannerPositionKey(legacyType));
         return legacy;
       }
     } catch (error) { /* ignore malformed legacy value */ }
     return null;
   }
 
-  function saveBannerPosition(type, position) {
-    BeastConfig.set("banners.positions", { ...(BeastConfig.get("banners.positions") || {}), [type]: position });
+  function saveBannerPosition(configKey, position) {
+    BeastConfig.set(`banners.${configKey}`, position);
   }
 
   function applyBannerPosition(host, position) {
@@ -239,8 +251,8 @@
   // content/height is in the DOM, so banners of different heights (e.g. the
   // compact doors banner vs. the taller image banners) sit flush against
   // each other instead of leaving a gap sized for the tallest one.
-  function positionBanner(host, type) {
-    const saved = savedBannerPosition(type);
+  function positionBanner(host, configKey) {
+    const saved = savedBannerPosition(configKey);
     if (saved) applyBannerPosition(host, saved);
   }
 
@@ -259,8 +271,8 @@
     });
   }
 
-  function wireBannerDrag(host, type) {
-    positionBanner(host, type);
+  function wireBannerDrag(host, configKey) {
+    positionBanner(host, configKey);
     if (host.dataset.dragWired === "true") return;
     host.dataset.dragWired = "true";
     let drag = null;
@@ -289,8 +301,8 @@
       host.classList.remove("is-dragging");
       if (drag.moved) {
         const rect = host.getBoundingClientRect();
-        saveBannerPosition(type, { x: Math.round(rect.left), y: Math.round(rect.top) });
-        bannerDraggedUntil[type] = Date.now() + 450;
+        saveBannerPosition(configKey, { x: Math.round(rect.left), y: Math.round(rect.top) });
+        bannerDraggedUntil[configKey] = Date.now() + 450;
       }
       drag = null;
     };
@@ -304,22 +316,47 @@
     const now = new Date();
     const h = String(now.getHours()).padStart(2, "0");
     const m = String(now.getMinutes()).padStart(2, "0");
+    const wasteConfig = BeastConfig.get("panels.waste") || {};
+    const configuredCalendarIds = Array.isArray(wasteConfig.calendars) ? wasteConfig.calendars.filter(Boolean) : [];
+    // Empty selection keeps today's behavior (every calendar entity) so
+    // installs that never touched this setting see no change -- once a
+    // household picks specific calendars, only those are shown.
     const calendarItems = Array.from(BeastHaSocket.getAllStates().values())
       .filter((state) => state.entity_id.startsWith("calendar.") && state.attributes.start_time && state.attributes.message)
+      .filter((state) => !configuredCalendarIds.length || configuredCalendarIds.includes(state.entity_id))
       .map((state) => ({ label: state.attributes.message, date: new Date(state.attributes.start_time) }))
       .filter((item) => !Number.isNaN(item.date.getTime()) && item.date.getTime() >= Date.now() - 3600000)
       .sort((a, b) => a.date - b.date);
     const wasteItems = getWasteItems();
     const nextWaste = wasteItems[0];
-    const carBattery = Number(BeastHaSocket.getState(CAR_BATTERY_ID)?.state);
-    const carRange = Number(BeastHaSocket.getState(CAR_RANGE_ID)?.state);
-    const carCharging = BeastHaSocket.getState(CAR_CHARGING_ID)?.state === "on";
-    const poolTemperature = Number(BeastHaSocket.getState(POOL_TEMPERATURE_ID)?.state);
-    host.innerHTML = `
-      <div class="beast-ov-fill">
-        <div class="beast-ov-clock-time">${h}<span class="beast-ov-clock-colon">:</span>${m}</div>
-        <div class="beast-ov-clock-date">${escapeHtml(BeastCore.formatDate(now))}</div>
-        <div class="beast-ov-clock-planner">
+    // The two tiles under the planner are independently configurable
+    // (Administration -> Forside -> Ur-widgets) -- each can show car, pool,
+    // robots or 3D-printer status, or be turned off, using the exact same
+    // entity/label/icon lookup the top-level generic overview cards use
+    // (genericWidgetDefinitions()) so both stay in sync automatically.
+    const quickTileDefs = genericWidgetDefinitions();
+    const quickTileTypes = (Array.isArray(BeastConfig.get("overviewQuickTiles")) ? BeastConfig.get("overviewQuickTiles") : ["car", "pool"])
+      .filter((type) => quickTileDefs[type])
+      .slice(0, 2);
+    const quickTileHtml = quickTileTypes.map((type) => {
+      const def = quickTileDefs[type];
+      const state = BeastHaSocket.getState(def.entity);
+      const unavailable = !state || ["unknown", "unavailable"].includes(state.state);
+      return `
+          <button type="button" class="beast-ov-car-compact" data-quick-tile="${type}">
+            <span class="beast-ov-car-icon">${BeastCore.icon(def.icon, { size: 19 })}</span>
+            <span><b>${escapeHtml(def.label)}</b><small>${escapeHtml(def.detail)}</small></span>
+            <strong>${escapeHtml(unavailable ? "–" : `${state.state}${def.suffix}`)}</strong>
+          </button>`;
+    }).join("");
+    // Both sections are optional (Administration -> Kalender & affald --
+    // not every household has a calendar and a waste-collection sensor set
+    // up) -- when only one is on, "has-single-section" lets it expand to
+    // fill the space the other would have used instead of leaving a gap.
+    const showCalendarCard = wasteConfig.showCalendarCard !== false;
+    const showWasteCard = wasteConfig.showWasteCard !== false;
+    const visibleSectionCount = (showCalendarCard ? 1 : 0) + (showWasteCard ? 1 : 0);
+    const calendarSectionHtml = showCalendarCard ? `
           <section class="beast-ov-planner-section">
             <div class="beast-ov-planner-title">${BeastCore.icon("calendar", { size: 14 })}<span>Næste aftaler</span></div>
             <div class="beast-ov-calendar-list">
@@ -330,7 +367,8 @@
                 </div>
               `).join("") || `<div class="beast-ov-planner-empty">Ingen kommende aftaler</div>`}
             </div>
-          </section>
+          </section>` : "";
+    const wasteSectionHtml = showWasteCard ? `
           <section class="beast-ov-planner-section beast-ov-waste-section">
             <div class="beast-ov-planner-title">${BeastCore.icon("grid", { size: 14 })}<span>Affald</span></div>
             ${nextWaste ? `
@@ -339,20 +377,15 @@
                 <strong>${nextWaste.days === 0 ? "I dag" : nextWaste.days}<small>${nextWaste.days === 0 ? "afhentes" : (nextWaste.days === 1 ? "dag" : "dage")}</small></strong>
               </div>
             ` : `<div class="beast-ov-planner-empty">Ingen afhentning fundet</div>`}
-          </section>
+          </section>` : "";
+    host.innerHTML = `
+      <div class="beast-ov-fill">
+        <div class="beast-ov-clock-time">${h}<span class="beast-ov-clock-colon">:</span>${m}</div>
+        <div class="beast-ov-clock-date">${escapeHtml(BeastCore.formatDate(now))}</div>
+        <div class="beast-ov-clock-planner${visibleSectionCount === 1 ? " has-single-section" : ""}"${visibleSectionCount ? "" : " hidden"}>
+          ${calendarSectionHtml}${wasteSectionHtml}
         </div>
-        <div class="beast-ov-home-quick">
-          <button type="button" class="beast-ov-car-compact" id="beastOvCarCompact">
-            <span class="beast-ov-car-icon">${BeastCore.icon(carCharging ? "bolt" : "car", { size: 19 })}</span>
-            <span><b>Energitte</b><small>${carCharging ? "Lader" : "Bilbatteri"}</small></span>
-            <strong>${Number.isFinite(carBattery) ? Math.round(carBattery) + "%" : "–"}<small>${Number.isFinite(carRange) ? Math.round(carRange) + " km" : ""}</small></strong>
-            <i style="--car-pct:${Number.isFinite(carBattery) ? Math.max(0, Math.min(100, carBattery)) : 0}%"></i>
-          </button>
-          <button type="button" class="beast-ov-car-compact beast-ov-pool-compact" id="beastOvPoolCompact">
-            <span class="beast-ov-car-icon">${BeastCore.icon("droplet", { size: 19 })}</span>
-            <span><b>Pool</b><small>Vandtemperatur</small></span>
-            <strong>${Number.isFinite(poolTemperature) ? poolTemperature.toFixed(1) + "°" : "–"}<small>${Number.isFinite(poolTemperature) ? (poolTemperature >= 26 ? "Badevenlig" : "Kølig") : ""}</small></strong>
-          </button>
+        <div class="beast-ov-home-quick"${quickTileTypes.length ? "" : " hidden"}>${quickTileHtml}
         </div>
       </div>
     `;
@@ -372,13 +405,11 @@
       host._beastCalendarResizeObserver = new ResizeObserver(() => requestAnimationFrame(host._beastFitCalendarItems));
       host._beastCalendarResizeObserver.observe(host);
     }
-    document.getElementById("beastOvCarCompact")?.addEventListener("click", (event) => {
-      event.stopPropagation();
-      document.querySelector('.beast-rail-btn[data-section="car"]')?.click();
-    });
-    document.getElementById("beastOvPoolCompact")?.addEventListener("click", (event) => {
-      event.stopPropagation();
-      document.querySelector('.beast-rail-btn[data-section="pool"]')?.click();
+    host.querySelectorAll("[data-quick-tile]").forEach((tile) => {
+      tile.addEventListener("click", (event) => {
+        event.stopPropagation();
+        document.querySelector(`.beast-rail-btn[data-section="${tile.dataset.quickTile}"]`)?.click();
+      });
     });
     renderMusic();
   }
@@ -533,10 +564,91 @@
     return activeBanners().filter((banner) => Number(snoozed[banner.type] || 0) < now);
   }
 
+  // Shared by both layout modes so mail/printer always get their real photo
+  // at full size -- not a shrunk-down thumbnail -- whether they're their
+  // own floating card or a row inside the combined one; only the wrapper
+  // differs between the two modes, not what's inside it.
+  function bannerBodyMarkup(banner) {
+    return banner.compact
+      ? `<div class="beast-ov-mail-banner-row">
+          <span class="beast-ov-mail-banner-icon-sm">${BeastCore.icon(banner.icon, { size: 18 })}</span>
+          <div><strong>${escapeHtml(banner.title)}</strong><small>${escapeHtml(banner.detail)}</small></div>
+        </div>`
+      : `${banner.image ? `<img class="beast-ov-mail-banner-photo" src="${escapeHtml(banner.image)}" alt="">` : `<span class="beast-ov-mail-banner-icon">${BeastCore.icon(banner.icon, { size: 32 })}</span>`}
+        <div><strong>${escapeHtml(banner.title)}</strong><small>${escapeHtml(banner.detail)}</small></div>`;
+  }
+
+  // Resize handles let a banner (or the combined card) be dragged wider
+  // than its default -- width only, height/image aspect-ratio follows via
+  // CSS. Never smaller than the CSS default (the minimum the user asked to
+  // keep): clamping to defaultWidth, not 0, is what enforces that floor.
+  //
+  // Listeners are wired to `host` itself, not the resize handle span --
+  // renderBanners() now re-renders host.innerHTML on a 30-second timer (see
+  // init()), which would destroy and recreate the handle span mid-gesture
+  // and silently end the drag if pointer capture/listeners lived there
+  // instead. `host` itself is never destroyed (only its innerHTML), so
+  // wiring at that level survives a re-render happening mid-drag -- the
+  // exact same reasoning wireBannerDrag() already relies on. The
+  // `dataset.resizeWired` guard means this only actually attaches once per
+  // host; the saved-width reapplication above it still runs on every call
+  // so a stored size keeps applying after content changes, but skips doing
+  // so while a gesture is actively in progress so it can't fight the live
+  // drag and snap back mid-motion.
+  function wireBannerResize(host, configKey, defaultWidth) {
+    if (host.dataset.resizing !== "true") {
+      const saved = Number(BeastConfig.get(`banners.sizes.${configKey}`));
+      if (Number.isFinite(saved) && saved > defaultWidth) host.style.width = `${saved}px`;
+    }
+    if (host.dataset.resizeWired === "true") return;
+    host.dataset.resizeWired = "true";
+    let resize = null;
+    host.addEventListener("pointerdown", (event) => {
+      if (event.button !== undefined && event.button !== 0) return;
+      if (!event.target.closest(".beast-ov-mail-banner-resize")) return;
+      event.preventDefault();
+      event.stopPropagation();
+      resize = { pointerId: event.pointerId, startX: event.clientX, startWidth: host.getBoundingClientRect().width };
+      host.setPointerCapture?.(event.pointerId);
+      host.classList.add("is-resizing");
+      host.dataset.resizing = "true";
+    });
+    host.addEventListener("pointermove", (event) => {
+      if (!resize || event.pointerId !== resize.pointerId) return;
+      const width = Math.max(defaultWidth, Math.round(resize.startWidth + (event.clientX - resize.startX)));
+      host.style.width = `${width}px`;
+      resize.pendingWidth = width;
+    });
+    const finish = (event) => {
+      if (!resize || event.pointerId !== resize.pointerId) return;
+      host.releasePointerCapture?.(event.pointerId);
+      host.classList.remove("is-resizing");
+      delete host.dataset.resizing;
+      if (resize.pendingWidth !== undefined) {
+        BeastConfig.set(`banners.sizes.${configKey}`, resize.pendingWidth);
+        bannerDraggedUntil[configKey] = Date.now() + 400;
+      }
+      resize = null;
+    };
+    host.addEventListener("pointerup", finish);
+    host.addEventListener("pointercancel", finish);
+  }
+
+  // In "stacked" layout mode every active banner renders as one row inside
+  // a single shared card instead of each being its own independently
+  // dragged floating card -- see renderCombinedBanner(). The two modes
+  // never share DOM, so switching modes tears down whichever structure the
+  // other mode left behind.
   function renderBanners() {
     const container = document.getElementById("beastOvBanners");
     if (!container) return;
     const banners = visibleBanners();
+    if (BeastConfig.get("banners.layoutMode") === "stacked") {
+      container.querySelectorAll("[data-banner-type]").forEach((el) => el.remove());
+      renderCombinedBanner(container, banners);
+      return;
+    }
+    container.querySelector("#beastOvBannerGroup")?.remove();
     const activeTypes = new Set(banners.map((banner) => banner.type));
     container.querySelectorAll("[data-banner-type]").forEach((el) => {
       if (!activeTypes.has(el.dataset.bannerType)) el.remove();
@@ -551,27 +663,63 @@
       }
       host.classList.toggle("has-image", Boolean(banner.image));
       host.classList.toggle("is-compact", Boolean(banner.compact));
-      host.innerHTML = banner.compact
-        ? `
+      host.innerHTML = `
           <span class="beast-ov-mail-banner-drag" aria-hidden="true"></span>
-          <div class="beast-ov-mail-banner-row">
-            <span class="beast-ov-mail-banner-icon-sm">${BeastCore.icon(banner.icon, { size: 18 })}</span>
-            <div><strong>${escapeHtml(banner.title)}</strong><small>${escapeHtml(banner.detail)}</small></div>
-          </div>
-        `
-        : `
-          <span class="beast-ov-mail-banner-drag" aria-hidden="true"></span>
-          ${banner.image ? `<img class="beast-ov-mail-banner-photo" src="${escapeHtml(banner.image)}" alt="">` : `<span class="beast-ov-mail-banner-icon">${BeastCore.icon(banner.icon, { size: 32 })}</span>`}
-          <div><strong>${escapeHtml(banner.title)}</strong><small>${escapeHtml(banner.detail)}</small></div>
+          ${bannerBodyMarkup(banner)}
+          <span class="beast-ov-mail-banner-resize" aria-hidden="true"></span>
         `;
       host.onclick = (event) => {
         event.stopPropagation();
-        if (Date.now() < (bannerDraggedUntil[banner.type] || 0)) return;
+        if (Date.now() < (bannerDraggedUntil[`positions.${banner.type}`] || 0)) return;
         openBannerDetail(banner);
       };
-      wireBannerDrag(host, banner.type);
+      wireBannerDrag(host, `positions.${banner.type}`);
+      wireBannerResize(host, banner.type, 230);
     });
     stackDefaultBanners(container, banners);
+  }
+
+  // Combined-card layout: every active banner is a row stacked inside one
+  // shared card instead of its own separate floating card. Each row keeps
+  // its own full-size body (mail/printer still get their real photo, not a
+  // shrunk-down thumbnail -- the whole point of a photo alert is being able
+  // to actually see it) via the same bannerBodyMarkup() the separate-card
+  // layout uses; doors' own compact row is unchanged since it never had a
+  // photo. Each row still opens its own existing type-specific modal on
+  // click; only one shared drag handle, resize handle, and saved position
+  // (banners.groupPosition/banners.sizes.group) cover the whole card.
+  function renderCombinedBanner(container, banners) {
+    if (!banners.length) {
+      container.querySelector("#beastOvBannerGroup")?.remove();
+      return;
+    }
+    let host = container.querySelector("#beastOvBannerGroup");
+    if (!host) {
+      host = document.createElement("div");
+      host.id = "beastOvBannerGroup";
+      host.className = "beast-ov-mail-banner beast-ov-mail-banner-group";
+      container.appendChild(host);
+    }
+    host.innerHTML = `
+      <span class="beast-ov-mail-banner-drag" aria-hidden="true"></span>
+      ${banners.map((banner) => `
+        <div class="beast-ov-mail-banner-group-item${banner.compact ? " is-compact" : ""}" data-banner-type="${banner.type}">
+          ${bannerBodyMarkup(banner)}
+        </div>
+      `).join("")}
+      <span class="beast-ov-mail-banner-resize" aria-hidden="true"></span>
+    `;
+    banners.forEach((banner) => {
+      const row = host.querySelector(`.beast-ov-mail-banner-group-item[data-banner-type="${banner.type}"]`);
+      if (!row) return;
+      row.onclick = (event) => {
+        event.stopPropagation();
+        if (Date.now() < (bannerDraggedUntil.groupPosition || 0)) return;
+        openBannerDetail(banner);
+      };
+    });
+    wireBannerDrag(host, "groupPosition");
+    wireBannerResize(host, "group", 260);
   }
 
   function openBannerDetail(banner) {
@@ -763,39 +911,339 @@
     });
   }
 
-  function openOverviewEditor() {
-    overviewEditing = true;
-    applyOverviewLayout();
-    document.getElementById("beastOvEditorModal")?.remove();
-    const layout = savedOverviewLayout();
-    const overlay = document.createElement("div");
-    overlay.id = "beastOvEditorModal";
-    overlay.className = "beast-modal-overlay";
-    const columnLayouts = [
-      ["compact-wide-camera", "Tid · Vejr · Kamera"], ["compact-camera-wide", "Tid · Kamera · Vejr"],
-      ["wide-compact-camera", "Vejr · Tid · Kamera"], ["wide-camera-compact", "Vejr · Kamera · Tid"],
-      ["camera-compact-wide", "Kamera · Tid · Vejr"], ["camera-wide-compact", "Kamera · Vejr · Tid"]
+  // Reconstructs the legacy 5-slot layout as a freeform card array, in the
+  // same order/sizing admin.js's builder uses to seed itself the first
+  // time it opens on an install that has never used the freeform layout --
+  // so entering edit mode always starts from something meaningful instead
+  // of a blank grid.
+  function seedCardsFromOverviewSlots() {
+    const defaults = { main:{type:"cameras"}, compactTop:{type:"clock"}, compactBottom:{type:"security"}, wideTop:{type:"weather"}, wideBottom:{type:"energy"} };
+    const slots = { ...defaults, ...(BeastConfig.get("overviewSlots") || {}) };
+    const order = [
+      ["compactTop", { w:3, h:1 }, { w:1, h:2 }, { h:2 }],
+      ["wideTop", { w:5, h:1 }, { w:2, h:2 }, { h:2 }],
+      ["main", { w:4, h:2 }, { w:2, h:2 }, { h:2 }],
+      ["compactBottom", { w:3, h:1 }, { w:1, h:2 }, { h:2 }],
+      ["wideBottom", { w:5, h:1 }, { w:2, h:2 }, { h:2 }]
     ];
-    overlay.innerHTML = `<div class="beast-modal beast-ov-editor-modal" role="dialog" aria-modal="true"><div class="beast-modal-header"><div><h3>Rediger hele forsiden</h3><p>Alle områder kan flyttes. Vejr, energi og kameraer bliver altid på forsiden.</p></div><button type="button" class="beast-modal-close" data-close>${BeastCore.icon("close", { size: 22 })}</button></div><div class="beast-ov-editor-section"><strong>Placering af kolonner</strong><div class="beast-ov-layout-options">${columnLayouts.map(([value,label]) => `<button type="button" data-layout-field="columns" data-layout-value="${value}" class="${layout.columns === value ? "is-active" : ""}">${BeastCore.icon("grid", { size: 18 })}<span>${label}</span></button>`).join("")}</div></div><div class="beast-ov-editor-section"><strong>Det smalle område</strong><div class="beast-ov-layout-options is-two"><button type="button" data-layout-field="compactOrder" data-layout-value="clock-first" class="${layout.compactOrder === "clock-first" ? "is-active" : ""}">Tid over sikkerhed</button><button type="button" data-layout-field="compactOrder" data-layout-value="security-first" class="${layout.compactOrder === "security-first" ? "is-active" : ""}">Sikkerhed over tid</button></div></div><div class="beast-ov-editor-section"><strong>Det brede område</strong><div class="beast-ov-layout-options is-two"><button type="button" data-layout-field="wideOrder" data-layout-value="weather-first" class="${layout.wideOrder === "weather-first" ? "is-active" : ""}">Vejr over energi</button><button type="button" data-layout-field="wideOrder" data-layout-value="energy-first" class="${layout.wideOrder === "energy-first" ? "is-active" : ""}">Energi over vejr</button></div></div><button type="button" class="beast-btn beast-btn-primary" data-done>Færdig</button></div>`;
+    return order
+      .map(([key, desktop, tablet, portrait]) => ({ id: key, ...(slots[key] || { type: "empty" }), desktop, tablet, portrait }))
+      .filter((card) => card.type !== "empty");
+  }
+
+  // Rebuilds every .beast-ov-card in the grid from `cards` (always a
+  // freeform array while editing is active) using the exact same
+  // overviewCardMarkup() the initial page mount uses, then repaints live
+  // content into the fresh nodes and rewires the camera-menu/edit chrome.
+  function renderOverviewCardsDom(cards) {
+    if (!zoneEl) return;
+    const anchor = zoneEl.querySelector("#beastOvClockMusic");
+    zoneEl.querySelectorAll(":scope > .beast-ov-card, :scope > .beast-ov-card-add").forEach((el) => el.remove());
+    zoneEl.classList.toggle("is-freeform", cards.length > 0);
+    const wrap = document.createElement("div");
+    wrap.innerHTML = cards.map((card) => window.overviewCardMarkup(card)).join("");
+    Array.from(wrap.children).forEach((el) => zoneEl.insertBefore(el, anchor));
+    // The camera menu is a standalone sibling now (see overviewCameraMenuMarkup
+    // in app.js), not nested inside the cameras card -- has to be added/
+    // removed here too when a cameras card is added/removed in edit mode.
+    zoneEl.querySelector(".beast-ov-camera-header")?.remove();
+    if (cards.some((card) => card.type === "cameras")) {
+      const menuWrap = document.createElement("div");
+      menuWrap.innerHTML = window.overviewCameraMenuMarkup(true);
+      zoneEl.insertBefore(menuWrap.firstElementChild, anchor);
+    }
+    renderAll();
+    wireOverviewChrome();
+    if (overviewEditing) {
+      renderAddCardTile(anchor);
+      applyEditModeChrome();
+    }
+  }
+
+  // "+ Tilføj kort" -- not a real card, never part of draftCards, always
+  // the last grid child while editing. Filtered back out the instant edit
+  // mode ends since renderOverviewCardsDom's cleanup selector removes it.
+  function renderAddCardTile(anchor) {
+    const tile = document.createElement("button");
+    tile.type = "button";
+    tile.className = "beast-panel beast-ov-card beast-ov-card-add";
+    tile.style.setProperty("--desktop-w", "3");
+    tile.style.setProperty("--desktop-h", "1");
+    tile.style.setProperty("--tablet-w", "1");
+    tile.style.setProperty("--tablet-h", "1");
+    tile.style.setProperty("--portrait-h", "1");
+    tile.innerHTML = `${BeastCore.icon("plus", { size: 26 })}<span>Tilføj kort</span>`;
+    tile.addEventListener("click", (event) => { event.stopPropagation(); openAddCardModal(); });
+    zoneEl.insertBefore(tile, anchor);
+  }
+
+  // Adds/removes the drag/resize/remove handles used only in edit mode --
+  // kept out of overviewCardMarkup() itself so normal (non-editing)
+  // rendering never has to think about them.
+  function applyEditModeChrome() {
+    zoneEl.querySelectorAll(":scope > .beast-ov-card:not(.beast-ov-card-add)").forEach((card) => {
+      card.querySelector(".beast-ov-card-drag")?.remove();
+      card.querySelector(".beast-ov-card-resize")?.remove();
+      card.querySelector(".beast-ov-card-remove")?.remove();
+      const drag = document.createElement("span");
+      drag.className = "beast-ov-card-drag";
+      drag.setAttribute("aria-hidden", "true");
+      drag.innerHTML = BeastCore.icon("grip", { size: 16 });
+      card.appendChild(drag);
+      const resize = document.createElement("span");
+      resize.className = "beast-ov-card-resize";
+      resize.setAttribute("aria-hidden", "true");
+      card.appendChild(resize);
+      const remove = document.createElement("button");
+      remove.type = "button";
+      remove.className = "beast-ov-card-remove";
+      remove.setAttribute("aria-label", "Fjern kort");
+      remove.innerHTML = BeastCore.icon("close", { size: 14 });
+      card.appendChild(remove);
+      wireCardDrag(card, drag);
+      wireCardResize(card, resize);
+      remove.addEventListener("click", (event) => {
+        event.stopPropagation();
+        const id = card.dataset.builderCard;
+        draftCards = draftCards.filter((c) => c.id !== id);
+        renderOverviewCardsDom(draftCards);
+      });
+    });
+  }
+
+  // Drag-to-reorder moves the card's own existing DOM node via
+  // insertBefore rather than re-rendering on every pointermove -- a full
+  // renderOverviewCardsDom() rebuild would destroy and recreate the drag
+  // handle mid-gesture, which silently ends the pointer capture and drops
+  // the rest of the drag. The array order is only synced from the final
+  // DOM order once, on release.
+  function wireCardDrag(card, handle) {
+    let drag = null;
+    handle.addEventListener("pointerdown", (event) => {
+      if (event.button !== undefined && event.button !== 0) return;
+      event.preventDefault();
+      event.stopPropagation();
+      drag = { pointerId: event.pointerId, moved: false };
+      handle.setPointerCapture?.(event.pointerId);
+      card.classList.add("is-dragging");
+    });
+    handle.addEventListener("pointermove", (event) => {
+      if (!drag || event.pointerId !== drag.pointerId) return;
+      drag.moved = true;
+      const target = document.elementFromPoint(event.clientX, event.clientY)?.closest(".beast-ov-card");
+      if (!target || target === card || target.classList.contains("beast-ov-card-add") || !zoneEl.contains(target)) return;
+      if (target.compareDocumentPosition(card) & Node.DOCUMENT_POSITION_FOLLOWING) {
+        target.parentNode.insertBefore(card, target);
+      } else {
+        target.parentNode.insertBefore(card, target.nextSibling);
+      }
+    });
+    const finish = (event) => {
+      if (!drag || event.pointerId !== drag.pointerId) return;
+      handle.releasePointerCapture?.(event.pointerId);
+      card.classList.remove("is-dragging");
+      if (drag.moved) {
+        window.beastOverviewCardDraggedUntil = Date.now() + 400;
+        syncDraftCardOrderFromDom();
+      }
+      drag = null;
+    };
+    handle.addEventListener("pointerup", finish);
+    handle.addEventListener("pointercancel", finish);
+  }
+
+  function syncDraftCardOrderFromDom() {
+    if (!draftCards) return;
+    const order = Array.from(zoneEl.querySelectorAll(":scope > .beast-ov-card:not(.beast-ov-card-add)")).map((el) => el.dataset.builderCard);
+    draftCards.sort((a, b) => order.indexOf(a.id) - order.indexOf(b.id));
+  }
+
+  // Resize measures the card's OWN currently-rendered size divided by its
+  // current column/row span to get an approximate pixels-per-unit, rather
+  // than trying to parse the grid's minmax()-based track CSS (unreliable
+  // across browsers via getComputedStyle) -- close enough for a live-feel
+  // drag, exact values are whole numbers via Math.round either way.
+  function wireCardResize(card, handle) {
+    let resize = null;
+    handle.addEventListener("pointerdown", (event) => {
+      if (event.button !== undefined && event.button !== 0) return;
+      event.preventDefault();
+      event.stopPropagation();
+      const cardData = draftCards?.find((c) => c.id === card.dataset.builderCard);
+      if (!cardData) return;
+      const rect = card.getBoundingClientRect();
+      const startW = Math.max(1, Number(cardData.desktop?.w) || 4);
+      const startH = Math.max(1, Number(cardData.desktop?.h) || 1);
+      resize = {
+        pointerId: event.pointerId, startX: event.clientX, startY: event.clientY,
+        startW, startH, colPx: rect.width / startW, rowPx: rect.height / startH, cardData
+      };
+      handle.setPointerCapture?.(event.pointerId);
+      card.classList.add("is-resizing");
+    });
+    handle.addEventListener("pointermove", (event) => {
+      if (!resize || event.pointerId !== resize.pointerId) return;
+      const dx = event.clientX - resize.startX;
+      const dy = event.clientY - resize.startY;
+      const w = Math.max(1, Math.min(12, Math.round(resize.startW + dx / resize.colPx)));
+      const h = Math.max(1, Math.min(2, Math.round(resize.startH + dy / resize.rowPx)));
+      card.style.setProperty("--desktop-w", w);
+      card.style.setProperty("--desktop-h", h);
+      resize.pendingW = w;
+      resize.pendingH = h;
+    });
+    const finish = (event) => {
+      if (!resize || event.pointerId !== resize.pointerId) return;
+      handle.releasePointerCapture?.(event.pointerId);
+      card.classList.remove("is-resizing");
+      if (resize.pendingW !== undefined) {
+        resize.cardData.desktop = { w: resize.pendingW, h: resize.pendingH };
+        window.beastOverviewCardDraggedUntil = Date.now() + 400;
+      }
+      resize = null;
+    };
+    handle.addEventListener("pointerup", finish);
+    handle.addEventListener("pointercancel", finish);
+  }
+
+  // Same type list Administration's front-page builder offers
+  // (admin.js OVERVIEW_SLOT_OPTIONS, minus "empty") -- duplicated rather
+  // than shared since admin and the kiosk page have no common module
+  // between them today and it's 10 short lines.
+  const OVERVIEW_CARD_TYPES = [
+    ["cameras","Kameraer"], ["clock","Ur, kalender og affald"], ["weather","Vejr"], ["security","Sikkerhed"], ["energy","Energi"],
+    ["car","Bil"], ["pool","Pool"], ["robots","Robotter"], ["printer","3D-printer"], ["custom","Valgfri HA-entity"]
+  ];
+  const OVERVIEW_SINGLE_INSTANCE_TYPES = ["cameras", "clock", "weather", "security", "energy"];
+
+  function allOverviewEntities() {
+    return Array.from(BeastHaSocket.getAllStates().values())
+      .map((state) => ({ id: state.entity_id, name: state.attributes?.friendly_name || state.entity_id }))
+      .sort((a, b) => a.name.localeCompare(b.name, "da"));
+  }
+
+  function openAddCardModal() {
+    document.getElementById("beastOvAddCardModal")?.remove();
+    const usedTypes = new Set((draftCards || []).map((card) => card.type));
+    const overlay = document.createElement("div");
+    overlay.id = "beastOvAddCardModal";
+    overlay.className = "beast-modal-overlay";
+    const typeButtons = OVERVIEW_CARD_TYPES
+      .filter(([value]) => !OVERVIEW_SINGLE_INSTANCE_TYPES.includes(value) || !usedTypes.has(value))
+      .map(([value, label]) => `<button type="button" data-add-card-type="${value}">${label}</button>`)
+      .join("");
+    overlay.innerHTML = `<div class="beast-modal beast-ov-add-card-modal" role="dialog" aria-modal="true">
+      <div class="beast-modal-header"><div><h3>Tilføj kort</h3></div><button type="button" class="beast-modal-close" data-close>${BeastCore.icon("close", { size: 22 })}</button></div>
+      <div class="beast-modal-body">
+        <div class="beast-ov-add-card-types">${typeButtons}</div>
+        <div class="beast-ov-add-card-entity" hidden>
+          <input class="beast-ov-add-card-search" type="search" placeholder="Søg efter entity…">
+          <select class="beast-ov-add-card-select" size="6"></select>
+          <button type="button" class="beast-btn beast-btn-primary" data-add-card-confirm>Tilføj</button>
+        </div>
+      </div>
+    </div>`;
     document.body.appendChild(overlay);
-    const close = () => { overviewEditing = false; applyOverviewLayout(); overlay.remove(); };
-    overlay.addEventListener("click", (event) => { if (event.target === overlay || event.target.closest("[data-close],[data-done]")) close(); });
-    overlay.querySelectorAll("[data-layout-field]").forEach((button) => button.addEventListener("click", () => {
-      const next = savedOverviewLayout();
-      next[button.dataset.layoutField] = button.dataset.layoutValue;
-      delete next.order;
-      localStorage.setItem(OVERVIEW_LAYOUT_KEY, JSON.stringify(next));
-      overlay.querySelectorAll(`[data-layout-field="${button.dataset.layoutField}"]`).forEach((item) => item.classList.toggle("is-active", item === button));
-      applyOverviewLayout();
-    }));
+    const close = () => overlay.remove();
+    overlay.addEventListener("click", (event) => {
+      if (event.target === overlay || event.target.closest("[data-close]")) { close(); return; }
+      const typeButton = event.target.closest("[data-add-card-type]");
+      if (typeButton) {
+        const type = typeButton.dataset.addCardType;
+        if (type !== "custom") {
+          draftCards.push({ id: `card_${Date.now()}`, type, label: "", entity: null, desktop: { w: 3, h: 1 }, tablet: { w: 1, h: 1 }, portrait: { h: 1 } });
+          close();
+          renderOverviewCardsDom(draftCards);
+          return;
+        }
+        overlay.querySelector(".beast-ov-add-card-types").hidden = true;
+        const entityPane = overlay.querySelector(".beast-ov-add-card-entity");
+        entityPane.hidden = false;
+        const entities = allOverviewEntities();
+        const select = overlay.querySelector(".beast-ov-add-card-select");
+        select.innerHTML = entities.map((entity) => `<option value="${entity.id}">${entity.name}</option>`).join("");
+        overlay.querySelector(".beast-ov-add-card-search").addEventListener("input", (inputEvent) => {
+          const query = inputEvent.target.value.trim().toLowerCase();
+          select.innerHTML = entities
+            .filter((entity) => !query || entity.name.toLowerCase().includes(query) || entity.id.toLowerCase().includes(query))
+            .map((entity) => `<option value="${entity.id}">${entity.name}</option>`).join("");
+        });
+        return;
+      }
+      if (event.target.closest("[data-add-card-confirm]")) {
+        const select = overlay.querySelector(".beast-ov-add-card-select");
+        const entity = select?.value;
+        if (!entity) return;
+        draftCards.push({ id: `card_${Date.now()}`, type: "custom", label: "", entity, desktop: { w: 3, h: 1 }, tablet: { w: 1, h: 1 }, portrait: { h: 1 } });
+        close();
+        renderOverviewCardsDom(draftCards);
+      }
+    });
+  }
+
+  function renderOverviewEditBar() {
+    document.getElementById("beastOvEditBar")?.remove();
+    const bar = document.createElement("div");
+    bar.id = "beastOvEditBar";
+    bar.className = "beast-ov-edit-bar";
+    bar.innerHTML = `<span>${BeastCore.icon("grid", { size: 16 })}Redigerer forsiden</span><div class="beast-ov-edit-bar-actions"><button type="button" data-ov-edit-cancel>Annullér</button><button type="button" class="beast-btn beast-btn-primary" data-ov-edit-save>Gem</button></div>`;
+    document.body.appendChild(bar);
+    bar.querySelector("[data-ov-edit-cancel]").addEventListener("click", () => exitOverviewEditMode(false));
+    bar.querySelector("[data-ov-edit-save]").addEventListener("click", () => exitOverviewEditMode(true));
+  }
+
+  function enterOverviewEditMode() {
+    if (overviewEditing) return;
+    overviewEditing = true;
+    window.beastOverviewEditing = true;
+    const existing = BeastConfig.get("overviewCards") || [];
+    draftCards = existing.length ? JSON.parse(JSON.stringify(existing)) : seedCardsFromOverviewSlots();
+    applyOverviewLayout();
+    renderOverviewEditBar();
+    renderOverviewCardsDom(draftCards);
+  }
+
+  function exitOverviewEditMode(save) {
+    const nextCards = save ? draftCards : (BeastConfig.get("overviewCards") || []);
+    if (save) BeastConfig.set("overviewCards", draftCards);
+    overviewEditing = false;
+    window.beastOverviewEditing = false;
+    draftCards = null;
+    document.getElementById("beastOvEditBar")?.remove();
+    applyOverviewLayout();
+    if (nextCards.length) {
+      renderOverviewCardsDom(nextCards);
+      return;
+    }
+    // Cancelling out of edit mode on an install that has never switched to
+    // the freeform layout -- re-run the exact same render used at initial
+    // page load instead of duplicating its legacy-slot defaults here.
+    const anchor = zoneEl.querySelector("#beastOvClockMusic");
+    zoneEl.querySelectorAll(":scope > .beast-ov-card").forEach((el) => el.remove());
+    zoneEl.classList.remove("is-freeform");
+    const wrap = document.createElement("div");
+    wrap.innerHTML = window.renderOverviewSection();
+    Array.from(wrap.querySelector("#beastOverviewZone").children).forEach((child) => {
+      if (child.id === "beastOvBanners" || child.id === "beastOvClockMusic") return;
+      zoneEl.insertBefore(child, anchor);
+    });
+    renderAll();
+    wireOverviewChrome();
   }
 
   function wireOverviewChrome() {
     const menu = document.getElementById("beastOvCameraMenu");
     const toggle = document.getElementById("beastOvCameraMenuToggle");
+    // Re-queried on every call rather than closed over once -- the single
+    // document-level click listener below is only ever registered the
+    // first time (see the _closeMenuWired guard), but renderOverviewCardsDom
+    // removes and recreates the camera-menu/toggle nodes on every edit-mode
+    // change, so a closure captured on the first call would end up pointing
+    // at detached, stale elements after the first rebuild.
     const closeMenu = () => {
-      if (menu) menu.hidden = true;
-      toggle?.setAttribute("aria-expanded", "false");
+      const liveMenu = document.getElementById("beastOvCameraMenu");
+      if (liveMenu) liveMenu.hidden = true;
+      document.getElementById("beastOvCameraMenuToggle")?.setAttribute("aria-expanded", "false");
     };
     document.querySelector(".beast-ov-camera-header")?.addEventListener("click", (event) => event.stopPropagation());
     toggle?.addEventListener("click", (event) => {
@@ -808,8 +1256,15 @@
       event.stopPropagation();
       if (event.target.closest("button")) closeMenu();
     });
-    document.addEventListener("click", closeMenu);
-    document.getElementById("beastOvEdit")?.addEventListener("click", (event) => { event.stopPropagation(); closeMenu(); openOverviewEditor(); });
+    // renderOverviewCardsDom() calls wireOverviewChrome() again on every
+    // edit-mode change (add/remove/move/resize a card) to rebind the
+    // camera-menu buttons on freshly recreated nodes -- but this document
+    // listener only ever needs to exist once, not once per call.
+    if (!wireOverviewChrome._closeMenuWired) {
+      wireOverviewChrome._closeMenuWired = true;
+      document.addEventListener("click", closeMenu);
+    }
+    document.getElementById("beastOvEdit")?.addEventListener("click", (event) => { event.stopPropagation(); closeMenu(); enterOverviewEditMode(); });
     // showAmbientMode() lives in app.js (a plain global function, not an
     // IIFE export) -- force=true so it shows on demand even outside the
     // configured schedule, since this is a manual preview action.
@@ -819,6 +1274,36 @@
       window.showAmbientMode?.(true);
     });
     applyOverviewLayout();
+    positionCameraMenu();
+    if (!wireOverviewChrome._resizeWired) {
+      wireOverviewChrome._resizeWired = true;
+      window.addEventListener("resize", positionCameraMenu);
+    }
+  }
+
+  // Measures the actual rendered cameras card rather than assuming a fixed
+  // CSS position -- how much room (if any) exists to its right depends on
+  // the layout mode (legacy 5-slot grid, freeform, portrait breakpoint...)
+  // and where the card ends up in it, which isn't knowable from CSS alone.
+  // Sits just outside the card's right edge when there's room. In the
+  // common case (cameras spanning the full-height right column, flush
+  // against the edge of the screen, as in this app's default layout)
+  // there's no room outside it at all -- confirmed and accepted as the
+  // intended result, not a bug: it falls back to the card's own inside
+  // corner instead, as a small, mostly-transparent circular button rather
+  // than a solid overlay, so it reads as a control floating over the
+  // picture's corner rather than a chunk of the picture being covered.
+  function positionCameraMenu() {
+    const header = document.querySelector(".beast-ov-camera-header");
+    const card = document.querySelector('[data-card="cameras"]');
+    if (!header || !card) return;
+    const cardRect = card.getBoundingClientRect();
+    const gap = 8;
+    const buttonSize = 40;
+    let left = cardRect.right + gap;
+    if (left + buttonSize + gap > window.innerWidth) left = cardRect.right - buttonSize - gap;
+    header.style.left = `${Math.round(left)}px`;
+    header.style.top = `${Math.round(cardRect.top + gap)}px`;
   }
 
   function formatCompactDate(date) {
@@ -1637,14 +2122,22 @@
     applyOverviewLayout();
   }
 
-  function renderGenericWidgets() {
+  // Shared by the top-level car/pool/robots/printer overview cards and the
+  // clock card's two "quick tile" slots, so both pick their entity/label/
+  // icon from exactly one place instead of two definitions silently
+  // drifting apart.
+  function genericWidgetDefinitions() {
     const config = BeastConfig.getAll();
-    const definitions = {
+    return {
       car: { label:"Bil", entity:config.panels?.car?.battery, suffix:"%", icon:"car", detail:"Batteri" },
       pool: { label:"Pool", entity:config.panels?.pool?.waterTemp, suffix:"°", icon:"droplet", detail:"Vandtemperatur" },
       robots: { label:"Robotter", entity:[...(config.panels?.robots?.vacuums || []),...(config.panels?.robots?.mowers || [])][0], suffix:"", icon:"robot", detail:"Aktuel status" },
       printer: { label:"3D-printer", entity:config.panels?.printer?.statusSensor, suffix:"", icon:"printer", detail:"Printstatus" }
     };
+  }
+
+  function renderGenericWidgets() {
+    const definitions = genericWidgetDefinitions();
     document.querySelectorAll("[data-widget] .beastOvGeneric").forEach((host) => {
       const card = host.closest("[data-widget]"), type = card.dataset.widget;
       const definition = definitions[type] || { label:card.dataset.label || "Home Assistant", entity:card.dataset.entity, suffix:"", icon:"grid", detail:"Aktuel værdi" };
@@ -1676,6 +2169,17 @@
 
     window.clearInterval(cameraRefreshTimerId);
     cameraRefreshTimerId = window.setInterval(refreshCameraSnapshots, 8000);
+
+    // Banners were previously only re-evaluated on a relevant entity state
+    // change (a door/lock changing, or a snooze modal closing) -- so a
+    // doors/locks alert scheduled for e.g. 22:00-06:00 wouldn't reliably
+    // appear or disappear exactly at those times if nothing else happened
+    // to touch a door/lock right then; it would just sit stale until the
+    // next unrelated state change. A cheap periodic re-render (same
+    // interval as the clock) makes the schedule boundary -- and an expired
+    // 30-minute snooze -- take effect on their own.
+    window.clearInterval(bannerRefreshTimerId);
+    bannerRefreshTimerId = window.setInterval(renderBanners, 30000);
 
     if (WEATHER_ENTITY_ID) BeastHaSocket.subscribeEntity(WEATHER_ENTITY_ID, () => { renderWeather(); applyOverviewLayout(); });
     Object.values(UTILITY_VIEWS).forEach((config) => {

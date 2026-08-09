@@ -97,6 +97,11 @@ const BeastScreenLock = (() => {
       return;
     }
     overlay.classList.add("is-open");
+    // Only the real "screen is now locked" ambient state stays always-dark
+    // (matching the screensaver) -- verify/set/change/remove-PIN prompts are
+    // normal in-context modals layered over the current page and follow its
+    // theme instead, see ha-smartdash-screenlock.css.
+    overlay.classList.toggle("is-ambient", mode === "locked");
 
     const dots = Array.from({ length: PIN_LENGTH }, (_, i) => `<span class="beast-lock-dot${i < digits.length ? " is-filled" : ""}"></span>`).join("");
     const showCancel = mode !== "locked";

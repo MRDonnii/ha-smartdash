@@ -10,10 +10,17 @@ button { cursor: pointer; }
 .admin-shell { min-height: 100vh; display: grid; grid-template-columns: 270px minmax(0, 1fr); }
 .admin-sidebar { position: sticky; top: 0; height: 100vh; padding: 24px 18px; border-right: 1px solid var(--border); background: var(--surface-solid); display: flex; flex-direction: column; }
 .admin-brand { padding: 4px 8px 24px; }
-.admin-brand img { display:block; width:100%; max-width:218px; height:auto; }
+.admin-brand svg { display:block; width:100%; max-width:218px; height:auto; }
 .admin-brand small { display: block; color: var(--accent-b); text-transform: uppercase; letter-spacing: .12em; font-size: 11px; font-weight: 800; }
 .admin-brand strong { display: block; margin: 10px 0 0 58px; color:var(--ink-muted); font-size:13px; font-weight:750; letter-spacing:.08em; text-transform:uppercase; }
-.admin-login-logo { display:block; width:min(100%,280px); height:auto; margin:0 auto 16px; }
+.admin-login-logo { display:block; width:min(100%,280px); margin:0 auto 16px; }
+.admin-login-logo svg { display:block; width:100%; height:auto; }
+/* The logo's icon mark keeps its own fixed dark-gradient colors (a
+   consistent brand mark, not something meant to invert with the theme) --
+   only its two text elements need to follow --ink/--accent-b, since the
+   SVG asset hardcodes near-white fill for both, unreadable in light mode. */
+.beast-brand-logo-title { fill: var(--ink); }
+.beast-brand-logo-subtitle { fill: var(--accent-b); }
 .admin-nav { display: grid; gap: 5px; overflow-y: auto; }
 .admin-nav-section { margin: 14px 13px 2px; font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-faint, var(--ink-muted)); opacity: 0.75; }
 .admin-nav button { min-height: 46px; padding: 0 13px; border: 1px solid transparent; border-radius: 11px; background: transparent; color: var(--ink-muted); text-align: left; font-weight: 700; }
@@ -109,7 +116,7 @@ button { cursor: pointer; }
 
 .admin-project-intro { overflow:hidden; background:radial-gradient(circle at 5% 0%,rgba(47,224,168,.10),transparent 35%),var(--surface-2); }
 .admin-project-heading { display:grid; grid-template-columns:minmax(180px,260px) minmax(0,1fr); align-items:center; gap:26px; margin-bottom:22px; }
-.admin-project-heading img { display:block; width:100%; height:auto; }
+.admin-project-heading svg { display:block; width:100%; height:auto; }
 .admin-project-heading h2 { margin:0; font-size:24px; }
 .admin-project-heading p { margin:8px 0 0; color:var(--ink-muted); line-height:1.55; }
 .admin-project-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:12px; }
@@ -353,7 +360,7 @@ button { cursor: pointer; }
   .admin-entity-device-scope { grid-template-columns: 1fr; }
   .admin-entity-device-scope small { grid-column: auto; }
   .admin-project-heading,.admin-project-grid { grid-template-columns:1fr; }
-  .admin-project-heading img { max-width:260px; }
+  .admin-project-heading svg { max-width:260px; }
   .admin-backup-list article { align-items: flex-start; flex-direction: column; }
   .admin-security-recovery, .admin-security-toggle { align-items: flex-start; flex-direction: column; }
 }
