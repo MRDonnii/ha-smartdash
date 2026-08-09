@@ -496,16 +496,14 @@
         const changedAt = new Date(state?.last_changed || 0).getTime();
         return Number.isFinite(changedAt) && now - changedAt >= thresholdMs;
       };
-      const doorScheduleOk = !BeastConfig.get("banners.doorScheduleEnabled") ||
-        isWithinBannerSchedule(BeastConfig.get("banners.doorScheduleStart"), BeastConfig.get("banners.doorScheduleEnd"));
-      const lockScheduleOk = !BeastConfig.get("banners.lockScheduleEnabled") ||
-        isWithinBannerSchedule(BeastConfig.get("banners.lockScheduleStart"), BeastConfig.get("banners.lockScheduleEnd"));
-      const longOpen = doorScheduleOk ? DOOR_IDS.map((id) => {
+      const scheduleOk = !BeastConfig.get("banners.scheduleEnabled") ||
+        isWithinBannerSchedule(BeastConfig.get("banners.scheduleStart"), BeastConfig.get("banners.scheduleEnd"));
+      const longOpen = scheduleOk ? DOOR_IDS.map((id) => {
         const state = BeastHaSocket.getState(id);
         if (state?.state !== "on" || !tooLong(state)) return null;
         return BeastEntityPicker.friendlyName(id);
       }).filter(Boolean) : [];
-      const longUnlocked = lockScheduleOk ? LOCKS.filter((entry) => {
+      const longUnlocked = scheduleOk ? LOCKS.filter((entry) => {
         const state = BeastHaSocket.getState(entry.id);
         const value = state?.state;
         return value && !["locked", "unknown", "unavailable"].includes(value) && tooLong(state);

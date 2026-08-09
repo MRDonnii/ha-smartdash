@@ -50,6 +50,12 @@ button { cursor: pointer; }
 .admin-security-toggle span { display: grid; gap: 5px; }
 .admin-security-toggle small { color: var(--ink-muted); line-height: 1.4; }
 .admin-security-toggle input { width: 24px; height: 24px; accent-color: var(--accent-b); }
+.admin-schedule-toggle { margin-top: 18px; }
+.admin-schedule-fields { display: flex; gap: var(--space-3); margin-top: 14px; }
+.admin-schedule-fields[hidden] { display: none; }
+.admin-schedule-fields label { flex: 1; display: grid; gap: 6px; }
+.admin-schedule-fields label > span { color: var(--ink-muted); font-size: var(--text-xs); font-weight: 700; }
+.admin-schedule-fields input { min-height: 52px; padding: 8px 10px; border: 1px solid var(--border-strong); border-radius: 10px; background: var(--surface-2); color: var(--ink); }
 /* A real, scaled replica of the live ambient screen -- a fixed 1280x720
    canvas holding the actual .beast-ambient-* markup/CSS, scaled down with
    a transform to fit a small box, rather than a separate hand-built mockup

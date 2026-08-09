@@ -1403,24 +1403,13 @@
         </label>
         <label><span>${t("Advar efter (minutter)", "Warn after (minutes)")}</span><input type="number" min="1" max="720" id="adminAdvarslerDoorMinutes" value="${Number(banners.doorOpenTooLongMinutes) || 15}"></label>
         ${doorsConfigured ? "" : `<p class="admin-field-hint">${t("Ingen døre/låse fundet endnu — sæt dem op under Sikkerhed, så virker banneret automatisk.", "No doors/locks found yet — set them up under Security, and the banner will work automatically.")}</p>`}
-        <p class="admin-field-hint">${t("Begræns advarslerne til et tidsrum, fx om natten — ellers vises de altid, når tærsklen er nået.", "Restrict the warnings to a time window, e.g. overnight — otherwise they show any time the threshold is reached.")}</p>
-        <label><span>${t("Døre & vinduer — kun i tidsrum", "Doors & windows — only within time window")}</span>
-          <select id="adminAdvarslerDoorScheduleEnabled">
-            <option value="0" ${banners.doorScheduleEnabled ? "" : "selected"}>${t("Fra — advar altid", "Off — always warn")}</option>
-            <option value="1" ${banners.doorScheduleEnabled ? "selected" : ""}>${t("Til — kun i tidsrum", "On — only within time window")}</option>
-          </select>
-        </label>
-        <label><span>${t("Døre & vinduer — starttidspunkt", "Doors & windows — start time")}</span><input type="time" id="adminAdvarslerDoorScheduleStart" value="${escapeHtml(banners.doorScheduleStart || "22:00")}"></label>
-        <label><span>${t("Døre & vinduer — sluttidspunkt", "Doors & windows — end time")}</span><input type="time" id="adminAdvarslerDoorScheduleEnd" value="${escapeHtml(banners.doorScheduleEnd || "06:00")}"></label>
-        <label><span>${t("Låse — kun i tidsrum", "Locks — only within time window")}</span>
-          <select id="adminAdvarslerLockScheduleEnabled">
-            <option value="0" ${banners.lockScheduleEnabled ? "" : "selected"}>${t("Fra — advar altid", "Off — always warn")}</option>
-            <option value="1" ${banners.lockScheduleEnabled ? "selected" : ""}>${t("Til — kun i tidsrum", "On — only within time window")}</option>
-          </select>
-        </label>
-        <label><span>${t("Låse — starttidspunkt", "Locks — start time")}</span><input type="time" id="adminAdvarslerLockScheduleStart" value="${escapeHtml(banners.lockScheduleStart || "22:00")}"></label>
-        <label><span>${t("Låse — sluttidspunkt", "Locks — end time")}</span><input type="time" id="adminAdvarslerLockScheduleEnd" value="${escapeHtml(banners.lockScheduleEnd || "06:00")}"></label>
-      </div></div>
+      </div>
+        <label class="admin-security-toggle admin-schedule-toggle"><span><strong>${t("Kun advar i et bestemt tidsrum", "Only warn within a time window")}</strong><small>${t("Fx kun om natten — ellers vises advarslen når som helst tærsklen er nået.", "E.g. overnight only — otherwise the warning shows any time the threshold is reached.")}</small></span><input type="checkbox" id="adminAdvarslerScheduleEnabled"${banners.scheduleEnabled ? " checked" : ""}></label>
+        <div class="admin-schedule-fields" id="adminAdvarslerScheduleFields"${banners.scheduleEnabled ? "" : " hidden"}>
+          <label><span>${t("Fra", "From")}</span><input type="time" id="adminAdvarslerScheduleStart" value="${escapeHtml(banners.scheduleStart || "22:00")}"></label>
+          <label><span>${t("Til", "To")}</span><input type="time" id="adminAdvarslerScheduleEnd" value="${escapeHtml(banners.scheduleEnd || "06:00")}"></label>
+        </div>
+      </div>
       <div class="admin-actions"><button type="button" class="beast-btn beast-btn-primary" id="adminAdvarslerSave">${t("Gem advarsler", "Save alerts")}</button><span class="admin-save-state" data-save-state="advarsler"></span></div>
     </section>`;
   }
@@ -1940,6 +1929,9 @@
       });
       renderShell();
     });
+    document.getElementById("adminAdvarslerScheduleEnabled")?.addEventListener("change", (event) => {
+      document.getElementById("adminAdvarslerScheduleFields")?.toggleAttribute("hidden", !event.currentTarget.checked);
+    });
     document.getElementById("adminAdvarslerSave")?.addEventListener("click", (event) => save(event.currentTarget, "advarsler", async () => {
       const features = {
         ...(BeastConfig.get("features") || {}),
@@ -1960,12 +1952,9 @@
         ...(BeastConfig.get("banners") || {}),
         doorOpenTooLongMinutes: Math.max(1, Number(document.getElementById("adminAdvarslerDoorMinutes").value) || 15),
         printerCameraOverride: document.getElementById("adminAdvarslerPrinterCamera").value || null,
-        doorScheduleEnabled: document.getElementById("adminAdvarslerDoorScheduleEnabled").value === "1",
-        doorScheduleStart: document.getElementById("adminAdvarslerDoorScheduleStart").value || "22:00",
-        doorScheduleEnd: document.getElementById("adminAdvarslerDoorScheduleEnd").value || "06:00",
-        lockScheduleEnabled: document.getElementById("adminAdvarslerLockScheduleEnabled").value === "1",
-        lockScheduleStart: document.getElementById("adminAdvarslerLockScheduleStart").value || "22:00",
-        lockScheduleEnd: document.getElementById("adminAdvarslerLockScheduleEnd").value || "06:00"
+        scheduleEnabled: document.getElementById("adminAdvarslerScheduleEnabled").checked,
+        scheduleStart: document.getElementById("adminAdvarslerScheduleStart").value || "22:00",
+        scheduleEnd: document.getElementById("adminAdvarslerScheduleEnd").value || "06:00"
       };
       const result = await BeastConfig.setMany({ features, appEntities, banners });
       return { success: result?.success !== false };
