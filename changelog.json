@@ -1,5 +1,29 @@
 [
   {
+    "version": "20260809-11",
+    "tag": "v0.5.43",
+    "date": "2026-08-09",
+    "changes": [
+      "Screensaver camera tiles are bigger again, with a guaranteed, visible gap between them and a smaller (but still consistent) margin to the screen edge -- the previous auto-distributed spacing could collapse to zero once the tiles got big enough to need shrinking to fit.",
+      "Fixed the camera row not being vertically centered in the space between the weather/security pills and the bottom hint text -- it was hugging the hint text instead, because the reserved space wasn't actually being reserved.",
+      "Fixed the camera row's side margin effectively doubling up with the screen's own edge margin.",
+      "The vertical spacing in the screensaver's bottom section (camera row to hint text) now matches the spacing used between the weather/security pills above it, for a more consistent rhythm.",
+      "Fixed the screensaver preview in Administration not accurately reflecting the real layout/sizing -- several measurements (padding, clock size, camera spacing) were using viewport-relative units that resolved against the actual browser window instead of the preview's own fixed canvas.",
+      "The dashboard now checks for a new release every 10 minutes instead of every 12 hours, so it actually picks up a new version automatically (while idle) soon after one ships, instead of running a stale build until someone manually reloads it.",
+      "Added a \"Start pauseskærm\" button to the camera menu (the ⋮ button on the front page's camera card) so you can preview the screensaver on demand instead of waiting for it to trigger on its own."
+    ]
+  },
+  {
+    "version": "20260809-10",
+    "tag": "v0.5.42",
+    "date": "2026-08-09",
+    "changes": [
+      "Fixed screensaver/front-page camera tiles showing an empty box with no picture -- the live camera feed wasn't forcing the same reliable video transport already used by the camera strip on the front page, so it could silently fail to connect.",
+      "Camera tiles that fall back to a still image (cameras without a fast live-stream source) now retry periodically if the first snapshot fails to load, instead of staying blank for the rest of the idle period.",
+      "Added two more cameras (3D-printer, Bag indgang) to the fast live-stream path instead of falling back to a still image."
+    ]
+  },
+  {
     "version": "20260809-09",
     "tag": "v0.5.41",
     "date": "2026-08-09",

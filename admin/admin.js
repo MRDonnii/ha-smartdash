@@ -836,7 +836,7 @@
       const camera = (window.BeastCameras?.getAllCameras?.() || [])[0];
       let media = "";
       if (camera?.streamName) {
-        const src = `/camera-player.html?v=11&sub=1&src=${encodeURIComponent(camera.streamName)}`;
+        const src = `/camera-player.html?v=11&transport=mse&sub=1&src=${encodeURIComponent(camera.streamName)}`;
         media = `<iframe class="admin-ov-preview-camera-img" src="${src}" allow="autoplay"></iframe>`;
       } else if (camera?.entityPicture) {
         media = `<img class="admin-ov-preview-camera-img" data-preview-camera-picture="${escapeHtml(camera.entityPicture)}" alt="">`;
@@ -1236,7 +1236,7 @@
       const camera = window.BeastCameras?.resolveCamera?.(id);
       if (!camera) return "";
       if (camera.streamName) {
-        const src = `/camera-player.html?v=11&sub=1&src=${encodeURIComponent(camera.streamName)}`;
+        const src = `/camera-player.html?v=11&transport=mse&sub=1&src=${encodeURIComponent(camera.streamName)}`;
         return `<div class="beast-ambient-camera-tile"><iframe class="beast-ambient-camera-tile-frame" src="${src}" allow="autoplay"></iframe></div>`;
       }
       if (camera.entityPicture) {
@@ -1266,7 +1266,7 @@
     const cameraRowHtml = ambientPreviewCameraMarkup(screensaver);
     return `<div class="admin-ambient-preview">
       <div class="admin-ambient-preview-canvas">
-        <div class="beast-ambient-mode is-visible${hasBg ? " has-custom-background" : ""}"${bgStyle}>
+        <div class="beast-ambient-mode is-visible${hasBg ? " has-custom-background" : ""}${cameraRowHtml ? " has-camera-row" : ""}"${bgStyle}>
           <div class="beast-ambient-main">
             <div class="beast-ambient-time${clockSizeClass}">${data.time}</div>
             <div class="beast-ambient-date">${escapeHtml(data.date)}</div>
@@ -1276,7 +1276,7 @@
             </div>
             ${screensaver.brightnessEnabled ? `<div class="beast-ambient-brightness">${BeastCore.icon("sun", { size: 16 })}<span>${Number(screensaver.brightnessPercent) || 80}%</span></div>` : ""}
           </div>
-          <div class="beast-ambient-bottom">${cameraRowHtml}<small>${t("Tryk på skærmen for at åbne dashboardet", "Tap the screen to open the dashboard")}</small></div>
+          <div class="beast-ambient-bottom${cameraRowHtml ? " has-cameras" : ""}">${cameraRowHtml}<small>${t("Tryk på skærmen for at åbne dashboardet", "Tap the screen to open the dashboard")}</small></div>
         </div>
       </div>
     </div>

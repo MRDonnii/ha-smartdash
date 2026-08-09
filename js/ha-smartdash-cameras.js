@@ -15,7 +15,9 @@
     terrasse: "Terrasse",
     terrasse_syd: "Terrasse_syd",
     sandkassen: "sandkassen",
-    trampolin: "trampolin"
+    trampolin: "trampolin",
+    "3d_printer": "3dprinter",
+    bag_indgang: "Bag_indgang"
   };
 
   let containerEl = null;

@@ -348,14 +348,23 @@ a.beast-rail-btn:visited {
 
 /* Two-row grid (not a single centered flex column) so the clock/summary
    block and the bottom bar are independent: 1fr always gives .beast-
-   ambient-main all the leftover space to center itself within, and auto
-   always sizes .beast-ambient-bottom to just its own content and pins it
-   to the screen's bottom edge -- true regardless of whether the bottom
-   bar has camera tiles in it or is just the hint text alone. A single
-   flex column with one shared justify-content/margin-auto can't do both
-   independently (whichever element claims the free space pushes the
-   other off-center). */
+   ambient-main all the leftover space to center itself within, and the
+   auto row sizes .beast-ambient-bottom to its own content (a min-height
+   when it has camera tiles, see .has-cameras below) and pins it to the
+   screen's bottom edge -- true regardless of whether the bottom bar has
+   camera tiles in it or is just the hint text alone. A single flex column
+   with one shared justify-content/margin-auto can't do both independently
+   (whichever element claims the free space pushes the other off-center). */
 .beast-ambient-mode { position:fixed; inset:0; z-index:2000; overflow:hidden; display:grid; grid-template-rows: 1fr auto; padding:8vh 8vw; opacity:0; visibility:hidden; pointer-events:none; color:#f7fbff; background:radial-gradient(circle at 50% 35%, color-mix(in srgb, var(--accent-a) 16%, transparent), transparent 38%),rgba(3,6,12,.96); background-size:cover; background-position:center; background-repeat:no-repeat; backdrop-filter:blur(24px); transition:opacity .5s ease,visibility .5s ease; }
+/* min-height on the *item* (.beast-ambient-bottom.has-cameras below) only
+   ever ended up sizing the grid row to its actual content -- the tile
+   row + gap + hint, nowhere near 46vh -- because a grid item's min-height
+   doesn't reliably force its auto track to grow past that content size.
+   Setting minmax(46vh,auto) on the *track* itself is what actually
+   reserves the space, which is what lets .beast-ambient-bottom's own
+   justify-content:center below genuinely center the tiles in the middle
+   of it instead of them sitting flush against the hint text underneath. */
+.beast-ambient-mode.has-camera-row { grid-template-rows: 1fr minmax(46vh, auto); }
 .beast-ambient-mode.is-visible { opacity:1; visibility:visible; pointer-events:auto; }
 .beast-ambient-mode.has-custom-background { backdrop-filter:none; }
 .beast-ambient-main { min-height:0; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:12px; }
@@ -369,13 +378,31 @@ a.beast-rail-btn:visited {
 .beast-ambient-brightness { display:flex; align-items:center; gap:10px; margin-top:18px; background:rgba(10,12,20,.6); border:1px solid rgba(255,255,255,.14); border-radius:999px; padding:10px 18px; color:rgba(255,255,255,.7); backdrop-filter:blur(8px); }
 .beast-ambient-brightness label { display:flex; align-items:center; gap:10px; }
 .beast-ambient-brightness input[type="range"] { width:170px; accent-color:var(--accent-a); }
-/* Always the grid's second row -- always at the bottom, camera tiles or not. */
-.beast-ambient-bottom { display:flex; flex-direction:column; align-items:center; gap:14px; padding-top:20px; }
+/* Always the grid's second row -- always at the bottom, camera tiles or
+   not. When it has camera tiles, .has-camera-row above reserves 46vh for
+   this whole row, and justify-content:center here centers the tiles+hint
+   as a group within that reserved space, instead of them shrink-wrapping
+   and hugging the very bottom edge with a big empty gap above. padding-
+   top and gap are both 18px, matching .beast-ambient-summary's own 18px
+   gap between the weather/security pills -- one consistent rhythm (main
+   block -> camera row -> hint text) instead of mismatched spacing that
+   read as uneven next to the pills row above it. */
+.beast-ambient-bottom { display:flex; flex-direction:column; align-items:center; gap:18px; padding-top:18px; }
+.beast-ambient-bottom.has-cameras { justify-content:center; }
 .beast-ambient-bottom > small { color:rgba(255,255,255,.35); font-size:1rem; }
-/* Tiles in a row -- up to 3, auto-centered by justify-content regardless
-   of count (1 tile just ends up centered). */
-.beast-ambient-camera-row { display:flex; justify-content:center; align-items:center; flex-wrap:wrap; gap:16px; }
-.beast-ambient-camera-tile { width:280px; height:168px; border-radius:16px; overflow:hidden; border:1px solid rgba(255,255,255,.14); background:rgba(255,255,255,.04); box-shadow:0 14px 40px rgba(0,0,0,.35); }
+/* Row padding (edge gap) and inter-tile gap are separate, fixed values,
+   and tile width is computed to exactly fill what's left -- so 3 tiles
+   always have guaranteed-visible spacing on every side and never need to
+   flex-shrink to fit (space-evenly alone only distributes *leftover*
+   space; when 3 tiles' natural width already exceeds the row, there's no
+   leftover left and they shrink flush against each other with no visible
+   gap at all). 1 or 2 tiles are the same fixed size, just centered by
+   justify-content in whatever's left. The row's own 16px edge padding
+   was stacking on top of .beast-ambient-mode's own 8vw padding, doubling
+   up the side margin -- the negative margin/width cancels that 8vw back
+   out so the row's 16px is the *only* margin from the true screen edge. */
+.beast-ambient-camera-row { display:flex; justify-content:center; align-items:center; gap:24px; width:calc(100% + 16vw); margin:0 -8vw; padding:0 16px; box-sizing:border-box; }
+.beast-ambient-camera-tile { flex:0 0 calc((100% - 48px) / 3); max-width:680px; aspect-ratio:5 / 3; border-radius:18px; overflow:hidden; border:1px solid rgba(255,255,255,.14); background:rgba(255,255,255,.04); box-shadow:0 14px 40px rgba(0,0,0,.35); }
 .beast-ambient-camera-tile-frame { display:block; width:100%; height:100%; object-fit:cover; border:0; }
 .beast-is-ambient .beast-app { visibility:hidden; }
 
