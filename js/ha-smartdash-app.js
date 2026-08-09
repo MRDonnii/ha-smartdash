@@ -723,7 +723,7 @@ function renderOverviewSection() {
       <div id="beastOvBanners"></div>
       ${(freeform ? configuredCards : ["main","compactTop","compactBottom","wideTop","wideBottom"]).map(widget).join("")}
       ${overviewCameraMenuMarkup(hasCameras)}
-      <div id="beastOvClockMusic"></div>
+      <div id="beastOvClockMusic" data-card-editor-anchor></div>
     </div>
   `;
 }
@@ -866,16 +866,16 @@ function setupNavigation() {
   document.addEventListener("beast:navigate", (event) => activate(event.detail?.section || "overview"));
 
   railButtons.forEach((btn) => btn.addEventListener("click", () => activate(btn.dataset.section)));
-  // Delegated instead of wired per-element: the front page's live edit
-  // mode (ha-smartdash-overview.js) adds/removes/rebuilds [data-nav] cards
-  // on the fly, so a one-time forEach would silently miss any card added
-  // after the initial mount. window.beastOverviewEditing/
-  // beastOverviewCardDraggedUntil let edit mode suppress navigation while
-  // active or right after a drag, the same drag-vs-click pattern already
-  // used for banner dragging.
+  // Delegated instead of wired per-element: any page's live card editor
+  // (js/ha-smartdash-card-editor.js) adds/removes/rebuilds [data-nav]
+  // cards on the fly, so a one-time forEach would silently miss any card
+  // added after the initial mount. window.beastCardEditorActive/
+  // beastCardDraggedUntil (set by the card editor) let edit mode suppress
+  // navigation while active or right after a drag, the same drag-vs-click
+  // pattern already used for banner dragging.
   content.addEventListener("click", (event) => {
-    if (window.beastOverviewEditing) return;
-    if (Date.now() < (window.beastOverviewCardDraggedUntil || 0)) return;
+    if (window.beastCardEditorActive) return;
+    if (Date.now() < (window.beastCardDraggedUntil || 0)) return;
     const el = event.target.closest("[data-nav]");
     if (el) activate(el.dataset.nav);
   });
