@@ -5,6 +5,7 @@
   const PRESENCE_CLASSES = ["motion", "occupancy", "presence"];
   let ROOM_CLIMATE_SENSORS = {};
   let ROOM_POPUP_ENTITIES = {};
+  let ROOM_LAYOUT = { order: [], hidden: [], sizes: {} };
 
   // No real photo on file for every area — these self-contained gradient
   // placeholders (no external image dependency) stand in where one is missing.
@@ -143,15 +144,22 @@
   // only the text/badges that actually change get touched, and a card's
   // photo is fetched once, on creation, never again.
   function renderGrid() {
+    const configured = BeastConfig.get("pageLayouts.rooms") || {};
+    ROOM_LAYOUT = configured.roomLayout || ROOM_LAYOUT;
+    const hidden = new Set(Array.isArray(ROOM_LAYOUT.hidden) ? ROOM_LAYOUT.hidden : []);
+    const order = Array.isArray(ROOM_LAYOUT.order) ? ROOM_LAYOUT.order : [];
+    const orderIndex = new Map(order.map((id, index) => [id, index]));
     const areas = ROOM_ORDER
       .map((areaId) => BeastRegistry.getArea(areaId))
-      .filter(Boolean);
+      .filter((area) => area && !hidden.has(area.area_id))
+      .sort((a, b) => (orderIndex.get(a.area_id) ?? 9999) - (orderIndex.get(b.area_id) ?? 9999));
 
     let grid = document.getElementById("beastRoomsGrid");
     if (!grid) {
-      containerEl.innerHTML = `<div class="beast-rooms-grid" id="beastRoomsGrid"></div><div id="beastRoomModalHost"></div>`;
+      containerEl.innerHTML = `<button type="button" class="beast-page-edit-trigger beast-rooms-layout-trigger" id="beastRoomsLayoutEdit" aria-label="Rediger rumkort" title="Rediger rumkort">⋮</button><div class="beast-rooms-grid" id="beastRoomsGrid"></div><div id="beastRoomModalHost"></div>`;
       grid = document.getElementById("beastRoomsGrid");
       observeGridResize(grid);
+      document.getElementById("beastRoomsLayoutEdit")?.addEventListener("click", openRoomLayoutEditor);
     }
 
     areas.forEach((area) => {
@@ -184,6 +192,11 @@
       card.type = "button";
       card.className = "beast-room-card";
       card.dataset.areaId = area.area_id;
+      const size = ROOM_LAYOUT.sizes?.[area.area_id];
+      if (size?.w || size?.h) {
+        card.style.setProperty("--room-card-w", String(Math.max(1, Math.min(4, Number(size.w) || 1))));
+        card.style.setProperty("--room-card-h", String(Math.max(1, Math.min(2, Number(size.h) || 1))));
+      }
       card.innerHTML = `
         <div class="beast-room-photo">${roomPhotoMarkup(area)}</div>
         <div class="beast-room-climate" aria-label="Temperatur ${summary.temperatureLabel}, fugtighed ${summary.humidityLabel}">
@@ -201,6 +214,31 @@
       if (img) BeastAuth.setAuthedImageSrc(img, img.dataset.haPath);
     });
     balanceGridColumns(grid);
+  }
+
+  function openRoomLayoutEditor() {
+    document.getElementById("beastRoomLayoutEditor")?.remove();
+    const layout = BeastConfig.get("pageLayouts.rooms.roomLayout") || {};
+    const hidden = new Set(Array.isArray(layout.hidden) ? layout.hidden : []);
+    const order = Array.isArray(layout.order) && layout.order.length ? layout.order.slice() : ROOM_ORDER.slice();
+    const ids = [...new Set([...order, ...ROOM_ORDER])].filter((id) => ROOM_ORDER.includes(id));
+    const overlay = document.createElement("div"); overlay.id = "beastRoomLayoutEditor"; overlay.className = "beast-modal-overlay";
+    overlay.innerHTML = `<div class="beast-modal beast-room-layout-modal" role="dialog" aria-modal="true"><div class="beast-modal-header"><h3>Rediger rumkort</h3><button type="button" class="beast-modal-close" data-close>×</button></div><div class="beast-modal-body"><p class="beast-page-editor-hint">Skjul rum eller ændr rækkefølgen. Popup-styringen i hvert rum ændres ikke.</p><div class="beast-room-layout-list">${ids.map((id, index) => { const area = BeastRegistry.getArea(id); return `<div class="beast-room-layout-row" data-room-layout-id="${id}"><label><input type="checkbox" data-room-visible ${hidden.has(id) ? "" : "checked"}> <strong>${area?.name || id}</strong></label><div><button type="button" data-room-up ${index ? "" : "disabled"}>↑</button><button type="button" data-room-down ${index < ids.length - 1 ? "" : "disabled"}>↓</button></div></div>`; }).join("")}</div><button type="button" class="beast-btn beast-btn-primary" data-room-layout-save>Gem rumlayout</button></div></div>`;
+    document.body.appendChild(overlay);
+    const list = overlay.querySelector(".beast-room-layout-list");
+    overlay.addEventListener("click", (event) => {
+      if (event.target === overlay || event.target.closest("[data-close]")) return overlay.remove();
+      if (event.target.closest("[data-room-layout-save]")) {
+        const nextOrder = [...list.querySelectorAll("[data-room-layout-id]")].map((item) => item.dataset.roomLayoutId);
+        const nextHidden = [...list.querySelectorAll("[data-room-layout-id]")].filter((item) => !item.querySelector("[data-room-visible]").checked).map((item) => item.dataset.roomLayoutId);
+        BeastConfig.set("pageLayouts.rooms.roomLayout", { ...layout, order: nextOrder, hidden: nextHidden });
+        overlay.remove(); renderGrid(); return;
+      }
+      const row = event.target.closest("[data-room-layout-id]"); if (!row) return;
+      if (event.target.closest("[data-room-up]") && row.previousElementSibling) list.insertBefore(row, row.previousElementSibling);
+      if (event.target.closest("[data-room-down]") && row.nextElementSibling) list.insertBefore(row.nextElementSibling, row);
+      if (event.target.closest("[data-room-up], [data-room-down]")) overlay.querySelectorAll(".beast-room-layout-row").forEach((item, i, all) => { item.querySelector("[data-room-up]").disabled = i === 0; item.querySelector("[data-room-down]").disabled = i === all.length - 1; });
+    });
   }
 
   const GRID_MIN_CARD_WIDTH = 280;

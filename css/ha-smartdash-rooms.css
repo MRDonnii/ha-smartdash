@@ -30,6 +30,7 @@
   color: var(--ink);
   transition: transform var(--transition-fast), border-color var(--transition-fast);
 }
+.beast-room-card[style*="--room-card-w"] { grid-column: span min(var(--room-card-w), 4); }
 
 .beast-room-card:hover {
   transform: translateY(-2px);
@@ -365,3 +366,10 @@
     grid-auto-rows: minmax(220px, auto);
   }
 }
+.beast-room-layout-modal { width: min(700px, calc(100vw - 32px)); }
+.beast-room-layout-list { display: grid; gap: 8px; margin: 14px 0 18px; }
+.beast-room-layout-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 58px; padding: 8px 12px; border: 1px solid var(--border); border-radius: var(--radius-md); background: var(--surface-2); }
+.beast-room-layout-row label { display: flex; align-items: center; gap: 10px; min-width: 0; font-size: var(--text-md); }
+.beast-room-layout-row input { width: 24px; height: 24px; accent-color: var(--accent); }
+.beast-room-layout-row button { min-width: 46px; min-height: 46px; border: 1px solid var(--border-strong); border-radius: 12px; background: var(--surface-solid); color: var(--ink); font-size: 20px; }
+.beast-room-layout-row button:disabled { opacity: .35; }

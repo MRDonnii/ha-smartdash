@@ -246,7 +246,31 @@
         <button type="button" data-energy-view="overview" class="${energyView === "overview" ? "is-active" : ""}">Overblik</button>
         <button type="button" data-energy-view="now" class="${energyView === "now" ? "is-active" : ""}">Nu</button>
       </div>
+      <button type="button" class="beast-energy-layout-btn" data-energy-layout aria-label="Rediger energilayout">⋮</button>
     </div>`;
+  }
+
+  function wireEnergyLayout() {
+    const layout = BeastConfig.get("pageLayouts.energy.energyLayout") || {};
+    const hidden = new Set(Array.isArray(layout.hidden) ? layout.hidden : []);
+    const map = { recommendation: ".beast-energy-recommendation", summary: ".beast-stat-grid, .beast-energy-now-summary", price: ".beast-energy-chart-price", usage: ".beast-energy-chart-usage", devices: ".beast-energy-now-groups" };
+    Object.entries(map).forEach(([id, selector]) => containerEl.querySelectorAll(selector).forEach((el) => el.classList.toggle("is-layout-hidden", hidden.has(id))));
+    containerEl.querySelector("[data-energy-layout]")?.addEventListener("click", () => openEnergyLayout(layout));
+  }
+
+  function openEnergyLayout(layout) {
+    document.getElementById("beastEnergyLayoutEditor")?.remove();
+    const hidden = new Set(Array.isArray(layout.hidden) ? layout.hidden : []);
+    const items = [["recommendation", "Anbefaling"], ["summary", "Nøgletal"], ["price", "Strømprisgraf"], ["usage", "Forbrugsgraf"], ["devices", "Forbrug pr. enhed"]];
+    const overlay = document.createElement("div"); overlay.id = "beastEnergyLayoutEditor"; overlay.className = "beast-modal-overlay";
+    overlay.innerHTML = `<div class="beast-modal beast-energy-layout-modal"><div class="beast-modal-header"><h3>Rediger energilayout</h3><button type="button" class="beast-modal-close" data-close>×</button></div><div class="beast-modal-body"><div class="beast-energy-layout-list">${items.map(([id,label]) => `<label><input type="checkbox" data-energy-section="${id}" ${hidden.has(id) ? "" : "checked"}><strong>${label}</strong></label>`).join("")}</div><button type="button" class="beast-btn beast-btn-primary" data-save-energy-layout>Gem layout</button></div></div>`;
+    document.body.appendChild(overlay);
+    overlay.addEventListener("click", (event) => {
+      if (event.target === overlay || event.target.closest("[data-close]")) return overlay.remove();
+      if (!event.target.closest("[data-save-energy-layout]")) return;
+      const nextHidden = items.filter(([id]) => !overlay.querySelector(`[data-energy-section="${id}"]`).checked).map(([id]) => id);
+      BeastConfig.set("pageLayouts.energy.energyLayout", { ...layout, hidden: nextHidden }); overlay.remove(); render();
+    });
   }
 
   function renderNowView() {
@@ -342,6 +366,7 @@
     if (energyView === "now") {
       if (!containerEl.querySelector(".beast-energy-now-groups")) {
         containerEl.innerHTML = renderNowView();
+        wireEnergyLayout();
         containerEl.querySelectorAll("[data-energy-view]").forEach((button) => button.addEventListener("click", () => {
           energyView = button.dataset.energyView;
           render();
@@ -437,6 +462,7 @@
         ${cachedHistoryPoints.length ? buildDetailedUsageChart(cachedHistoryPoints) : '<p class="beast-music-empty">Henter historik…</p>'}
       </div>
     `;
+    wireEnergyLayout();
 
     containerEl.querySelectorAll("[data-view]").forEach((btn) => {
       btn.addEventListener("click", () => {

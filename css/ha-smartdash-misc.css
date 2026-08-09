@@ -1470,6 +1470,47 @@
    an extra implicit grid row, otherwise height-2 cards occupy only two of
    three rows and leave the bottom third of the full-page view empty. */
 .beast-page-builder-grid > [data-card-editor-anchor] { display: none; }
+.beast-page-editor-host { position: relative; display: contents; }
+.beast-page-editor-scroll-host { overflow-x: hidden !important; overflow-y: auto !important; overscroll-behavior-y: contain; -webkit-overflow-scrolling: touch; }
+.beast-page-editor-scroll-host > :not(.beast-page-editor-host) { flex-shrink: 0; }
+/* Regression guard: this auxiliary editor grid lives inside an existing
+   full-page panel. It must never inherit the overview freeform grid's
+   100%-height/1fr behaviour, otherwise the original view is visually cut in
+   half whenever a custom card is present. */
+.beast-page-entity-grid { display: none; flex: 0 0 auto; width: 100%; height: fit-content !important; max-height: none !important; min-height: 0; margin-top: 18px; overflow: visible !important; grid-auto-rows: minmax(180px, auto) !important; }
+.beast-page-entity-grid.is-editing { display: grid; min-height: 180px; }
+.beast-page-entity-grid.is-freeform { display: grid; min-height: 0; }
+.beast-page-entity-card { min-height: 180px; }
+.beast-page-editor-hint { color: var(--ink-muted); line-height: 1.45; }
+.beast-page-editor-field { display: grid; gap: 7px; margin-bottom: 14px; color: var(--ink-muted); font-size: var(--text-sm); }
+.beast-page-editor-field input { min-height: 50px; padding: 0 14px; border: 1px solid var(--border-strong); border-radius: var(--radius-md); background: var(--surface-solid); color: var(--ink); font: inherit; }
+.beast-page-editor-field select { min-height: 50px; padding: 0 14px; border: 1px solid var(--border-strong); border-radius: var(--radius-md); background: var(--surface-solid); color: var(--ink); font: inherit; }
+.beast-page-editor-check { display: flex; align-items: center; gap: 10px; min-height: 48px; margin-bottom: 14px; color: var(--ink); font-size: var(--text-sm); }
+.beast-page-editor-check input { width: 22px; height: 22px; accent-color: var(--accent); }
+.beast-page-entity-card.is-disabled { opacity: .48; filter: saturate(.4); }
+.beast-page-entity-grid:not(.is-editing) .beast-page-entity-card.is-disabled { display: none; }
+.beast-standard-graph, .beast-standard-media, .beast-standard-calendar { display: grid; gap: 10px; padding: 18px; }
+.beast-standard-graph small, .beast-standard-media small, .beast-standard-calendar small { color: var(--ink-muted); }
+.beast-standard-graph strong, .beast-standard-media strong, .beast-standard-calendar strong { display: block; font-size: var(--text-lg); }
+.beast-standard-media, .beast-standard-calendar { grid-template-columns: auto 1fr; align-items: center; }
+.beast-standard-media > span, .beast-standard-calendar > span { display: grid; place-items: center; width: 48px; height: 48px; border-radius: 14px; background: var(--accent-soft); color: var(--accent); }
+.beast-standard-media em, .beast-standard-calendar em { color: var(--ink-faint); font-size: var(--text-xs); }
+.beast-standard-camera { padding: 10px; }
+.beast-standard-camera-frame { overflow: hidden; aspect-ratio: 16 / 9; display: grid; place-items: center; border-radius: var(--radius-md); background: #05070b; color: var(--ink-muted); }
+.beast-standard-camera-frame img { width: 100%; height: 100%; object-fit: cover; }
+.beast-page-entity-grid .beast-standard-camera-card { min-height: 220px; overflow: visible; }
+.beast-standard-camera strong { display: block; padding: 8px 4px 2px; }
+.beast-page-card-label { position: absolute; top: 12px; right: 16px; color: var(--ink-muted); font-size: var(--text-xs); }
+.beast-ov-card-duplicate { position: absolute; top: 10px; left: 48px; z-index: 22; width: 32px; height: 32px; display: grid; place-items: center; padding: 0; border: 1px solid var(--border-strong); border-radius: 10px; background: var(--surface-solid); color: var(--ink); touch-action: manipulation; }
+.beast-standard-toggle { width: 100%; min-height: 86px; display: flex; align-items: center; gap: 14px; padding: 16px; border: 1px solid var(--border); border-radius: var(--radius-md); background: var(--surface-2); color: var(--ink); text-align: left; font: inherit; touch-action: manipulation; }
+.beast-standard-toggle-icon { width: 48px; height: 48px; display: grid; place-items: center; flex: 0 0 48px; border-radius: 14px; background: var(--accent-soft); color: var(--accent); }
+.beast-standard-toggle small, .beast-standard-toggle strong { display: block; }
+.beast-standard-toggle small { color: var(--ink-muted); font-size: var(--text-sm); }
+.beast-standard-toggle strong { margin-top: 3px; font-size: var(--text-lg); }
+.beast-page-entity-modal { width: min(720px, calc(100vw - 36px)); }
+.beast-page-entity-search { width: 100%; min-height: 54px; margin-bottom: 12px; padding: 0 16px; border: 1px solid var(--border-strong); border-radius: var(--radius-md); background: var(--surface-solid); color: var(--ink); font: inherit; }
+.beast-page-entity-select { width: 100%; min-height: 240px; margin-bottom: 14px; padding: 8px; border: 1px solid var(--border); border-radius: var(--radius-md); background: var(--surface-solid); color: var(--ink); font: inherit; }
+.beast-page-entity-select option { padding: 10px; }
 
 .beast-page-builder-card {
   position: relative;
@@ -2426,3 +2467,32 @@
   font-size: 12.5px;
   line-height: 1.5;
 }
+.beast-energy-panel .is-layout-hidden { display: none !important; }
+.beast-energy-layout-btn { width: 44px; height: 44px; border: 0; background: transparent; color: var(--ink-muted); font-size: 28px; }
+.beast-energy-layout-modal { width: min(620px, calc(100vw - 32px)); }
+.beast-energy-layout-list { display: grid; gap: 10px; margin-bottom: 18px; }
+.beast-energy-layout-list label { display: flex; align-items: center; gap: 12px; min-height: 56px; padding: 10px 14px; border: 1px solid var(--border); border-radius: var(--radius-md); background: var(--surface-2); }
+.beast-energy-layout-list input { width: 24px; height: 24px; accent-color: var(--accent); }
+.beast-heating-panel .is-layout-hidden { display: none !important; }
+.beast-heating-layout-btn { width: 44px; height: 44px; border: 0; background: transparent; color: var(--ink-muted); font-size: 28px; }
+.beast-heating-layout-modal { width: min(620px, calc(100vw - 32px)); }
+.beast-heating-layout-list { display: grid; gap: 10px; margin-bottom: 18px; }
+.beast-heating-layout-list label { display: flex; align-items: center; gap: 12px; min-height: 56px; padding: 10px 14px; border: 1px solid var(--border); border-radius: var(--radius-md); background: var(--surface-2); }
+.beast-heating-layout-list input { width: 24px; height: 24px; accent-color: var(--accent); }
+.beast-pool-panel .is-layout-hidden { display: none !important; }
+.beast-pool-layout-btn { width: 44px; height: 44px; border: 0; background: transparent; color: var(--ink-muted); font-size: 28px; }
+.beast-pool-layout-modal { width: min(620px, calc(100vw - 32px)); }
+.beast-pool-layout-list { display: grid; gap: 10px; margin-bottom: 18px; }
+.beast-pool-layout-list label { display: flex; align-items: center; gap: 12px; min-height: 56px; padding: 10px 14px; border: 1px solid var(--border); border-radius: var(--radius-md); background: var(--surface-2); }
+.beast-pool-layout-list input { width: 24px; height: 24px; accent-color: var(--accent); }
+.beast-car-panel .is-layout-hidden { display: none !important; }
+.beast-car-layout-btn { position: absolute; top: 12px; right: 12px; width: 44px; height: 44px; border: 0; background: transparent; color: var(--ink-muted); font-size: 28px; }
+.beast-car-layout-modal { width: min(620px, calc(100vw - 32px)); }
+.beast-car-layout-list { display: grid; gap: 10px; margin-bottom: 18px; }
+.beast-car-layout-list label { display: flex; align-items: center; gap: 12px; min-height: 56px; padding: 10px 14px; border: 1px solid var(--border); border-radius: var(--radius-md); background: var(--surface-2); }
+.beast-car-layout-list input { width: 24px; height: 24px; accent-color: var(--accent); }
+.beast-waste-panel .is-layout-hidden { display: none !important; }
+.beast-calendar-layout-modal { width: min(620px, calc(100vw - 32px)); }
+.beast-calendar-layout-list { display: grid; gap: 10px; margin-bottom: 18px; }
+.beast-calendar-layout-list label { display: flex; align-items: center; gap: 12px; min-height: 56px; padding: 10px 14px; border: 1px solid var(--border); border-radius: var(--radius-md); background: var(--surface-2); }
+.beast-calendar-layout-list input { width: 24px; height: 24px; accent-color: var(--accent); }

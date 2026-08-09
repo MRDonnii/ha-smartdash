@@ -141,7 +141,7 @@
     const headline = alarmTriggered ? "Alarm aktiveret" : alarmArmed && !openSensors.length ? "Huset er sikret" : openSensors.length || unlockedCount ? "Kræver opmærksomhed" : "Klar til tilkobling";
     const subline = alarmTriggered ? "Kontrollér huset med det samme" : `${openSensors.length} åbne døre eller vinduer · ${unlockedCount} ulåste · ${onlineSystems}/${ALARM_PANELS.length} systemer online`;
     containerEl.innerHTML = `
-      <div class="beast-security-command${alarmTriggered ? " is-triggered" : ""}">
+      <button type="button" class="beast-page-edit-trigger" id="beastSecurityLayoutEdit" aria-label="Rediger sikkerhedslayout">⋮</button><div class="beast-security-command${alarmTriggered ? " is-triggered" : ""}">
         <section class="beast-security-hero">
           <div class="beast-security-hero-top">
             <span class="beast-security-orbit">${BeastCore.icon("shield", { size: 42 })}</span>
@@ -186,6 +186,13 @@
         </section>
       </div>
     `;
+    const securityLayout = BeastConfig.get("pageLayouts.security.securityLayout") || {};
+    const hiddenSections = new Set(Array.isArray(securityLayout.hidden) ? securityLayout.hidden : []);
+    ["hero", "systems", "entries"].forEach((name) => {
+      const element = containerEl.querySelector(`.beast-security-${name}`);
+      if (element) element.classList.toggle("is-layout-hidden", hiddenSections.has(name));
+    });
+    containerEl.querySelector("#beastSecurityLayoutEdit")?.addEventListener("click", openSecurityLayoutEditor);
 
     containerEl.querySelectorAll("[data-action='toggle-lock']").forEach((btn) => {
       btn.addEventListener("click", () => {
@@ -200,6 +207,23 @@
     containerEl.querySelector("[data-action='lock-all']")?.addEventListener("click", () => {
       const targets = entryStates.filter((entry) => !entry.locked).map((entry) => entry.lockEntity);
       if (targets.length) callService("lock", "lock", targets).then(() => window.setTimeout(render, 400));
+    });
+  }
+
+  function openSecurityLayoutEditor() {
+    document.getElementById("beastSecurityLayoutEditor")?.remove();
+    const current = BeastConfig.get("pageLayouts.security.securityLayout") || {};
+    const hidden = new Set(Array.isArray(current.hidden) ? current.hidden : []);
+    const items = [["hero", "Samlet sikkerhedsstatus"], ["systems", "Alarmsystemer"], ["entries", "Indgange, låse og åbninger"]];
+    const overlay = document.createElement("div"); overlay.id = "beastSecurityLayoutEditor"; overlay.className = "beast-modal-overlay";
+    overlay.innerHTML = `<div class="beast-modal beast-security-layout-modal" role="dialog" aria-modal="true"><div class="beast-modal-header"><h3>Rediger sikkerhedslayout</h3><button type="button" class="beast-modal-close" data-close>×</button></div><div class="beast-modal-body"><p class="beast-page-editor-hint">Skjul de sektioner, du ikke vil bruge. Alarm- og låsestyring ændres ikke.</p><div class="beast-security-layout-list">${items.map(([id, label]) => `<label><input type="checkbox" data-security-section="${id}" ${hidden.has(id) ? "" : "checked"}> <strong>${label}</strong></label>`).join("")}</div><button type="button" class="beast-btn beast-btn-primary" data-security-layout-save>Gem layout</button></div></div>`;
+    document.body.appendChild(overlay);
+    overlay.addEventListener("click", (event) => {
+      if (event.target === overlay || event.target.closest("[data-close]")) return overlay.remove();
+      if (!event.target.closest("[data-security-layout-save]")) return;
+      const nextHidden = items.filter(([id]) => !overlay.querySelector(`[data-security-section="${id}"]`).checked).map(([id]) => id);
+      BeastConfig.set("pageLayouts.security.securityLayout", { ...current, hidden: nextHidden });
+      overlay.remove(); render();
     });
   }
 

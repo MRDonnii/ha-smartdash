@@ -108,11 +108,18 @@
    deliberately explicit Gem/Annullér rather than autosave, since this is a
    shared household touchscreen where an accidental drag must never
    silently persist. */
-.beast-ov-edit-bar { position:fixed; left:50%; bottom:20px; z-index:60; display:flex; align-items:center; gap:16px; padding:12px 14px 12px 20px; transform:translateX(-50%); border:1px solid var(--border-strong); border-radius:999px; background:color-mix(in srgb,var(--surface-2-solid) 96%,transparent); color:var(--ink); font-weight:750; box-shadow:0 18px 46px rgba(0,0,0,.5); backdrop-filter:blur(16px); }
+.beast-ov-edit-bar { position:fixed; left:50%; bottom:20px; z-index:60; max-width:calc(100vw - 28px); display:flex; align-items:center; gap:16px; padding:12px 14px 12px 20px; transform:translateX(-50%); border:1px solid var(--border-strong); border-radius:999px; background:color-mix(in srgb,var(--surface-2-solid) 96%,transparent); color:var(--ink); font-weight:750; box-shadow:0 18px 46px rgba(0,0,0,.5); backdrop-filter:blur(16px); }
 .beast-ov-edit-bar span { display:flex; align-items:center; gap:8px; }
-.beast-ov-edit-bar-actions { display:flex; gap:10px; }
+.beast-ov-edit-bar-actions { display:flex; gap:10px; min-width:max-content; overflow-x:auto; scrollbar-width:none; }
+.beast-ov-edit-bar-actions::-webkit-scrollbar { display:none; }
 .beast-ov-edit-bar-actions button { min-height:40px; padding:0 18px; border-radius:999px; font-weight:750; }
 .beast-ov-edit-bar-actions button[data-ov-edit-cancel] { border:1px solid var(--border-strong); background:transparent; color:var(--ink-muted); }
+.beast-ov-edit-bar-actions button[data-ov-edit-clear] { border:1px solid rgba(255,91,122,.32); background:rgba(255,91,122,.08); color:#ff7b95; }
+@media (max-width: 900px) {
+  .beast-ov-edit-bar { left:12px; right:12px; bottom:12px; max-width:none; transform:none; border-radius:18px; padding:10px 12px; overflow-x:auto; }
+  .beast-ov-edit-bar > span { flex:0 0 auto; }
+  .beast-ov-edit-bar-actions button { min-height:48px; padding-inline:14px; white-space:nowrap; }
+}
 
 .beast-ov-toolbar { position:absolute; top:12px; right:12px; z-index:24; display:flex; gap:8px; }
 .beast-ov-toolbar button { position:relative; width:46px; height:46px; display:grid; place-items:center; border:1px solid var(--border-strong); border-radius:50%; background:color-mix(in srgb,var(--surface-2-solid) 92%,transparent); color:var(--ink-muted); box-shadow:0 10px 28px rgba(0,0,0,.28); backdrop-filter:blur(14px); }
@@ -128,7 +135,7 @@
    guarantee (on top of the JS-level beastOverviewEditing check in
    ha-smartdash-app.js) that nothing inside a card can be tapped by
    accident, including buttons/links this stylesheet doesn't know about. */
-.beast-overview-grid.is-editing .beast-ov-card:not(.beast-ov-card-add) > *:not(.beast-ov-card-drag):not(.beast-ov-card-resize):not(.beast-ov-card-remove):not(.beast-ov-card-configure) { pointer-events: none; }
+.beast-overview-grid.is-editing .beast-ov-card:not(.beast-ov-card-add) > *:not(.beast-ov-card-drag):not(.beast-ov-card-resize):not(.beast-ov-card-remove):not(.beast-ov-card-configure):not(.beast-ov-card-duplicate) { pointer-events: none; }
 .beast-ov-card-drag, .beast-ov-card-resize, .beast-ov-card-remove, .beast-ov-card-configure { position: absolute; z-index: 20; display: grid; place-items: center; touch-action: none; pointer-events: auto; }
 .beast-ov-card-drag { top: 8px; left: 8px; width: 32px; height: 32px; border-radius: 50%; background: rgba(9,12,18,.72); color: #fff; cursor: grab; }
 .beast-ov-card.is-dragging { opacity: .7; box-shadow: 0 22px 60px rgba(0,0,0,.5); z-index: 50; cursor: grabbing; }
