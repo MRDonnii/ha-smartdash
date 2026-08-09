@@ -151,7 +151,10 @@
     const hidden = new Set(Array.isArray(layout.hidden) ? layout.hidden : []);
     containerEl.querySelector(".beast-car-top")?.classList.toggle("is-layout-hidden", hidden.has("battery"));
     containerEl.querySelector(".beast-stat-grid")?.classList.toggle("is-layout-hidden", hidden.has("details"));
-    containerEl.querySelector("#beastCarLayoutEdit")?.addEventListener("click", () => openCarLayout(layout));
+    BeastNativePageEditor.mount({ section:"car", label:"Bil", root:()=>containerEl, host:()=>containerEl, trigger:"#beastCarLayoutEdit", cards:()=>[
+      { id:"battery", label:"Batteri og rækkevidde", selector:".beast-car-top", enabled:!hidden.has("battery"), desktop:{x:1,y:1,w:4,h:12} },
+      { id:"details", label:"Status, opladning og dæktryk", selector:":scope > .beast-stat-grid", enabled:!hidden.has("details"), desktop:{x:5,y:1,w:8,h:12} }
+    ] });
   }
 
   function openCarLayout(layout) {

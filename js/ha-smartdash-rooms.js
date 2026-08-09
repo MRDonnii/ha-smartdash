@@ -159,8 +159,10 @@
       containerEl.innerHTML = `<button type="button" class="beast-page-edit-trigger beast-rooms-layout-trigger" id="beastRoomsLayoutEdit" aria-label="Rediger rumkort" title="Rediger rumkort">⋮</button><div class="beast-rooms-grid" id="beastRoomsGrid"></div><div id="beastRoomModalHost"></div>`;
       grid = document.getElementById("beastRoomsGrid");
       observeGridResize(grid);
-      document.getElementById("beastRoomsLayoutEdit")?.addEventListener("click", openRoomLayoutEditor);
     }
+    grid.querySelectorAll("[data-area-id]").forEach((card) => {
+      if (!areas.some((area) => area.area_id === card.dataset.areaId)) card.remove();
+    });
 
     areas.forEach((area) => {
       const summary = roomSummary(area.area_id);
@@ -214,6 +216,14 @@
       if (img) BeastAuth.setAuthedImageSrc(img, img.dataset.haPath);
     });
     balanceGridColumns(grid);
+    BeastNativePageEditor.mount({ section:"rooms", label:"Rum", root:()=>containerEl, host:()=>containerEl.querySelector("#beastRoomsGrid"), trigger:"#beastRoomsLayoutEdit", cards:()=>{
+      const hidden = new Set((BeastConfig.get("pageLayouts.rooms.roomLayout") || {}).hidden || []);
+      const ids = ROOM_ORDER.filter((id) => BeastRegistry.getArea(id));
+      return ids.map((id,index)=>({ id, label:BeastRegistry.getArea(id)?.name || id, selector:`[data-area-id="${CSS.escape(id)}"]`, titleSelector:".beast-room-name", enabled:!hidden.has(id), desktop:{x:(index%3)*4+1,y:Math.floor(index/3)*5+1,w:4,h:5} }));
+    }, onSave:(cards)=>{
+      const roomLayout = BeastConfig.get("pageLayouts.rooms.roomLayout") || {};
+      BeastConfig.set("pageLayouts.rooms.roomLayout", { ...roomLayout, hidden:cards.filter((card)=>card.enabled===false).map((card)=>card.id) });
+    }, onFinish:()=>renderGrid() });
   }
 
   function openRoomLayoutEditor() {

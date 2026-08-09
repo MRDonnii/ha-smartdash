@@ -173,7 +173,11 @@
     const hidden = new Set(Array.isArray(layout.hidden) ? layout.hidden : []);
     const selectors = { hero: ".beast-pool-hero", camera: ".beast-pool-live", insights: ".beast-pool-insights" };
     Object.entries(selectors).forEach(([id, selector]) => containerEl.querySelectorAll(selector).forEach((el) => el.classList.toggle("is-layout-hidden", hidden.has(id))));
-    containerEl.querySelector("#beastPoolLayoutEdit")?.addEventListener("click", () => openPoolLayout(layout));
+    BeastNativePageEditor.mount({ section: "pool", label: "Pool", root: () => containerEl, host: () => containerEl.querySelector(".beast-pool-dashboard"), trigger: "#beastPoolLayoutEdit", cards: () => [
+      { id:"hero", label:"Poolstatus og styring", selector:".beast-pool-hero", titleSelector:":scope > header > span", enabled:!hidden.has("hero"), desktop:{x:1,y:1,w:4,h:9} },
+      { id:"camera", label:"Livekamera", selector:".beast-pool-live", titleSelector:":scope > header strong", enabled:!hidden.has("camera"), desktop:{x:5,y:1,w:8,h:9} },
+      { id:"insights", label:"Temperatur og driftsindsigt", selector:".beast-pool-insights", enabled:!hidden.has("insights"), desktop:{x:1,y:10,w:12,h:3} }
+    ] });
   }
 
   function openPoolLayout(layout) {

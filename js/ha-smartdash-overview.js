@@ -1167,17 +1167,11 @@
     host.innerHTML = `
       <div class="beast-ov-camera-strip" data-count="${cameras.length}">${cameras.map((camera) => `
         <div class="beast-ov-camera-thumb${camera.motion ? " has-motion" : ""}" data-slug="${camera.slug}">
-          ${camera.streamName
-            ? `<iframe class="beast-ov-camera-live" src="./camera-player.html?v=11&transport=mse&sub=1&src=${encodeURIComponent(camera.streamName)}" title="${escapeHtml(camera.label)} livekamera" frameborder="0" allow="autoplay"></iframe>`
-            : `<img class="beast-ov-camera-snapshot" alt="${escapeHtml(camera.label)}">`}
-          ${camera.motion ? `<em>${BeastCore.icon("bolt", { size: 12 })} Bevægelse nu</em>` : ""}
+          ${window.BeastCameras.sharedCameraMarkup(camera, { className: "beast-overview-camera-render", label: true, motion: true })}
         </div>
       `).join("")}</div>
     `;
-    cameras.filter((camera) => !camera.streamName && camera.entityPicture).forEach((camera) => {
-      const img = host.querySelector(`.beast-ov-camera-thumb[data-slug="${camera.slug}"] img`);
-      if (img) BeastAuth.setAuthedImageSrc(img, camera.entityPicture);
-    });
+    window.BeastCameras.wireSharedCameras(host, renderCameras);
     const cameraPickerButton = document.getElementById("beastOvCameraPicker");
     if (cameraPickerButton) cameraPickerButton.onclick = (event) => {
       event.stopPropagation();
@@ -1211,7 +1205,7 @@
           <div class="beast-ov-camera-options">
             ${cameras.map((camera) => `
               <button type="button" class="beast-ov-camera-option${selected.includes(camera.slug) ? " is-selected" : ""}" data-camera-slug="${camera.slug}">
-                <img${camera.streamName ? ` src="${window.BeastCameras.snapshotUrl(camera.streamName)}"` : ""} data-camera-picture="${camera.streamName ? "" : escapeHtml(camera.entityPicture || "")}" alt="">
+                <img${camera.streamName ? ` src="${window.BeastCameras.snapshotUrl(camera.resolvedStreamName || camera.streamName)}"` : ""} data-camera-picture="${camera.streamName ? "" : escapeHtml(camera.entityPicture || "")}" alt="">
                 <span>${escapeHtml(camera.label)}</span>
                 <i>${BeastCore.icon("check", { size: 18 })}</i>
               </button>

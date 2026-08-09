@@ -50,6 +50,44 @@
 //                     When supplied, each card gets a settings button;
 //                     call commit(updatedCard) to update the live draft.
 window.BeastCardEditor = (function () {
+  const SNAPSHOT_LIMIT = 8;
+  const snapshotKey = (path) => `beast-card-layout-history:${path}`;
+
+  function readSnapshots(path) {
+    try { return JSON.parse(localStorage.getItem(snapshotKey(path)) || "[]"); }
+    catch (_) { return []; }
+  }
+
+  function saveSnapshot(path, cards, reason = "Gemte layout") {
+    if (!Array.isArray(cards)) return;
+    const history = readSnapshots(path);
+    const serialized = JSON.stringify(cards);
+    if (history[0]?.serialized === serialized) return;
+    history.unshift({ at: new Date().toISOString(), reason, serialized });
+    try { localStorage.setItem(snapshotKey(path), JSON.stringify(history.slice(0, SNAPSHOT_LIMIT))); } catch (_) {}
+  }
+
+  function sectionFromPath(path) {
+    const match = String(path || "").match(/^pageLayouts\.([^.]+)/);
+    return match?.[1] || (path === "overviewCards" ? "overview" : "");
+  }
+
+  function entityScore(entity, section, domains = []) {
+    const id = String(entity.id || "");
+    const domain = id.split(".")[0];
+    const haystack = `${entity.name || ""} ${id} ${entity.area || ""}`.toLowerCase();
+    let score = 0;
+    if (domains.includes(domain)) score += 80;
+    if (section && haystack.includes(section.toLowerCase())) score += 35;
+    if (entity.area && section && String(entity.area).toLowerCase().includes(section.toLowerCase())) score += 55;
+    if (!["unknown", "unavailable"].includes(entity.state)) score += 8;
+    return score;
+  }
+
+  function rankedEntities(list, section, domains = []) {
+    return [...list].sort((a, b) => entityScore(b, section, domains) - entityScore(a, section, domains) || a.name.localeCompare(b.name, "da"));
+  }
+
   function attach(options) {
     const {
       zoneEl, configPath, cardTypes = [], singleInstanceTypes = [],
@@ -58,6 +96,7 @@ window.BeastCardEditor = (function () {
       entityPickerTypes = ["custom"], configureCard = null,
     } = options;
     const defaultCardSize = options.defaultCardSize || { desktop: { w: 3, h: 1 }, tablet: { w: 1, h: 1 }, portrait: { h: 1 } };
+    const editorSection = options.section || sectionFromPath(configPath);
 
     let editing = false;
     let draftCards = null;
@@ -82,6 +121,40 @@ window.BeastCardEditor = (function () {
 
     function rememberDraft() {
       if (draftCards) history.push(JSON.parse(JSON.stringify(draftCards)));
+    }
+
+    function configureBasicCard(card, commit) {
+      const overlay = document.createElement("div");
+      overlay.className = "beast-modal-overlay";
+      const entities = allEntities(card.type) || [];
+      const template = window.BeastCardTemplates?.get?.(card.templateId);
+      const fields = template?.fields?.length ? template.fields : [{ key: "primary", label: "Entity", domains: [] }];
+      const bindings = { ...(card.bindings || {}) };
+      if (card.entity && !Object.values(bindings).includes(card.entity)) bindings[fields[0].key] = card.entity;
+      const width = Math.max(1, Math.min(12, Number(card.desktop?.w) || 3));
+      const height = Math.max(1, Math.min(12, Number(card.desktop?.h) || 1));
+      const safe = (value) => String(value ?? "").replace(/[&<>"']/g, (char) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[char]);
+      const bindingFields = entities.length ? fields.map((field, index) => { const allowed = rankedEntities(entities.filter((entity) => !field.domains?.length || field.domains.includes(entity.id.split(".")[0])), editorSection, field.domains || []); const listId = `beastBinding_${Date.now()}_${index}`; return `<label class="beast-page-editor-field beast-card-binding-field">${safe(field.label)}${field.required ? "<b>Krævet</b>" : "<small>Valgfri</small>"}<input type="search" data-binding-key="${safe(field.key)}" data-binding-required="${field.required ? "true" : "false"}" list="${listId}" value="${safe(bindings[field.key] || "")}" placeholder="Søg eller vælg entity…"><datalist id="${listId}">${allowed.map((entity) => `<option value="${safe(entity.id)}">${safe(entity.name)}${entity.area ? ` · ${safe(entity.area)}` : ""}</option>`).join("")}</datalist></label>`; }).join("") : "";
+      const actionFields = card.type === "toggle" ? `<div class="beast-page-editor-size-fields"><label class="beast-page-editor-field">Handling<select class="beast-basic-card-service"><option value="auto">Automatisk til/fra</option>${["toggle","turn_on","turn_off","lock","unlock","open_cover","close_cover"].map((service) => `<option value="${service}" ${card.action?.service === service ? "selected" : ""}>${service}</option>`).join("")}</select></label><label class="beast-page-editor-check"><input type="checkbox" class="beast-basic-card-confirm" ${card.action?.confirm ? "checked" : ""}> Kræv bekræftelse</label></div>` : "";
+      const visibilityFields = `<details class="beast-card-advanced"><summary>Avanceret visning</summary><label class="beast-page-editor-field">Vis kun når entity<input class="beast-basic-visibility-entity" value="${safe(card.visibility?.entity || "")}" placeholder="Valgfrit"></label><label class="beast-page-editor-field">Har tilstand<input class="beast-basic-visibility-state" value="${safe(card.visibility?.state || "")}" placeholder="fx on, open eller playing"></label></details>`;
+      overlay.innerHTML = `<div class="beast-modal beast-page-entity-modal" role="dialog" aria-modal="true"><div class="beast-modal-header"><div><small>${template ? safe(template.category) : "Genbrugt skabelon"}</small><h3>Rediger kort</h3></div><button type="button" class="beast-modal-close" data-close>${BeastCore.icon("close", { size: 22 })}</button></div><div class="beast-modal-body"><label class="beast-page-editor-field">Navn<input class="beast-basic-card-name" value="${safe(card.label || "")}"></label><label class="beast-page-editor-field">Ikon<input class="beast-basic-card-icon" value="${safe(card.icon || "grid")}"></label><div class="beast-page-editor-size-fields"><label class="beast-page-editor-field">Bredde<select class="beast-basic-card-width">${Array.from({ length: 12 }, (_, i) => `<option value="${i + 1}" ${i + 1 === width ? "selected" : ""}>${i + 1} / 12</option>`).join("")}</select></label><label class="beast-page-editor-field">Højde<select class="beast-basic-card-height">${Array.from({ length: 12 }, (_, i) => `<option value="${i + 1}" ${i + 1 === height ? "selected" : ""}>${i + 1} række${i ? "r" : ""}</option>`).join("")}</select></label></div>${bindingFields}${actionFields}${visibilityFields}<button type="button" class="beast-btn beast-btn-primary" data-basic-save>Gem ændringer</button></div></div>`;
+      document.body.appendChild(overlay);
+      overlay.addEventListener("click", (event) => {
+        if (event.target === overlay || event.target.closest("[data-close]")) return overlay.remove();
+        if (!event.target.closest("[data-basic-save]")) return;
+        const nextBindings = {}; overlay.querySelectorAll("[data-binding-key]").forEach((input) => { if (input.value.trim()) nextBindings[input.dataset.bindingKey] = input.value.trim(); });
+        const missingRequired = Array.from(overlay.querySelectorAll('[data-binding-required="true"]')).filter((input) => !input.value.trim());
+        overlay.querySelectorAll("[data-binding-key]").forEach((input) => input.removeAttribute("aria-invalid"));
+        overlay.querySelector(".beast-card-binding-error")?.remove();
+        if (missingRequired.length) {
+          missingRequired.forEach((input) => input.setAttribute("aria-invalid", "true"));
+          const message = document.createElement("p"); message.className = "beast-card-binding-error"; message.textContent = "Vælg de krævede entities før kortet gemmes.";
+          overlay.querySelector("[data-basic-save]").before(message); missingRequired[0].focus(); return;
+        }
+        const visibilityEntity = overlay.querySelector(".beast-basic-visibility-entity")?.value.trim() || ""; const visibilityState = overlay.querySelector(".beast-basic-visibility-state")?.value.trim() || "";
+        commit({ ...card, label: overlay.querySelector(".beast-basic-card-name")?.value.trim() || "", icon: overlay.querySelector(".beast-basic-card-icon")?.value.trim() || "grid", entity: nextBindings[fields[0].key] || card.entity || null, bindings: nextBindings, action: card.type === "toggle" ? { service: overlay.querySelector(".beast-basic-card-service")?.value || "auto", confirm: overlay.querySelector(".beast-basic-card-confirm")?.checked === true } : card.action, visibility: visibilityEntity ? { entity: visibilityEntity, state: visibilityState } : null, desktop: { ...(card.desktop || {}), w: Number(overlay.querySelector(".beast-basic-card-width")?.value) || width, h: Number(overlay.querySelector(".beast-basic-card-height")?.value) || height } });
+        overlay.remove();
+      });
     }
 
     // "+ Tilføj kort" -- not a real card, never part of draftCards, always
@@ -111,6 +184,7 @@ window.BeastCardEditor = (function () {
         card.querySelector(".beast-ov-card-remove")?.remove();
         card.querySelector(".beast-ov-card-configure")?.remove();
         card.querySelector(".beast-ov-card-duplicate")?.remove();
+        card.querySelector(".beast-ov-card-reset")?.remove();
         const drag = document.createElement("span");
         drag.className = "beast-ov-card-drag";
         drag.setAttribute("aria-hidden", "true");
@@ -126,27 +200,27 @@ window.BeastCardEditor = (function () {
         remove.setAttribute("aria-label", "Fjern kort");
         remove.innerHTML = BeastCore.icon("close", { size: 14 });
         card.appendChild(remove);
-        if (configureCard) {
-          const configure = document.createElement("button");
-          configure.type = "button";
-          configure.className = "beast-ov-card-configure";
-          configure.setAttribute("aria-label", "Indstil kort");
-          configure.innerHTML = BeastCore.icon("settings", { size: 16 });
-          card.appendChild(configure);
-          configure.addEventListener("click", (event) => {
-            event.stopPropagation();
-            const current = draftCards?.find((item) => item.id === card.dataset.builderCard);
-            if (!current) return;
-            configureCard(JSON.parse(JSON.stringify(current)), (updatedCard) => {
-              if (!updatedCard) return;
-              const index = draftCards.findIndex((item) => item.id === current.id);
-              if (index < 0) return;
-              rememberDraft();
-              draftCards[index] = { ...draftCards[index], ...updatedCard, id: current.id };
-              renderCardsDom(draftCards);
-            });
+        const configure = document.createElement("button");
+        configure.type = "button";
+        configure.className = "beast-ov-card-configure";
+        configure.setAttribute("aria-label", "Indstil kort");
+        configure.innerHTML = BeastCore.icon("settings", { size: 16 });
+        card.appendChild(configure);
+        configure.addEventListener("click", (event) => {
+          event.stopPropagation();
+          const current = draftCards?.find((item) => item.id === card.dataset.builderCard);
+          if (!current) return;
+          const isStandard = window.BeastStandardCards?.isStandardType?.(current.type);
+          const openSettings = configureCard && !isStandard ? configureCard : configureBasicCard;
+          openSettings(JSON.parse(JSON.stringify(current)), (updatedCard) => {
+            if (!updatedCard) return;
+            const index = draftCards.findIndex((item) => item.id === current.id);
+            if (index < 0) return;
+            rememberDraft();
+            draftCards[index] = { ...draftCards[index], ...updatedCard, id: current.id };
+            renderCardsDom(draftCards);
           });
-        }
+        });
         const duplicate = document.createElement("button");
         duplicate.type = "button";
         duplicate.className = "beast-ov-card-duplicate";
@@ -162,6 +236,14 @@ window.BeastCardEditor = (function () {
           clone.id = `card_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
           clone.label = clone.label ? `${clone.label} kopi` : "";
           draftCards.push(clone);
+          renderCardsDom(draftCards);
+        });
+        const reset = document.createElement("button");
+        reset.type = "button"; reset.className = "beast-ov-card-reset"; reset.setAttribute("aria-label", "Nulstil kort"); reset.innerHTML = "↺"; card.appendChild(reset);
+        reset.addEventListener("click", (event) => {
+          event.stopPropagation(); const index = draftCards.findIndex((item) => item.id === card.dataset.builderCard); if (index < 0) return;
+          const current = draftCards[index], template = window.BeastCardTemplates?.get?.(current.templateId); rememberDraft();
+          draftCards[index] = { ...current, label: template?.title || current.label || "", icon: template?.icon || current.icon || "grid", entity: null, bindings: {}, action: null, visibility: null, desktop: { ...(current.desktop || {}), ...(template?.size || {}) } };
           renderCardsDom(draftCards);
         });
         wireCardDrag(card, drag);
@@ -253,7 +335,10 @@ window.BeastCardEditor = (function () {
         const dx = event.clientX - resize.startX;
         const dy = event.clientY - resize.startY;
         const w = Math.max(1, Math.min(12, Math.round(resize.startW + dx / resize.colPx)));
-        const h = Math.max(1, Math.min(2, Math.round(resize.startH + dy / resize.rowPx)));
+        // Full-page views may contain cameras and graphs that need more than
+        // the overview's original two rows.  Keep the drag bounded, but allow
+        // enough vertical span for a real 16:9 camera card on a touch screen.
+        const h = Math.max(1, Math.min(12, Math.round(resize.startH + dy / resize.rowPx)));
         card.style.setProperty("--desktop-w", w);
         card.style.setProperty("--desktop-h", h);
         resize.pendingW = w;
@@ -276,18 +361,30 @@ window.BeastCardEditor = (function () {
     function openAddCardModal() {
       document.getElementById("beastCardEditorAddModal")?.remove();
       const usedTypes = new Set((draftCards || []).map((card) => card.type));
+      const availableTypes = cardTypes.map(([value]) => value);
+      const galleryTemplates = window.BeastCardTemplates?.catalog(availableTypes) || [];
+      // Page-specific cards (robot, printer cameras, print control, etc.) are
+      // included beside the shared catalogue, but only on pages whose
+      // renderer knows that type.
+      cardTypes.forEach(([type, label]) => {
+        if (galleryTemplates.some((item) => item.type === type) || BeastStandardCards?.isStandardType?.(type)) return;
+        galleryTemplates.push({ id: `native-${type}`, category: "Specialkort", title: label, description: "Originalt funktionskort fra denne side", type, icon: "grid", domains: [], size: { ...defaultCardSize.desktop } });
+      });
       const overlay = document.createElement("div");
       overlay.id = "beastCardEditorAddModal";
       overlay.className = "beast-modal-overlay";
-      const typeButtons = cardTypes
-        .filter(([value]) => !singleInstanceTypes.includes(value) || !usedTypes.has(value))
-        .map(([value, label]) => `<button type="button" data-add-card-type="${value}">${label}</button>`)
-        .join("");
-      overlay.innerHTML = `<div class="beast-modal beast-ov-add-card-modal" role="dialog" aria-modal="true">
-        <div class="beast-modal-header"><div><h3>Tilføj kort</h3></div><button type="button" class="beast-modal-close" data-close>${BeastCore.icon("close", { size: 22 })}</button></div>
+      const usableTemplates = galleryTemplates.filter((item) => !singleInstanceTypes.includes(item.type) || !usedTypes.has(item.type));
+      const categories = ["Alle", ...new Set(usableTemplates.map((item) => item.category))];
+      const templateMarkup = usableTemplates.map((item) => `<button type="button" class="beast-template-card" data-template-id="${item.id}" data-template-category="${item.category}"><span class="beast-template-card-icon">${BeastCore.icon(item.icon || "grid", { size: 25 })}</span><span><strong>${item.title}</strong><small>${item.description}</small><em>${item.category}<i>${item.fields?.length || 1} entityfelt${(item.fields?.length || 1) === 1 ? "" : "er"}</i></em></span></button>`).join("");
+      overlay.innerHTML = `<div class="beast-modal beast-ov-add-card-modal beast-template-gallery-modal" role="dialog" aria-modal="true">
+        <div class="beast-modal-header"><div><small>Kortbibliotek</small><h3>Vælg en skabelon</h3></div><button type="button" class="beast-modal-close" data-close>${BeastCore.icon("close", { size: 22 })}</button></div>
         <div class="beast-modal-body">
-          <div class="beast-ov-add-card-types">${typeButtons}</div>
+          <input class="beast-template-search" type="search" placeholder="Søg efter kort…">
+          <div class="beast-template-categories">${categories.map((category, index) => `<button type="button" data-template-filter="${category}" class="${index ? "" : "is-active"}">${category}</button>`).join("")}</div>
+          <div class="beast-template-gallery">${templateMarkup || "<p>Ingen skabeloner er tilgængelige på denne side.</p>"}</div>
           <div class="beast-ov-add-card-entity" hidden>
+            <button type="button" class="beast-template-back" data-template-back>← Tilbage til galleriet</button>
+            <div class="beast-template-selected"></div>
             <input class="beast-ov-add-card-search" type="search" placeholder="Søg efter entity…">
             <select class="beast-ov-add-card-select" size="6"></select>
             <button type="button" class="beast-btn beast-btn-primary" data-add-card-confirm>Tilføj</button>
@@ -296,32 +393,81 @@ window.BeastCardEditor = (function () {
       </div>`;
       document.body.appendChild(overlay);
       const close = () => overlay.remove();
-      const newCard = (type, entity) => ({ id: `card_${Date.now()}`, type, label: "", entity: entity || null, desktop: { ...defaultCardSize.desktop }, tablet: { ...defaultCardSize.tablet }, portrait: { ...defaultCardSize.portrait } });
+      let pendingTemplate = null;
+      const newCard = (type, entity, template = null) => {
+        const desktop = { ...defaultCardSize.desktop, ...(template?.size || {}) };
+        const tablet = { ...defaultCardSize.tablet };
+        const portrait = { ...defaultCardSize.portrait };
+        // A one-row camera is shorter than its 16:9 content in the auxiliary
+        // page grids and consequently looks cropped before the user edits it.
+        if (type === "camera") {
+          desktop.h = Math.max(2, Number(desktop.h) || 1);
+          tablet.h = Math.max(2, Number(tablet.h) || 1);
+          portrait.h = Math.max(2, Number(portrait.h) || 1);
+        }
+        const firstField = template?.fields?.[0]?.key || "primary";
+        return { id: `card_${Date.now()}`, type, templateId: template?.id || null, label: template?.title || "", icon: template?.icon || "grid", entity: entity || null, bindings: entity ? { [firstField]: entity } : {}, desktop, tablet, portrait };
+      };
+      const gallery = overlay.querySelector(".beast-template-gallery");
+      const applyGalleryFilter = () => {
+        const category = overlay.querySelector("[data-template-filter].is-active")?.dataset.templateFilter || "Alle";
+        const query = overlay.querySelector(".beast-template-search")?.value.trim().toLowerCase() || "";
+        gallery.querySelectorAll(".beast-template-card").forEach((button) => {
+          const item = usableTemplates.find((candidate) => candidate.id === button.dataset.templateId);
+          const haystack = `${item?.title || ""} ${item?.description || ""} ${item?.category || ""}`.toLowerCase();
+          button.hidden = (category !== "Alle" && item?.category !== category) || (query && !haystack.includes(query));
+        });
+      };
+      overlay.querySelector(".beast-template-search")?.addEventListener("input", applyGalleryFilter);
       overlay.addEventListener("click", (event) => {
         if (event.target === overlay || event.target.closest("[data-close]")) { close(); return; }
-        const typeButton = event.target.closest("[data-add-card-type]");
-        if (typeButton) {
-          const type = typeButton.dataset.addCardType;
+        const filterButton = event.target.closest("[data-template-filter]");
+        if (filterButton) {
+          overlay.querySelectorAll("[data-template-filter]").forEach((button) => button.classList.toggle("is-active", button === filterButton));
+          applyGalleryFilter();
+          return;
+        }
+        if (event.target.closest("[data-template-back]")) {
+          overlay.querySelector(".beast-ov-add-card-entity").hidden = true;
+          overlay.querySelector(".beast-template-search").hidden = false;
+          overlay.querySelector(".beast-template-categories").hidden = false;
+          gallery.hidden = false;
+          pendingTemplate = null;
+          return;
+        }
+        const templateButton = event.target.closest("[data-template-id]");
+        if (templateButton) {
+          const template = usableTemplates.find((item) => item.id === templateButton.dataset.templateId);
+          if (!template) return;
+          const type = template.type;
           if (!entityPickerTypes.includes(type)) {
             rememberDraft();
-            draftCards.push(newCard(type));
+            draftCards.push(newCard(type, null, template));
             close();
             renderCardsDom(draftCards);
             return;
           }
-          overlay.dataset.pendingEntityType = type;
-          overlay.querySelector(".beast-ov-add-card-types").hidden = true;
+          pendingTemplate = template;
+          overlay.querySelector(".beast-template-search").hidden = true;
+          overlay.querySelector(".beast-template-categories").hidden = true;
+          gallery.hidden = true;
           const entityPane = overlay.querySelector(".beast-ov-add-card-entity");
           entityPane.hidden = false;
-          const entities = allEntities(type);
+          entityPane.querySelector(".beast-template-selected").innerHTML = `<span class="beast-template-card-icon">${BeastCore.icon(template.icon || "grid", { size: 25 })}</span><span><small>${template.category}</small><strong>${template.title}</strong><em>${template.description}</em><b>${template.fields?.filter((field)=>field.required).length || 1} krævet · ${template.fields?.length || 1} felter i alt</b></span>`;
+          const entities = type === "camera" && window.BeastCameras?.getAllCameras
+            ? BeastCameras.getAllCameras().map((camera) => ({ id: camera.entityId, name: camera.label }))
+            : allEntities(type).filter((entity) => !template.domains?.length || template.domains.includes(entity.id.split(".")[0]));
+          const sortedEntities = rankedEntities(entities, editorSection, template.domains || []);
           const select = overlay.querySelector(".beast-ov-add-card-select");
-          select.innerHTML = entities.map((entity) => `<option value="${entity.id}">${entity.name}</option>`).join("");
-          overlay.querySelector(".beast-ov-add-card-search").addEventListener("input", (inputEvent) => {
+          const renderEntities = (query = "") => { select.innerHTML = sortedEntities.filter((entity) => !query || entity.name.toLowerCase().includes(query) || entity.id.toLowerCase().includes(query) || String(entity.area || "").toLowerCase().includes(query)).map((entity) => `<option value="${entity.id}">${entity.name}${entity.area ? ` · ${entity.area}` : ""} · ${entity.id}</option>`).join(""); };
+          renderEntities();
+          const search = overlay.querySelector(".beast-ov-add-card-search");
+          search.value = "";
+          search.oninput = (inputEvent) => {
             const query = inputEvent.target.value.trim().toLowerCase();
-            select.innerHTML = entities
-              .filter((entity) => !query || entity.name.toLowerCase().includes(query) || entity.id.toLowerCase().includes(query))
-              .map((entity) => `<option value="${entity.id}">${entity.name}</option>`).join("");
-          });
+            renderEntities(query);
+          };
+          search.focus();
           return;
         }
         if (event.target.closest("[data-add-card-confirm]")) {
@@ -329,9 +475,16 @@ window.BeastCardEditor = (function () {
           const entity = select?.value;
           if (!entity) return;
           rememberDraft();
-          draftCards.push(newCard(overlay.dataset.pendingEntityType || "custom", entity));
+          const created = newCard(pendingTemplate?.type || "custom", entity, pendingTemplate);
+          draftCards.push(created);
           close();
           renderCardsDom(draftCards);
+          if (pendingTemplate?.fields?.length > 1) {
+            window.setTimeout(() => configureBasicCard(JSON.parse(JSON.stringify(created)), (updatedCard) => {
+              const index = draftCards.findIndex((item) => item.id === created.id); if (index < 0) return;
+              rememberDraft(); draftCards[index] = { ...draftCards[index], ...updatedCard, id: created.id }; renderCardsDom(draftCards);
+            }), 0);
+          }
         }
       });
     }
@@ -341,7 +494,8 @@ window.BeastCardEditor = (function () {
       const bar = document.createElement("div");
       bar.id = "beastCardEditorBar";
       bar.className = "beast-ov-edit-bar";
-      bar.innerHTML = `<span>${BeastCore.icon("grid", { size: 16 })}${editLabel}</span><div class="beast-ov-edit-bar-actions"><button type="button" data-ov-edit-undo ${history.length ? "" : "disabled"}>Fortryd</button><button type="button" data-ov-edit-reset>Nulstil</button><button type="button" data-ov-edit-clear>Ryd egne kort</button><button type="button" data-ov-edit-export>Eksportér</button><button type="button" data-ov-edit-import>Importér</button><button type="button" data-ov-edit-cancel>Annullér</button><button type="button" class="beast-btn beast-btn-primary" data-ov-edit-save>Gem</button></div>`;
+      const snapshots = readSnapshots(configPath);
+      bar.innerHTML = `<span>${BeastCore.icon("grid", { size: 16 })}${editLabel}</span><div class="beast-ov-edit-bar-actions"><button type="button" data-ov-edit-undo ${history.length ? "" : "disabled"}>Fortryd</button><button type="button" data-ov-edit-restore ${snapshots.length ? "" : "disabled"}>Gendan</button><button type="button" data-ov-edit-reset>Nulstil</button><button type="button" data-ov-edit-clear>Ryd egne kort</button><button type="button" data-ov-edit-export>Eksportér</button><button type="button" data-ov-edit-import>Importér</button><button type="button" data-ov-edit-cancel>Annullér</button><button type="button" class="beast-btn beast-btn-primary" data-ov-edit-save>Gem</button></div>`;
       document.body.appendChild(bar);
       bar.querySelector("[data-ov-edit-cancel]").addEventListener("click", () => exit(false));
       bar.querySelector("[data-ov-edit-save]").addEventListener("click", () => exit(true));
@@ -351,6 +505,13 @@ window.BeastCardEditor = (function () {
         draftCards = previous;
         renderCardsDom(draftCards);
         renderEditBar();
+      });
+      bar.querySelector("[data-ov-edit-restore]").addEventListener("click", () => {
+        const snapshots = readSnapshots(configPath); if (!snapshots.length) return;
+        const overlay = document.createElement("div"); overlay.className = "beast-modal-overlay";
+        overlay.innerHTML = `<div class="beast-modal beast-layout-history-modal"><div class="beast-modal-header"><div><small>Layout-historik</small><h3>Gendan tidligere layout</h3></div><button type="button" class="beast-modal-close" data-close>×</button></div><div class="beast-modal-body"><p class="beast-page-editor-hint">De seneste ${SNAPSHOT_LIMIT} gemte versioner ligger lokalt på denne skærm.</p><div class="beast-layout-history-list">${snapshots.map((item, index) => `<button type="button" data-restore-index="${index}"><strong>${new Date(item.at).toLocaleString("da-DK")}</strong><small>${item.reason || "Gemte layout"}</small></button>`).join("")}</div></div></div>`;
+        document.body.appendChild(overlay);
+        overlay.addEventListener("click", (event) => { if (event.target === overlay || event.target.closest("[data-close]")) return overlay.remove(); const button = event.target.closest("[data-restore-index]"); if (!button) return; try { rememberDraft(); draftCards = JSON.parse(snapshots[Number(button.dataset.restoreIndex)].serialized); renderCardsDom(draftCards); renderEditBar(); overlay.remove(); } catch (_) { window.alert("Den valgte version kunne ikke gendannes."); } });
       });
       bar.querySelector("[data-ov-edit-reset]").addEventListener("click", () => {
         if (!window.confirm("Nulstil kortene på denne side til layoutet før redigering?")) return;
@@ -403,8 +564,11 @@ window.BeastCardEditor = (function () {
       if (editing) return;
       editing = true;
       window.beastCardEditorActive = true;
+      // Reserve scrollable space for the fixed save/cancel bar. Without it,
+      // the resize handle on the last card sits underneath the bar.
+      zoneEl.closest(".beast-page-editor-scroll-host")?.classList.add("is-card-editing");
       const existing = BeastConfig.get(configPath) || [];
-      draftCards = existing.length ? JSON.parse(JSON.stringify(existing)) : seedCards();
+      draftCards = (existing.length ? JSON.parse(JSON.stringify(existing)) : seedCards()).map((card) => window.BeastCardTemplates?.normalizeCard?.(card) || card);
       originalCards = JSON.parse(JSON.stringify(draftCards));
       history = [];
       renderEditBar();
@@ -413,9 +577,14 @@ window.BeastCardEditor = (function () {
 
     function exit(save) {
       const nextCards = save ? draftCards : (BeastConfig.get(configPath) || []);
-      if (save) BeastConfig.set(configPath, draftCards);
+      if (save) {
+        saveSnapshot(configPath, BeastConfig.get(configPath) || [], "Før seneste gemning");
+        BeastConfig.set(configPath, draftCards);
+        saveSnapshot(configPath, draftCards, "Gemte layout");
+      }
       editing = false;
       window.beastCardEditorActive = false;
+      zoneEl.closest(".beast-page-editor-scroll-host")?.classList.remove("is-card-editing");
       draftCards = null;
       originalCards = null;
       history = [];
@@ -424,9 +593,11 @@ window.BeastCardEditor = (function () {
         renderEmptyState();
         return;
       }
-      renderCardsDom(nextCards);
+      renderCardsDom(nextCards.map((card) => window.BeastCardTemplates?.normalizeCard?.(card) || card));
     }
 
+    const initialCards = (BeastConfig.get(configPath) || []).map((card) => window.BeastCardTemplates?.normalizeCard?.(card) || card);
+    if (initialCards.length) renderCardsDom(initialCards);
     return { enter, isEditing: () => editing };
   }
 
@@ -435,7 +606,7 @@ window.BeastCardEditor = (function () {
   // in as its allEntities option instead of writing the same three lines.
   function allEntities() {
     return Array.from(BeastHaSocket.getAllStates().values())
-      .map((state) => ({ id: state.entity_id, name: state.attributes?.friendly_name || state.entity_id }))
+      .map((state) => ({ id: state.entity_id, name: state.attributes?.friendly_name || state.entity_id, area: state.attributes?.area_name || state.attributes?.area || "", deviceClass: state.attributes?.device_class || "", state: state.state }))
       .sort((a, b) => a.name.localeCompare(b.name, "da"));
   }
 

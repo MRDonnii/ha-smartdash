@@ -101,7 +101,7 @@ function doorbellCameraStream() {
   const configuredCameraId = BeastConfig.get("appEntities.doorbellCamera");
   let camera = configuredCameraId ? cameras.find((item) => item.entityId === configuredCameraId) : null;
   if (!camera) camera = cameras.find((item) => /fordør|fordor|hoveddør|hoveddor/i.test(`${item.slug} ${item.label} ${item.streamName}`));
-  return camera?.streamName || "Fordor";
+  return camera?.resolvedStreamName || camera?.streamName || "Fordor";
 }
 
 function closeDoorbellView() {
@@ -309,7 +309,7 @@ function ambientCameraMarkup(config) {
     const camera = window.BeastCameras?.resolveCamera?.(id);
     if (!camera) return "";
     if (camera.streamName) {
-      const src = `./camera-player.html?v=11&transport=mse&sub=1&src=${encodeURIComponent(camera.streamName)}`;
+      const src = `./camera-player.html?v=12&transport=mse&src=${encodeURIComponent(camera.resolvedStreamName || camera.streamName)}`;
       return `<div class="beast-ambient-camera-tile"><iframe class="beast-ambient-camera-tile-frame" src="${src}" allow="autoplay"></iframe></div>`;
     }
     if (camera.entityPicture) {
@@ -756,6 +756,7 @@ function overviewCameraMenuMarkup(hasCameras) {
 
 function renderSectionMarkup(item) {
   if (item.id === "overview") return renderOverviewSection();
+  if (item.id.startsWith("custom_")) return `<div class="beast-panel beast-panel-fill beast-custom-page-zone" id="beastCustomZone_${item.id}"></div>`;
   const zoneId = MOUNTED_SECTION_ZONES[item.id];
   if (zoneId) return `<div class="beast-panel beast-panel-fill" id="${zoneId}"></div>`;
   return `
@@ -771,12 +772,13 @@ function renderAppShell(root) {
   titleEl.textContent = dashboardTitle;
   const brandHtml = `<div class="beast-rail-brand">${titleEl.innerHTML}</div>`;
 
+  const pageRailItems = window.BeastPageManager?.buildRailItems(RAIL_ITEMS) || RAIL_ITEMS;
   const favoriteSections = featureEnabled("localFavorites") ? BeastLocalSettings.get("favoriteSections", []) : [];
-  const orderedRailItems = favoriteSections.length ? [...RAIL_ITEMS].sort((a, b) => {
+  const orderedRailItems = favoriteSections.length ? [...pageRailItems].sort((a, b) => {
     if (["overview", "settings"].includes(a.id) || ["overview", "settings"].includes(b.id)) return a.id === "overview" ? -1 : b.id === "overview" ? 1 : a.id === "settings" ? 1 : b.id === "settings" ? -1 : 0;
     const ai = favoriteSections.indexOf(a.id), bi = favoriteSections.indexOf(b.id);
     return (ai < 0 ? 999 : ai) - (bi < 0 ? 999 : bi);
-  }) : RAIL_ITEMS;
+  }) : pageRailItems;
   const hiddenSections = BeastLocalSettings.get("hiddenSections", []);
   const visibleRailItems = orderedRailItems
     .filter((item) => ["overview", "settings"].includes(item.id) || !hiddenSections.includes(item.id))
@@ -803,7 +805,7 @@ function renderAppShell(root) {
     <div class="beast-app">
       <span class="beast-status-dot-fixed" id="beastStatusDot" data-state="connecting" title="Forbinder…"></span>
       <div class="beast-body">
-        <nav class="beast-rail" id="beastRail">${brandHtml}${railButtonsHtml}</nav>
+        <nav class="beast-rail" id="beastRail">${brandHtml}${railButtonsHtml}<button type="button" class="beast-rail-btn beast-page-manager-trigger" id="beastPageManagerTrigger">${BeastCore.icon("plus", { size: 24 })}<span>Sider</span></button></nav>
         <main class="beast-content" id="beastContent">${sectionsHtml}</main>
       </div>
     </div>
@@ -829,6 +831,7 @@ function renderAppShell(root) {
   });
 
   setupNavigation();
+  document.getElementById("beastPageManagerTrigger")?.addEventListener("click", () => window.BeastPageManager?.open());
   setupQuickScenarios();
   setupDataQuality();
   BeastCore.mountPanels();
@@ -952,6 +955,25 @@ function reconnectVisibleCameraPlayers() {
   });
 }
 
+function mountPageActionMenus() {
+  if (document.documentElement.dataset.pageActionMenus === "true") return;
+  document.documentElement.dataset.pageActionMenus = "true";
+  const close = () => document.getElementById("beastPageActionMenu")?.remove();
+  document.addEventListener("click", (event) => {
+    const trigger = event.target.closest(".beast-page-edit-trigger");
+    if (!trigger) { if (!event.target.closest("#beastPageActionMenu")) close(); return; }
+    if (trigger.dataset.menuBypass === "true") { delete trigger.dataset.menuBypass; return; }
+    event.preventDefault(); event.stopPropagation(); event.stopImmediatePropagation(); close();
+    const section = trigger.closest(".beast-section[data-section]");
+    if (!section) return;
+    const menu = document.createElement("div"); menu.id = "beastPageActionMenu"; menu.className = "beast-page-action-menu";
+    menu.innerHTML = `<button type="button" data-page-action="edit"><i>${BeastCore.icon("settings",{size:21})}</i><span><strong>Rediger side</strong><small>Flyt, ændr og tilføj kort</small></span></button><button type="button" data-page-action="fit"><i>${BeastCore.icon("grid",{size:21})}</i><span><strong>Tilpas side</strong><small>Fordel kortene til denne skærm</small></span></button>`;
+    document.body.appendChild(menu);
+    menu.querySelector('[data-page-action="edit"]').addEventListener("click", () => { close(); trigger.dataset.menuBypass = "true"; trigger.click(); });
+    menu.querySelector('[data-page-action="fit"]').addEventListener("click", async (actionEvent) => { const button=actionEvent.currentTarget; button.disabled=true; button.classList.add("is-busy"); await window.BeastPageEditor?.fit?.(section.dataset.section); close(); });
+  }, true);
+}
+
 window.addEventListener("online", () => window.setTimeout(reconnectVisibleCameraPlayers, 500));
 window.addEventListener("pageshow", () => window.setTimeout(syncCameraPlayers, 500));
 document.addEventListener("beast:sectionchange", () => window.setTimeout(syncCameraPlayers, 150));
@@ -972,6 +994,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       applyDashboardBranding();
     });
     renderAppShell(root);
+    mountPageActionMenus();
     startKioskWatchdogs();
   } else {
     renderLoginScreen(root);

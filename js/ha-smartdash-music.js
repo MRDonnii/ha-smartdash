@@ -421,7 +421,10 @@
     const hidden = new Set(Array.isArray(layout.hidden) ? layout.hidden : []);
     containerEl.querySelector(".beast-music-control")?.classList.toggle("is-layout-hidden", hidden.has("player"));
     containerEl.querySelector(".beast-music-library")?.classList.toggle("is-layout-hidden", hidden.has("library"));
-    containerEl.querySelector("#beastMusicLayoutEdit")?.addEventListener("click", () => openMusicLayout(layout));
+    BeastNativePageEditor.mount({ section:"music", label:"Musik", root:()=>containerEl, host:()=>containerEl.querySelector(".beast-music-dashboard"), trigger:"#beastMusicLayoutEdit", cards:()=>[
+      { id:"player", label:"Afspiller og højttalere", selector:".beast-music-control", enabled:!hidden.has("player"), desktop:{x:1,y:1,w:4,h:12} },
+      { id:"library", label:"Bibliotek, søgning og album", selector:".beast-music-library", titleSelector:".beast-music-library-head strong", enabled:!hidden.has("library"), desktop:{x:5,y:1,w:8,h:12} }
+    ] });
   }
 
   function openMusicLayout(layout) {
