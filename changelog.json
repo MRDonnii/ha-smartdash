@@ -1,5 +1,13 @@
 [
   {
+    "version": "20260809-17",
+    "tag": "v0.5.49",
+    "date": "2026-08-09",
+    "changes": [
+      "The 3D printer panel's live camera can now be picked directly from your camera entities (Administration -> Opsætning -> 3D Printer -> Livekamera), instead of only accepting a hand-typed go2rtc stream name. Useful for a printer camera that isn't wired into go2rtc under a specific stream name."
+    ]
+  },
+  {
     "version": "20260809-16",
     "tag": "v0.5.48",
     "date": "2026-08-09",

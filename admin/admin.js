@@ -101,7 +101,8 @@
       { key: "stopButton", label: "Stopknap", type: "single", domain: "button" }, { key: "traySensors", label: "AMS-bakker", type: "multi", domain: "sensor", hints: ["bambu", "tray"] },
       { key: "activeTray", label: "Aktiv AMS-bakke", type: "single", domain: "sensor" }, { key: "amsHumidity", label: "AMS-fugtighed", type: "single", domain: "sensor" },
       { key: "totalUsage", label: "Samlet driftstid", type: "single", domain: "sensor" },
-      { key: "liveStream", label: "go2rtc streamnavn", type: "text", placeholder: "3dprinter" }
+      { key: "liveCamera", label: "Livekamera (vælg fra kameraer)", type: "single", domain: "camera" },
+      { key: "liveStream", label: "go2rtc streamnavn (kun hvis kameraet ikke kan vælges ovenfor)", type: "text", placeholder: "3dprinter" }
     ]},
     { id: "energy", title: "Energi", description: "Hovedmåler, elpris og dagens totaler.", fields: [
       { key: "powerSensor", label: "Hovedmåler (effekt)", type: "single", domain: "sensor", deviceClasses: ["power"], hints: ["main", "total", "house", "hoved"] },
