@@ -15,16 +15,22 @@
   display: flex;
 }
 
+/* This overlay's own backdrop (above) is always dark regardless of the
+   site's light/dark theme -- a deliberate, dramatic full-screen look, the
+   same reasoning as the ambient screensaver staying dark always. Text and
+   controls below are hardcoded to match that fixed-dark backdrop instead
+   of pulling from the theme's --ink/--border tokens, which flip to dark-
+   on-dark (illegible) the moment someone picks the light theme. */
 .beast-lock-card {
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: var(--space-3);
-  color: var(--ink);
+  color: #f5f6f8;
   animation: beast-lock-fade-in 200ms ease;
   min-width: 420px;
   padding: 34px 42px;
-  border: 1px solid var(--border-strong);
+  border: 1px solid rgba(255, 255, 255, .16);
   border-radius: var(--radius-lg);
   background: rgba(18, 21, 30, .88);
   box-shadow: 0 28px 90px rgba(0, 0, 0, .55);
@@ -60,7 +66,7 @@
 .beast-lock-subtitle {
   margin: 0 0 var(--space-2);
   font-size: var(--text-sm);
-  color: var(--ink-muted);
+  color: #939aab;
 }
 
 .beast-lock-dots {
@@ -73,7 +79,7 @@
   width: 16px;
   height: 16px;
   border-radius: 50%;
-  border: 2px solid var(--border-strong);
+  border: 2px solid rgba(255, 255, 255, .16);
   background: transparent;
   transition: background var(--transition-fast), border-color var(--transition-fast);
 }
@@ -92,9 +98,9 @@
 
 .beast-lock-key {
   appearance: none;
-  border: 1px solid var(--border-strong);
-  background: var(--surface-2-solid, #161923);
-  color: var(--ink);
+  border: 1px solid rgba(255, 255, 255, .16);
+  background: #161923;
+  color: #f5f6f8;
   border-radius: 50%;
   font-size: var(--text-xl);
   font-weight: 700;
@@ -108,13 +114,13 @@
 
 .beast-lock-key:active {
   transform: scale(0.94);
-  background: var(--surface-hover);
+  background: rgba(28, 32, 48, .78);
 }
 
 .beast-lock-key-cancel {
-  color: var(--ink-faint);
+  color: #565c6c;
   background: transparent;
   border-color: transparent;
 }
-.beast-lock-forgot { margin-top: 18px; padding: 10px 14px; border: 0; border-radius: 10px; background: transparent; color: var(--accent-b, #64dcff); font: 700 13px/1.4 var(--font-sans); cursor: pointer; }
-.beast-lock-forgot:hover, .beast-lock-forgot:focus-visible { background: var(--surface-hover); outline: 1px solid var(--border-strong); }
+.beast-lock-forgot { margin-top: 18px; padding: 10px 14px; border: 0; border-radius: 10px; background: transparent; color: #64dcff; font: 700 13px/1.4 var(--font-sans); cursor: pointer; }
+.beast-lock-forgot:hover, .beast-lock-forgot:focus-visible { background: rgba(28, 32, 48, .78); outline: 1px solid rgba(255, 255, 255, .16); }

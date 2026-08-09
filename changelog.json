@@ -1,5 +1,40 @@
 [
   {
+    "version": "20260809-15",
+    "tag": "v0.5.47",
+    "date": "2026-08-09",
+    "changes": [
+      "Fixed the admin sidebar staying hardcoded dark regardless of the light/dark theme setting -- it now follows the theme like the rest of the admin panel.",
+      "Fixed several accent colors (used for icons, borders and highlights across the whole dashboard and admin) being tuned only for a dark background -- in light mode they showed up as pale, washed-out or oddly bright instead of a real color. Aurora, Ocean and Ember now get proper darker, higher-contrast versions of their accent colors in light mode."
+    ]
+  },
+  {
+    "version": "20260809-14",
+    "tag": "v0.5.46",
+    "date": "2026-08-09",
+    "changes": [
+      "\"Auto\" theme mode now switches between light and dark based on time of day (light 07:00-20:00, dark otherwise) instead of following the browser's static dark-mode preference -- on a kiosk that preference doesn't change through the day, so \"Auto\" could end up looking permanently stuck on one mode instead of actually switching."
+    ]
+  },
+  {
+    "version": "20260809-13",
+    "tag": "v0.5.45",
+    "date": "2026-08-09",
+    "changes": [
+      "The post/3D-printer/doors banners now default to off instead of on. A config saved before these existed was silently getting them turned on after updating (since missing settings fall back to their default), which could cover an existing custom front-page layout without ever being asked for.",
+      "Administration -> Opdatering now shows a note (with a way to clear it) if idle auto-install is currently paused for a specific version -- previously invisible, making a paused state impossible to diagnose from the admin panel."
+    ]
+  },
+  {
+    "version": "20260809-12",
+    "tag": "v0.5.44",
+    "date": "2026-08-09",
+    "changes": [
+      "Fixed the PIN lock screen being nearly unreadable in light mode -- its text/keypad colors were following the light theme while its card background stayed hardcoded dark, causing dark-on-dark text. The whole lock screen is now consistently dark regardless of theme (matching the screensaver's own always-dark design), instead of a broken mix of the two.",
+      "Fixed Administration being stuck with a dark page background regardless of the light/dark theme setting, while individual cards tried to follow the theme -- producing a patchy, half-switched look. Also fixed several smaller admin surfaces (form fields, list rows, warning banners) that were hardcoded dark and didn't adapt to light mode."
+    ]
+  },
+  {
     "version": "20260809-11",
     "tag": "v0.5.43",
     "date": "2026-08-09",

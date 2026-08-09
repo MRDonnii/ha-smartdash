@@ -973,6 +973,7 @@
       <div class="admin-card"><div class="admin-card-head"><div><h2>Denne installation</h2><p>Versionen der kører lige nu, og hvad der senest er ændret.</p></div><button type="button" class="beast-btn" data-check-updates>Tjek for opdateringer</button></div>
         <div class="beast-stat-grid">${BeastCore.statTile({ icon: "sparkles", label: "Nuværende version", value: "Henter…", meta: "…", id: "adminCurrentVersionTile" })}</div>
         <div class="admin-update-status" id="adminUpdateStatus" data-state="checking"><span class="admin-update-status-dot"></span><span id="adminUpdateStatusText">Tjekker…</span></div>
+        <div id="adminUpdateSkipNote"></div>
         <div class="admin-changelog-list" id="adminChangelogList"><p class="admin-empty">Henter ændringslog…</p></div>
       </div>
       <div class="admin-card"><div class="admin-card-head"><div><h2>Versionshistorik</h2><p>Du kan altid installere den nyeste version, eller vælge en ældre at gendanne. Den nuværende version gemmes altid først, så det kan fortrydes.</p></div><button type="button" class="beast-btn" data-reload-versions>Opdatér liste</button></div>
@@ -1074,6 +1075,12 @@
         } else {
           installLatestEl.innerHTML = `<p class="admin-empty">${t("Du kører den nyeste version.", "You're on the latest version.")}</p>`;
         }
+      }
+      const skipNoteEl = document.getElementById("adminUpdateSkipNote");
+      if (skipNoteEl) {
+        skipNoteEl.innerHTML = github?.skipAutoInstall
+          ? `<p class="admin-field-hint">${t("Automatisk idle-installation er sat på pause for denne version — typisk fordi den blev rullet tilbage fra for nylig. \"Installer ny version\" ovenfor virker stadig manuelt.", "Idle auto-install is paused for this version -- usually because it was recently rolled back from. The manual \"Install new version\" button above still works.")} <button type="button" class="beast-btn" id="adminClearUpdateSkip" style="margin-left:8px;">${t("Fjern pause", "Clear pause")}</button></p>`
+          : "";
       }
       const oldVersions = versions.filter((item) => item.version !== current && item.version !== latestVersion);
       if (oldSelect) {
@@ -1547,6 +1554,11 @@
     document.querySelector("[data-reload-backups]")?.addEventListener("click", loadBackupSettings);
     document.querySelector("[data-reload-versions]")?.addEventListener("click", loadUpdatesSettings);
     document.querySelector("[data-check-updates]")?.addEventListener("click", loadUpdatesSettings);
+    document.getElementById("adminUpdateSkipNote")?.addEventListener("click", async (event) => {
+      if (!event.target.closest("#adminClearUpdateSkip")) return;
+      await fetch("/api/update.php", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "clearSkip" }) }).catch(() => {});
+      loadUpdatesSettings();
+    });
     document.getElementById("adminOldVersionSelect")?.addEventListener("change", (event) => {
       const restoreBtn = document.getElementById("adminOldVersionRestoreBtn");
       if (restoreBtn) restoreBtn.dataset.rollbackVersion = event.target.value;
