@@ -1,5 +1,13 @@
 [
   {
+    "version": "20260809-18",
+    "tag": "v0.5.50",
+    "date": "2026-08-09",
+    "changes": [
+      "Fixed the Home Assistant address field (shown once, before first login) being nearly unreadable in light mode -- its background was hardcoded dark while the text followed the theme, giving dark text on a near-black box."
+    ]
+  },
+  {
     "version": "20260809-17",
     "tag": "v0.5.49",
     "date": "2026-08-09",
