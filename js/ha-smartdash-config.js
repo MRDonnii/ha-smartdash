@@ -76,9 +76,15 @@ const BeastConfig = (() => {
       idleMode: true,
       adminPreview: false,
       configAudit: false,
-      postBanner: true,
-      printerBanner: true,
-      doorBanner: true,
+      // Default off (opt-in), like every other feature flag here --
+      // deepMerge() fills missing keys from these defaults for any config
+      // saved before a field existed, so defaulting a brand-new banner to
+      // true would silently turn it on (potentially covering someone's
+      // custom overview layout) for every existing installation the
+      // moment they update, without them ever having asked for it.
+      postBanner: false,
+      printerBanner: false,
+      doorBanner: false,
     },
     overviewSlots: {
       main: { type: "cameras", entity: null, label: "" },

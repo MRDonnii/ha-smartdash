@@ -388,5 +388,11 @@ if ($action === "install") {
   exit;
 }
 
+if ($action === "clearSkip") {
+  @unlink($dataDir . "/update-skip.json");
+  echo json_encode(["success" => true]);
+  exit;
+}
+
 http_response_code(400);
 echo json_encode(["error" => "unknown_action"]);

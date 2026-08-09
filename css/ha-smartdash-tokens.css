@@ -185,6 +185,14 @@
   --accent-energy: #a76500;
   --accent-weather: #0878bb;
   --accent-rooms: #087f61;
+  /* The dark palette's --accent-music/--accent-security are tuned to glow
+     against near-black -- at the same brightness on a white background
+     they read as washed-out pale pink instead of a real color, so they
+     get the same darken-for-contrast treatment as the accent-a/b pairs
+     below. */
+  --accent-music: color-mix(in srgb, #ff5cb3 55%, black);
+  --accent-music-soft: color-mix(in srgb, var(--accent-music) 15%, transparent);
+  --accent-security: color-mix(in srgb, #ff5d7a 55%, black);
   --shadow-card: 0 1px 0 rgba(255, 255, 255, 0.9) inset, 0 16px 34px -18px rgba(31, 48, 70, 0.32);
   --panel-bg-rgb: 255 255 255;
   --panel-border-rgb: 21 38 60;
@@ -192,12 +200,45 @@
   --ambient-secondary-strength: 0.28;
 }
 
+/* Aurora, ocean and ember are the three vivid/neon palettes designed to
+   glow on a near-black background -- unlike sage/sand/slate (already
+   muted), their raw accent-a/b hex is far too light to read as a real
+   color on white, which is what made light theme look "washed out" and
+   full of oddly pale/neon colors. Darkening each one 55% toward black
+   keeps its hue/identity while giving it real contrast on a light
+   surface; --accent-soft/--accent-border/--accent-glow are re-derived
+   from the darkened color so badges/borders/glows stay in sync instead
+   of mixing a dark-tuned glow with a light-tuned accent. */
+:root[data-color-mode="light"][data-theme-palette="aurora"] {
+  --accent-a: color-mix(in srgb, #8b6cff 55%, black);
+  --accent-b: color-mix(in srgb, #22d3ee 55%, black);
+  --accent: var(--accent-a);
+  --accent-soft: color-mix(in srgb, var(--accent-a) 14%, transparent);
+  --accent-border: color-mix(in srgb, var(--accent-a) 46%, transparent);
+  --accent-glow: 0 0 0 1px var(--accent-border), 0 8px 26px color-mix(in srgb, var(--accent-a) 22%, transparent);
+  --accent-gradient: linear-gradient(135deg, var(--accent-a), var(--accent-b));
+}
+
 :root[data-color-mode="light"][data-theme-palette="ocean"] {
+  --accent-a: color-mix(in srgb, #287cff 55%, black);
+  --accent-b: color-mix(in srgb, #18c7bb 55%, black);
+  --accent: var(--accent-a);
+  --accent-soft: color-mix(in srgb, var(--accent-a) 14%, transparent);
+  --accent-border: color-mix(in srgb, var(--accent-a) 46%, transparent);
+  --accent-glow: 0 0 0 1px var(--accent-border), 0 8px 26px color-mix(in srgb, var(--accent-a) 22%, transparent);
+  --accent-gradient: linear-gradient(135deg, var(--accent-a), var(--accent-b));
   --bg-glow-a: rgba(40, 124, 255, 0.13);
   --bg-glow-b: rgba(24, 165, 155, 0.1);
 }
 
 :root[data-color-mode="light"][data-theme-palette="ember"] {
+  --accent-a: color-mix(in srgb, #f97338 55%, black);
+  --accent-b: color-mix(in srgb, #ec4899 55%, black);
+  --accent: var(--accent-a);
+  --accent-soft: color-mix(in srgb, var(--accent-a) 14%, transparent);
+  --accent-border: color-mix(in srgb, var(--accent-a) 46%, transparent);
+  --accent-glow: 0 0 0 1px var(--accent-border), 0 8px 26px color-mix(in srgb, var(--accent-a) 22%, transparent);
+  --accent-gradient: linear-gradient(135deg, var(--accent-a), var(--accent-b));
   --bg-glow-a: rgba(235, 99, 40, 0.12);
   --bg-glow-b: rgba(210, 48, 121, 0.08);
 }

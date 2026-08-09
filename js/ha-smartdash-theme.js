@@ -3,7 +3,21 @@
   const DEFAULTS = { mode: "auto", palette: "aurora", cardOpacity: 92 };
   const MODES = new Set(["auto", "dark", "light"]);
   const PALETTES = new Set(["aurora", "ocean", "ember", "sage", "sand", "slate"]);
-  const media = window.matchMedia("(prefers-color-scheme: dark)");
+  // "Auto" used to mean "follow the browser's prefers-color-scheme" --
+  // technically correct, but on a kiosk that's a static OS-level setting
+  // nobody is toggling through the day, so in practice "Auto" just looked
+  // permanently stuck on whatever the device happened to default to
+  // (usually dark), never actually switching to light during the day.
+  // Time-of-day is what people actually expect from "Auto" on a wall
+  // display -- light in the day, dark at night -- so that's the signal
+  // used now instead.
+  const AUTO_DAY_START_MINUTES = 7 * 60;
+  const AUTO_DAY_END_MINUTES = 20 * 60;
+  function isAutoDaytime(date = new Date()) {
+    const minutes = date.getHours() * 60 + date.getMinutes();
+    return minutes >= AUTO_DAY_START_MINUTES && minutes < AUTO_DAY_END_MINUTES;
+  }
+  let autoRecheckTimerId = null;
 
   function read() {
     try {
@@ -21,7 +35,7 @@
   }
 
   function apply(settings = read(), notify = true) {
-    const resolved = settings.mode === "auto" ? (media.matches ? "dark" : "light") : settings.mode;
+    const resolved = settings.mode === "auto" ? (isAutoDaytime() ? "light" : "dark") : settings.mode;
     const root = document.documentElement;
     root.dataset.colorMode = resolved;
     root.dataset.themeMode = settings.mode;
@@ -33,6 +47,14 @@
     root.style.colorScheme = resolved;
     document.querySelector('meta[name="theme-color"]')?.setAttribute("content", resolved === "dark" ? "#050608" : "#eef3f8");
     if (notify) document.dispatchEvent(new CustomEvent("beast:theme-change", { detail: { ...settings, resolved } }));
+    // Auto mode needs to actually re-evaluate as the day goes on -- there's
+    // no browser event for "it's now 20:00", unlike prefers-color-scheme's
+    // own change event below. Checked every 5 minutes, which is frequent
+    // enough that the day/night switch never feels late.
+    window.clearInterval(autoRecheckTimerId);
+    if (settings.mode === "auto") {
+      autoRecheckTimerId = window.setInterval(() => apply(read()), 5 * 60 * 1000);
+    }
     return { ...settings, resolved };
   }
 
@@ -49,10 +71,6 @@
     return apply(settings);
   }
 
-  media.addEventListener?.("change", () => {
-    const settings = read();
-    if (settings.mode === "auto") apply(settings);
-  });
 
   window.BeastTheme = {
     getSettings: () => ({ ...read(), resolved: document.documentElement.dataset.colorMode }),
