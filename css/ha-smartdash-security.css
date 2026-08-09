@@ -8,6 +8,23 @@
   grid-template-rows: minmax(0, 1fr) minmax(250px, auto);
   gap: var(--space-4);
 }
+.beast-security-command.has-native-layout {
+  grid-template-columns: repeat(12, minmax(0, 1fr));
+  grid-template-rows: repeat(6, minmax(80px, 1fr));
+  grid-auto-rows: minmax(80px, 1fr);
+  overflow-y: auto;
+}
+.beast-security-command.has-native-layout > .beast-security-native-card {
+  grid-column: var(--security-x) / span var(--security-w) !important;
+  grid-row: var(--security-y) / span var(--security-h) !important;
+  min-width: 0;
+  min-height: 0;
+}
+.beast-security-command.is-native-editing > .beast-security-native-card { position: relative; overflow: visible; outline: 2px dashed color-mix(in srgb, var(--accent), transparent 35%); outline-offset: -3px; touch-action: none; }
+.beast-security-command.is-native-editing > .beast-security-native-card > :not(.beast-security-native-drag):not(.beast-security-native-resize) { pointer-events: none; }
+.beast-security-native-drag { position: absolute; z-index: 40; top: 10px; right: 10px; width: 48px; height: 48px; display: grid; place-items: center; border: 1px solid var(--accent-border); border-radius: 13px; background: var(--surface-solid); color: var(--accent); box-shadow: var(--shadow-md); cursor: grab; touch-action: none; }
+.beast-security-native-resize { position: absolute; z-index: 41; right: 0; bottom: 0; width: 54px; height: 54px; border-radius: 18px 0 0 0; background: linear-gradient(135deg, transparent 46%, var(--accent) 47% 55%, transparent 56% 64%, var(--accent) 65% 73%, transparent 74%); cursor: nwse-resize; touch-action: none; }
+.beast-security-command.is-native-editing > .is-dragging, .beast-security-command.is-native-editing > .is-resizing { z-index: 45; opacity: .88; }
 
 .beast-security-hero,
 .beast-security-systems,
@@ -263,7 +280,12 @@
 }
 .beast-security-command .is-layout-hidden { display: none !important; }
 .beast-security-layout-btn { position: absolute; top: 12px; right: 12px; z-index: 5; width: 44px; height: 44px; border: 0; background: transparent; color: var(--ink-muted); font-size: 28px; }
-.beast-security-layout-modal { width: min(620px, calc(100vw - 32px)); }
+.beast-security-layout-modal { width: min(1050px, calc(100vw - 32px)); max-height: calc(100dvh - 28px); }
 .beast-security-layout-list { display: grid; gap: 10px; margin: 16px 0 20px; }
-.beast-security-layout-list label { display: flex; align-items: center; gap: 12px; min-height: 58px; padding: 10px 14px; border: 1px solid var(--border); border-radius: var(--radius-md); background: var(--surface-2); font-size: var(--text-md); }
-.beast-security-layout-list input { width: 24px; height: 24px; accent-color: var(--accent); }
+.beast-security-native-editor-card { padding: 13px; border: 1px solid var(--border); border-radius: var(--radius-md); background: var(--surface-2); }
+.beast-security-native-editor-card header label { min-height: 42px; display: flex; align-items: center; gap: 10px; }
+.beast-security-native-editor-card header input { width: 24px; height: 24px; accent-color: var(--accent); }
+.beast-security-native-editor-card > div { display: grid; grid-template-columns: repeat(3,minmax(120px,1fr)); gap: 9px; margin-top: 9px; }
+.beast-security-native-editor-card > div label { min-width: 0; display: flex; flex-direction: column; gap: 5px; color: var(--ink-muted); font-size: var(--text-xs); }
+.beast-security-native-editor-card > div input, .beast-security-native-editor-card > div select { width: 100%; min-height: 44px; padding: 0 10px; border: 1px solid var(--border); border-radius: 10px; background: var(--surface-solid); color: var(--ink); }
+@media (max-width: 760px) { .beast-security-native-editor-card > div { grid-template-columns: minmax(0,1fr); } }

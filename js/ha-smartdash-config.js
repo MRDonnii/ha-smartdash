@@ -106,6 +106,7 @@ const BeastConfig = (() => {
     // overview card types) or omitted entirely to turn that tile off.
     overviewQuickTiles: ["car", "pool"],
     hiddenSections: [],
+    pages: { order: [], removed: [], custom: [], overrides: {} },
     appEntities: { kioskScreenLight: null, kioskEntities: {}, doorbellBinarySensor: null, doorbellEvent: null, doorbellCamera: null, mailPresent: null, mailCount: null, mailDescription: null, mailImage: null, mailImageCarport: null, mailImageForhaven: null, quickScenes: [] },
     // Behavior tuning for the overview banners -- most entities each banner
     // watches are reused from panels.printer/panels.security (already
@@ -141,6 +142,7 @@ const BeastConfig = (() => {
 
   let cache = null;
   let readyPromise = null;
+  let saveQueue = Promise.resolve();
 
   function isPlainObject(value) {
     return value !== null && typeof value === "object" && !Array.isArray(value);
@@ -243,17 +245,19 @@ const BeastConfig = (() => {
   function save(next) {
     cache = next;
     writeLocalFallback(next);
-    const request = fetch(API_URL, {
+    const payload = JSON.stringify(next);
+    const request = saveQueue.catch(() => null).then(() => fetch(API_URL, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(next)
+      body: payload
     }).then((response) => {
       if (!response.ok) throw new Error(`HTTP ${response.status}`);
       return response.json();
-    }).catch((error) => {
+    })).catch((error) => {
       console.error("[BeastConfig] kunne ikke gemme til backend", error);
       return { success: false };
     });
+    saveQueue = request.then(() => null, () => null);
     document.dispatchEvent(new CustomEvent("beast:config-changed"));
     return request;
   }

@@ -135,7 +135,7 @@
    guarantee (on top of the JS-level beastOverviewEditing check in
    ha-smartdash-app.js) that nothing inside a card can be tapped by
    accident, including buttons/links this stylesheet doesn't know about. */
-.beast-overview-grid.is-editing .beast-ov-card:not(.beast-ov-card-add) > *:not(.beast-ov-card-drag):not(.beast-ov-card-resize):not(.beast-ov-card-remove):not(.beast-ov-card-configure):not(.beast-ov-card-duplicate) { pointer-events: none; }
+.beast-overview-grid.is-editing .beast-ov-card:not(.beast-ov-card-add) > *:not(.beast-ov-card-drag):not(.beast-ov-card-resize):not(.beast-ov-card-remove):not(.beast-ov-card-configure):not(.beast-ov-card-duplicate):not(.beast-ov-card-reset) { pointer-events: none; }
 .beast-ov-card-drag, .beast-ov-card-resize, .beast-ov-card-remove, .beast-ov-card-configure { position: absolute; z-index: 20; display: grid; place-items: center; touch-action: none; pointer-events: auto; }
 .beast-ov-card-drag { top: 8px; left: 8px; width: 32px; height: 32px; border-radius: 50%; background: rgba(9,12,18,.72); color: #fff; cursor: grab; }
 .beast-ov-card.is-dragging { opacity: .7; box-shadow: 0 22px 60px rgba(0,0,0,.5); z-index: 50; cursor: grabbing; }
@@ -153,6 +153,28 @@
 .beast-ov-add-card-entity[hidden] { display: none; }
 .beast-ov-add-card-search { min-height: 44px; padding: 0 12px; border: 1px solid var(--border-strong); border-radius: 10px; background: var(--surface-2); color: var(--ink); }
 .beast-ov-add-card-select { padding: 6px; border: 1px solid var(--border-strong); border-radius: 10px; background: var(--surface-2); color: var(--ink); }
+.beast-template-gallery-modal { width: min(1040px, calc(100vw - 32px)); max-height: min(900px, calc(100vh - 28px)); }
+.beast-template-gallery-modal .beast-modal-body { overflow-y: auto; }
+.beast-template-search { width: 100%; min-height: 54px; padding: 0 16px; border: 1px solid var(--border-strong); border-radius: var(--radius-md); background: var(--surface-solid); color: var(--ink); font: inherit; }
+.beast-template-categories { display: flex; gap: 8px; padding: 4px 0 2px; overflow-x: auto; scrollbar-width: none; }
+.beast-template-categories::-webkit-scrollbar { display: none; }
+.beast-template-categories button { flex: 0 0 auto; min-height: 46px; padding: 0 16px; border: 1px solid var(--border-strong); border-radius: 12px; background: var(--surface-2); color: var(--ink-muted); font-weight: 750; }
+.beast-template-categories button.is-active { border-color: var(--accent-border); background: var(--accent-soft); color: var(--ink); }
+.beast-template-gallery { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+.beast-template-card { min-width: 0; min-height: 126px; display: grid; grid-template-columns: 50px minmax(0, 1fr); align-items: start; gap: 13px; padding: 16px; border: 1px solid var(--border); border-radius: var(--radius-md); background: var(--surface-2); color: var(--ink); text-align: left; touch-action: manipulation; }
+.beast-template-card:hover, .beast-template-card:focus-visible { border-color: var(--accent-border); background: color-mix(in srgb, var(--surface-2) 82%, var(--accent-soft)); transform: translateY(-1px); }
+.beast-template-card[hidden] { display: none; }
+.beast-template-card-icon { width: 50px; height: 50px; display: grid; place-items: center; flex: 0 0 50px; border-radius: 15px; background: var(--accent-soft); color: var(--accent); }
+.beast-template-card span:last-child { min-width: 0; display: grid; gap: 5px; }
+.beast-template-card strong { font-size: var(--text-md); }
+.beast-template-card small { color: var(--ink-muted); line-height: 1.35; }
+.beast-template-card em { color: var(--accent); font-size: var(--text-xs); font-style: normal; font-weight: 750; }
+.beast-template-selected { display: flex; align-items: center; gap: 14px; padding: 14px; border: 1px solid var(--accent-border); border-radius: var(--radius-md); background: var(--accent-soft); }
+.beast-template-selected > span:last-child { display: grid; gap: 3px; }
+.beast-template-selected small, .beast-template-selected em { color: var(--ink-muted); font-style: normal; }
+.beast-template-back { justify-self: start; min-height: 46px; padding: 0 14px; border: 1px solid var(--border-strong); border-radius: 12px; background: var(--surface-2); color: var(--ink); font-weight: 750; }
+@media (max-width: 900px) { .beast-template-gallery { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 560px) { .beast-template-gallery { grid-template-columns: minmax(0, 1fr); } .beast-template-gallery-modal { width: calc(100vw - 16px); } }
 
 .beast-ov-mail-modal { max-width:640px; }
 .beast-ov-mail-modal .beast-modal-body { padding:var(--space-5); gap:var(--space-4); }
@@ -749,6 +771,11 @@
   overflow: hidden;
   background: #000;
 }
+.beast-ov-camera-thumb .beast-overview-camera-render { position: absolute; inset: 0; }
+.beast-ov-camera-thumb .beast-shared-camera-label { font-size: 12px; min-height: 40px; padding: 14px 10px 7px; }
+.beast-ov-camera-thumb .beast-camera-quality-menu { top: 8px; right: 8px; }
+.beast-ov-camera-thumb .beast-camera-quality-toggle { width: 40px; height: 40px; font-size: 25px; }
+.beast-ov-camera-thumb .beast-camera-quality-popover { top: 44px; width: 178px; }
 
 .beast-ov-camera-thumb.has-motion {
   box-shadow: 0 0 0 2px var(--accent-security);
