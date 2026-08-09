@@ -27,9 +27,28 @@
   };
 
   let containerEl = null;
+  let gridEl = null;
+  let pageEditor = null;
   let wholeHouseSelected = false;
   let roomLayoutEditing = false;
   const ROOM_LAYOUT_KEY = "beast_gunner_room_button_positions_v1";
+
+  function defaultCards() {
+    const cards = [];
+    if (IDS.leonora) cards.push({ id: "robot_leonora", type: "leonora", display: "full", desktop: { w: 3, h: 2 }, tablet: { w: 1, h: 2 }, portrait: { h: 2 } });
+    if (IDS.gunner) cards.push({ id: "robot_gunner", type: "gunner", display: "full", desktop: { w: 6, h: 2 }, tablet: { w: 2, h: 2 }, portrait: { h: 2 } });
+    if (IDS.poul) cards.push({ id: "robot_poul", type: "poul", display: "full", desktop: { w: 3, h: 2 }, tablet: { w: 1, h: 2 }, portrait: { h: 2 } });
+    return cards;
+  }
+
+  function savedCards() {
+    const cards = BeastConfig.get("pageLayouts.robots.cards");
+    return Array.isArray(cards) && cards.length ? cards : defaultCards();
+  }
+
+  function cardSize(card) {
+    return `data-builder-card="${escapeHtml(card.id)}" style="--desktop-w:${Number(card.desktop?.w) || 4};--desktop-h:${Number(card.desktop?.h) || 1};--tablet-w:${Number(card.tablet?.w) || 1};--tablet-h:${Number(card.tablet?.h) || 1};--portrait-h:${Number(card.portrait?.h) || 1};"`;
+  }
 
   // The whole panel re-renders (innerHTML replace) on every relevant state
   // change, which is frequent while Gunner is actively cleaning (progress,
@@ -208,7 +227,7 @@
           <div><small>iRobot Roomba 860</small><strong class="beast-robot-name">Leonora</strong></div>
           ${statusPill(IDS.leonora)}
         </div>
-        <div class="beast-robot-media">${IDS.leonoraImage ? `<img data-robot-image="${escapeHtml(IDS.leonoraImage)}" alt="Leonora · iRobot Roomba 860">` : `<img src="./assets/robots/leonora-roomba-860.png" alt="Leonora · iRobot Roomba 860">`}</div>
+        <div class="beast-robot-media">${IDS.leonoraImage ? `<img data-robot-image="${escapeHtml(IDS.leonoraImage)}" alt="Leonora · iRobot Roomba 860">` : `<picture><img class="beast-robot-theme-image is-dark" src="./assets/robots/leonora-roomba-860.png" alt="Leonora · iRobot Roomba 860"><img class="beast-robot-theme-image is-light" src="./assets/robots/leonora-roomba-860-light.png" alt=""></picture>`}</div>
         <div class="beast-robot-facts">
           ${battery(IDS.leonora, IDS.leonoraBattery)}
           <span>${BeastCore.icon("grid", { size: 15 })} Beholder ${value(IDS.leonoraBin, "off") === "on" ? "fuld" : "klar"}</span>
@@ -278,7 +297,7 @@
           <div><small>WORX Landroid M500 Plus</small><strong class="beast-robot-name">Poul</strong></div>
           ${statusPill(IDS.poul)}
         </div>
-        <div class="beast-robot-media">${IDS.poulImage ? `<img data-robot-image="${escapeHtml(IDS.poulImage)}" alt="Poul · WORX Landroid M500 Plus">` : `<img src="./assets/robots/poul-landroid-m500-plus.png" alt="Poul · WORX Landroid M500 Plus">`}</div>
+        <div class="beast-robot-media">${IDS.poulImage ? `<img data-robot-image="${escapeHtml(IDS.poulImage)}" alt="Poul · WORX Landroid M500 Plus">` : `<picture><img class="beast-robot-theme-image is-dark" src="./assets/robots/poul-landroid-m500-plus.png" alt="Poul · WORX Landroid M500 Plus"><img class="beast-robot-theme-image is-light" src="./assets/robots/poul-landroid-m500-plus-light.png" alt=""></picture>`}</div>
         <div class="beast-robot-facts">
           ${battery(IDS.poul, IDS.poulBattery)}
           <span>${BeastCore.icon("robot", { size: 15 })} ${value(IDS.poulOnline, "off") === "on" ? "Forbundet" : "Offline"}</span>
@@ -289,15 +308,33 @@
     `;
   }
 
+  function robotCardMarkup(card) {
+    if (BeastStandardCards.isStandardType(card.type)) return BeastStandardCards.renderMarkup(card);
+    let content = "";
+    if (card.type === "leonora") content = buildLeonora();
+    else if (card.type === "gunner") content = buildGunner();
+    else if (card.type === "poul") content = buildPoul();
+    else if (card.entity === SPECIAL_ROBOTS.leonora) content = buildLeonora();
+    else if (card.entity === SPECIAL_ROBOTS.gunner) content = buildGunner();
+    else if (card.entity === SPECIAL_ROBOTS.poul) content = buildPoul();
+    else if (card.entity) content = buildGenericRobot(card.entity, card.entity.startsWith("lawn_mower.") ? "lawn_mower" : "vacuum");
+    return `<section class="beast-panel beast-ov-card beast-page-builder-card beast-robot-builder-card" ${cardSize(card)} data-card-display="${escapeHtml(card.display || "full")}">${content}</section>`;
+  }
+
+  function renderCards(cards) {
+    if (!gridEl) return;
+    gridEl.innerHTML = `${cards.map(robotCardMarkup).join("")}<div data-card-editor-anchor></div>`;
+    wireCards();
+  }
+
   function render() {
-    if (!containerEl) return;
-    const cards = [
-      ...selectedVacuums.map((entityId) => entityId === SPECIAL_ROBOTS.leonora ? buildLeonora() : (entityId === SPECIAL_ROBOTS.gunner ? buildGunner() : buildGenericRobot(entityId, "vacuum"))),
-      ...selectedMowers.map((entityId) => entityId === SPECIAL_ROBOTS.poul ? buildPoul() : buildGenericRobot(entityId, "lawn_mower"))
-    ];
-    containerEl.innerHTML = cards.length
-      ? `<div class="beast-robots-grid">${cards.join("")}</div>`
-      : `<p class="beast-music-empty">Ingen robotter er valgt. Tilføj dem under Indstillinger → Robotter.</p>`;
+    if (!containerEl || pageEditor?.isEditing()) return;
+    renderCards(savedCards());
+  }
+
+  function wireCards() {
+    if (!gridEl) return;
+    BeastStandardCards.wire(gridEl);
     const roomLayer = containerEl.querySelector(".beast-robot-room-layer");
     roomLayer?.classList.toggle("is-editing", roomLayoutEditing);
     if (roomLayer) applyRoomPositions(roomLayer);
@@ -393,11 +430,63 @@
     });
   }
 
+  function configureRobotCard(card, commit) {
+    document.getElementById("beastRobotCardSettings")?.remove();
+    const overlay = document.createElement("div");
+    overlay.id = "beastRobotCardSettings";
+    overlay.className = "beast-modal-overlay";
+    const selectedRobot = card.entity || (card.type === "leonora" ? IDS.leonora : card.type === "gunner" ? IDS.gunner : card.type === "poul" ? IDS.poul : "");
+    const robotOptions = robotEntities().map((entity) => `<option value="${escapeHtml(entity.id)}"${entity.id === selectedRobot ? " selected" : ""}>${escapeHtml(entity.name)}</option>`).join("");
+    overlay.innerHTML = `<div class="beast-modal beast-page-card-settings" role="dialog" aria-modal="true">
+      <div class="beast-modal-header"><div><small>Robotter</small><h3>Indhold i kortet</h3></div><button type="button" class="beast-modal-close" data-close>${BeastCore.icon("close", { size: 22 })}</button></div>
+      <div class="beast-modal-body"><label>Robot<select data-robot>${robotOptions}</select></label><label>Visning<select data-display>
+        <option value="full">Komplet styring</option><option value="compact">Kompakt status</option><option value="media">Kun billede eller kort</option><option value="controls">Kun status og styring</option>
+      </select></label><p>Størrelsen ændres direkte med håndtaget i kortets nederste højre hjørne.</p></div>
+      <div class="beast-modal-actions"><button type="button" data-close>Annullér</button><button type="button" class="beast-btn beast-btn-primary" data-save>Gem kort</button></div>
+    </div>`;
+    document.body.appendChild(overlay);
+    overlay.querySelector("[data-display]").value = card.display || "full";
+    overlay.addEventListener("click", (event) => {
+      if (event.target === overlay || event.target.closest("[data-close]")) return overlay.remove();
+      if (!event.target.closest("[data-save]")) return;
+      commit({ ...card, type: "robot", entity: overlay.querySelector("[data-robot]").value, display: overlay.querySelector("[data-display]").value });
+      overlay.remove();
+    });
+  }
+
+  function robotEntities() {
+    return Array.from(BeastHaSocket.getAllStates().values())
+      .filter((entity) => entity?.entity_id?.startsWith("vacuum.") || entity?.entity_id?.startsWith("lawn_mower."))
+      .map((entity) => ({ id: entity.entity_id, name: entity.attributes?.friendly_name || entity.entity_id }))
+      .sort((a, b) => a.name.localeCompare(b.name, "da"));
+  }
+
+  function editorEntities(type) {
+    return type === "robot" ? robotEntities() : BeastCardEditor.allEntities();
+  }
+
   function init(root) {
     applyConfig();
     containerEl = root;
     containerEl.classList.add("beast-robots-panel");
-    containerEl.innerHTML = `<p class="beast-music-empty">Henter robotter…</p>`;
+    containerEl.innerHTML = `<button type="button" class="beast-page-edit-trigger" id="beastRobotsEdit" aria-label="Rediger Robotter" title="Rediger siden">⋮</button><div class="beast-overview-grid beast-page-builder-grid beast-robots-grid is-freeform" id="beastRobotsGrid"></div>`;
+    gridEl = document.getElementById("beastRobotsGrid");
+    pageEditor = BeastCardEditor.attach({
+      zoneEl: gridEl,
+      configPath: "pageLayouts.robots.cards",
+      cardTypes: [["robot", "Robot"], ...BeastStandardCards.types],
+      singleInstanceTypes: ["leonora", "gunner", "poul"],
+      renderCardMarkup: robotCardMarkup,
+      seedCards: defaultCards,
+      defaultCardSize: { desktop: { w: 4, h: 1 }, tablet: { w: 1, h: 1 }, portrait: { h: 1 } },
+      allEntities: editorEntities,
+      entityPickerTypes: ["robot", ...BeastStandardCards.entityPickerTypes],
+      editLabel: "Redigerer Robotter",
+      configureCard: configureRobotCard,
+      onAfterRender: () => wireCards()
+    });
+    document.getElementById("beastRobotsEdit")?.addEventListener("click", () => pageEditor.enter());
+    render();
     const stableRender = BeastCore.stableUpdater(containerEl, render, 350);
     BeastHaSocket.onStatusChange((status) => { if (status === "connected") render(); });
     const discoveredRobotEntities = [...selectedVacuums, ...selectedMowers].flatMap((id) => robotFeatures(id).entityIds);

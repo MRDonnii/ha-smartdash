@@ -94,6 +94,10 @@ const BeastConfig = (() => {
       wideBottom: { type: "energy", entity: null, label: "" }
     },
     overviewCards: [],
+    pageLayouts: {
+      robots: { cards: [] },
+      printer: { cards: [] }
+    },
     // The two small tiles under the clock/calendar card -- each is one of
     // "car"/"pool"/"robots"/"printer" (same set as the top-level generic
     // overview card types) or omitted entirely to turn that tile off.

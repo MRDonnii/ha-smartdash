@@ -1440,6 +1440,60 @@
   height: 100%;
 }
 
+.beast-page-edit-trigger {
+  position: fixed;
+  top: 30px;
+  right: 8px;
+  z-index: 39;
+  width: 44px;
+  height: 44px;
+  display: grid;
+  align-items: center;
+  justify-content: center;
+  padding: 0 0 8px;
+  border: 0;
+  border-radius: 14px;
+  background: transparent;
+  color: var(--ink);
+  font: 800 30px/1 var(--font-sans);
+  box-shadow: none;
+  touch-action: manipulation;
+}
+.beast-page-edit-trigger:active { transform: scale(.94); }
+
+.beast-page-builder-grid {
+  height: 100%;
+  padding-top: 0;
+}
+
+/* The editor uses this only as a DOM insertion marker. It must not become
+   an extra implicit grid row, otherwise height-2 cards occupy only two of
+   three rows and leave the bottom third of the full-page view empty. */
+.beast-page-builder-grid > [data-card-editor-anchor] { display: none; }
+
+.beast-page-builder-card {
+  position: relative;
+  padding: 0;
+  overflow: hidden;
+}
+
+.beast-robot-builder-card > .beast-robot-card {
+  width: 100%;
+  height: 100%;
+  border: 0;
+  border-radius: inherit;
+}
+
+.beast-robot-builder-card[data-card-display="compact"] :is(.beast-robot-settings, .beast-robot-selection, .beast-robot-quick-actions) { display: none; }
+.beast-robot-builder-card[data-card-display="compact"] .beast-robot-media,
+.beast-robot-builder-card[data-card-display="compact"] .beast-robot-map { max-height: 68%; }
+.beast-robot-builder-card[data-card-display="media"] :is(.beast-robot-card-head, .beast-robot-facts, .beast-robot-actions, .beast-robot-settings, .beast-robot-selection, .beast-robot-quick-actions) { display: none; }
+.beast-robot-builder-card[data-card-display="controls"] :is(.beast-robot-media, .beast-robot-map) { display: none; }
+
+.beast-page-card-settings .beast-modal-body label { display: grid; gap: 8px; color: var(--ink-muted); font-weight: 700; }
+.beast-page-card-settings select { min-height: 52px; padding: 0 12px; border: 1px solid var(--border-strong); border-radius: var(--radius-sm); background: var(--surface-2); color: var(--ink); font: 700 var(--text-sm) var(--font-sans); }
+.beast-page-card-settings p { color: var(--ink-muted); }
+
 .beast-robot-card {
   background: var(--surface-2);
   border: 1px solid var(--border);
@@ -1484,8 +1538,16 @@
   overflow: hidden;
   border: 1px solid var(--border);
   border-radius: var(--radius-md);
-  background: #080a0f;
+  background: color-mix(in srgb, var(--surface-2-solid) 92%, #080a0f);
 }
+
+.beast-robot-media picture { position: relative; width: 100%; height: 100%; display: block; }
+.beast-robot-theme-image { position: absolute; inset: 0; }
+.beast-robot-theme-image.is-light { display: none; }
+:root[data-color-mode="light"] .beast-robot-theme-image.is-dark { display: none; }
+:root[data-color-mode="light"] .beast-robot-theme-image.is-light { display: block; }
+:root[data-color-mode="light"] .beast-robot-media,
+:root[data-color-mode="light"] .beast-robot-map { background: #e9f1f8; }
 
 .beast-robot-map { aspect-ratio: 1 / 1; }
 
@@ -1705,9 +1767,12 @@
 
 /* 3D printer */
 .beast-printer-panel {
+  position: relative;
   min-height: 0;
   overflow: hidden;
 }
+
+.beast-robots-panel { position: relative; }
 
 .beast-printer-dashboard {
   height: 100%;
@@ -1717,6 +1782,12 @@
   gap: var(--space-5);
   overflow: hidden;
 }
+
+.beast-printer-dashboard.is-freeform { gap: var(--space-4); }
+.beast-printer-builder-card > :is(.beast-printer-visual, .beast-printer-control) { width: 100%; height: 100%; }
+.beast-printer-builder-card .beast-printer-control { padding: var(--space-4); overflow-y: auto; }
+.beast-printer-builder-card[data-card-display="compact"] :is(.beast-printer-model-section, .beast-printer-ams-head, .beast-printer-trays) { display: none; }
+.beast-printer-builder-card[data-card-display="status"] :is(.beast-printer-quick-controls, .beast-printer-model-section, .beast-printer-actions, .beast-printer-ams-head, .beast-printer-trays) { display: none; }
 
 .beast-printer-visual {
   min-width: 0;

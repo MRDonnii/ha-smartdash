@@ -34,7 +34,7 @@ These screenshots mirror the production dashboard's layout, card proportions and
 - Responsive layouts for wide, narrow and portrait screens
 - Optional pages for rooms, weather, energy, heating, music, robots, cameras, vehicles, pool and more
 - Entity and device-based setup in the admin panel
-- Central configuration with per-browser theme, camera placement, PIN and session settings
+- Central configuration including the shared screen-lock PIN, with per-browser theme, camera placement and session settings
 - Home Assistant entity list loaded once and cached; an explicit refresh action reloads it
 - Lightweight kiosk-oriented interface that can reduce browser CPU, memory and network work compared with loading the full Home Assistant UI
 - Configurable overview cards, page visibility, branding, browser title and favicon
