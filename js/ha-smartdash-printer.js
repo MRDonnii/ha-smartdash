@@ -19,7 +19,13 @@
       tray1: trays[0], tray2: trays[1], tray3: trays[2], tray4: trays[3], amsHumidity: config.amsHumidity,
       totalUsage: config.totalUsage
     };
-    PRINTER_LIVE_STREAM = config.liveStream || "";
+    // liveCamera (a HA camera.* entity) is resolved through the same
+    // go2rtc stream lookup the main Cameras panel uses -- preferred over
+    // liveStream (a raw go2rtc stream name typed by hand) since it can be
+    // picked from the entity list instead of needing the exact go2rtc
+    // stream name memorized.
+    const resolvedLiveCamera = config.liveCamera ? window.BeastCameras?.resolveCamera?.(config.liveCamera) : null;
+    PRINTER_LIVE_STREAM = resolvedLiveCamera?.streamName || config.liveStream || "";
   }
 
   function escapeHtml(value) {
@@ -254,7 +260,7 @@
       <div class="beast-printer-dashboard">
         <section class="beast-printer-visual">
           <div class="beast-printer-cam beast-printer-cam--main">
-            <iframe class="beast-printer-live-frame" id="beastPrinterLiveFrame" src="./camera-player.html?v=7&src=${encodeURIComponent(PRINTER_LIVE_STREAM)}" title="3D-printer livekamera" frameborder="0" allow="autoplay"></iframe>
+            <iframe class="beast-printer-live-frame" id="beastPrinterLiveFrame" src="./camera-player.html?v=7&src=${encodeURIComponent(PRINTER_LIVE_STREAM)}&transport=mse" title="3D-printer livekamera" frameborder="0" allow="autoplay"></iframe>
             <span class="beast-printer-cam-label">3D Printer · Livekamera</span>
             <span class="beast-printer-live"><i></i> Live</span>
           </div>
