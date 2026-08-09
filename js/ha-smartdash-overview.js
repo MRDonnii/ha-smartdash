@@ -1016,29 +1016,16 @@
     }
   }
 
-  // Measures the actual rendered cameras card rather than assuming a fixed
-  // CSS position -- how much room (if any) exists to its right depends on
-  // the layout mode (legacy 5-slot grid, freeform, portrait breakpoint...)
-  // and where the card ends up in it, which isn't knowable from CSS alone.
-  // Sits just outside the card's right edge when there's room. In the
-  // common case (cameras spanning the full-height right column, flush
-  // against the edge of the screen, as in this app's default layout)
-  // there's no room outside it at all -- confirmed and accepted as the
-  // intended result, not a bug: it falls back to the card's own inside
-  // corner instead, as a small, mostly-transparent circular button rather
-  // than a solid overlay, so it reads as a control floating over the
-  // picture's corner rather than a chunk of the picture being covered.
+  // Keep the front-page menu in the same global position as the Robotter
+  // and 3D Printer edit menus: directly below the fixed connection dot.
+  // This function remains wired to rebuild/resize events so any stale
+  // inline position from an older cached build is actively cleared.
   function positionCameraMenu() {
     const header = document.querySelector(".beast-ov-camera-header");
-    const card = document.querySelector('[data-card="cameras"]');
-    if (!header || !card) return;
-    const cardRect = card.getBoundingClientRect();
-    const gap = 8;
-    const buttonSize = 40;
-    let left = cardRect.right + gap;
-    if (left + buttonSize + gap > window.innerWidth) left = cardRect.right - buttonSize - gap;
-    header.style.left = `${Math.round(left)}px`;
-    header.style.top = `${Math.round(cardRect.top + gap)}px`;
+    if (!header) return;
+    header.style.left = "auto";
+    header.style.right = "8px";
+    header.style.top = "30px";
   }
 
   function formatCompactDate(date) {
