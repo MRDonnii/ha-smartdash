@@ -1,5 +1,59 @@
 [
   {
+    "version": "20260809-37",
+    "tag": "v0.5.69",
+    "date": "2026-08-09",
+    "changes": [
+      "Moved the front-page three-dot menu away from the camera card and into the exact same fixed position as the Robotter and 3D Printer menus: at the far-right edge, 8 px below the green live connection dot. Camera selection, front-page editing and screensaver actions are unchanged."
+    ]
+  },
+  {
+    "version": "20260809-36",
+    "tag": "v0.5.68",
+    "date": "2026-08-09",
+    "changes": [
+      "Matched the front-page three-dot camera menu button to the new Robotter and 3D Printer edit buttons: no visible border, background or shadow, with the existing camera menu behavior and positioning left unchanged and a full 44 x 44 px touch target retained."
+    ]
+  },
+  {
+    "version": "20260809-35",
+    "tag": "v0.5.67",
+    "date": "2026-08-09",
+    "changes": [
+      "The Robotter page editor can now add a Robot card and choose any Home Assistant vacuum or lawn_mower entity directly. Smartdash builds the card from that robot's own device entities, including available status, battery, image/map, controls, selectors and quick actions; known configured robots retain their tailored card.",
+      "An existing robot card can now switch to a different robot directly from its card settings while edit mode is active.",
+      "Removed the visible border, background and shadow from the three-dot edit buttons on Robotter and 3D Printer while preserving their full 44 x 44 px touch targets."
+    ]
+  },
+  {
+    "version": "20260809-34",
+    "tag": "v0.5.66",
+    "date": "2026-08-09",
+    "changes": [
+      "Replaced the large 'Rediger siden' buttons on Robotter and 3D Printer with compact three-dot menu buttons positioned at the extreme right edge directly below the green live connection indicator. The touch target remains 44 x 44 px."
+    ]
+  },
+  {
+    "version": "20260809-33",
+    "tag": "v0.5.65",
+    "date": "2026-08-09",
+    "changes": [
+      "Fixed the new Robotter and 3D Printer card layouts using only part of the available page height. The editor's invisible insertion marker was accidentally counted as an additional grid row; it is now excluded from layout so height-2 cards correctly fill the full view from top to bottom."
+    ]
+  },
+  {
+    "version": "20260809-32",
+    "tag": "v0.5.64",
+    "date": "2026-08-09",
+    "changes": [
+      "Robotter can now be edited directly on the page with the same live card editor as the front page: move, resize, add and remove cards, and choose whether each robot card shows full controls, compact status, media only or controls only.",
+      "3D Printer now has the same direct page editor, with independently resizable camera and control cards plus live-camera and status-camera selection directly from the camera card settings.",
+      "Fixed the built-in Leonora and Poul product images appearing as large black fields in the light theme by adding dedicated premium light-theme variants while preserving the original dark-theme images.",
+      "The shared card editor now supports per-card settings without leaving edit mode, and printer state updates keep the existing live-camera player mounted to avoid reconnect flicker.",
+      "Clarified the screen-lock setup: the PIN is stored centrally in the server configuration and applies to every dashboard screen."
+    ]
+  },
+  {
     "version": "20260809-31",
     "tag": "v0.5.63",
     "date": "2026-08-09",
