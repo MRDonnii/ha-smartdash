@@ -152,12 +152,49 @@
         : variants.map((variant) => ({ quality: variant.quality, label: qualityLabel(variant.quality) }));
       return { ...selected, variants, selectedQuality, qualityOptions, useSub, resolvedStreamName };
     });
+    const savedOrder = BeastConfig.get("pageLayouts.cameras.cameraOrder") || [];
+    const orderIndex = new Map((Array.isArray(savedOrder) ? savedOrder : []).map((slug, index) => [slug, index]));
     cameras.sort((a, b) => {
-      if (a.motion !== b.motion) return a.motion ? -1 : 1;
-      if (a.motion && b.motion) return b.motionChangedAt - a.motionChangedAt;
+      const aIndex = orderIndex.has(a.slug) ? orderIndex.get(a.slug) : Number.MAX_SAFE_INTEGER;
+      const bIndex = orderIndex.has(b.slug) ? orderIndex.get(b.slug) : Number.MAX_SAFE_INTEGER;
+      if (aIndex !== bIndex) return aIndex - bIndex;
       return a.label.localeCompare(b.label, "da-DK");
     });
     return cameras;
+  }
+
+  function openCameraOrder() {
+    document.getElementById("beastCameraOrderModal")?.remove();
+    const cameras = discoverCameras();
+    const cameraBySlug = new Map(cameras.map((camera) => [camera.slug, camera]));
+    const ordered = cameras.map((camera) => camera.slug);
+    const overlay = document.createElement("div");
+    overlay.id = "beastCameraOrderModal";
+    overlay.className = "beast-modal-overlay";
+    overlay.innerHTML = `<div class="beast-modal beast-camera-order-modal" role="dialog" aria-modal="true"><div class="beast-modal-header"><div><small>Kameravælger</small><h3>Rækkefølge på kameraer</h3></div><button type="button" class="beast-modal-close" data-close>×</button></div><div class="beast-modal-body"><p class="beast-page-editor-hint">Flyt de fysiske kameraer. Kameraets kvaliteter følger automatisk med.</p><div class="beast-camera-order-list"></div><button type="button" class="beast-btn beast-btn-primary" data-save-camera-order>Gem rækkefølge</button></div></div>`;
+    const renderRows = () => {
+      overlay.querySelector(".beast-camera-order-list").innerHTML = ordered.map((slug, index) => {
+        const camera = cameraBySlug.get(slug);
+        return `<article data-camera-order="${escapeHtml(slug)}"><b>${index + 1}</b><span><strong>${escapeHtml(camera?.label || slug)}</strong><small>${escapeHtml(camera?.entityId || "")}</small></span><div><button type="button" data-camera-up aria-label="Flyt op" ${index ? "" : "disabled"}>↑</button><button type="button" data-camera-down aria-label="Flyt ned" ${index < ordered.length - 1 ? "" : "disabled"}>↓</button></div></article>`;
+      }).join("");
+    };
+    renderRows();
+    document.body.appendChild(overlay);
+    overlay.addEventListener("click", async (event) => {
+      if (event.target === overlay || event.target.closest("[data-close]")) return overlay.remove();
+      const row = event.target.closest("[data-camera-order]");
+      if (row && (event.target.closest("[data-camera-up]") || event.target.closest("[data-camera-down]"))) {
+        const index = ordered.indexOf(row.dataset.cameraOrder);
+        const next = event.target.closest("[data-camera-up]") ? index - 1 : index + 1;
+        if (next >= 0 && next < ordered.length) [ordered[index], ordered[next]] = [ordered[next], ordered[index]];
+        renderRows();
+        return;
+      }
+      if (!event.target.closest("[data-save-camera-order]")) return;
+      await BeastConfig.set("pageLayouts.cameras.cameraOrder", ordered);
+      overlay.remove();
+      render();
+    });
   }
 
   function setCameraQuality(camera, quality) {
@@ -337,9 +374,9 @@
     const hidden = new Set(Array.isArray(layout.hidden) ? layout.hidden : []);
     containerEl.querySelector(".beast-camera-featured")?.classList.toggle("is-layout-hidden", hidden.has("featured"));
     containerEl.querySelector(".beast-camera-strip")?.classList.toggle("is-layout-hidden", hidden.has("grid"));
-    BeastNativePageEditor.mount({ section:"cameras", label:"Kameraer", root:()=>containerEl, host:()=>containerEl, trigger:"#beastCamerasLayoutEdit", onSave:()=>render(), fitCards:(cards)=>cards.map((card)=>card.id === "featured" ? {...card,desktop:{...card.desktop,h:10}} : card.id === "grid" ? {...card,desktop:{...card.desktop,h:2}} : card), cards:()=>[
+    BeastNativePageEditor.mount({ section:"cameras", label:"Kameraer", root:()=>containerEl, host:()=>containerEl, trigger:"#beastCamerasLayoutEdit", onSave:()=>render(), onSettingsAction:(action)=>{ if(action === "cameraOrder") openCameraOrder(); }, fitCards:(cards)=>cards.map((card)=>card.id === "featured" ? {...card,desktop:{...card.desktop,h:10}} : card.id === "grid" ? {...card,desktop:{...card.desktop,h:2}} : card), cards:()=>[
       { id:"featured", label:"Stort livekamera", selector:".beast-camera-featured", enabled:!hidden.has("featured"), desktop:{x:1,y:1,w:12,h:10}, options:{fit:"cover"}, controls:[{key:"fit",label:"Billedtilpasning",type:"select",default:"cover",choices:[{value:"cover",label:"Fyld kortet"},{value:"contain",label:"Vis hele billedet"}]}] },
-      { id:"grid", label:"Kameravælger", selector:".beast-camera-strip", enabled:!hidden.has("grid"), desktop:{x:1,y:11,w:12,h:2}, options:{items:8}, controls:[{key:"items",label:"Antal kameraer",min:1,max:16,step:1,default:8}] }
+      { id:"grid", label:"Kameravælger", selector:".beast-camera-strip", enabled:!hidden.has("grid"), desktop:{x:1,y:11,w:12,h:2}, options:{items:8}, controls:[{key:"items",label:"Antal kameraer",min:1,max:16,step:1,default:8},{key:"cameraOrder",label:"Kamerarækkefølge",type:"action",icon:"grip"}] }
     ] });
   }
 
