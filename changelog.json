@@ -1,5 +1,20 @@
 [
   {
+    "version": "20260810-103",
+    "tag": "v0.7.25",
+    "date": "2026-08-10",
+    "changes": [
+      "Kameraer bruger nu automatisk Home Assistants godkendte kamera-proxy, når go2rtc ikke er konfigureret. go2rtc er dermed en valgfri forbedring og ikke længere et krav for live kameravisninger.",
+      "3D Printer-viewets kamera starter igen efter opdatering og falder sikkert tilbage til det valgte HA-kamera. Både camera- og image-entities håndteres med den korrekte proxy.",
+      "Fordørskameraet kan findes og vises direkte fra Home Assistant, selv om det ikke samtidig er valgt i Kamera-viewets separate liste, og kameraer uden entity_picture understøttes via HA camera_proxy.",
+      "Kamerahændelser reagerer nu kun på person, bil og dyr i stedet for enhver generisk bevægelsessensor.",
+      "Opdateringer genindsætter ikke længere Pool som standard i forsidens hurtigfelter, og eksplicit tomme layoutvalg bevares.",
+      "Kalenderens ugerække kan nu filtrere aftaler til en bestemt dag eller vise alle kommende aftaler, inklusive vejr og tom dagsstatus.",
+      "Kortgalleriet er gjort større og mere overskueligt med tydelig beskrivelse, kategori, entityfelter, kortstørrelse og en separat, rummelig entityvælger uden overflow.",
+      "Tilføj kort fra de indbyggede view-editorer åbner nu direkte det fælles skabelongalleri, så redigeringsforløbet er ens på tværs af dashboardet."
+    ]
+  },
+  {
     "version": "20260810-102",
     "tag": "v0.7.24",
     "date": "2026-08-10",

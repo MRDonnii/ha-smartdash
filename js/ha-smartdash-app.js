@@ -99,9 +99,15 @@ function setKioskScreenPower(on) {
 function doorbellCameraStream() {
   const cameras = window.BeastCameras?.getAllCameras?.() || [];
   const configuredCameraId = BeastConfig.get("appEntities.doorbellCamera");
-  let camera = configuredCameraId ? cameras.find((item) => item.entityId === configuredCameraId) : null;
+  // Resolve the explicitly selected entity outside the Cameras page's
+  // allowlist. Doorbell and camera-page selections are independent.
+  let camera = configuredCameraId ? window.BeastCameras?.resolveCamera?.(configuredCameraId) : null;
   if (!camera) camera = cameras.find((item) => /fordør|fordor|hoveddør|hoveddor/i.test(`${item.slug} ${item.label} ${item.streamName}`));
-  return camera?.resolvedStreamName || camera?.streamName || "Fordor";
+  if (!camera) {
+    const state = Array.from(BeastHaSocket.getAllStates().values()).find((item) => item?.entity_id?.startsWith("camera.") && /fordør|fordor|hoveddør|hoveddor|front.?door|doorbell/i.test(`${item.entity_id} ${item.attributes?.friendly_name || ""}`));
+    if (state) camera = window.BeastCameras?.resolveCamera?.(state.entity_id);
+  }
+  return camera || null;
 }
 
 function closeDoorbellView() {
@@ -199,9 +205,15 @@ function showDoorbellView() {
   const overlay = document.createElement("div");
   overlay.id = "beastDoorbellView";
   overlay.className = "beast-doorbell-view";
-  const stream = doorbellCameraStream();
-  overlay.innerHTML = `<iframe src="./camera-player.html?v=7&src=${encodeURIComponent(stream)}" title="Fordør livekamera" frameborder="0" allow="autoplay"></iframe><div class="beast-doorbell-head"><span>${BeastCore.icon("bell", { size: 25 })}</span><div><strong>Det ringer på</strong><small>Fordør · livekamera</small></div></div><button type="button" class="beast-doorbell-close" aria-label="Luk dørkamera">${BeastCore.icon("close", { size: 24 })}<span>Luk</span></button><div class="beast-doorbell-live"><i></i> Live</div>`;
+  const camera = doorbellCameraStream();
+  const useStream = camera && window.BeastCameras?.hasGo2rtc?.() && (camera.resolvedStreamName || camera.streamName);
+  const cameraMarkup = useStream
+    ? `<iframe src="./camera-player.html?v=14&src=${encodeURIComponent(camera.resolvedStreamName || camera.streamName)}" title="Fordør livekamera" frameborder="0" allow="autoplay"></iframe>`
+    : `<img class="beast-doorbell-ha-camera" data-doorbell-picture="${camera?.entityPicture || ""}" alt="Fordør kamera">`;
+  overlay.innerHTML = `${cameraMarkup}<div class="beast-doorbell-head"><span>${BeastCore.icon("bell", { size: 25 })}</span><div><strong>Det ringer på</strong><small>Fordør · kamera</small></div></div><button type="button" class="beast-doorbell-close" aria-label="Luk dørkamera">${BeastCore.icon("close", { size: 24 })}<span>Luk</span></button><div class="beast-doorbell-live"><i></i> Live</div>`;
   document.body.appendChild(overlay);
+  const fallbackImage = overlay.querySelector("[data-doorbell-picture]");
+  if (fallbackImage?.dataset.doorbellPicture) BeastAuth.setAuthedImageSrc(fallbackImage, fallbackImage.dataset.doorbellPicture);
   document.body.classList.add("beast-doorbell-active");
   overlay.querySelector(".beast-doorbell-close")?.addEventListener("click", (event) => { event.stopPropagation(); closeDoorbellView(); });
   doorbellTimerId = window.setTimeout(closeDoorbellView, DOORBELL_VIEW_MS);
@@ -308,7 +320,7 @@ function ambientCameraMarkup(config) {
   const tiles = ids.map((id) => {
     const camera = window.BeastCameras?.resolveCamera?.(id);
     if (!camera) return "";
-    if (camera.streamName) {
+    if (window.BeastCameras?.hasGo2rtc?.() && camera.streamName) {
       const src = `./camera-player.html?v=12&transport=mse&src=${encodeURIComponent(camera.resolvedStreamName || camera.streamName)}`;
       return `<div class="beast-ambient-camera-tile"><iframe class="beast-ambient-camera-tile-frame" src="${src}" allow="autoplay"></iframe></div>`;
     }

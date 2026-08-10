@@ -393,6 +393,7 @@ window.BeastCardEditor = (function () {
 
     function openAddCardModal() {
       document.getElementById("beastCardEditorAddModal")?.remove();
+      const safe = (value) => String(value ?? "").replace(/[&<>"']/g, (char) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[char]);
       const usedTypes = new Set((draftCards || []).map((card) => card.type));
       const availableTypes = cardTypes.map(([value]) => value);
       const galleryTemplates = window.BeastCardTemplates?.catalog(availableTypes) || [];
@@ -409,9 +410,18 @@ window.BeastCardEditor = (function () {
       const usableTemplates = galleryTemplates.filter((item) => !singleInstanceTypes.includes(item.type) || !usedTypes.has(item.type));
       const categories = ["Alle", ...new Set(usableTemplates.map((item) => item.category))];
       const categoryCount = (category) => category === "Alle" ? usableTemplates.length : usableTemplates.filter((item) => item.category === category).length;
-      const templateMarkup = usableTemplates.map((item) => `<button type="button" class="beast-template-card" data-template-id="${item.id}" data-template-category="${item.category}"><span class="beast-template-card-icon">${BeastCore.icon(item.icon || "grid", { size: 25 })}</span><span><strong>${item.title}</strong><small>${item.description}</small><em><span>${item.category}</span><i>${item.fields?.length || 1} entityfelt${(item.fields?.length || 1) === 1 ? "" : "er"} · ${item.size?.w || defaultCardSize.desktop.w}/12 × ${item.size?.h || defaultCardSize.desktop.h}</i></em></span></button>`).join("");
+      const templateMarkup = usableTemplates.map((item) => {
+        const fields = item.fields?.length ? item.fields : [{ label:"Valgfri entity", domains:item.domains || [] }];
+        const fieldPreview = fields.slice(0, 3).map((field) => `<span>${safe(field.label || "Entity")}</span>`).join("");
+        const moreFields = fields.length > 3 ? `<span>+${fields.length - 3}</span>` : "";
+        return `<button type="button" class="beast-template-card" data-template-id="${safe(item.id)}" data-template-category="${safe(item.category)}">
+          <span class="beast-template-card-icon">${BeastCore.icon(item.icon || "grid", { size: 28 })}</span>
+          <span class="beast-template-card-copy"><span class="beast-template-card-title"><strong>${safe(item.title)}</strong><b>${safe(item.category)}</b></span><small>${safe(item.description)}</small><span class="beast-template-card-fields">${fieldPreview}${moreFields}</span><em><span>${fields.length} entityfelt${fields.length === 1 ? "" : "er"}</span><i>${item.size?.w || defaultCardSize.desktop.w}/12 bred · ${item.size?.h || defaultCardSize.desktop.h} række${Number(item.size?.h || defaultCardSize.desktop.h) === 1 ? "" : "r"}</i></em></span>
+          <span class="beast-template-card-action">Vælg ${BeastCore.icon("chevron-right", { size: 16 })}</span>
+        </button>`;
+      }).join("");
       overlay.innerHTML = `<div class="beast-modal beast-ov-add-card-modal beast-template-gallery-modal" role="dialog" aria-modal="true">
-        <div class="beast-modal-header"><div><small>Kortbibliotek</small><h3>Vælg en skabelon</h3></div><button type="button" class="beast-modal-close" data-close>${BeastCore.icon("close", { size: 22 })}</button></div>
+        <div class="beast-modal-header"><div><small>Kortbibliotek · ${usableTemplates.length} skabeloner</small><h3>Hvilket kort vil du tilføje?</h3><p>Vælg en skabelon og forbind derefter de enheder, kortet skal bruge.</p></div><button type="button" class="beast-modal-close" data-close>${BeastCore.icon("close", { size: 22 })}</button></div>
         <div class="beast-modal-body">
           <input class="beast-template-search" type="search" placeholder="Søg efter kort…">
           <div class="beast-template-categories">${categories.map((category, index) => `<button type="button" data-template-filter="${category}" class="${index ? "" : "is-active"}"><span>${category}</span><small>${categoryCount(category)}</small></button>`).join("")}</div>
@@ -419,10 +429,8 @@ window.BeastCardEditor = (function () {
           <div class="beast-ov-add-card-entity" hidden>
             <button type="button" class="beast-template-back" data-template-back>← Tilbage til galleriet</button>
             <div class="beast-template-selected"></div>
-            <input class="beast-ov-add-card-search" type="search" placeholder="Søg efter entity…">
-            <label class="beast-page-editor-check beast-template-all-entities"><input type="checkbox" data-template-all-entities> Vis alle entities (avanceret)</label>
-            <select class="beast-ov-add-card-select" size="6"></select>
-            <button type="button" class="beast-btn beast-btn-primary" data-add-card-confirm>Tilføj</button>
+            <div class="beast-template-entity-controls"><input class="beast-ov-add-card-search" type="search" placeholder="Søg efter entity…"><label class="beast-page-editor-check beast-template-all-entities"><input type="checkbox" data-template-all-entities> Vis alle entities (avanceret)</label><button type="button" class="beast-btn beast-btn-primary beast-template-confirm" data-add-card-confirm>${BeastCore.icon("plus", { size:19 })}<span>Tilføj kort</span></button></div>
+            <select class="beast-ov-add-card-select" size="10"></select>
           </div>
         </div>
       </div>`;
@@ -653,7 +661,14 @@ window.BeastCardEditor = (function () {
 
     const initialCards = (BeastConfig.get(configPath) || []).map((card) => window.BeastCardTemplates?.normalizeCard?.(card) || card);
     if (initialCards.length) renderCardsDom(initialCards);
-    return { enter, isEditing: () => editing };
+    return {
+      enter,
+      openAdd: () => {
+        enter();
+        window.requestAnimationFrame(() => openAddCardModal());
+      },
+      isEditing: () => editing
+    };
   }
 
   // Shared default for the "custom" card type's entity picker -- every

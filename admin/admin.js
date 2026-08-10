@@ -828,7 +828,7 @@
   // keeping the former all in one place (Forside) is what makes it findable.
   function renderQuickTileSettings() {
     const tiles = BeastConfig.get("overviewQuickTiles");
-    const [tile1 = "", tile2 = ""] = Array.isArray(tiles) ? tiles : ["car", "pool"];
+    const [tile1 = "", tile2 = ""] = Array.isArray(tiles) ? tiles : [];
     const waste = BeastConfig.get("panels.waste") || {};
     const select = (id, selected) => `<select id="${id}">${QUICK_TILE_OPTIONS.map(([value, label]) => `<option value="${value}"${value === selected ? " selected" : ""}>${label}</option>`).join("")}</select>`;
     const toggle = (id, checked) => `<select id="${id}"><option value="1"${checked ? " selected" : ""}>${t("Til", "On")}</option><option value="0"${checked ? "" : " selected"}>${t("Fra", "Off")}</option></select>`;

@@ -334,7 +334,7 @@
     // entity/label/icon lookup the top-level generic overview cards use
     // (genericWidgetDefinitions()) so both stay in sync automatically.
     const quickTileDefs = genericWidgetDefinitions();
-    const quickTileTypes = (Array.isArray(BeastConfig.get("overviewQuickTiles")) ? BeastConfig.get("overviewQuickTiles") : ["car", "pool"])
+    const quickTileTypes = (Array.isArray(BeastConfig.get("overviewQuickTiles")) ? BeastConfig.get("overviewQuickTiles") : [])
       .filter((type) => quickTileDefs[type])
       .slice(0, 2);
     const quickTileHtml = quickTileTypes.map((type) => {
@@ -1314,7 +1314,7 @@
       let badge = tile.querySelector("em");
       if (camera.motion && !badge) {
         badge = document.createElement("em");
-        badge.innerHTML = `${BeastCore.icon("bolt", { size: 12 })} Bevægelse nu`;
+        badge.innerHTML = `${BeastCore.icon("bolt", { size: 12 })} ${camera.motionLabel || "Hændelse"} nu`;
         tile.appendChild(badge);
       } else if (!camera.motion && badge) {
         badge.remove();
@@ -1943,7 +1943,7 @@
     BeastHaSocket.subscribeDomain("light", renderSecurity);
     BeastHaSocket.subscribeDomain("media_player", () => { stableMusicRender(); renderSecurity(); });
     BeastHaSocket.subscribeDomain("binary_sensor", (entityId) => {
-      if (entityId.endsWith("_motion")) updateOverviewCameraMotion();
+      if (window.BeastCameras?.isSmartDetectionEntity(entityId)) updateOverviewCameraMotion();
     });
   }
 

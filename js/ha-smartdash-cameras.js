@@ -56,6 +56,31 @@
     return String(slug || "Kamera").replace(/_/g, " ").replace(/\b\w/g, (char) => char.toUpperCase());
   }
 
+  function escapeRegExp(value) {
+    return String(value || "").replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  }
+
+  function smartDetectionForCamera(slug) {
+    const pattern = new RegExp(`^binary_sensor\\.${escapeRegExp(slug)}_(person|vehicle|animal|pet|dog|cat)(?:_detected)?$`, "i");
+    const labels = { person: "Person", vehicle: "Bil", animal: "Dyr", pet: "Dyr", dog: "Dyr", cat: "Dyr" };
+    const detections = [];
+    BeastHaSocket.getAllStates().forEach((state, entityId) => {
+      const match = entityId.match(pattern);
+      if (!match || state.state !== "on") return;
+      detections.push({
+        type: match[1].toLowerCase(),
+        label: labels[match[1].toLowerCase()] || "Hændelse",
+        changedAt: new Date(state.last_changed || 0).getTime() || 0
+      });
+    });
+    detections.sort((a, b) => b.changedAt - a.changedAt);
+    return detections[0] || null;
+  }
+
+  function isSmartDetectionEntity(entityId) {
+    return /^binary_sensor\..+_(?:person|vehicle|animal|pet|dog|cat)(?:_detected)?$/i.test(String(entityId || ""));
+  }
+
   // Shared per-entity lookup used both by discoverCameras() (filtered by
   // the "Kameraer" panel's allowlist, for the camera strip/picker) and by
   // resolveCamera() below (unfiltered -- for features with their own
@@ -69,17 +94,21 @@
     const identity = cameraIdentity(entityId);
     const slug = identity.slug;
     const streamName = STREAM_NAME_MAP[slug] || null;
-    const motionEntityId = `binary_sensor.${slug}_motion`;
-    const motionState = BeastHaSocket.getState(motionEntityId);
+    const detection = smartDetectionForCamera(slug);
     return {
       slug,
       quality: identity.quality,
       entityId,
       streamName,
-      entityPicture: state.attributes.entity_picture || null,
+      // Some camera integrations expose a valid camera entity without an
+      // entity_picture attribute. HA's authenticated camera proxy still
+      // works and is the universal fallback for those installations.
+      entityPicture: state.attributes.entity_picture || `/api/camera_proxy/${entityId}`,
       label: cleanCameraLabel(state.attributes.friendly_name, slug),
-      motion: Boolean(motionState && motionState.state === "on"),
-      motionChangedAt: motionState ? new Date(motionState.last_changed).getTime() : 0
+      motion: Boolean(detection),
+      motionType: detection?.type || null,
+      motionLabel: detection?.label || null,
+      motionChangedAt: detection?.changedAt || 0
     };
   }
 
@@ -143,11 +172,13 @@
 
   function sharedCameraMarkup(camera, options = {}) {
     const className = options.className || "";
-    const streamName = camera.resolvedStreamName || camera.streamName;
+    // go2rtc is optional. Without an explicitly configured endpoint the
+    // authenticated Home Assistant camera image is the reliable fallback.
+    const streamName = GO2RTC_BASE_URL ? (camera.resolvedStreamName || camera.streamName) : null;
     return `<div class="beast-shared-camera ${className}" data-shared-camera="${escapeHtml(camera.slug)}">
       <div class="beast-shared-camera-frame">${streamName ? `<iframe class="beast-shared-camera-live" src="./camera-player.html?v=14&transport=mse&src=${encodeURIComponent(streamName)}${options.audio ? "&audio=1" : ""}" title="${escapeHtml(camera.label)} livekamera" frameborder="0" allow="autoplay"></iframe>` : `<img class="beast-shared-camera-snapshot" data-camera-picture="${escapeHtml(camera.entityPicture || "")}" alt="${escapeHtml(camera.label)}">`}</div>
       ${qualityMenuMarkup(camera)}
-      ${options.motion !== false && camera.motion ? `<span class="beast-camera-motion-badge">${BeastCore.icon("bolt", { size: 11 })} Bevægelse</span>` : ""}
+      ${options.motion !== false && camera.motion ? `<span class="beast-camera-motion-badge">${BeastCore.icon("bolt", { size: 11 })} ${escapeHtml(camera.motionLabel || "Hændelse")}</span>` : ""}
       ${options.label === false ? "" : `<span class="beast-shared-camera-label">${escapeHtml(camera.label)}</span>`}
     </div>`;
   }
@@ -160,6 +191,8 @@
       popover?.addEventListener("click", (event) => { const button = event.target.closest("[data-camera-quality]"); if (!button) return; event.preventDefault(); event.stopPropagation(); const camera = discoverCameras().find((item) => item.slug === menu.dataset.cameraQualitySlug); setCameraQuality(camera, button.dataset.cameraQuality); onQualityChanged?.(); });
     });
   }
+
+  function hasGo2rtc() { return Boolean(GO2RTC_BASE_URL); }
 
   function snapshotUrl(streamName) {
     return `${GO2RTC_BASE_URL}/api/frame.jpeg?src=${encodeURIComponent(streamName)}&_ts=${Date.now()}`;
@@ -274,13 +307,13 @@
       tile.className = `beast-camera-tile${camera.motion ? " has-motion" : ""}${camera.slug === featuredSlug ? " is-featured" : ""}`;
       tile.dataset.slug = camera.slug;
       tile.dataset.entityId = camera.entityId;
-      tile.dataset.streamName = camera.resolvedStreamName || camera.streamName || "";
+      tile.dataset.streamName = GO2RTC_BASE_URL ? (camera.resolvedStreamName || camera.streamName || "") : "";
       tile.innerHTML = `
-        <img class="beast-camera-snapshot" ${camera.streamName ? `src="${snapshotUrl(camera.resolvedStreamName || camera.streamName)}"` : ""} alt="" loading="lazy">
+        <img class="beast-camera-snapshot" ${GO2RTC_BASE_URL && camera.streamName ? `src="${snapshotUrl(camera.resolvedStreamName || camera.streamName)}"` : ""} alt="" loading="lazy">
         ${camera.motion ? `<span class="beast-camera-motion-badge">${BeastCore.icon("bolt", { size: 10 })}</span>` : ""}
         <span class="beast-camera-label">${escapeHtml(camera.label)}</span>
       `;
-      if (!camera.streamName && camera.entityPicture) BeastAuth.setAuthedImageSrc(tile.querySelector("img"), camera.entityPicture);
+      if ((!GO2RTC_BASE_URL || !camera.streamName) && camera.entityPicture) BeastAuth.setAuthedImageSrc(tile.querySelector("img"), camera.entityPicture);
       tile.addEventListener("click", () => {
         featuredSlug = camera.slug;
         render();
@@ -319,8 +352,8 @@
     BeastHaSocket.onStatusChange((status) => {
       if (status === "connected") render();
     });
-    BeastHaSocket.subscribeDomain("binary_sensor", (entityId, newState) => {
-      if (entityId.endsWith("_motion")) updateMotionBadges();
+    BeastHaSocket.subscribeDomain("binary_sensor", (entityId) => {
+      if (isSmartDetectionEntity(entityId)) updateMotionBadges();
     });
 
     window.clearInterval(refreshTimerId);
@@ -342,6 +375,8 @@
     setQuality: (slug, quality) => setCameraQuality(discoverCameras().find((camera) => camera.slug === slug), quality),
     qualityLabel,
     sharedCameraMarkup,
-    wireSharedCameras
+    wireSharedCameras,
+    hasGo2rtc,
+    isSmartDetectionEntity
   };
 })();

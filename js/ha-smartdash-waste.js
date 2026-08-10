@@ -4,6 +4,7 @@
 
   let containerEl = null;
   let calendarRequest = 0;
+  let selectedCalendarDay = "all";
 
   function weatherEntityId() { return BeastConfig.get("panels.weather.entity"); }
 
@@ -128,8 +129,7 @@
         const startMs = new Date(startValue).getTime();
         return Number.isFinite(startMs) && startMs >= now - 5 * 60 * 1000;
       })
-      .sort((a, b) => new Date(a.start?.dateTime || a.start?.date) - new Date(b.start?.dateTime || b.start?.date))
-      .slice(0, cardRows("events", 12));
+      .sort((a, b) => new Date(a.start?.dateTime || a.start?.date) - new Date(b.start?.dateTime || b.start?.date));
   }
 
   function renderCalendarEvents(events, weather = { daily:[], hourly:[] }) {
@@ -139,13 +139,20 @@
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     const eventDayKey = (event) => String(event.start?.dateTime || event.start?.date || "").slice(0, 10);
-    const dayStrip = Array.from({ length:7 }, (_, offset) => {
+    const days = Array.from({ length:7 }, (_, offset) => {
       const day = new Date(today); day.setDate(today.getDate() + offset);
       const key = `${day.getFullYear()}-${String(day.getMonth() + 1).padStart(2,"0")}-${String(day.getDate()).padStart(2,"0")}`;
       const count = events.filter((event) => eventDayKey(event) === key).length;
-      return `<div class="beast-calendar-day${offset === 0 ? " is-today" : ""}${count ? " has-events" : ""}"><small>${day.toLocaleDateString(locale,{weekday:"short"}).replace(".","")}</small><strong>${day.getDate()}</strong>${weatherBadge(forecastForDay(weather, day), true)}<i>${count || ""}</i></div>`;
-    }).join("");
-    const agenda = events.map((event, index) => {
+      return { day, key, count, offset };
+    });
+    if (selectedCalendarDay !== "all" && !days.some((item) => item.key === selectedCalendarDay)) selectedCalendarDay = "all";
+    const dayStrip = `<button type="button" class="beast-calendar-day is-all${selectedCalendarDay === "all" ? " is-selected" : ""}" data-calendar-day="all" aria-pressed="${selectedCalendarDay === "all"}"><small>Vis</small><strong>Alle</strong><span>${events.length} aftaler</span></button>${days.map(({day,key,count,offset}) => `<button type="button" class="beast-calendar-day${offset === 0 ? " is-today" : ""}${count ? " has-events" : ""}${selectedCalendarDay === key ? " is-selected" : ""}" data-calendar-day="${key}" aria-pressed="${selectedCalendarDay === key}"><small>${day.toLocaleDateString(locale,{weekday:"short"}).replace(".","")}</small><strong>${day.getDate()}</strong>${weatherBadge(forecastForDay(weather, day), true)}<i>${count || ""}</i></button>`).join("")}`;
+    const visibleEvents = (selectedCalendarDay === "all" ? events : events.filter((event) => eventDayKey(event) === selectedCalendarDay)).slice(0, cardRows("events", 12));
+    const selectedDay = days.find((item) => item.key === selectedCalendarDay)?.day;
+    const emptyDetail = selectedDay
+      ? `Ingen aftaler ${selectedDay.toLocaleDateString(locale, { weekday:"long", day:"numeric", month:"long" })}.`
+      : "Ingen kommende begivenheder de næste 14 dage.";
+    const agenda = visibleEvents.map((event, index) => {
       const calendar = BeastHaSocket.getState(event.calendarId);
       const calendarName = calendar?.attributes?.friendly_name || event.calendarId?.replace("calendar.", "") || "Kalender";
       const start = event.start?.dateTime || event.start?.date;
@@ -161,8 +168,14 @@
         ${weatherBadge(eventWeather)}
         ${index === 0 ? `<b>Næste</b>` : ""}
       </article>`;
-    }).join("") || `<div class="beast-calendar-empty">${BeastCore.icon("calendar", { size:30 })}<strong>Kalenderen er fri</strong><span>Ingen kommende begivenheder de næste 14 dage.</span></div>`;
+    }).join("") || `<div class="beast-calendar-empty">${BeastCore.icon("calendar", { size:30 })}<strong>Kalenderen er fri</strong><span>${escapeHtml(emptyDetail)}</span></div>`;
     host.innerHTML = `<div class="beast-calendar-week">${dayStrip}</div><div class="beast-calendar-agenda">${agenda}</div>`;
+    host.querySelector(".beast-calendar-week")?.addEventListener("click", (event) => {
+      const button = event.target.closest("[data-calendar-day]");
+      if (!button || button.dataset.calendarDay === selectedCalendarDay) return;
+      selectedCalendarDay = button.dataset.calendarDay;
+      renderCalendarEvents(events, weather);
+    });
   }
 
   function render() {
