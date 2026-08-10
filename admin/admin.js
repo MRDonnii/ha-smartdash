@@ -173,7 +173,8 @@
 
   const root = document.getElementById("beastAdminRoot");
   let connected = false;
-  let activeView = "overview";
+  const requestedView = window.location.hash.replace(/^#/, "");
+  let activeView = requestedView || "overview";
   let currentConnState = "connecting";
   let currentMqttState = "connecting";
   let mqttWatchdogTimerId = null;
@@ -679,6 +680,7 @@
     const current = BeastConfig.get(`panels.${panel.id}`) || {};
     return `
       <section class="admin-view${activeView === panel.id ? " is-active" : ""}" data-admin-view="${panel.id}">
+        <button type="button" class="admin-section-back" data-view="devices">${BeastCore.icon("chevron-right", { size: 17 })}<span>Alle enheder</span></button>
         <div class="admin-card">
           <div class="admin-card-head"><div><h2>${escapeHtml(panel.title)}</h2><p>${escapeHtml(panel.description)}</p></div></div>
           ${panel.fields.some((field) => field.type === "device") ? `<div class="admin-scope-banner">Vælg først den konkrete enhed og gem. Derefter viser felterne kun entities, som HA har knyttet til den valgte enhed.</div>` : ""}
@@ -688,6 +690,32 @@
           <div class="admin-actions"><button class="admin-save" type="button" data-save-panel="${panel.id}">Gem ${escapeHtml(panel.title)}</button><span class="admin-save-state" data-save-state="${panel.id}"></span></div>
         </div>
       </section>`;
+  }
+
+  function renderDevicesView() {
+    const groups = [
+      ["Klima og forbrug", ["weather", "energy", "heating", "pool"]],
+      ["Hus og sikkerhed", ["rooms", "security", "cameras", "waste"]],
+      ["Udstyr og medier", ["music", "car", "robots", "printer"]]
+    ];
+    const icons = { weather:"cloud", energy:"bolt", heating:"thermometer", pool:"droplet", rooms:"grid", security:"shield", cameras:"camera", waste:"calendar", music:"music", car:"car", robots:"robot", printer:"printer" };
+    return `<section class="admin-view${activeView === "devices" ? " is-active" : ""}" data-admin-view="devices">
+      <div class="admin-settings-intro"><span>${BeastCore.icon("grid", { size: 29 })}</span><div><h2>Enheder og datakilder</h2><p>Vælg hvilke Home Assistant-enheder der leverer data. Kort, størrelse og placering redigeres direkte på den enkelte dashboard-side.</p></div></div>
+      ${groups.map(([title, ids]) => `<div class="admin-card admin-device-group"><div class="admin-card-head"><div><h2>${title}</h2><p>Åbn kun den del, du vil forbinde eller ændre.</p></div></div><div class="admin-device-hub">${ids.map((id) => { const panel=PANELS.find((item)=>item.id===id); const configured=BeastConfig.isPanelConfigured(id); return `<button type="button" data-view="${id}"><i>${BeastCore.icon(icons[id] || "grid", { size: 24 })}</i><span><strong>${escapeHtml(panel.title)}</strong><small>${escapeHtml(panel.description)}</small></span><em class="${configured ? "is-ready" : ""}">${configured ? "Konfigureret" : "Mangler opsætning"}</em>${BeastCore.icon("chevron-right", { size: 18 })}</button>`; }).join("")}</div></div>`).join("")}
+    </section>`;
+  }
+
+  function renderPagesView() {
+    const manifest = BeastConfig.get("pages") || {};
+    const removed = new Set(manifest.removed || []);
+    const standard = window.BeastPageManager?.standardPages?.() || [];
+    const custom = Array.isArray(manifest.custom) ? manifest.custom : [];
+    const activeCount = standard.filter((page) => !removed.has(page.id)).length + custom.filter((page) => !removed.has(page.id)).length;
+    return `<section class="admin-view${activeView === "pages" ? " is-active" : ""}" data-admin-view="pages">
+      <div class="admin-settings-intro"><span>${BeastCore.icon("grid", { size: 29 })}</span><div><h2>Sider og navigation</h2><p>Opret sider, gendan standardsider, omdøb dem og bestem rækkefølgen i dashboardets navigation.</p></div></div>
+      <div class="admin-summary"><div><strong>${activeCount}</strong><span>aktive sider</span></div><div><strong>${custom.length}</strong><span>egne sider</span></div><div><strong>${removed.size}</strong><span>skjulte eller fjernede</span></div></div>
+      <div class="admin-card admin-pages-card"><div class="admin-card-head"><div><h2>Administrer sider</h2><p>Tilføjelse, fjernelse og rækkefølge styres kun her. Layoutet på den aktuelle side åbnes med Rediger-knappen i dashboardets navigation.</p></div></div><button type="button" class="admin-primary-action" data-open-page-manager>${BeastCore.icon("plus", { size: 22 })}<span><strong>Tilføj eller administrer sider</strong><small>Opret, fjern, gendan, omdøb og flyt rækkefølge</small></span>${BeastCore.icon("chevron-right", { size: 20 })}</button></div>
+    </section>`;
   }
 
   function renderOverview() {
@@ -724,7 +752,6 @@
 
 
   function renderSetupOverview() {
-    const hidden = BeastLocalSettings.get("hiddenSections", BeastConfig.get("hiddenSections") || []);
     return `
       <section class="admin-view${activeView === "setup" ? " is-active" : ""}" data-admin-view="setup">
         <div class="admin-card">
@@ -737,11 +764,6 @@
             <div class="admin-favicon-preview"><img id="adminFaviconPreview" src="${escapeHtml(BeastConfig.get("faviconUrl") || "/favicon.svg")}" alt="Forhåndsvisning"><span>Forhåndsvisning</span></div>
           </div>
           <div class="admin-actions"><button class="admin-save" type="button" data-save-title>Gem browserfane</button><span class="admin-save-state" data-save-state="title"></span></div>
-        </div>
-        <div class="admin-card">
-          <div class="admin-card-head"><div><h2>Synlige sider</h2><p>Gemmes lokalt på denne maskine, så hver skærm kan have sin egen navigation.</p></div></div>
-          <div class="admin-page-grid">${PAGES.map(([id, label]) => `<label class="admin-page-toggle"><input type="checkbox" data-page="${id}"${hidden.includes(id) ? "" : " checked"}><span>${escapeHtml(label)}</span></label>`).join("")}</div>
-          <div class="admin-actions"><button class="admin-save" type="button" data-save-pages>Gem synlige sider</button><span class="admin-save-state" data-save-state="pages"></span></div>
         </div>
         ${renderFeaturePanel()}
         <div class="admin-card">
@@ -885,7 +907,7 @@
       const camera = (window.BeastCameras?.getAllCameras?.() || [])[0];
       let media = "";
       if (camera?.streamName) {
-        const src = `/camera-player.html?v=11&transport=mse&sub=1&src=${encodeURIComponent(camera.streamName)}`;
+        const src = `/camera-player.html?v=14&transport=mse&sub=1&src=${encodeURIComponent(camera.streamName)}`;
         media = `<iframe class="admin-ov-preview-camera-img" src="${src}" allow="autoplay"></iframe>`;
       } else if (camera?.entityPicture) {
         media = `<img class="admin-ov-preview-camera-img" data-preview-camera-picture="${escapeHtml(camera.entityPicture)}" alt="">`;
@@ -1075,6 +1097,16 @@
     if (textEl) textEl.textContent = text;
   }
 
+  function compareBuildIds(left, right) {
+    const a = String(left || "").match(/^(\d{8})-(\d+)$/);
+    const b = String(right || "").match(/^(\d{8})-(\d+)$/);
+    if (a && b) {
+      const dateCompare = a[1].localeCompare(b[1]);
+      return dateCompare || (Number(a[2]) - Number(b[2]));
+    }
+    return String(left || "").localeCompare(String(right || ""), undefined, { numeric: true });
+  }
+
   async function loadUpdatesSettings() {
     const tile = document.getElementById("adminCurrentVersionTile");
     const changelogEl = document.getElementById("adminChangelogList");
@@ -1102,12 +1134,12 @@
       if (changelogEl) changelogEl.innerHTML = renderChangelogEntries(Array.isArray(changelog) ? changelog : []);
 
       const versions = versionsPayload.versions || [];
-      const localLatest = versions.length ? versions.map((item) => item.version).sort().at(-1) : null;
+      const localLatest = versions.length ? versions.map((item) => item.version).sort(compareBuildIds).at(-1) : null;
       // GitHub is the real source of truth for "is a newer release out
       // there" -- unlike the local snapshot list, it's meaningful even on
       // an install that has never received a hand-pushed update (e.g. a
       // fresh clone) and so has no snapshot history of its own at all.
-      const githubIsNewer = Boolean(github?.remoteVersion) && (!localLatest || github.remoteVersion > localLatest);
+      const githubIsNewer = Boolean(github?.remoteVersion) && (!localLatest || compareBuildIds(github.remoteVersion, localLatest) > 0);
       const latestVersion = githubIsNewer ? github.remoteVersion : localLatest;
       const latestEntry = versions.find((item) => item.version === latestVersion);
 
@@ -1151,7 +1183,7 @@
         await fetch("/api/versions.php", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "snapshot" }) });
       }
       const checkedAt = new Date().toLocaleTimeString();
-      if (latestVersion && latestVersion > current) {
+      if (latestVersion && compareBuildIds(latestVersion, current) > 0) {
         const latestStatusLabel = (githubIsNewer ? github.tag : latestEntry?.tag) || latestVersion;
         setUpdateStatus("outdated", t(`Ny version tilgængelig: ${latestStatusLabel} · tjekket ${checkedAt}`, `New version available: ${latestStatusLabel} · checked ${checkedAt}`));
       } else if (!github) {
@@ -1292,7 +1324,7 @@
       const camera = window.BeastCameras?.resolveCamera?.(id);
       if (!camera) return "";
       if (camera.streamName) {
-        const src = `/camera-player.html?v=11&transport=mse&sub=1&src=${encodeURIComponent(camera.streamName)}`;
+        const src = `/camera-player.html?v=14&transport=mse&sub=1&src=${encodeURIComponent(camera.streamName)}`;
         return `<div class="beast-ambient-camera-tile"><iframe class="beast-ambient-camera-tile-frame" src="${src}" allow="autoplay"></iframe></div>`;
       }
       if (camera.entityPicture) {
@@ -1491,6 +1523,8 @@
 
   function renderActiveView() {
     if (activeView === "overview") return renderOverview();
+    if (activeView === "pages") return renderPagesView();
+    if (activeView === "devices") return renderDevicesView();
     if (activeView === "setup") return renderSetupOverview();
     if (activeView === "forside") return renderForsideView();
     if (activeView === "settings") return renderSettingsView();
@@ -1503,6 +1537,17 @@
     return panel ? renderPanel(panel) : renderOverview();
   }
 
+  function adminViewTitle() {
+    const panel = PANELS.find((item) => item.id === activeView);
+    if (panel) return panel.title;
+    return ({ overview:"Overblik", pages:"Sider og navigation", devices:"Enheder og datakilder", setup:"Forbindelser & kiosk", settings:"Udseende & enhed", "security-settings":"Sikkerhed", screensaver:t("Pauseskærm", "Screensaver"), advarsler:t("Advarsler", "Alerts"), backup:"Backup & gendannelse", updates:"Opdatering" })[activeView] || "Administration";
+  }
+
+  function adminViewDescription() {
+    if (PANELS.some((panel) => panel.id === activeView) || activeView === "devices") return "Forbind Home Assistant-data til dashboardets funktioner. Layout redigeres på selve dashboard-siden.";
+    return ({ pages:"Opret og organiser dashboardets sider ét samlet sted.", setup:"Serverforbindelse, kioskfunktioner og hændelser.", updates:"Se hvad der er nyt, og gendan en tidligere version om nødvendigt.", "security-settings":"Lokal adgang, pinkode og beskyttelse af adminpanelet.", screensaver:t("Styrer denne skærm/browser — hver kiosk kan have sin egen tidsplan.", "Controls this screen/browser only — each kiosk can have its own schedule."), advarsler:t("Alt om post-banneret samlet ét sted — slå til/fra og vælg entities.", "Everything about the post banner in one place — turn it on/off and pick entities.") })[activeView] || "Konfigurationen gemmes centralt på serveren.";
+  }
+
   function renderShell(options = {}) {
     const contentScrollTop = window.scrollY;
     const sidebarScrollTop = document.querySelector(".admin-nav")?.scrollTop || 0;
@@ -1513,22 +1558,25 @@
           <div class="admin-brand">${brandLogoMarkup("sidebar")}<strong>Administration</strong></div>
           <nav class="admin-nav">
             <button class="${activeView === "overview" ? "is-active" : ""}" type="button" data-view="overview">Overblik</button>
-            <p class="admin-nav-section">Opsætning</p>
-            <button class="${activeView === "setup" ? "is-active" : ""}" type="button" data-view="setup">Grundindstillinger</button>
-            <button class="${activeView === "forside" ? "is-active" : ""}" type="button" data-view="forside">${t("Forside", "Front page")}</button>
-            ${PANELS.map((panel) => `<button class="${activeView === panel.id ? "is-active" : ""}" type="button" data-view="${panel.id}">${escapeHtml(panel.title)}</button>`).join("")}
-            <p class="admin-nav-section">Indstillinger</p>
+            <p class="admin-nav-section">Dashboard</p>
+            <button class="${activeView === "pages" ? "is-active" : ""}" type="button" data-view="pages">Sider og navigation</button>
+            <button class="${activeView === "devices" || PANELS.some((panel) => panel.id === activeView) ? "is-active" : ""}" type="button" data-view="devices">Enheder og datakilder</button>
+            <p class="admin-nav-section">System</p>
+            <button class="${activeView === "setup" ? "is-active" : ""}" type="button" data-view="setup">Forbindelser & kiosk</button>
+            <p class="admin-nav-section">Skærm</p>
             <button class="${activeView === "settings" ? "is-active" : ""}" type="button" data-view="settings">Udseende & enhed</button>
-            <button class="${activeView === "security-settings" ? "is-active" : ""}" type="button" data-view="security-settings">Adgang & pinkode</button>
             <button class="${activeView === "screensaver" ? "is-active" : ""}" type="button" data-view="screensaver">${t("Pauseskærm", "Screensaver")}</button>
             <button class="${activeView === "advarsler" ? "is-active" : ""}" type="button" data-view="advarsler">${t("Advarsler", "Alerts")}</button>
+            <p class="admin-nav-section">Sikkerhed</p>
+            <button class="${activeView === "security-settings" ? "is-active" : ""}" type="button" data-view="security-settings">Adgang & pinkode</button>
+            <p class="admin-nav-section">Vedligeholdelse</p>
             <button class="${activeView === "backup" ? "is-active" : ""}" type="button" data-view="backup">Backup & gendannelse</button>
             <button class="${activeView === "updates" ? "is-active" : ""}" type="button" data-view="updates">Opdatering</button>
           </nav>
           <div class="admin-sidebar-foot"><a class="admin-back" href="/">Åbn dashboard</a></div>
         </aside>
         <main class="admin-main">
-          <header class="admin-topbar"><div><h1>${activeView === "updates" ? "Opdatering" : activeView === "backup" ? "Backup & gendannelse" : activeView === "security-settings" ? "Sikkerhed" : activeView === "forside" ? t("Forside", "Front page") : activeView === "screensaver" ? t("Pauseskærm", "Screensaver") : activeView === "advarsler" ? t("Advarsler", "Alerts") : activeView === "settings" ? "Udseende & enhed" : activeView === "overview" ? "Overblik" : "Opsætning"}</h1><p>${activeView === "updates" ? "Se hvad der er nyt, og gendan en tidligere version om nødvendigt." : activeView === "security-settings" ? "Lokal adgang, pinkode og beskyttelse af adminpanelet." : activeView === "forside" ? t("Kortene på Oversigt-fanen — indhold, størrelse og rækkefølge, med live-forhåndsvisning.", "The cards on the Overview tab — content, size and order, with a live preview.") : activeView === "screensaver" ? t("Styrer denne skærm/browser — hver kiosk kan have sin egen tidsplan.", "Controls this screen/browser only — each kiosk can have its own schedule.") : activeView === "advarsler" ? t("Alt om post-banneret samlet ét sted — slå til/fra og vælg entities.", "Everything about the post banner in one place — turn it on/off and pick entities.") : "Konfigurationen gemmes centralt på serveren."}</p></div><div class="admin-topbar-tools"><label class="admin-language-picker"><span>${BeastCore.icon("globe", { size: 15 })}</span><select id="adminLanguageSelect" aria-label="Dashboard-sprog"><option value="en"${dashboardLanguage !== "da" ? " selected" : ""}>English</option><option value="da"${dashboardLanguage === "da" ? " selected" : ""}>Dansk</option></select></label><span class="admin-status" id="adminHaStatus" data-state="${connected ? "connected" : "connecting"}">${connected ? "Home Assistant forbundet" : "Forbinder til Home Assistant…"}</span></div></header>
+          <header class="admin-topbar"><div><h1>${adminViewTitle()}</h1><p>${adminViewDescription()}</p></div><div class="admin-topbar-tools"><label class="admin-language-picker"><span>${BeastCore.icon("globe", { size: 15 })}</span><select id="adminLanguageSelect" aria-label="Dashboard-sprog"><option value="en"${dashboardLanguage !== "da" ? " selected" : ""}>English</option><option value="da"${dashboardLanguage === "da" ? " selected" : ""}>Dansk</option></select></label><span class="admin-status" id="adminHaStatus" data-state="${connected ? "connected" : "connecting"}">${connected ? "Home Assistant forbundet" : "Forbinder til Home Assistant…"}</span></div></header>
           ${renderActiveView()}
         </main>
       </div>`;
@@ -1580,9 +1628,14 @@
   function wireUi() {
     document.querySelectorAll("[data-view]").forEach((button) => button.addEventListener("click", () => {
       activeView = button.dataset.view;
+      window.history.replaceState(null, "", `#${activeView}`);
       hasUnsavedPanelChanges = false;
       renderShell({ resetContent: true });
     }));
+    document.querySelector("[data-open-page-manager]")?.addEventListener("click", () => {
+      if (typeof window.BeastPageManager?.open === "function") window.BeastPageManager.open();
+      else showToast("Sideadministrationen kunne ikke indlæses. Genindlæs Admin og prøv igen.", "error");
+    });
     document.getElementById("adminLanguageSelect")?.addEventListener("change", (event) => {
       BeastLocalSettings.set("language", event.target.value);
     });

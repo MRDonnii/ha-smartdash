@@ -38,11 +38,22 @@
   }
 
   function cleanCameraLabel(value, slug) {
-    return String(value || slug)
-      .replace(/\s*[-–·]?\s*(high|medium|low)\s+resolution\s+channel\s*$/i, "")
-      .replace(/\s*[-–·]?\s*(high|medium|low|hd|sd|main|sub)(\s+stream)?\s*$/i, "")
-      .replace(/\s*[-–·]?\s*(høj|mellem|lav)\s*(kvalitet|opløsning)?\s*$/i, "")
-      .trim();
+    let label = String(value || slug).trim();
+    // Home Assistant integrations often append the provider, entity type and
+    // stream quality to every friendly name. The picker only needs the
+    // physical camera name; quality remains available in the camera menu.
+    const technicalSuffixes = [
+      /\s*[-–—·|]\s*UniFi\s+Protect(?:\s+(?:camera|kamera))?\s*$/i,
+      /\s*\((?:UniFi\s+Protect|camera|kamera)\)\s*$/i,
+      /\s*[-–—·|]?\s*(high|medium|low)\s+resolution\s+channel\s*$/i,
+      /\s*[-–—·|]?\s*(high|medium|low|hd|sd|main|sub)(\s+stream)?\s*$/i,
+      /\s*[-–—·|]?\s*(høj|mellem|lav)\s*(kvalitet|opløsning)?\s*$/i,
+      /\s*[-–—·|]\s*(camera|kamera)\s*$/i
+    ];
+    // Run twice because a name can contain both provider and quality suffixes.
+    for (let pass = 0; pass < 2; pass += 1) technicalSuffixes.forEach((pattern) => { label = label.replace(pattern, "").trim(); });
+    if (label) return label;
+    return String(slug || "Kamera").replace(/_/g, " ").replace(/\b\w/g, (char) => char.toUpperCase());
   }
 
   // Shared per-entity lookup used both by discoverCameras() (filtered by
@@ -134,7 +145,7 @@
     const className = options.className || "";
     const streamName = camera.resolvedStreamName || camera.streamName;
     return `<div class="beast-shared-camera ${className}" data-shared-camera="${escapeHtml(camera.slug)}">
-      <div class="beast-shared-camera-frame">${streamName ? `<iframe class="beast-shared-camera-live" src="./camera-player.html?v=12&transport=mse&src=${encodeURIComponent(streamName)}${options.audio ? "&audio=1" : ""}" title="${escapeHtml(camera.label)} livekamera" frameborder="0" allow="autoplay"></iframe>` : `<img class="beast-shared-camera-snapshot" data-camera-picture="${escapeHtml(camera.entityPicture || "")}" alt="${escapeHtml(camera.label)}">`}</div>
+      <div class="beast-shared-camera-frame">${streamName ? `<iframe class="beast-shared-camera-live" src="./camera-player.html?v=14&transport=mse&src=${encodeURIComponent(streamName)}${options.audio ? "&audio=1" : ""}" title="${escapeHtml(camera.label)} livekamera" frameborder="0" allow="autoplay"></iframe>` : `<img class="beast-shared-camera-snapshot" data-camera-picture="${escapeHtml(camera.entityPicture || "")}" alt="${escapeHtml(camera.label)}">`}</div>
       ${qualityMenuMarkup(camera)}
       ${options.motion !== false && camera.motion ? `<span class="beast-camera-motion-badge">${BeastCore.icon("bolt", { size: 11 })} Bevægelse</span>` : ""}
       ${options.label === false ? "" : `<span class="beast-shared-camera-label">${escapeHtml(camera.label)}</span>`}
@@ -220,6 +231,8 @@
   function render() {
     if (!containerEl) return;
     const cameras = discoverCameras();
+    const cameraLimit = Number(BeastNativePageEditor.option("cameras", "grid", "items", 8));
+    const featuredFit = BeastNativePageEditor.option("cameras", "featured", "fit", "cover");
     if (!cameras.length) {
       containerEl.innerHTML = `<p class="beast-music-empty">Ingen kameraer fundet endnu.</p>`;
       return;
@@ -231,7 +244,7 @@
     const featured = cameras.find((c) => c.slug === featuredSlug);
     containerEl.innerHTML = `
       <button type="button" class="beast-page-edit-trigger" id="beastCamerasLayoutEdit" aria-label="Rediger kameralayout">⋮</button>
-      <div class="beast-camera-featured">
+      <div class="beast-camera-featured" data-camera-fit="${featuredFit}">
         ${sharedCameraMarkup(featured, { className: "beast-camera-featured-render", audio: true, label: true, motion: true })}
         ${featured.streamName ? `<button type="button" class="beast-camera-audio-toggle" id="beastCameraAudioToggle" aria-pressed="false">${BeastCore.icon("volume-mute", { size: 17 })}<span>Lyd fra</span></button>` : ""}
       </div>
@@ -255,7 +268,7 @@
     }
 
     const strip = document.getElementById("beastCameraStrip");
-    cameras.forEach((camera) => {
+    cameras.slice(0, cameraLimit).forEach((camera) => {
       const tile = document.createElement("button");
       tile.type = "button";
       tile.className = `beast-camera-tile${camera.motion ? " has-motion" : ""}${camera.slug === featuredSlug ? " is-featured" : ""}`;
@@ -281,9 +294,9 @@
     const hidden = new Set(Array.isArray(layout.hidden) ? layout.hidden : []);
     containerEl.querySelector(".beast-camera-featured")?.classList.toggle("is-layout-hidden", hidden.has("featured"));
     containerEl.querySelector(".beast-camera-strip")?.classList.toggle("is-layout-hidden", hidden.has("grid"));
-    BeastNativePageEditor.mount({ section:"cameras", label:"Kameraer", root:()=>containerEl, host:()=>containerEl, trigger:"#beastCamerasLayoutEdit", cards:()=>[
-      { id:"featured", label:"Stort livekamera", selector:".beast-camera-featured", enabled:!hidden.has("featured"), desktop:{x:1,y:1,w:12,h:9} },
-      { id:"grid", label:"Kameravælger", selector:".beast-camera-strip", enabled:!hidden.has("grid"), desktop:{x:1,y:10,w:12,h:3} }
+    BeastNativePageEditor.mount({ section:"cameras", label:"Kameraer", root:()=>containerEl, host:()=>containerEl, trigger:"#beastCamerasLayoutEdit", onSave:()=>render(), fitCards:(cards)=>cards.map((card)=>card.id === "featured" ? {...card,desktop:{...card.desktop,h:10}} : card.id === "grid" ? {...card,desktop:{...card.desktop,h:2}} : card), cards:()=>[
+      { id:"featured", label:"Stort livekamera", selector:".beast-camera-featured", enabled:!hidden.has("featured"), desktop:{x:1,y:1,w:12,h:10}, options:{fit:"cover"}, controls:[{key:"fit",label:"Billedtilpasning",type:"select",default:"cover",choices:[{value:"cover",label:"Fyld kortet"},{value:"contain",label:"Vis hele billedet"}]}] },
+      { id:"grid", label:"Kameravælger", selector:".beast-camera-strip", enabled:!hidden.has("grid"), desktop:{x:1,y:11,w:12,h:2}, options:{items:8}, controls:[{key:"items",label:"Antal kameraer",min:1,max:16,step:1,default:8}] }
     ] });
   }
 

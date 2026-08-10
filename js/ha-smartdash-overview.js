@@ -902,11 +902,6 @@
         }
       }
       card.querySelector(".beast-ov-edit-label")?.remove();
-      if (!overviewCardEditor?.isEditing()) return;
-      const label = document.createElement("div");
-      label.className = "beast-ov-edit-label";
-      label.innerHTML = `${BeastCore.icon("grid", { size: 15 })}<span>Kan flyttes</span>`;
-      card.appendChild(label);
     });
   }
 
@@ -981,12 +976,21 @@
       document.getElementById("beastOvCameraMenuToggle")?.setAttribute("aria-expanded", "false");
     };
     document.querySelector(".beast-ov-camera-header")?.addEventListener("click", (event) => event.stopPropagation());
-    toggle?.addEventListener("click", (event) => {
-      event.stopPropagation();
-      const opening = menu?.hidden !== false;
-      if (menu) menu.hidden = !opening;
-      toggle.setAttribute("aria-expanded", String(opening));
-    });
+    // The overview is rebuilt during data and layout updates. Delegate the
+    // menu trigger once so a newly rendered three-dot button never keeps a
+    // stale or missing click handler.
+    if (!wireOverviewChrome._menuToggleWired) {
+      wireOverviewChrome._menuToggleWired = true;
+      document.addEventListener("click", (event) => {
+        const liveToggle = event.target.closest("#beastOvCameraMenuToggle");
+        if (!liveToggle) return;
+        event.preventDefault(); event.stopPropagation();
+        const liveMenu = document.getElementById("beastOvCameraMenu");
+        const opening = liveMenu?.hidden !== false;
+        if (liveMenu) liveMenu.hidden = !opening;
+        liveToggle.setAttribute("aria-expanded", String(opening));
+      }, true);
+    }
     menu?.addEventListener("click", (event) => {
       event.stopPropagation();
       if (event.target.closest("button")) closeMenu();
@@ -997,7 +1001,9 @@
     // listener only ever needs to exist once, not once per call.
     if (!wireOverviewChrome._closeMenuWired) {
       wireOverviewChrome._closeMenuWired = true;
-      document.addEventListener("click", closeMenu);
+      document.addEventListener("click", (event) => {
+        if (!event.target.closest(".beast-ov-camera-header")) closeMenu();
+      });
     }
     document.getElementById("beastOvEdit")?.addEventListener("click", (event) => { event.stopPropagation(); closeMenu(); overviewCardEditor.enter(); });
     // showAmbientMode() lives in app.js (a plain global function, not an
@@ -1030,11 +1036,11 @@
 
   function formatCompactDate(date) {
     const today = new Date();
-    if (date.toDateString() === today.toDateString()) return `i dag ${date.toLocaleTimeString("da-DK", { hour: "2-digit", minute: "2-digit" })}`;
+    if (date.toDateString() === today.toDateString()) return `${window.HASmartdashI18n?.language === "en" ? "today" : "i dag"} ${date.toLocaleTimeString(window.HASmartdashI18n?.locale || "da-DK", { hour: "2-digit", minute: "2-digit" })}`;
     const tomorrow = new Date(today);
     tomorrow.setDate(today.getDate() + 1);
-    if (date.toDateString() === tomorrow.toDateString()) return `i morgen ${date.toLocaleTimeString("da-DK", { hour: "2-digit", minute: "2-digit" })}`;
-    return date.toLocaleDateString("da-DK", { weekday: "short", day: "numeric" });
+    if (date.toDateString() === tomorrow.toDateString()) return `${window.HASmartdashI18n?.language === "en" ? "tomorrow" : "i morgen"} ${date.toLocaleTimeString(window.HASmartdashI18n?.locale || "da-DK", { hour: "2-digit", minute: "2-digit" })}`;
+    return date.toLocaleDateString(window.HASmartdashI18n?.locale || "da-DK", { weekday: "short", day: "numeric" });
   }
 
   function getWasteItems() {
@@ -1085,7 +1091,7 @@
             const date = new Date(entry.datetime);
             const rain = Number(entry.precipitation_probability);
             return `<div>
-              <span>${escapeHtml(date.toLocaleTimeString("da-DK", { hour: "2-digit", minute: "2-digit" }))}</span>
+              <span>${escapeHtml(date.toLocaleTimeString(window.HASmartdashI18n?.locale || "da-DK", { hour: "2-digit", minute: "2-digit" }))}</span>
               <span>${BeastCore.animatedWeatherIcon(entryMeta.mood, 25)}</span>
               <b>${Number.isFinite(Number(entry.temperature)) ? Math.round(Number(entry.temperature)) + "°" : "–"}</b>
               <small>${Number.isFinite(rain) ? Math.round(rain) + "%" : ""}</small>
@@ -1099,7 +1105,7 @@
             const date = new Date(entry.datetime);
             const rain = Number(entry.precipitation_probability);
             return `<div class="beast-ov-week-day">
-              <span>${escapeHtml(date.toLocaleDateString("da-DK", { weekday: "short" }).replace(".", ""))}</span>
+              <span>${escapeHtml(date.toLocaleDateString(window.HASmartdashI18n?.locale || "da-DK", { weekday: "short" }).replace(".", ""))}</span>
               ${BeastCore.animatedWeatherIcon(entryMeta.mood, 36)}
               <small class="beast-ov-week-condition">${escapeHtml(entryMeta.label || entry.condition || "Ukendt")}</small>
               <div><b>${Number.isFinite(Number(entry.temperature)) ? Math.round(Number(entry.temperature)) + "°" : "–"}</b><small>${Number.isFinite(Number(entry.templow)) ? Math.round(Number(entry.templow)) + "°" : "–"}</small></div>
@@ -1139,7 +1145,7 @@
     if (!sun) return "Dag / nat · regnchance";
     const rising = new Date(sun.attributes.next_rising);
     const setting = new Date(sun.attributes.next_setting);
-    const format = (date) => Number.isNaN(date.getTime()) ? "–" : date.toLocaleTimeString("da-DK", { hour: "2-digit", minute: "2-digit" });
+    const format = (date) => Number.isNaN(date.getTime()) ? "–" : date.toLocaleTimeString(window.HASmartdashI18n?.locale || "da-DK", { hour: "2-digit", minute: "2-digit" });
     return `Sol op ${format(rising)} · ned ${format(setting)}`;
   }
 

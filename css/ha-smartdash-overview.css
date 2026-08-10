@@ -127,25 +127,54 @@
 .beast-ov-toolbar b[hidden] { display:none; }
 .beast-overview-grid[data-columns="compact-wide-camera"] .beast-ov-camera-picker-btn,
 .beast-overview-grid[data-columns="wide-compact-camera"] .beast-ov-camera-picker-btn { right:112px; }
-.beast-ov-edit-label { position:absolute; z-index:18; left:50%; top:50%; min-height:48px; display:flex; align-items:center; gap:8px; padding:10px 16px; transform:translate(-50%,-50%); border:1px solid var(--accent-border); border-radius:999px; background:var(--accent-gradient); color:#fff; font-weight:800; box-shadow:0 12px 32px rgba(0,0,0,.46); pointer-events:none; }
-.beast-ov-edit-label.is-fixed { background:rgba(9,12,18,.9); color:var(--ink-muted); }
-.beast-overview-grid.is-editing .beast-ov-card:not(.beast-ov-card-add)::after { content:""; position:absolute; inset:0; z-index:15; border-radius:inherit; background:rgba(3,5,9,.38); pointer-events:none; }
+.beast-ov-edit-label { display:none !important; }
+.beast-overview-grid.is-editing .beast-ov-card:not(.beast-ov-card-add) {
+  overflow:visible !important;
+  outline:2px dashed color-mix(in srgb,var(--accent-a) 78%,transparent);
+  outline-offset:-3px;
+  touch-action:none;
+}
 /* Only the new drag/resize/remove handles stay clickable while editing --
    pointer-events:none on everything else is the belt-and-suspenders
    guarantee (on top of the JS-level beastOverviewEditing check in
    ha-smartdash-app.js) that nothing inside a card can be tapped by
    accident, including buttons/links this stylesheet doesn't know about. */
-.beast-overview-grid.is-editing .beast-ov-card:not(.beast-ov-card-add) > *:not(.beast-ov-card-drag):not(.beast-ov-card-resize):not(.beast-ov-card-remove):not(.beast-ov-card-configure):not(.beast-ov-card-duplicate):not(.beast-ov-card-reset) { pointer-events: none; }
-.beast-ov-card-drag, .beast-ov-card-resize, .beast-ov-card-remove, .beast-ov-card-configure { position: absolute; z-index: 20; display: grid; place-items: center; touch-action: none; pointer-events: auto; }
-.beast-ov-card-drag { top: 8px; left: 8px; width: 32px; height: 32px; border-radius: 50%; background: rgba(9,12,18,.72); color: #fff; cursor: grab; }
+.beast-overview-grid.is-editing .beast-ov-card:not(.beast-ov-card-add) > *:not(.beast-ov-card-drag):not(.beast-ov-card-resize):not(.beast-ov-card-tools) { pointer-events:none; }
+.beast-ov-card-drag, .beast-ov-card-resize { position:absolute; z-index:22; display:grid; place-items:center; touch-action:none; pointer-events:auto; }
+.beast-ov-card-drag { top:10px; left:10px; width:50px; height:50px; border:2px solid color-mix(in srgb,var(--accent-a) 72%,#fff); border-radius:14px; background:var(--accent-gradient); color:#fff; box-shadow:0 9px 26px rgba(0,0,0,.42),var(--accent-glow); cursor:grab; }
+.beast-ov-card-drag:active { cursor:grabbing; transform:scale(.97); }
 .beast-ov-card.is-dragging { opacity: .7; box-shadow: 0 22px 60px rgba(0,0,0,.5); z-index: 50; cursor: grabbing; }
-.beast-ov-card-remove { top: 8px; right: 8px; width: 30px; height: 30px; border: 0; border-radius: 50%; background: var(--danger); color: #fff; }
-.beast-ov-card-configure { top: 8px; right: 46px; width: 34px; height: 34px; border: 1px solid rgba(255,255,255,.22); border-radius: 50%; background: rgba(9,12,18,.82); color: #fff; }
-.beast-ov-card-resize { bottom: 6px; right: 6px; width: 30px; height: 30px; border-radius: 8px; background: rgba(9,12,18,.72); cursor: nwse-resize; }
-.beast-ov-card-resize::before { content: ""; width: 10px; height: 10px; border-right: 2px solid rgba(255,255,255,.7); border-bottom: 2px solid rgba(255,255,255,.7); }
+.beast-ov-card-tools { position:absolute; z-index:23; top:10px; right:10px; display:flex; gap:6px; max-width:calc(100% - 76px); overflow-x:auto; padding:0; pointer-events:auto; scrollbar-width:none; }
+.beast-ov-card-tools::-webkit-scrollbar { display:none; }
+.beast-ov-card-tools > button { position:static; flex:0 0 46px; width:46px; height:46px; display:grid; place-items:center; padding:0; border:2px solid color-mix(in srgb,var(--accent-a) 35%,#fff); border-radius:13px; background:color-mix(in srgb,#090d16 92%,var(--accent-a)); color:#fff; box-shadow:0 9px 26px rgba(0,0,0,.42); pointer-events:auto; touch-action:manipulation; }
+.beast-ov-card-tools > button:hover,.beast-ov-card-tools > button:focus-visible { border-color:var(--accent-a); background:color-mix(in srgb,#090d16 78%,var(--accent-a)); }
+.beast-ov-card-tools > .beast-ov-card-remove { border-color:color-mix(in srgb,var(--danger) 70%,#fff); background:color-mix(in srgb,#24070d 72%,var(--danger)); color:#fff; }
+.beast-ov-card-resize { right:0; bottom:0; width:58px; height:58px; border-radius:20px 0 0 0; background:linear-gradient(135deg,transparent 39%,color-mix(in srgb,var(--accent-a) 28%,#07101d) 40%); filter:drop-shadow(-3px -3px 5px rgba(0,0,0,.34)); cursor:nwse-resize; }
+.beast-ov-card-resize::before { content:""; width:15px; height:15px; margin:14px 0 0 14px; border-right:3px solid var(--accent-a); border-bottom:3px solid var(--accent-a); }
+:root[data-color-mode="light"] .beast-ov-card-tools > button { border-color:color-mix(in srgb,var(--accent-a) 38%,#29415d); background:rgba(255,255,255,.96); color:#17263a; box-shadow:0 8px 24px rgba(24,43,67,.28); }
+:root[data-color-mode="light"] .beast-ov-card-tools > .beast-ov-card-remove { border-color:color-mix(in srgb,var(--danger) 68%,#7f1629); background:#fff1f3; color:#a8122f; }
 .beast-ov-card.is-resizing { z-index: 50; }
-.beast-ov-card-add { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; border: 2px dashed var(--border-strong); background: transparent; color: var(--ink-muted); font-weight: 750; font-size: 13px; cursor: pointer; }
+.beast-ov-card-add { display:none !important; }
 .beast-ov-card-add:hover, .beast-ov-card-add:focus-visible { border-color: var(--accent-a); color: var(--ink); }
+
+/* The fixed editor dock must never cover the last card. The add action is
+   already present in that dock, so the old full grid tile is intentionally
+   hidden and the grid gets a scrollable safety area instead. */
+.beast-overview-grid.is-freeform.is-editing {
+  position:relative;
+  padding-bottom:0 !important;
+  scroll-padding-bottom:132px;
+  overflow-y:auto !important;
+}
+.beast-overview-grid.is-freeform.is-editing::after {
+  content:"";
+  position:absolute;
+  top:100%;
+  left:0;
+  width:1px;
+  height:132px;
+  pointer-events:none;
+}
 .beast-ov-add-card-types { display: flex; flex-wrap: wrap; gap: 8px; }
 .beast-ov-add-card-types button { min-height: 40px; padding: 0 14px; border: 1px solid var(--border-strong); border-radius: 999px; background: var(--surface-2); color: var(--ink); font-weight: 700; }
 .beast-ov-add-card-types button:hover { border-color: var(--accent-a); color: var(--accent-a); }
@@ -158,7 +187,8 @@
 .beast-template-search { width: 100%; min-height: 54px; padding: 0 16px; border: 1px solid var(--border-strong); border-radius: var(--radius-md); background: var(--surface-solid); color: var(--ink); font: inherit; }
 .beast-template-categories { display: flex; gap: 8px; padding: 4px 0 2px; overflow-x: auto; scrollbar-width: none; }
 .beast-template-categories::-webkit-scrollbar { display: none; }
-.beast-template-categories button { flex: 0 0 auto; min-height: 46px; padding: 0 16px; border: 1px solid var(--border-strong); border-radius: 12px; background: var(--surface-2); color: var(--ink-muted); font-weight: 750; }
+.beast-template-categories button { flex: 0 0 auto; min-height: 46px; padding: 0 14px; display:flex; align-items:center; gap:9px; border: 1px solid var(--border-strong); border-radius: 12px; background: var(--surface-2); color: var(--ink-muted); font-weight: 750; }
+.beast-template-categories button small { min-width:22px; height:22px; display:grid; place-items:center; padding:0 6px; border-radius:999px; background:var(--surface-solid); color:var(--ink-faint); font-size:10px; }
 .beast-template-categories button.is-active { border-color: var(--accent-border); background: var(--accent-soft); color: var(--ink); }
 .beast-template-gallery { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
 .beast-template-card { min-width: 0; min-height: 126px; display: grid; grid-template-columns: 50px minmax(0, 1fr); align-items: start; gap: 13px; padding: 16px; border: 1px solid var(--border); border-radius: var(--radius-md); background: var(--surface-2); color: var(--ink); text-align: left; touch-action: manipulation; }
@@ -1164,7 +1194,7 @@
 .beast-ov-car-compact {
   appearance: none;
   width: 100%;
-  min-height: 58px;
+  min-height: 56px;
   display: grid;
   grid-template-columns: 38px minmax(0, 1fr) auto;
   align-items: center;
@@ -1404,7 +1434,7 @@
   display: flex;
   flex-direction: column;
   padding-top: 0;
-  gap: 5px;
+  gap: 3px;
   overflow: hidden;
 }
 
@@ -1427,6 +1457,7 @@
   font-size: 12px;
   text-transform: uppercase;
   letter-spacing: 0.08em;
+  line-height: 1.1;
 }
 
 .beast-ov-energy-head strong {
@@ -1435,6 +1466,7 @@
   color: var(--accent-energy);
   font-size: 1.55rem;
   font-variant-numeric: tabular-nums;
+  line-height: 1.05;
 }
 
 .beast-ov-energy-head small {
@@ -1442,28 +1474,29 @@
   margin-top: 1px;
   color: var(--ink-muted);
   font-size: 11px;
+  line-height: 1.15;
 }
 
 .beast-ov-utility-toggle {
   display: inline-flex;
-  gap: 4px;
-  padding: 4px;
+  gap: 3px;
+  padding: 3px;
   border: 1px solid var(--border);
-  border-radius: 14px;
+  border-radius: 12px;
   background: rgba(0, 0, 0, 0.2);
 }
 
 .beast-ov-utility-toggle button {
   appearance: none;
-  min-width: 44px;
-  min-height: 44px;
-  padding: 5px 10px;
+  min-width: 40px;
+  min-height: 38px;
+  padding: 4px 8px;
   border: 1px solid transparent;
-  border-radius: 10px;
+  border-radius: 9px;
   background: transparent;
   color: var(--ink-muted);
   font-family: var(--font-sans);
-  font-size: 12px;
+  font-size: 11px;
   font-weight: 750;
   cursor: pointer;
 }
@@ -1475,9 +1508,9 @@
 }
 
 .beast-ov-utility-chart {
-  flex: 1 1 96px;
-  min-height: 76px;
-  max-height: 108px;
+  flex: 1 1 76px;
+  min-height: 56px;
+  max-height: 96px;
   display: flex;
   align-items: flex-end;
   gap: 3px;
@@ -1496,25 +1529,26 @@
 }
 
 .beast-ov-price-head > div:first-child { min-width: 0; }
-.beast-ov-price-head small { display: block; margin-top: 3px; color: var(--ink-faint); font-size: 11px; }
+.beast-ov-price-head small { display: block; margin-top: 3px; color: var(--ink-faint); font-size: 11px; line-height: 1.15; }
+.beast-ov-price-head .beast-ov-energy-price { line-height: 1.15; }
 
 .beast-ov-price-toggle {
   flex-shrink: 0;
   display: inline-flex;
-  gap: 4px;
-  padding: 4px;
+  gap: 3px;
+  padding: 3px;
   border: 1px solid var(--border);
-  border-radius: 14px;
+  border-radius: 12px;
   background: rgba(0, 0, 0, 0.2);
 }
 
 .beast-ov-price-toggle button {
   appearance: none;
-  min-width: 44px;
-  min-height: 44px;
-  padding: 4px 8px;
+  min-width: 40px;
+  min-height: 38px;
+  padding: 3px 7px;
   border: 1px solid transparent;
-  border-radius: 10px;
+  border-radius: 9px;
   background: transparent;
   color: var(--ink-muted);
   font-family: var(--font-sans);
@@ -1530,9 +1564,9 @@
 }
 
 .beast-ov-price-chart {
-  flex: 1 1 108px;
-  min-height: 84px;
-  max-height: 120px;
+  flex: 1 1 78px;
+  min-height: 58px;
+  max-height: 100px;
   display: flex;
   align-items: flex-end;
   gap: 2px;
@@ -1637,19 +1671,28 @@
 
 .beast-ov-energy-details {
   appearance: none;
-  min-height: 44px;
+  min-height: 38px;
   display: inline-flex;
   align-items: center;
   gap: 4px;
-  padding: 4px 9px;
+  padding: 3px 8px;
   border: 1px solid var(--border);
-  border-radius: var(--radius-full);
+  border-radius: 10px;
   background: transparent;
   color: var(--ink-muted);
   font-family: var(--font-sans);
-  font-size: 12px;
+  font-size: 11px;
   font-weight: 750;
   cursor: pointer;
+}
+
+/* A wall kiosk has materially more vertical room than an ordinary browser
+   window. Let both charts absorb that room instead of stopping at their
+   compact desktop caps; the short-window layout above remains unchanged. */
+@media (min-width: 1400px) and (min-height: 950px) {
+  .beast-ov-energy-shell { gap: 5px; }
+  .beast-ov-utility-chart { flex-basis: 122px; min-height: 82px; max-height: 145px; }
+  .beast-ov-price-chart { flex-basis: 132px; min-height: 88px; max-height: 155px; }
 }
 
 .beast-ov-security-center {

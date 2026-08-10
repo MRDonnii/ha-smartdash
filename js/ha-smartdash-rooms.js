@@ -251,7 +251,8 @@
     });
   }
 
-  const GRID_MIN_CARD_WIDTH = 280;
+  const GRID_MIN_CARD_WIDTH = 210;
+  const GRID_MIN_CARD_HEIGHT = 165;
 
   // grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)) fills rows
   // left-to-right and just stops -- a trailing row with far fewer cards
@@ -261,15 +262,29 @@
   // the actual card count as evenly as possible (e.g. 5, 5, 5 for the same
   // 15 cards) removes that dead space instead.
   function balanceGridColumns(grid) {
-    const itemCount = grid.children.length;
+    const itemCount = grid.querySelectorAll(":scope > .beast-room-card:not(.is-layout-hidden)").length;
     if (!itemCount) return;
     const containerWidth = grid.clientWidth;
-    if (!containerWidth) return;
-    const gapPx = parseFloat(getComputedStyle(grid).columnGap) || 0;
-    const maxColumnsThatFit = Math.max(1, Math.floor((containerWidth + gapPx) / (GRID_MIN_CARD_WIDTH + gapPx)));
-    const rows = Math.ceil(itemCount / maxColumnsThatFit);
-    const columns = Math.ceil(itemCount / rows);
-    grid.style.gridTemplateColumns = `repeat(${columns}, minmax(min(${GRID_MIN_CARD_WIDTH}px, 100%), 1fr))`;
+    const containerHeight = grid.clientHeight;
+    if (!containerWidth || !containerHeight || grid.closest(".is-native-page-editing")) return;
+    const style = getComputedStyle(grid);
+    const gapX = parseFloat(style.columnGap) || 0;
+    const gapY = parseFloat(style.rowGap) || gapX;
+    const maxColumns = Math.max(1, Math.min(itemCount, Math.floor((containerWidth + gapX) / (GRID_MIN_CARD_WIDTH + gapX))));
+    let best = null;
+    for (let columns = 1; columns <= maxColumns; columns += 1) {
+      const rows = Math.ceil(itemCount / columns);
+      const width = (containerWidth - gapX * (columns - 1)) / columns;
+      const height = (containerHeight - gapY * (rows - 1)) / rows;
+      if (width < GRID_MIN_CARD_WIDTH || height < GRID_MIN_CARD_HEIGHT) continue;
+      const score = Math.abs(width / height - 1.42) + Math.abs(columns * rows - itemCount) * .08;
+      if (!best || score < best.score) best = { columns, rows, score };
+    }
+    const columns = best?.columns || maxColumns;
+    const rows = Math.ceil(itemCount / columns);
+    grid.style.setProperty("--rooms-fit-columns", String(columns));
+    grid.style.setProperty("--rooms-fit-rows", String(rows));
+    grid.classList.toggle("is-room-grid-fitted", Boolean(best));
   }
 
   let gridResizeObserver = null;

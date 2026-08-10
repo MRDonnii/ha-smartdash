@@ -8,9 +8,29 @@ window.BeastNativePageEditor = (() => {
   const clamp = (value, min, max) => Math.max(min, Math.min(max, Number(value) || min));
   const escape = (value) => { const el = document.createElement("span"); el.textContent = String(value ?? ""); return el.innerHTML; };
 
+  function viewportWidth() {
+    const widths = [window.innerWidth, document.documentElement?.clientWidth, document.querySelector(".beast-app")?.clientWidth]
+      .map(Number).filter((value) => Number.isFinite(value) && value > 0);
+    const measured = Math.max(0, ...widths);
+    // During a kiosk refresh Chromium can briefly report a tiny/zero viewport.
+    // Do not let that transient value select and persist the mobile layout.
+    if (measured < 480 && Number(window.screen?.availWidth) >= 1180) return Number(window.screen.availWidth);
+    return measured || Number(window.screen?.availWidth) || 1920;
+  }
+  function activeProfile() {
+    const width = viewportWidth();
+    if (width <= 820) return "mobile";
+    if (width <= 1366) return "tablet";
+    return "dashboard";
+  }
+  function profileSuffix(profile = activeProfile()) { return profile === "dashboard" ? "" : profile[0].toUpperCase() + profile.slice(1); }
+  function storagePath(section, key = "nativeCards", profile = activeProfile()) { return `pageLayouts.${section}.${key}${profileSuffix(profile)}`; }
+  function profileLabel(profile = activeProfile()) { return ({dashboard:"Dashboard",tablet:"Tablet",mobile:"Mobil"})[profile]; }
+
   function savedCards(section, defaults) {
-    const saved = BeastConfig.get(`pageLayouts.${section}.nativeCards`);
-    const source = Array.isArray(saved) && saved.length ? saved : defaults;
+    const saved = BeastConfig.get(storagePath(section));
+    const dashboard = BeastConfig.get(storagePath(section, "nativeCards", "dashboard"));
+    const source = Array.isArray(saved) && saved.length ? saved : (Array.isArray(dashboard) && dashboard.length ? dashboard : defaults);
     return defaults.map((fallback) => {
       const card = source.find((item) => item.id === fallback.id) || fallback;
       return { ...fallback, ...card, desktop: { ...fallback.desktop, ...(card.desktop || {}) }, bindings: { ...(fallback.bindings || {}), ...(card.bindings || {}) } };
@@ -44,15 +64,27 @@ window.BeastNativePageEditor = (() => {
       const gap = parseFloat(getComputedStyle(layoutHost).gap) || 16;
       const section = root()?.closest?.(".beast-section") || root();
       const available = Math.max(360, section?.clientHeight || window.innerHeight);
-      const currentRow = parseFloat(getComputedStyle(layoutHost).gridAutoRows) || 72;
-      const layoutOverhead = Math.max(0, layoutHost.scrollHeight - rows * currentRow - gap * Math.max(0, rows - 1));
-      const row = clamp(Math.floor((available - layoutOverhead - gap * Math.max(0, rows - 1)) / rows), 48, 72);
-      if (force || BeastConfig.get(`pageLayouts.${state.section}.nativeAutoFit`) === true) layoutHost.style.setProperty("--native-row-height", `${row}px`);
+      // Keep one gap of breathing room because the section's flex height can
+      // settle a few pixels after the first mount (fonts and the rail finish
+      // measuring asynchronously in Chromium).
+      const fitBudget = available - Math.max(12, gap);
+      // Do not derive this from scrollHeight: scrollHeight itself changes when
+      // the row changes and creates a shrink-on-every-render feedback loop.
+      const row = clamp(Math.floor((fitBudget - gap * Math.max(0, rows - 1)) / rows), 32, 72);
+      // The built-in composition must always fit the visible panel. The saved
+      // auto-fit flag controls packing/order, not whether fixed 72px rows are
+      // allowed to push standard cards below the screen.
+      const nextRow = `${row}px`;
+      layoutHost.style.setProperty("--native-total-rows", String(rows));
+      if (layoutHost.style.getPropertyValue("--native-row-height") !== nextRow) layoutHost.style.setProperty("--native-row-height", nextRow);
     }
 
     function apply(list = cards()) {
       const layoutHost = host();
       if (!layoutHost) return;
+      const fitted = BeastConfig.get(storagePath(state.section, "nativeAutoFit")) === true;
+      root()?.classList.toggle("is-responsive-fitted", fitted);
+      root()?.closest?.(".beast-section")?.classList.toggle("is-responsive-fitted", fitted);
       layoutHost.classList.add("beast-native-layout-grid");
       applyRowFit(list);
       list.forEach((card) => {
@@ -76,17 +108,27 @@ window.BeastNativePageEditor = (() => {
     }
 
     async function fit(save = true) {
-      const fitted = packed(copy(state.editing && state.draft ? state.draft : cards()));
+      const source = copy(state.editing && state.draft ? state.draft : cards());
+      const fitted = packed(state.fitCards?.(source) || source);
       if (state.editing) state.draft = fitted;
       if (save) {
-        await BeastConfig.set(`pageLayouts.${state.section}.nativeCards`, fitted);
-        await BeastConfig.set(`pageLayouts.${state.section}.nativeAutoFit`, true);
+        await BeastConfig.set(storagePath(state.section), fitted);
+        await BeastConfig.set(storagePath(state.section, "nativeAutoFit"), true);
       }
       apply(fitted); applyRowFit(fitted, true);
       root()?.classList.add("is-responsive-fitted");
       root()?.closest?.(".beast-section")?.classList.add("is-responsive-fitted");
       state.onSave?.(copy(fitted));
       return fitted;
+    }
+
+    async function reset() {
+      await BeastConfig.set(storagePath(state.section), null);
+      await BeastConfig.set(storagePath(state.section, "nativeAutoFit"), false);
+      cleanup();
+      apply(cards());
+      state.onSave?.(copy(cards()));
+      return cards();
     }
 
     function cleanup() {
@@ -101,7 +143,7 @@ window.BeastNativePageEditor = (() => {
     function finish(save) {
       if (!state.editing) return;
       if (save && state.draft) {
-        BeastConfig.set(`pageLayouts.${state.section}.nativeCards`, state.draft);
+        BeastConfig.set(storagePath(state.section), state.draft);
         state.onSave?.(copy(state.draft));
       }
       cleanup();
@@ -149,7 +191,13 @@ window.BeastNativePageEditor = (() => {
       document.getElementById("beastNativePageSettings")?.remove();
       const list = state.draft || cards();
       const overlay = document.createElement("div"); overlay.id = "beastNativePageSettings"; overlay.className = "beast-modal-overlay";
-      overlay.innerHTML = `<div class="beast-modal beast-native-settings-modal"><div class="beast-modal-header"><div><small>Indbyggede kort</small><h3>Rediger ${escape(state.label)}</h3></div><button type="button" class="beast-modal-close" data-close>×</button></div><div class="beast-modal-body"><div class="beast-native-settings-list">${list.map((card) => `<article data-native-settings-card="${escape(card.id)}"><header><label><input type="checkbox" data-native-enabled ${card.enabled === false ? "" : "checked"}><strong>${escape(card.label)}</strong></label></header><div><label>Navn<input data-native-label value="${escape(card.label)}"></label><label>Venstre<select data-native-x>${Array.from({length:12},(_,i)=>`<option value="${i+1}" ${Number(card.desktop.x)===i+1?"selected":""}>${i+1}</option>`).join("")}</select></label><label>Top<select data-native-y>${Array.from({length:24},(_,i)=>`<option value="${i+1}" ${Number(card.desktop.y)===i+1?"selected":""}>${i+1}</option>`).join("")}</select></label><label>Bredde<select data-native-w>${Array.from({length:12},(_,i)=>`<option value="${i+1}" ${Number(card.desktop.w)===i+1?"selected":""}>${i+1}/12</option>`).join("")}</select></label><label>Højde<select data-native-h>${Array.from({length:16},(_,i)=>`<option value="${i+1}" ${Number(card.desktop.h)===i+1?"selected":""}>${i+1}</option>`).join("")}</select></label></div></article>`).join("")}</div><button type="button" class="beast-btn beast-btn-primary" data-native-settings-save>Anvend</button></div></div>`;
+      const controlMarkup = (card, control) => {
+        const value = card.options?.[control.key] ?? control.default ?? "";
+        if (control.type === "select") return `<label>${escape(control.label)}<select data-native-option="${escape(control.key)}">${(control.choices || []).map((choice) => `<option value="${escape(choice.value)}" ${String(choice.value) === String(value) ? "selected" : ""}>${escape(choice.label)}</option>`).join("")}</select></label>`;
+        if (control.type === "checkbox") return `<label class="beast-native-option-check"><input type="checkbox" data-native-option="${escape(control.key)}" ${value ? "checked" : ""}><span>${escape(control.label)}</span></label>`;
+        return `<label>${escape(control.label)}<input type="number" data-native-option="${escape(control.key)}" min="${Number(control.min)||1}" max="${Number(control.max)||50}" step="${Number(control.step)||1}" value="${escape(value)}"></label>`;
+      };
+      overlay.innerHTML = `<div class="beast-modal beast-native-settings-modal"><div class="beast-modal-header"><div><small>Indbyggede kort · ${profileLabel()}</small><h3>Rediger ${escape(state.label)}</h3></div><button type="button" class="beast-modal-close" data-close>×</button></div><div class="beast-modal-body"><p class="beast-responsive-profile-note">Ændringer gemmes kun til profilen <strong>${profileLabel()}</strong>. De andre skærmstørrelser beholder deres eget layout.</p><div class="beast-native-settings-list">${list.map((card) => `<article data-native-settings-card="${escape(card.id)}"><header><label><input type="checkbox" data-native-enabled ${card.enabled === false ? "" : "checked"}><strong>${escape(card.label)}</strong></label></header><div><label>Navn<input data-native-label value="${escape(card.label)}"></label><label>Venstre<select data-native-x>${Array.from({length:12},(_,i)=>`<option value="${i+1}" ${Number(card.desktop.x)===i+1?"selected":""}>${i+1}</option>`).join("")}</select></label><label>Top<select data-native-y>${Array.from({length:24},(_,i)=>`<option value="${i+1}" ${Number(card.desktop.y)===i+1?"selected":""}>${i+1}</option>`).join("")}</select></label><label>Bredde<select data-native-w>${Array.from({length:12},(_,i)=>`<option value="${i+1}" ${Number(card.desktop.w)===i+1?"selected":""}>${i+1}/12</option>`).join("")}</select></label><label>Højde<select data-native-h>${Array.from({length:16},(_,i)=>`<option value="${i+1}" ${Number(card.desktop.h)===i+1?"selected":""}>${i+1}</option>`).join("")}</select></label>${(card.controls || []).map((control)=>controlMarkup(card, control)).join("")}</div></article>`).join("")}</div><button type="button" class="beast-btn beast-btn-primary" data-native-settings-save>Anvend</button></div></div>`;
       document.body.appendChild(overlay);
       overlay.addEventListener("click", (event) => {
         if (event.target === overlay || event.target.closest("[data-close]")) return overlay.remove();
@@ -159,8 +207,11 @@ window.BeastNativePageEditor = (() => {
           card.label = row.querySelector("[data-native-label]").value.trim() || card.label;
           card.enabled = row.querySelector("[data-native-enabled]").checked;
           card.desktop = { x:Number(row.querySelector("[data-native-x]").value), y:Number(row.querySelector("[data-native-y]").value), w:Number(row.querySelector("[data-native-w]").value), h:Number(row.querySelector("[data-native-h]").value) };
+          card.options = { ...(card.options || {}) }; row.querySelectorAll("[data-native-option]").forEach((input) => {
+            card.options[input.dataset.nativeOption] = input.type === "checkbox" ? input.checked : (input.type === "number" ? Number(input.value) : input.value);
+          });
         });
-        if (!state.editing) BeastConfig.set(`pageLayouts.${state.section}.nativeCards`, list);
+        if (!state.editing) BeastConfig.set(storagePath(state.section), list);
         overlay.remove(); apply(list);
       });
     }
@@ -171,7 +222,7 @@ window.BeastNativePageEditor = (() => {
       root().classList.add("is-native-page-editing"); apply(state.draft);
       state.draft.forEach((card) => { const element = elementFor(card); if (element && card.enabled !== false) wireCard(element, card); });
       const bar = document.createElement("div"); bar.id = "beastNativePageEditBar"; bar.className = "beast-ov-edit-bar";
-      bar.innerHTML = `<span>${BeastCore.icon("grid",{size:17})}Redigerer ${escape(state.label)}</span><div class="beast-ov-edit-bar-actions"><button type="button" data-native-add>Tilføj kort</button><button type="button" data-native-settings>Navne og størrelse</button><button type="button" data-native-cancel>Annullér</button><button type="button" class="beast-btn beast-btn-primary" data-native-save>Gem</button></div>`;
+      bar.innerHTML = `<div class="beast-editor-status"><i>${BeastCore.icon("grid",{size:19})}</i><span><small>Redigering</small><strong>Redigerer ${escape(state.label)}</strong></span></div><div class="beast-ov-edit-bar-actions"><button type="button" data-native-add>Tilføj kort</button><button type="button" data-native-settings>Indstillinger</button><button type="button" class="beast-edit-cancel" data-native-cancel>Annullér</button><button type="button" class="beast-btn beast-btn-primary beast-edit-save" data-native-save>Gem</button></div>`;
       document.body.appendChild(bar);
       bar.querySelector("[data-native-cancel]").addEventListener("click", () => finish(false));
       bar.querySelector("[data-native-save]").addEventListener("click", () => finish(true));
@@ -184,7 +235,7 @@ window.BeastNativePageEditor = (() => {
       const trigger = root()?.querySelector(state.trigger);
       if (trigger) { trigger.onclick = (event) => { event.preventDefault(); event.stopImmediatePropagation(); enter(); }; trigger.dataset.nativeEditorWired = "true"; }
     }
-    return { mount, enter, apply, settings, fit };
+    return { mount, enter, apply, settings, fit, reset };
   }
 
   function mount(options) {
@@ -194,5 +245,46 @@ window.BeastNativePageEditor = (() => {
     instance.mount();
     return instance;
   }
-  return { mount, supports: (section) => SUPPORTED.has(section), open: (section) => instances.get(section)?.enter(), fit: (section) => instances.get(section)?.fit() };
+  let lastProfile = activeProfile();
+  function syncProfile() {
+    const next = activeProfile();
+    const changed = next !== lastProfile;
+    lastProfile = next;
+    // Re-apply even when the named profile is unchanged. On kiosk refresh the
+    // viewport often receives its final width after the cards were first
+    // measured; a manual window resize used to be the only thing correcting it.
+    instances.forEach((instance) => instance.apply());
+    document.dispatchEvent(new CustomEvent("beast:layout-profile", { detail:{ profile:next, changed } }));
+  }
+  let resizeFrame = 0;
+  function scheduleProfileSync() {
+    window.cancelAnimationFrame(resizeFrame);
+    resizeFrame = window.requestAnimationFrame(syncProfile);
+  }
+  window.addEventListener("resize", scheduleProfileSync);
+  let startupRefreshScheduled = false;
+  function refreshAfterStartup() {
+    if (startupRefreshScheduled) return;
+    startupRefreshScheduled = true;
+    // CSS establishes the responsive shell before first paint. One settled
+    // measurement is enough; repeatedly dispatching synthetic resize events
+    // made cards visibly jump after navigation and could restart chart/video
+    // layout work several times.
+    window.requestAnimationFrame(() => window.requestAnimationFrame(() => {
+      syncProfile();
+      window.dispatchEvent(new CustomEvent("beast:viewport-ready", { detail:{ width:viewportWidth() } }));
+    }));
+  }
+  window.addEventListener("pageshow", refreshAfterStartup);
+  if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", refreshAfterStartup, { once:true });
+  else refreshAfterStartup();
+  window.visualViewport?.addEventListener?.("resize", scheduleProfileSync);
+  function option(section, cardId, key, fallback) {
+    const current = BeastConfig.get(storagePath(section));
+    const dashboard = BeastConfig.get(storagePath(section, "nativeCards", "dashboard"));
+    const cards = Array.isArray(current) && current.length ? current : dashboard;
+    const value = cards?.find?.((card) => card.id === cardId)?.options?.[key];
+    return value === undefined ? fallback : value;
+  }
+  return { mount, supports: (section) => SUPPORTED.has(section), open: (section) => instances.get(section)?.enter(), fit: (section) => instances.get(section)?.fit(), reset: (section) => instances.get(section)?.reset(), activeProfile, profileLabel, storagePath, option };
 })();

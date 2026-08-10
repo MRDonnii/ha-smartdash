@@ -39,7 +39,7 @@ window.BeastStandardCards = (function () {
     const number = Number(state.state); if (!Number.isFinite(number)) return state.state;
     const requested = Number(state.attributes?.suggested_display_precision);
     const precision = Number.isFinite(requested) ? Math.max(0, Math.min(3, requested)) : (Math.abs(number) >= 100 ? 0 : Math.abs(number) >= 10 ? 1 : 2);
-    return number.toLocaleString("da-DK", { minimumFractionDigits: 0, maximumFractionDigits: precision });
+    return number.toLocaleString(window.HASmartdashI18n?.locale || "da-DK", { minimumFractionDigits: 0, maximumFractionDigits: precision });
   }
 
   async function historyPoints(entityId) {

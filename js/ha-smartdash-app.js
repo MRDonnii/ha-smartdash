@@ -742,15 +742,10 @@ function renderOverviewSection() {
 // or resized, and the picture underneath can use the card's full space.
 function overviewCameraMenuMarkup(hasCameras) {
   if (!hasCameras) return "";
-  return `<div class="beast-ov-camera-header">
-      <div class="beast-ov-camera-menu">
-        <button type="button" class="beast-ov-camera-menu-toggle" id="beastOvCameraMenuToggle" aria-label="Åbn kameramenu" aria-expanded="false">⋮</button>
-        <div class="beast-ov-camera-menu-popover" id="beastOvCameraMenu" hidden>
-          <button type="button" id="beastOvCameraPicker">${BeastCore.icon("camera", { size: 17 })}<span>Vælg kameraer</span></button>
-          <button type="button" id="beastOvEdit">${BeastCore.icon("settings", { size: 17 })}<span>Rediger forsiden</span></button>
-          <button type="button" id="beastOvStartScreensaver">${BeastCore.icon("moon", { size: 17 })}<span>Start pauseskærm</span></button>
-        </div>
-      </div>
+  return `<div class="beast-ov-camera-actions" hidden>
+      <button type="button" id="beastOvCameraPicker">Vælg kameraer</button>
+      <button type="button" id="beastOvEdit">Rediger forsiden</button>
+      <button type="button" id="beastOvStartScreensaver">Start pauseskærm</button>
     </div>`;
 }
 
@@ -767,10 +762,7 @@ function renderSectionMarkup(item) {
 }
 
 function renderAppShell(root) {
-  const dashboardTitle = BeastConfig.get("dashboardTitle") || "HA Smartdash";
-  const titleEl = document.createElement("div");
-  titleEl.textContent = dashboardTitle;
-  const brandHtml = `<div class="beast-rail-brand">${titleEl.innerHTML}</div>`;
+  const brandHtml = `<button type="button" class="beast-rail-page-edit" id="beastRailPageEdit" aria-label="Rediger den aktuelle side" title="Rediger den aktuelle side"><span class="beast-rail-page-edit-icon">${BeastCore.icon("grid", { size: 19 })}</span><span class="beast-rail-page-edit-label">Rediger</span></button>`;
 
   const pageRailItems = window.BeastPageManager?.buildRailItems(RAIL_ITEMS) || RAIL_ITEMS;
   const favoriteSections = featureEnabled("localFavorites") ? BeastLocalSettings.get("favoriteSections", []) : [];
@@ -783,17 +775,14 @@ function renderAppShell(root) {
   const visibleRailItems = orderedRailItems
     .filter((item) => ["overview", "settings"].includes(item.id) || !hiddenSections.includes(item.id))
     .filter((item) => item.id !== "settings" || BeastConfig.get("showAdminButton") !== false);
-  const railButtonsHtml = visibleRailItems.map((item) => item.id === "settings" ? `
-    <a href="/admin/" class="beast-rail-btn">
-      ${BeastCore.icon(item.icon, { size: 24 })}
-      <span>${item.label}</span>
-    </a>
-  ` : `
+  const railButtonsHtml = visibleRailItems.filter((item) => item.id !== "settings").map((item) => `
     <button type="button" class="beast-rail-btn" data-section="${item.id}">
       ${BeastCore.icon(item.icon, { size: 24 })}
       <span>${item.label}</span>
     </button>
   `).join("");
+  const adminItem = visibleRailItems.find((item) => item.id === "settings");
+  const adminRailHtml = adminItem ? `<a href="/admin/" class="beast-rail-btn beast-rail-admin">${BeastCore.icon(adminItem.icon, { size: 24 })}<span>${adminItem.label}</span></a>` : "";
 
   const sectionsHtml = visibleRailItems.filter((item) => item.id !== "settings").map((item) => `
     <div class="beast-section" data-section="${item.id}">
@@ -805,7 +794,7 @@ function renderAppShell(root) {
     <div class="beast-app">
       <span class="beast-status-dot-fixed" id="beastStatusDot" data-state="connecting" title="Forbinder…"></span>
       <div class="beast-body">
-        <nav class="beast-rail" id="beastRail">${brandHtml}${railButtonsHtml}<button type="button" class="beast-rail-btn beast-page-manager-trigger" id="beastPageManagerTrigger">${BeastCore.icon("plus", { size: 24 })}<span>Sider</span></button></nav>
+        <nav class="beast-rail" id="beastRail"><div class="beast-rail-pages">${railButtonsHtml}</div><div class="beast-rail-tools">${brandHtml}${adminRailHtml}</div></nav>
         <main class="beast-content" id="beastContent">${sectionsHtml}</main>
       </div>
     </div>
@@ -831,7 +820,6 @@ function renderAppShell(root) {
   });
 
   setupNavigation();
-  document.getElementById("beastPageManagerTrigger")?.addEventListener("click", () => window.BeastPageManager?.open());
   setupQuickScenarios();
   setupDataQuality();
   BeastCore.mountPanels();
@@ -960,17 +948,35 @@ function mountPageActionMenus() {
   document.documentElement.dataset.pageActionMenus = "true";
   const close = () => document.getElementById("beastPageActionMenu")?.remove();
   document.addEventListener("click", (event) => {
-    const trigger = event.target.closest(".beast-page-edit-trigger");
+    const trigger = event.target.closest(".beast-page-edit-trigger, #beastRailPageEdit");
     if (!trigger) { if (!event.target.closest("#beastPageActionMenu")) close(); return; }
     if (trigger.dataset.menuBypass === "true") { delete trigger.dataset.menuBypass; return; }
     event.preventDefault(); event.stopPropagation(); event.stopImmediatePropagation(); close();
-    const section = trigger.closest(".beast-section[data-section]");
+    const section = trigger.id === "beastRailPageEdit"
+      ? document.querySelector(".beast-section.is-active[data-section]")
+      : trigger.closest(".beast-section[data-section]");
     if (!section) return;
+    const pageTrigger = trigger.id === "beastRailPageEdit"
+      ? (section.dataset.section === "overview" ? section.querySelector("#beastOvEdit") : section.querySelector(".beast-page-edit-trigger"))
+      : trigger;
     const menu = document.createElement("div"); menu.id = "beastPageActionMenu"; menu.className = "beast-page-action-menu";
-    menu.innerHTML = `<button type="button" data-page-action="edit"><i>${BeastCore.icon("settings",{size:21})}</i><span><strong>Rediger side</strong><small>Flyt, ændr og tilføj kort</small></span></button><button type="button" data-page-action="fit"><i>${BeastCore.icon("grid",{size:21})}</i><span><strong>Tilpas side</strong><small>Fordel kortene til denne skærm</small></span></button>`;
+    const isOverview = section.dataset.section === "overview";
+    menu.innerHTML = `<button type="button" data-page-action="edit"><i>${BeastCore.icon("settings",{size:21})}</i><span><strong>Rediger side</strong><small>Flyt, ændr og tilføj kort</small></span></button><button type="button" data-page-action="fit"><i>${BeastCore.icon("grid",{size:21})}</i><span><strong>Tilpas side</strong><small>Fordel kortene til denne skærm</small></span></button>${isOverview ? `<button type="button" data-page-action="cameras"><i>${BeastCore.icon("camera",{size:21})}</i><span><strong>Vælg kameraer</strong><small>Vælg hvilke kameraer der vises på forsiden</small></span></button><button type="button" data-page-action="screensaver"><i>${BeastCore.icon("moon",{size:21})}</i><span><strong>Start pauseskærm</strong><small>Vis nattens pauseskærm med det samme</small></span></button>` : ""}`;
     document.body.appendChild(menu);
-    menu.querySelector('[data-page-action="edit"]').addEventListener("click", () => { close(); trigger.dataset.menuBypass = "true"; trigger.click(); });
+    const triggerRect = trigger.getBoundingClientRect();
+    const menuRect = menu.getBoundingClientRect();
+    const edge = 10;
+    const railIsBottom = triggerRect.top > window.innerHeight * .65;
+    const left = Math.max(edge, Math.min(window.innerWidth - menuRect.width - edge, triggerRect.right + edge));
+    const top = railIsBottom
+      ? Math.max(edge, triggerRect.top - menuRect.height - edge)
+      : Math.max(edge, Math.min(window.innerHeight - menuRect.height - edge, triggerRect.top));
+    menu.style.left = `${Math.round(left)}px`; menu.style.top = `${Math.round(top)}px`;
+    menu.querySelector('[data-page-action="edit"]').disabled = !pageTrigger;
+    menu.querySelector('[data-page-action="edit"]').addEventListener("click", () => { if (!pageTrigger) return; close(); pageTrigger.dataset.menuBypass = "true"; pageTrigger.click(); });
     menu.querySelector('[data-page-action="fit"]').addEventListener("click", async (actionEvent) => { const button=actionEvent.currentTarget; button.disabled=true; button.classList.add("is-busy"); await window.BeastPageEditor?.fit?.(section.dataset.section); close(); });
+    menu.querySelector('[data-page-action="cameras"]')?.addEventListener("click", () => { close(); document.getElementById("beastOvCameraPicker")?.click(); });
+    menu.querySelector('[data-page-action="screensaver"]')?.addEventListener("click", () => { close(); document.getElementById("beastOvStartScreensaver")?.click(); });
   }, true);
 }
 

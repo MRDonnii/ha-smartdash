@@ -88,6 +88,35 @@ window.BeastCardEditor = (function () {
     return [...list].sort((a, b) => entityScore(b, section, domains) - entityScore(a, section, domains) || a.name.localeCompare(b.name, "da"));
   }
 
+  const TEMPLATE_KEYWORDS = {
+    "Vejr": ["weather","vejr","temperatur","temperature","humidity","fugt","pressure","tryk","wind","vind","rain","regn","precipitation","forecast","prognose","cloud","sky","visibility","sigt","uv","dew"],
+    "Energi": ["energy","energi","power","effekt","forbrug","consumption","elpris","price","pris","tarif","cost","kwh","watt"],
+    "Pool": ["pool","vandtemperatur","water temperature","pumpe","pump","runtime","driftstid"],
+    "Bil": ["tesla","car","bil","battery","batteri","range","rækkevidde","charging","oplad","tyre","tire","dæktryk","pressure"],
+    "3D Printer": ["printer","bambu","print","nozzle","dyse","bed","plade","filament","ams","layer","lag","remaining","resterende"],
+    "Robotter": ["vacuum","roborock","roomba","worx","landroid","robot","battery","batteri","clean","rengør"],
+    "Kalender": ["calendar","kalender","waste","affald","pickup","afhent","restaffald","madaffald"],
+    "Rum": ["temperature","temperatur","humidity","fugt","presence","tilstede","light","lys"],
+    "Varme": ["climate","varme","heat","temperature","temperatur","thermostat","termostat","dantherm","fremløb","retur","co2"],
+    "Sikkerhed": ["alarm","lock","lås","door","dør","window","vindue","opening","åbning","contact","kontakt"],
+    "Musik": ["media_player","speaker","højtaler","sonos","music","musik"]
+  };
+
+  function relevantEntitiesForTemplate(entities, template) {
+    const domains = template?.domains || [];
+    const domainAllowed = entities.filter((entity) => !domains.length || domains.includes(String(entity.id || "").split(".")[0]));
+    if (!template || template.id === "custom-entity" || !TEMPLATE_KEYWORDS[template.category]) return domainAllowed;
+    const keywords = TEMPLATE_KEYWORDS[template.category];
+    return domainAllowed.filter((entity) => {
+      const domain = String(entity.id || "").split(".")[0];
+      // Dedicated HA domains are already meaningful; the semantic filter is
+      // primarily needed to stop every generic sensor appearing at once.
+      if (domain !== "sensor" && domain !== "binary_sensor") return true;
+      const haystack = `${entity.name || ""} ${entity.id || ""} ${entity.area || ""} ${entity.deviceClass || ""}`.toLowerCase();
+      return keywords.some((keyword) => haystack.includes(keyword));
+    });
+  }
+
   function attach(options) {
     const {
       zoneEl, configPath, cardTypes = [], singleInstanceTypes = [],
@@ -185,6 +214,7 @@ window.BeastCardEditor = (function () {
         card.querySelector(".beast-ov-card-configure")?.remove();
         card.querySelector(".beast-ov-card-duplicate")?.remove();
         card.querySelector(".beast-ov-card-reset")?.remove();
+        card.querySelector(".beast-ov-card-tools")?.remove();
         const drag = document.createElement("span");
         drag.className = "beast-ov-card-drag";
         drag.setAttribute("aria-hidden", "true");
@@ -199,13 +229,14 @@ window.BeastCardEditor = (function () {
         remove.className = "beast-ov-card-remove";
         remove.setAttribute("aria-label", "Fjern kort");
         remove.innerHTML = BeastCore.icon("close", { size: 14 });
-        card.appendChild(remove);
+        const tools = document.createElement("div");
+        tools.className = "beast-ov-card-tools";
         const configure = document.createElement("button");
         configure.type = "button";
         configure.className = "beast-ov-card-configure";
         configure.setAttribute("aria-label", "Indstil kort");
         configure.innerHTML = BeastCore.icon("settings", { size: 16 });
-        card.appendChild(configure);
+        tools.appendChild(configure);
         configure.addEventListener("click", (event) => {
           event.stopPropagation();
           const current = draftCards?.find((item) => item.id === card.dataset.builderCard);
@@ -226,7 +257,7 @@ window.BeastCardEditor = (function () {
         duplicate.className = "beast-ov-card-duplicate";
         duplicate.setAttribute("aria-label", "Dupliker kort");
         duplicate.innerHTML = BeastCore.icon("plus", { size: 15 });
-        card.appendChild(duplicate);
+        tools.appendChild(duplicate);
         duplicate.addEventListener("click", (event) => {
           event.stopPropagation();
           rememberDraft();
@@ -239,7 +270,9 @@ window.BeastCardEditor = (function () {
           renderCardsDom(draftCards);
         });
         const reset = document.createElement("button");
-        reset.type = "button"; reset.className = "beast-ov-card-reset"; reset.setAttribute("aria-label", "Nulstil kort"); reset.innerHTML = "↺"; card.appendChild(reset);
+        reset.type = "button"; reset.className = "beast-ov-card-reset"; reset.setAttribute("aria-label", "Nulstil kort"); reset.innerHTML = "↺"; tools.appendChild(reset);
+        tools.appendChild(remove);
+        card.appendChild(tools);
         reset.addEventListener("click", (event) => {
           event.stopPropagation(); const index = draftCards.findIndex((item) => item.id === card.dataset.builderCard); if (index < 0) return;
           const current = draftCards[index], template = window.BeastCardTemplates?.get?.(current.templateId); rememberDraft();
@@ -375,17 +408,19 @@ window.BeastCardEditor = (function () {
       overlay.className = "beast-modal-overlay";
       const usableTemplates = galleryTemplates.filter((item) => !singleInstanceTypes.includes(item.type) || !usedTypes.has(item.type));
       const categories = ["Alle", ...new Set(usableTemplates.map((item) => item.category))];
-      const templateMarkup = usableTemplates.map((item) => `<button type="button" class="beast-template-card" data-template-id="${item.id}" data-template-category="${item.category}"><span class="beast-template-card-icon">${BeastCore.icon(item.icon || "grid", { size: 25 })}</span><span><strong>${item.title}</strong><small>${item.description}</small><em>${item.category}<i>${item.fields?.length || 1} entityfelt${(item.fields?.length || 1) === 1 ? "" : "er"}</i></em></span></button>`).join("");
+      const categoryCount = (category) => category === "Alle" ? usableTemplates.length : usableTemplates.filter((item) => item.category === category).length;
+      const templateMarkup = usableTemplates.map((item) => `<button type="button" class="beast-template-card" data-template-id="${item.id}" data-template-category="${item.category}"><span class="beast-template-card-icon">${BeastCore.icon(item.icon || "grid", { size: 25 })}</span><span><strong>${item.title}</strong><small>${item.description}</small><em><span>${item.category}</span><i>${item.fields?.length || 1} entityfelt${(item.fields?.length || 1) === 1 ? "" : "er"} · ${item.size?.w || defaultCardSize.desktop.w}/12 × ${item.size?.h || defaultCardSize.desktop.h}</i></em></span></button>`).join("");
       overlay.innerHTML = `<div class="beast-modal beast-ov-add-card-modal beast-template-gallery-modal" role="dialog" aria-modal="true">
         <div class="beast-modal-header"><div><small>Kortbibliotek</small><h3>Vælg en skabelon</h3></div><button type="button" class="beast-modal-close" data-close>${BeastCore.icon("close", { size: 22 })}</button></div>
         <div class="beast-modal-body">
           <input class="beast-template-search" type="search" placeholder="Søg efter kort…">
-          <div class="beast-template-categories">${categories.map((category, index) => `<button type="button" data-template-filter="${category}" class="${index ? "" : "is-active"}">${category}</button>`).join("")}</div>
+          <div class="beast-template-categories">${categories.map((category, index) => `<button type="button" data-template-filter="${category}" class="${index ? "" : "is-active"}"><span>${category}</span><small>${categoryCount(category)}</small></button>`).join("")}</div>
           <div class="beast-template-gallery">${templateMarkup || "<p>Ingen skabeloner er tilgængelige på denne side.</p>"}</div>
           <div class="beast-ov-add-card-entity" hidden>
             <button type="button" class="beast-template-back" data-template-back>← Tilbage til galleriet</button>
             <div class="beast-template-selected"></div>
             <input class="beast-ov-add-card-search" type="search" placeholder="Søg efter entity…">
+            <label class="beast-page-editor-check beast-template-all-entities"><input type="checkbox" data-template-all-entities> Vis alle entities (avanceret)</label>
             <select class="beast-ov-add-card-select" size="6"></select>
             <button type="button" class="beast-btn beast-btn-primary" data-add-card-confirm>Tilføj</button>
           </div>
@@ -454,12 +489,18 @@ window.BeastCardEditor = (function () {
           const entityPane = overlay.querySelector(".beast-ov-add-card-entity");
           entityPane.hidden = false;
           entityPane.querySelector(".beast-template-selected").innerHTML = `<span class="beast-template-card-icon">${BeastCore.icon(template.icon || "grid", { size: 25 })}</span><span><small>${template.category}</small><strong>${template.title}</strong><em>${template.description}</em><b>${template.fields?.filter((field)=>field.required).length || 1} krævet · ${template.fields?.length || 1} felter i alt</b></span>`;
-          const entities = type === "camera" && window.BeastCameras?.getAllCameras
+          const allTemplateEntities = type === "camera" && window.BeastCameras?.getAllCameras
             ? BeastCameras.getAllCameras().map((camera) => ({ id: camera.entityId, name: camera.label }))
-            : allEntities(type).filter((entity) => !template.domains?.length || template.domains.includes(entity.id.split(".")[0]));
-          const sortedEntities = rankedEntities(entities, editorSection, template.domains || []);
+            : allEntities(type);
+          const relevantEntities = relevantEntitiesForTemplate(allTemplateEntities, template);
           const select = overlay.querySelector(".beast-ov-add-card-select");
-          const renderEntities = (query = "") => { select.innerHTML = sortedEntities.filter((entity) => !query || entity.name.toLowerCase().includes(query) || entity.id.toLowerCase().includes(query) || String(entity.area || "").toLowerCase().includes(query)).map((entity) => `<option value="${entity.id}">${entity.name}${entity.area ? ` · ${entity.area}` : ""} · ${entity.id}</option>`).join(""); };
+          const allToggle = overlay.querySelector("[data-template-all-entities]");
+          allToggle.checked = false;
+          const renderEntities = (query = "") => {
+            const source = allToggle.checked ? allTemplateEntities : relevantEntities;
+            const sorted = rankedEntities(source, editorSection, template.domains || []);
+            select.innerHTML = sorted.filter((entity) => !query || entity.name.toLowerCase().includes(query) || entity.id.toLowerCase().includes(query) || String(entity.area || "").toLowerCase().includes(query)).map((entity) => `<option value="${entity.id}">${entity.name}${entity.area ? ` · ${entity.area}` : ""} · ${entity.id}</option>`).join("");
+          };
           renderEntities();
           const search = overlay.querySelector(".beast-ov-add-card-search");
           search.value = "";
@@ -467,6 +508,7 @@ window.BeastCardEditor = (function () {
             const query = inputEvent.target.value.trim().toLowerCase();
             renderEntities(query);
           };
+          allToggle.onchange = () => renderEntities(search.value.trim().toLowerCase());
           search.focus();
           return;
         }
@@ -495,8 +537,21 @@ window.BeastCardEditor = (function () {
       bar.id = "beastCardEditorBar";
       bar.className = "beast-ov-edit-bar";
       const snapshots = readSnapshots(configPath);
-      bar.innerHTML = `<span>${BeastCore.icon("grid", { size: 16 })}${editLabel}</span><div class="beast-ov-edit-bar-actions"><button type="button" data-ov-edit-undo ${history.length ? "" : "disabled"}>Fortryd</button><button type="button" data-ov-edit-restore ${snapshots.length ? "" : "disabled"}>Gendan</button><button type="button" data-ov-edit-reset>Nulstil</button><button type="button" data-ov-edit-clear>Ryd egne kort</button><button type="button" data-ov-edit-export>Eksportér</button><button type="button" data-ov-edit-import>Importér</button><button type="button" data-ov-edit-cancel>Annullér</button><button type="button" class="beast-btn beast-btn-primary" data-ov-edit-save>Gem</button></div>`;
+      bar.innerHTML = `<div class="beast-editor-status"><i>${BeastCore.icon("grid", { size: 19 })}</i><span><small>Redigering</small><strong>${editLabel}</strong></span></div><div class="beast-ov-edit-bar-actions"><button type="button" data-ov-edit-add>Tilføj kort</button><button type="button" data-ov-edit-settings>Indstillinger</button><button type="button" class="beast-edit-cancel" data-ov-edit-cancel>Annullér</button><button type="button" class="beast-btn beast-btn-primary beast-edit-save" data-ov-edit-save>Gem</button></div><div class="beast-editor-hidden-actions" hidden><button type="button" data-ov-edit-undo ${history.length ? "" : "disabled"}>Fortryd</button><button type="button" data-ov-edit-restore ${snapshots.length ? "" : "disabled"}>Gendan</button><button type="button" data-ov-edit-reset>Nulstil</button><button type="button" data-ov-edit-clear>Ryd egne kort</button><button type="button" data-ov-edit-export>Eksportér</button><button type="button" data-ov-edit-import>Importér</button></div>`;
       document.body.appendChild(bar);
+      bar.querySelector("[data-ov-edit-add]").addEventListener("click", openAddCardModal);
+      bar.querySelector("[data-ov-edit-settings]").addEventListener("click", () => {
+        document.getElementById("beastCardEditorTools")?.remove();
+        const tools = document.createElement("div"); tools.id = "beastCardEditorTools"; tools.className = "beast-modal-overlay";
+        tools.innerHTML = `<div class="beast-modal beast-card-editor-tools" role="dialog" aria-modal="true"><div class="beast-modal-header"><div><small>Redigeringsværktøjer</small><h3>Indstillinger</h3></div><button type="button" class="beast-modal-close" data-close>${BeastCore.icon("close", { size:22 })}</button></div><div class="beast-modal-body"><p class="beast-page-editor-hint">Navn, størrelse og entities ændres med indstillingsknappen på det enkelte kort.</p><div class="beast-card-editor-tools-grid"><button type="button" data-tool-action="undo" ${history.length ? "" : "disabled"}>${BeastCore.icon("backspace",{size:20})}<span><strong>Fortryd</strong><small>Gå ét trin tilbage</small></span></button><button type="button" data-tool-action="restore" ${snapshots.length ? "" : "disabled"}>${BeastCore.icon("calendar",{size:20})}<span><strong>Gendan</strong><small>Tidligere gemt layout</small></span></button><button type="button" data-tool-action="reset">${BeastCore.icon("grid",{size:20})}<span><strong>Nulstil ændringer</strong><small>Til layoutet før redigering</small></span></button><button type="button" data-tool-action="export">${BeastCore.icon("chevron-down",{size:20})}<span><strong>Eksportér</strong><small>Kopiér layout som JSON</small></span></button><button type="button" data-tool-action="import">${BeastCore.icon("chevron-up",{size:20})}<span><strong>Importér</strong><small>Indlæs et gemt layout</small></span></button><button type="button" class="is-danger" data-tool-action="clear">${BeastCore.icon("close",{size:20})}<span><strong>Ryd egne kort</strong><small>Fjern alle kort fra siden</small></span></button></div></div></div>`;
+        document.body.appendChild(tools);
+        const actionMap = { undo:"undo", restore:"restore", reset:"reset", export:"export", import:"import", clear:"clear" };
+        tools.addEventListener("click", (event) => {
+          if (event.target === tools || event.target.closest("[data-close]")) return tools.remove();
+          const button = event.target.closest("[data-tool-action]"); if (!button || button.disabled) return;
+          const action = actionMap[button.dataset.toolAction]; tools.remove(); bar.querySelector(`[data-ov-edit-${action}]`)?.click();
+        });
+      });
       bar.querySelector("[data-ov-edit-cancel]").addEventListener("click", () => exit(false));
       bar.querySelector("[data-ov-edit-save]").addEventListener("click", () => exit(true));
       bar.querySelector("[data-ov-edit-undo]").addEventListener("click", () => {
@@ -509,7 +564,7 @@ window.BeastCardEditor = (function () {
       bar.querySelector("[data-ov-edit-restore]").addEventListener("click", () => {
         const snapshots = readSnapshots(configPath); if (!snapshots.length) return;
         const overlay = document.createElement("div"); overlay.className = "beast-modal-overlay";
-        overlay.innerHTML = `<div class="beast-modal beast-layout-history-modal"><div class="beast-modal-header"><div><small>Layout-historik</small><h3>Gendan tidligere layout</h3></div><button type="button" class="beast-modal-close" data-close>×</button></div><div class="beast-modal-body"><p class="beast-page-editor-hint">De seneste ${SNAPSHOT_LIMIT} gemte versioner ligger lokalt på denne skærm.</p><div class="beast-layout-history-list">${snapshots.map((item, index) => `<button type="button" data-restore-index="${index}"><strong>${new Date(item.at).toLocaleString("da-DK")}</strong><small>${item.reason || "Gemte layout"}</small></button>`).join("")}</div></div></div>`;
+        overlay.innerHTML = `<div class="beast-modal beast-layout-history-modal"><div class="beast-modal-header"><div><small>Layout-historik</small><h3>Gendan tidligere layout</h3></div><button type="button" class="beast-modal-close" data-close>×</button></div><div class="beast-modal-body"><p class="beast-page-editor-hint">De seneste ${SNAPSHOT_LIMIT} gemte versioner ligger lokalt på denne skærm.</p><div class="beast-layout-history-list">${snapshots.map((item, index) => `<button type="button" data-restore-index="${index}"><strong>${new Date(item.at).toLocaleString(window.HASmartdashI18n?.locale || "da-DK")}</strong><small>${item.reason || "Gemte layout"}</small></button>`).join("")}</div></div></div>`;
         document.body.appendChild(overlay);
         overlay.addEventListener("click", (event) => { if (event.target === overlay || event.target.closest("[data-close]")) return overlay.remove(); const button = event.target.closest("[data-restore-index]"); if (!button) return; try { rememberDraft(); draftCards = JSON.parse(snapshots[Number(button.dataset.restoreIndex)].serialized); renderCardsDom(draftCards); renderEditBar(); overlay.remove(); } catch (_) { window.alert("Den valgte version kunne ikke gendannes."); } });
       });

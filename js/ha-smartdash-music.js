@@ -358,20 +358,20 @@
           <div class="beast-now-playing">
             <div class="beast-now-playing-cover"><img class="beast-now-playing-art" id="beastNowPlayingArt" alt=""><span>${BeastCore.icon("music", { size: 52 })}</span></div>
             <div class="beast-now-playing-body">
-              <small class="beast-now-playing-kicker">Afspiller nu</small>
-              <div class="beast-now-playing-title" id="beastNowPlayingTitle">${attrs.media_title ? escapeHtml(attrs.media_title) : "Ingen afspilning"}</div>
-              <div class="beast-now-playing-artist" id="beastNowPlayingArtist">${escapeHtml(attrs.media_artist || "Vælg musik fra biblioteket")}</div>
-              <div class="beast-now-playing-album" id="beastNowPlayingAlbum">${attrs.media_album_name ? `<strong>${escapeHtml(attrs.media_album_name)}</strong><span>Album · ${escapeHtml(attrs.media_artist || "Ukendt kunstner")}</span>` : `<strong>Musikbibliotek</strong><span>Vælg et album, en playliste eller en radiostation</span>`}</div>
-              <div class="beast-progress-row">
-                <span id="beastProgressElapsed">--:--</span>
-                <div class="beast-progress-track"><div class="beast-progress-fill" id="beastProgressFill"></div></div>
-                <span id="beastProgressDuration">--:--</span>
-              </div>
-              <div class="beast-transport-row">
-                <button type="button" class="beast-transport-btn" id="beastPrevBtn" aria-label="Forrige">${BeastCore.icon("skip-back", { size: 22 })}</button>
-                <button type="button" class="beast-transport-btn beast-play-btn" id="beastPlayBtn" aria-label="${playing ? "Pause" : "Afspil"}">${BeastCore.icon(playing ? "pause" : "play", { size: 27 })}</button>
-                <button type="button" class="beast-transport-btn" id="beastNextBtn" aria-label="Næste">${BeastCore.icon("skip-forward", { size: 22 })}</button>
-              </div>
+                <small class="beast-now-playing-kicker">Afspiller nu</small>
+                <div class="beast-now-playing-title" id="beastNowPlayingTitle">${attrs.media_title ? escapeHtml(attrs.media_title) : "Ingen afspilning"}</div>
+                <div class="beast-now-playing-artist" id="beastNowPlayingArtist">${escapeHtml(attrs.media_artist || "Vælg musik fra biblioteket")}</div>
+                <div class="beast-now-playing-album" id="beastNowPlayingAlbum">${attrs.media_album_name ? `<strong>${escapeHtml(attrs.media_album_name)}</strong><span>Album · ${escapeHtml(attrs.media_artist || "Ukendt kunstner")}</span>` : `<strong>Musikbibliotek</strong><span>Vælg et album, en playliste eller en radiostation</span>`}</div>
+                <div class="beast-progress-row">
+                  <span id="beastProgressElapsed">--:--</span>
+                  <div class="beast-progress-track"><div class="beast-progress-fill" id="beastProgressFill"></div></div>
+                  <span id="beastProgressDuration">--:--</span>
+                </div>
+                <div class="beast-transport-row">
+                  <button type="button" class="beast-transport-btn" id="beastPrevBtn" aria-label="Forrige">${BeastCore.icon("skip-back", { size: 22 })}</button>
+                  <button type="button" class="beast-transport-btn beast-play-btn" id="beastPlayBtn" aria-label="${playing ? "Pause" : "Afspil"}">${BeastCore.icon(playing ? "pause" : "play", { size: 27 })}</button>
+                  <button type="button" class="beast-transport-btn" id="beastNextBtn" aria-label="Næste">${BeastCore.icon("skip-forward", { size: 22 })}</button>
+                </div>
               <div class="beast-volume-row">
                 <button type="button" class="beast-mute-btn" id="beastMuteBtn" aria-label="Slå lyd fra">${BeastCore.icon(attrs.is_volume_muted ? "volume-mute" : "volume", { size: 21 })}</button>
                 <span class="beast-volume-label">Lydstyrke</span>
@@ -421,10 +421,11 @@
     const hidden = new Set(Array.isArray(layout.hidden) ? layout.hidden : []);
     containerEl.querySelector(".beast-music-control")?.classList.toggle("is-layout-hidden", hidden.has("player"));
     containerEl.querySelector(".beast-music-library")?.classList.toggle("is-layout-hidden", hidden.has("library"));
-    BeastNativePageEditor.mount({ section:"music", label:"Musik", root:()=>containerEl, host:()=>containerEl.querySelector(".beast-music-dashboard"), trigger:"#beastMusicLayoutEdit", cards:()=>[
-      { id:"player", label:"Afspiller og højttalere", selector:".beast-music-control", enabled:!hidden.has("player"), desktop:{x:1,y:1,w:4,h:12} },
-      { id:"library", label:"Bibliotek, søgning og album", selector:".beast-music-library", titleSelector:".beast-music-library-head strong", enabled:!hidden.has("library"), desktop:{x:5,y:1,w:8,h:12} }
+    BeastNativePageEditor.mount({ section:"music", label:"Musik", root:()=>containerEl, host:()=>containerEl.querySelector(".beast-music-dashboard"), trigger:"#beastMusicLayoutEdit", onSave:()=>render(), cards:()=>[
+      { id:"player", label:"Afspiller og højttalere", selector:".beast-music-control", enabled:!hidden.has("player"), desktop:{x:1,y:1,w:4,h:12}, options:{speakers:true}, controls:[{key:"speakers",label:"Vis højttalervælger",type:"checkbox",default:true}] },
+      { id:"library", label:"Bibliotek, søgning og album", selector:".beast-music-library", titleSelector:".beast-music-library-head strong", enabled:!hidden.has("library"), desktop:{x:5,y:1,w:8,h:12}, options:{items:18}, controls:[{key:"items",label:"Elementer ad gangen",min:6,max:48,step:6,default:18}] }
     ] });
+    containerEl.querySelector(".beast-music-control")?.classList.toggle("hide-speaker-picker", !BeastNativePageEditor.option("music", "player", "speakers", true));
   }
 
   function openMusicLayout(layout) {
@@ -917,6 +918,7 @@
       grid.innerHTML = `<p class="beast-music-empty">Ingenting fundet.</p>`;
       return;
     }
+    libraryVisibleCount = Math.max(libraryVisibleCount, Number(BeastNativePageEditor.option("music", "library", "items", 18)));
     grid.innerHTML = "";
     const fragment = document.createDocumentFragment();
     items.slice(0, libraryVisibleCount).forEach((item) => {

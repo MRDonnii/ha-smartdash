@@ -32,6 +32,25 @@
 }
 .beast-room-card[style*="--room-card-w"] { grid-column: span min(var(--room-card-w), 4); }
 
+/* Fit the complete room overview to the available viewport. The explicit
+   twelve-column geometry remains active while editing. */
+.beast-rooms-panel:not(.is-native-page-editing) .beast-rooms-grid {
+  grid-template-columns:repeat(var(--rooms-fit-columns,3),minmax(0,1fr)) !important;
+  grid-template-rows:none !important;
+  grid-auto-rows:minmax(165px,1fr) !important;
+  align-content:stretch;
+}
+.beast-rooms-panel:not(.is-native-page-editing) .beast-rooms-grid.is-room-grid-fitted {
+  grid-template-rows:repeat(var(--rooms-fit-rows,1),minmax(0,1fr)) !important;
+  grid-auto-rows:minmax(0,1fr) !important;
+  overflow-y:hidden !important;
+}
+.beast-rooms-panel:not(.is-native-page-editing) .beast-rooms-grid > .beast-room-card {
+  grid-column:auto !important;
+  grid-row:auto !important;
+  min-height:0;
+}
+
 .beast-room-card:hover {
   transform: translateY(-2px);
   border-color: var(--border-strong);

@@ -1,5 +1,164 @@
 [
   {
+    "version": "20260810-102",
+    "tag": "v0.7.24",
+    "date": "2026-08-10",
+    "changes": [
+      "Alle centrale dashboard-views har fået et fælles, touchvenligt redigeringssystem med ens værktøjslinje, kort i deres faktiske størrelse under redigering samt bedre plads til flytning og størrelsesændring.",
+      "Kortbyggeren og skabelongalleriet er udvidet med kategorier, anbefalede enheder, søgning i alle Home Assistant-entities, profilsikre kortstørrelser og mere målrettede entityfelter uden unødige sensorlister.",
+      "Dashboard-, tablet- og mobilprofiler gemmer nu egne layouts og Tilpas side-valg, mens ekstra kort fortsætter nedad med scroll i stedet for at blive skåret af eller gøre siden halv.",
+      "Responsive layouts, sidebredder og navigation er stabiliseret på kiosk, tablet og almindelige browsere; opstart og faneskift foretager kontrollerede genberegninger uden synlig trinvis krympning.",
+      "Admin er ryddet op og opdelt i Dashboard, System, Skærm, Sikkerhed og Vedligeholdelse. Sider oprettes, omdøbes, flyttes, slettes og gendannes nu fra den samlede sideadministration.",
+      "Dansk og engelsk dækker nu kortnavne, editorer, dynamiske statusser, enheder, datoer og tal på tværs af vejr, energi, sikkerhed, musik, robotter, printer og øvrige views.",
+      "Kameravisningerne har fået bedre højdeudnyttelse, rene kameranavne, streamkvalitet pr. kamera og mere robust genforbindelse, hvis go2rtc- eller MSE-streamen stopper efter opdatering eller netværksudfald.",
+      "Sikkerheds-viewet er redesignet med responsive alarm-, låse-, dør- og vindueskort, tydeligere status, touchvenlige handlinger samt rettelser til overlappende knapper og kort.",
+      "Kalender-viewet er redesignet med aktuelle kommende aftaler, vejr ved dage og relevante hændelser, separate rækkeantal pr. kort og en lodret affaldsoversigt med én afhentning pr. række.",
+      "Musik-viewet har fået et mere rummeligt afspillerkort, ens lydstyrkestyring i stor og kompakt visning, højttalervalg i to kolonner samt rettelser til gruppekontrol, albumvisning og touchmål.",
+      "Energi-, varme- og rumvisningerne har fået mere stabile kortdimensioner, korrigeret placering af grafer og nøgletal, bedre varmestyring og automatisk tilpasning af rumkort med tydelig temperatur og fugtighed.",
+      "3D Printer-viewet er bygget kompakt til én skærm med to lige store livekameraer, fremdriftslinje, temperaturer, printhandlinger og AMS. Filamenttekster skalerer korrekt, og modelbilledet er integreret direkte i fremdriftskortet for bedre pladsudnyttelse.",
+      "Update- og versionshistorikken sammenligner nu buildnumre korrekt, også ved rollback, så nyere og ældre installationer ikke fejlagtigt bliver tilbudt i forkert rækkefølge."
+    ]
+  },
+  {
+    "version": "20260810-101",
+    "tag": "v0.7.23",
+    "date": "2026-08-10",
+    "changes": [
+      "Layoutstabiliseringen kører nu fra den færdigmonterede dashboard-app, efter at både app-shell, gemt layout og HA-baserede paneler har registreret deres resize-funktioner.",
+      "Langsomme kiosk- og kamerastarter dækkes af kontrollerede genberegninger gennem de første 14 sekunder, og layoutet genberegnes også når fanen bliver synlig eller fuldskærm ændres."
+    ]
+  },
+  {
+    "version": "20260810-100",
+    "tag": "v0.7.22",
+    "date": "2026-08-10",
+    "changes": [
+      "Dashboardet udfører nu en kontrolleret layout-genberegning efter de første browser-paints, så kioskvisningen ikke bliver stående i den smalle startbredde efter refresh.",
+      "Specialiserede views, grafer, kameraområder og redigerbare kort modtager nu samme resize-signal ved opstart, som tidligere først kom når browservinduet blev ændret manuelt."
+    ]
+  },
+  {
+    "version": "20260810-99",
+    "tag": "v0.7.21",
+    "date": "2026-08-10",
+    "changes": [
+      "Layoutprofilen aflæses nu stabilt efter genindlæsning, så en kortvarigt smal kiosk-viewport ikke fejlagtigt aktiverer mobilvisningen.",
+      "Dashboardet genkontrollerer automatisk skærmprofilen efter pageshow og viewportændringer og skifter tilbage til den korrekte gemte profil uden manuel genindlæsning.",
+      "Utilsigtet pinch-zoom er låst på touchskærmen, så dashboardet ikke efterfølgende fremstår smalt eller mobilskaleret."
+    ]
+  },
+  {
+    "version": "20260810-98",
+    "tag": "v0.7.20",
+    "date": "2026-08-10",
+    "changes": [
+      "Administration er opdelt i Dashboard, System, Skærm, Sikkerhed og Vedligeholdelse med en kortere og mere overskuelig navigation.",
+      "De tolv entity-konfigurationer er samlet bag Enheder og datakilder, mens kortlayout fortsat redigeres direkte på den relevante dashboard-side.",
+      "Sider og navigation ligger nu i Admin; herfra kan sider oprettes, omdøbes, flyttes, fjernes og gendannes. Den dobbelte Sider-knap er fjernet fra dashboardet.",
+      "Den gamle Admin-forsidebygger og den lokale dublet til synlige sider er fjernet fra den aktive navigation.",
+      "Kameraafspilleren håndterer nu afmonterede MSE-buffere sikkert, bruger kontrolleret reconnect-backoff og genstarter en stream, hvis videofremdriften reelt stopper."
+    ]
+  },
+  {
+    "version": "20260810-97",
+    "tag": "v0.7.19",
+    "date": "2026-08-10",
+    "changes": [
+      "Kortbiblioteket viser nu antal skabeloner pr. kategori, entityfelter og skabelonens standardstørrelse, så det er lettere at vælge det rigtige kort.",
+      "Galleriets nye tekster og dynamiske feltoplysninger følger både dansk og engelsk.",
+      "Layoutprofiler og kortnulstilling er gjort profilsikre, så Dashboard, Tablet og Mobil beholder deres egne gemte størrelser.",
+      "Scroll- og overflowreglerne for redigerbare sider er kontrolleret, så ekstra kort fortsætter nedad uden at gøre den oprindelige side halv eller skjule resize-håndtaget."
+    ]
+  },
+  {
+    "version": "20260810-96",
+    "tag": "v0.7.18",
+    "date": "2026-08-10",
+    "changes": [
+      "Robotrum, forbindelsesstatus, printerknapper og timeenheder er føjet til den tosprogede dynamiske oversættelse."
+    ]
+  },
+  {
+    "version": "20260810-95",
+    "tag": "v0.7.17",
+    "date": "2026-08-10",
+    "changes": [
+      "Engelsk er udvidet med dynamiske vejr-, energi-, sikkerheds-, musik-, robot- og printerstatusser fundet ved live-audit af alle seks views.",
+      "Sammensatte editoroverskrifter og profiltekster oversættes nu som hele sætninger uden blandet dansk og engelsk."
+    ]
+  },
+  {
+    "version": "20260810-94",
+    "tag": "v0.7.16",
+    "date": "2026-08-10",
+    "changes": [
+      "Dansk og Engelsk dækker nu kortnavne, skabelongalleri, sidebygger, native view-editorer og de nye kamera-, energi-, vejr-, musik-, sikkerheds-, robot- og printerindstillinger.",
+      "Dynamiske tekster som antal timer, dage, rum, billeder og resterende bibliotekselementer oversættes automatisk.",
+      "Datoer, klokkeslæt og tal følger nu det valgte dashboardsprog via da-DK eller en-GB.",
+      "Oversættelseslaget udstiller en fælles sprog-, locale- og tekstfunktion, som nye kort kan genbruge."
+    ]
+  },
+  {
+    "version": "20260810-93",
+    "tag": "v0.7.15",
+    "date": "2026-08-10",
+    "changes": [
+      "Forsidens tre-prik-knap opfanges nu før kameraområdets klikbeskyttelse, så touch-eventet sikkert åbner menuen."
+    ]
+  },
+  {
+    "version": "20260810-92",
+    "tag": "v0.7.14",
+    "date": "2026-08-10",
+    "changes": [
+      "Forsidens globale luk-handler ignorerer nu tryk inde i tre-prik-menuen, så samme touch ikke længere både åbner og lukker menuen."
+    ]
+  },
+  {
+    "version": "20260810-91",
+    "tag": "v0.7.13",
+    "date": "2026-08-10",
+    "changes": [
+      "Kamera-viewets Tilpas side fordeler nu højden 10/2 mellem det store livekamera og kameravælgeren.",
+      "Kameravælgerens fliser fylder deres række helt ud, så der ikke efterlades ubrugt luft nederst.",
+      "Forsidens tre-prik-menu bruger nu en stabil delegeret touch-handler og fortsætter med at virke efter data- og layoutopdateringer."
+    ]
+  },
+  {
+    "version": "20260810-90",
+    "tag": "v0.7.12",
+    "date": "2026-08-10",
+    "changes": [
+      "Tilpas side huskes nu efter genindlæsning og genanvendes automatisk separat for Dashboard, Tablet og Mobil.",
+      "Kameraer kan vælge antal kamerafliser og om det store billede skal fylde kortet eller vise hele billedet.",
+      "Energi kan vælge antal kommende prisdage og slå pris- og forbrugsnøgletal til eller fra.",
+      "Vejr kan vælge antal timer og dage, mens Musik kan vælge bibliotekets sidestørrelse og skjule højttalervælgeren.",
+      "Sikkerhed kan begrænse listen over åbne sensorer, Robotter kan vælge antal hurtigknapper, og 3D Printer kan vælge visning og antal emnebilleder.",
+      "Kalenderens kortspecifikke antal rækker og lodrette affaldsliste er inkluderet i samme lokale opdatering."
+    ]
+  },
+  {
+    "version": "20260810-89",
+    "tag": "v0.7.11",
+    "date": "2026-08-10",
+    "changes": [
+      "Native dashboardkort har nu separate layoutprofiler for Dashboard, Tablet og Mobil.",
+      "Et eksisterende dashboardlayout migreres automatisk som udgangspunkt, mens efterfølgende ændringer gemmes isoleret til den aktive skærmprofil.",
+      "Layoutdialogen viser tydeligt hvilken profil der redigeres, så tablet- og mobilændringer ikke ved et uheld overskriver dashboardskærmen.",
+      "Kalenderens kortspecifikke rækkeindstillinger følger nu den aktive responsive profil."
+    ]
+  },
+  {
+    "version": "20260810-88",
+    "tag": "v0.7.10",
+    "date": "2026-08-10",
+    "changes": [
+      "Kalender-viewets to indbyggede kort kan nu vælge antal viste rækker separat under Rediger side.",
+      "Affald og afhentning kan vise 1-30 rækker, mens kommende kalenderaftaler har sin egen uafhængige grænse.",
+      "Affaldsafhentninger vises nu som en tydelig lodret liste med én afhentning pr. række i stedet for tre smalle kolonner."
+    ]
+  },
+  {
     "version": "20260810-87",
     "tag": "v0.7.9",
     "date": "2026-08-10",

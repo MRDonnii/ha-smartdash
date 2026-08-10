@@ -2,14 +2,15 @@
   const ENERGY_NATIVE_DEFAULTS = [
     { id: "energy-summary", kind: "energy-summary", type: "energy-summary", templateId: "overview-energy", label: "Nøgletal", enabled: true, desktop: { x: 1, y: 2, w: 3, h: 7 }, bindings: {} },
     { id: "energy-recommendation", kind: "energy-recommendation", type: "energy-recommendation", label: "Energiassistent", enabled: true, desktop: { x: 4, y: 2, w: 9, h: 1 }, bindings: {} },
-    { id: "energy-price-chart", kind: "energy-price-chart", type: "energy-price-card", templateId: "energy-price-card", label: "Elpris time for time", enabled: true, desktop: { x: 4, y: 3, w: 9, h: 3 }, bindings: {} },
-    { id: "energy-usage-chart", kind: "energy-usage-chart", type: "energy-usage-card", templateId: "energy-usage-card", label: "Forbrug seneste 24 timer", enabled: true, desktop: { x: 4, y: 6, w: 9, h: 3 }, bindings: {} },
+    { id: "energy-price-chart", kind: "energy-price-chart", type: "energy-price-card", templateId: "energy-price-card", label: "Elpris time for time", enabled: true, desktop: { x: 4, y: 3, w: 9, h: 3 }, bindings: {}, options: { days: 7, stats: true } },
+    { id: "energy-usage-chart", kind: "energy-usage-chart", type: "energy-usage-card", templateId: "energy-usage-card", label: "Forbrug seneste 24 timer", enabled: true, desktop: { x: 4, y: 6, w: 9, h: 3 }, bindings: {}, options: { stats: true } },
     { id: "energy-now-summary", kind: "energy-now-summary", type: "energy-now-summary", label: "Forbrug lige nu", enabled: true, desktop: { x: 1, y: 2, w: 12, h: 1 }, bindings: {} },
     { id: "energy-devices", kind: "energy-devices", type: "energy-devices", label: "Forbrug pr. enhed", enabled: true, desktop: { x: 1, y: 3, w: 12, h: 5 }, bindings: {} },
   ];
+  function energyCardsPath() { return window.BeastNativePageEditor?.storagePath?.("energy") || "pageLayouts.energy.nativeCards"; }
 
   function energyNativeCards() {
-    const saved = BeastConfig.get("pageLayouts.energy.nativeCards");
+    const saved = BeastConfig.get(energyCardsPath());
     const cards = Array.isArray(saved) && saved.length ? saved : ENERGY_NATIVE_DEFAULTS;
     return cards.map((card) => {
       const fallback = ENERGY_NATIVE_DEFAULTS.find((item) => item.id === card.id || item.kind === card.kind || item.kind === card.type) || {};
@@ -18,6 +19,7 @@
   }
 
   function nativeCard(id) { return energyNativeCards().find((card) => card.id === id || card.kind === id); }
+  function nativeOption(id, key, fallback) { const value = nativeCard(id)?.options?.[key]; return value === undefined ? fallback : value; }
   function nativeBinding(id, key, fallback) { return nativeCard(id)?.bindings?.[key] || fallback; }
   function energyConfig() { return BeastConfig.get("panels.energy") || {}; }
   function POWER_ENTITY_ID() { return nativeBinding("energy-summary", "power", nativeBinding("energy-usage-chart", "power", energyConfig().powerSensor)); }
@@ -52,6 +54,32 @@
     const d = new Date();
     d.setHours(0, 0, 0, 0);
     return d.toISOString();
+  }
+
+  function numericState(entityId) {
+    const state = BeastHaSocket.getState(entityId);
+    const value = Number(state?.state);
+    return state && Number.isFinite(value) && !["unknown","unavailable"].includes(state.state) ? { state, value } : null;
+  }
+
+  function powerWatts(entityId) {
+    const reading = numericState(entityId);
+    if (!reading) return null;
+    const unit = String(reading.state.attributes?.unit_of_measurement || "W").toLowerCase();
+    if (unit === "kw") return Math.max(0, reading.value * 1000);
+    if (unit === "mw") return Math.max(0, reading.value * 1000000);
+    return Math.max(0, reading.value);
+  }
+
+  function directTodayValue(entityId, kind) {
+    const reading = numericState(entityId);
+    if (!reading || reading.value < 0) return null;
+    const unit = String(reading.state.attributes?.unit_of_measurement || "").toLowerCase();
+    if (kind === "energy") {
+      if (unit === "wh") return reading.value / 1000;
+      if (unit === "mwh") return reading.value * 1000;
+    }
+    return reading.value;
   }
 
   async function loadTodayDelta(entityId) {
@@ -121,7 +149,7 @@
       return {
         key,
         date,
-        label: localDateKey(new Date()) === key ? "I dag" : date.toLocaleDateString("da-DK", { weekday: "short", day: "numeric" }),
+        label: localDateKey(new Date()) === key ? "I dag" : date.toLocaleDateString(window.HASmartdashI18n?.locale || "da-DK", { weekday: "short", day: "numeric" }),
         prices: Array.from(unique.values()).sort((a, b) => new Date(a.start) - new Date(b.start))
       };
     }).filter((day) => day.prices.length).sort((a, b) => a.key.localeCompare(b.key));
@@ -247,8 +275,7 @@
   }
 
   function wattValue(entityId) {
-    const value = Number(BeastHaSocket.getState(entityId)?.state);
-    return Number.isFinite(value) ? Math.max(0, value) : null;
+    return powerWatts(entityId);
   }
 
   function wattLabel(value) {
@@ -311,7 +338,7 @@
 
   function exitNativeEditor(save) {
     if (!nativeEditing) return;
-    if (save && nativeDraftCards) BeastConfig.set("pageLayouts.energy.nativeCards", nativeDraftCards);
+    if (save && nativeDraftCards) BeastConfig.set(energyCardsPath(), nativeDraftCards);
     nativeEditing = false;
     nativeDraftCards = null;
     window.beastCardEditorActive = false;
@@ -383,11 +410,11 @@
     containerEl.classList.add("is-native-editing"); applyNativeLayout(nativeDraftCards);
     containerEl.querySelectorAll(":scope > .beast-energy-native-card").forEach(wireNativeCardEdit);
     const bar = document.createElement("div"); bar.id = "beastEnergyNativeEditBar"; bar.className = "beast-ov-edit-bar";
-    bar.innerHTML = `<span>${BeastCore.icon("bolt", { size: 17 })}Redigerer energikort</span><div class="beast-ov-edit-bar-actions"><button type="button" data-energy-native-settings>Navne og entities</button><button type="button" data-energy-native-cancel>Annullér</button><button type="button" class="beast-btn beast-btn-primary" data-energy-native-save>Gem</button></div>`;
+    bar.innerHTML = `<div class="beast-editor-status"><i>${BeastCore.icon("bolt", { size: 19 })}</i><span><small>Redigering</small><strong>Redigerer energikort</strong></span></div><div class="beast-ov-edit-bar-actions"><button type="button" data-energy-native-settings>Indstillinger</button><button type="button" class="beast-edit-cancel" data-energy-native-cancel>Annullér</button><button type="button" class="beast-btn beast-btn-primary beast-edit-save" data-energy-native-save>Gem</button></div>`;
     document.body.appendChild(bar);
     bar.querySelector("[data-energy-native-cancel]").addEventListener("click", () => exitNativeEditor(false));
     bar.querySelector("[data-energy-native-save]").addEventListener("click", () => exitNativeEditor(true));
-    bar.querySelector("[data-energy-native-settings]").addEventListener("click", () => { BeastConfig.set("pageLayouts.energy.nativeCards", nativeDraftCards); exitNativeEditor(false); openEnergyLayout(BeastConfig.get("pageLayouts.energy.energyLayout") || {}); });
+    bar.querySelector("[data-energy-native-settings]").addEventListener("click", () => { BeastConfig.set(energyCardsPath(), nativeDraftCards); exitNativeEditor(false); openEnergyLayout(BeastConfig.get("pageLayouts.energy.energyLayout") || {}); });
   }
 
   function wireEnergyLayout() {
@@ -419,6 +446,8 @@
           <label>Navn<input type="text" data-native-label value="${safe(card.label || "")}"></label>
           <label>Bredde<select data-native-width>${Array.from({ length: 12 }, (_, value) => `<option value="${value + 1}" ${Number(card.desktop?.w) === value + 1 ? "selected" : ""}>${value + 1} / 12</option>`).join("")}</select></label>
           <label>Højde<select data-native-height>${Array.from({ length: 8 }, (_, value) => `<option value="${value + 1}" ${Number(card.desktop?.h) === value + 1 ? "selected" : ""}>${value + 1}</option>`).join("")}</select></label>
+          ${card.kind === "energy-price-chart" ? `<label>Pris-dage<input type="number" min="1" max="10" data-energy-days value="${Number(card.options?.days || 7)}"></label><label><input type="checkbox" data-energy-stats ${card.options?.stats === false ? "" : "checked"}> Vis prisnøgletal</label>` : ""}
+          ${card.kind === "energy-usage-chart" ? `<label><input type="checkbox" data-energy-stats ${card.options?.stats === false ? "" : "checked"}> Vis forbrugsnøgletal</label>` : ""}
           ${fields.map((field) => `<label>${safe(field.label)}<input type="search" data-native-binding="${safe(field.key)}" list="beastEnergyEntityList" value="${safe(card.bindings?.[field.key] || "")}" placeholder="Brug standard eller vælg entity"></label>`).join("")}
         </div>
       </article>`;
@@ -440,10 +469,10 @@
       const nextCards = Array.from(overlay.querySelectorAll("[data-energy-native-card]")).map((row) => {
         const current = cards.find((card) => card.id === row.dataset.energyNativeCard);
         const bindings = {}; row.querySelectorAll("[data-native-binding]").forEach((input) => { if (input.value.trim()) bindings[input.dataset.nativeBinding] = input.value.trim(); });
-        return { ...current, label: row.querySelector("[data-native-label]").value.trim() || current.label, enabled: row.querySelector("[data-native-enabled]").checked, bindings, desktop: { ...(current.desktop || {}), w: Number(row.querySelector("[data-native-width]").value), h: Number(row.querySelector("[data-native-height]").value) } };
+        return { ...current, label: row.querySelector("[data-native-label]").value.trim() || current.label, enabled: row.querySelector("[data-native-enabled]").checked, bindings, options:{...(current.options||{}),...(row.querySelector("[data-energy-days]")?{days:Number(row.querySelector("[data-energy-days]").value)||7}:{}),...(row.querySelector("[data-energy-stats]")?{stats:row.querySelector("[data-energy-stats]").checked}:{})}, desktop: { ...(current.desktop || {}), w: Number(row.querySelector("[data-native-width]").value), h: Number(row.querySelector("[data-native-height]").value) } };
       });
       const nextHidden = [...new Set(nextCards.filter((card) => !card.enabled).map((card) => legacyIds[card.id]).filter(Boolean))];
-      BeastConfig.set("pageLayouts.energy.nativeCards", nextCards);
+      BeastConfig.set(energyCardsPath(), nextCards);
       BeastConfig.set("pageLayouts.energy.energyLayout", { ...layout, hidden: nextHidden });
       applyNativeLayout(nextCards);
       overlay.remove(); render();
@@ -558,12 +587,15 @@
     const tomorrowState = BeastHaSocket.getState(TOMORROW_ENTITY_ID());
     const forecastState = BeastHaSocket.getState(PRICE_FORECAST_ENTITY_ID());
 
-    const powerKw = powerState && Number.isFinite(Number(powerState.state)) ? (Number(powerState.state) / 1000).toFixed(2) : "–";
+    const measuredFallback = powerWatts(energyConfig().nowMeasuredSensor);
+    const unmeasuredFallback = powerWatts(energyConfig().nowUnmeasuredSensor);
+    const powerNowWatts = powerWatts(POWER_ENTITY_ID()) ?? ((measuredFallback !== null || unmeasuredFallback !== null) ? (measuredFallback || 0) + (unmeasuredFallback || 0) : null);
+    const powerKw = powerNowWatts !== null ? (powerNowWatts / 1000).toFixed(2) : "–";
     const price = priceState && Number.isFinite(Number(priceState.state)) ? Number(priceState.state) : null;
 
     const todayPrices = normalizePrices(priceState?.attributes?.prices || priceState?.attributes?.raw_today || priceState?.attributes?.today);
     const tomorrowPrices = normalizePrices(tomorrowState?.attributes?.prices || priceState?.attributes?.raw_tomorrow || priceState?.attributes?.tomorrow);
-    const priceDays = collectPriceDays(priceState, tomorrowState, forecastState);
+    let priceDays = collectPriceDays(priceState, tomorrowState, forecastState);
     const todayKey = localDateKey(new Date());
     if (!priceDays.some((day) => day.key === todayKey) && todayPrices.length) {
       priceDays.unshift({ key: todayKey, date: new Date(), label: "I dag", prices: todayPrices });
@@ -572,9 +604,10 @@
     tomorrowDate.setDate(tomorrowDate.getDate() + 1);
     const tomorrowKey = localDateKey(tomorrowDate);
     if (!priceDays.some((day) => day.key === tomorrowKey) && tomorrowPrices.length) {
-      priceDays.push({ key: tomorrowKey, date: tomorrowDate, label: tomorrowDate.toLocaleDateString("da-DK", { weekday: "short", day: "numeric" }), prices: tomorrowPrices });
+      priceDays.push({ key: tomorrowKey, date: tomorrowDate, label: tomorrowDate.toLocaleDateString(window.HASmartdashI18n?.locale || "da-DK", { weekday: "short", day: "numeric" }), prices: tomorrowPrices });
       priceDays.sort((a, b) => a.key.localeCompare(b.key));
     }
+    priceDays = priceDays.slice(0, Math.max(1, Number(nativeOption("energy-price-chart", "days", 7))));
     if (priceView === "today") priceView = todayKey;
     if (priceView === "tomorrow") priceView = tomorrowKey;
     if (!priceDays.some((day) => day.key === priceView)) priceView = priceDays[0]?.key || todayKey;
@@ -592,7 +625,7 @@
     const historyMin = cachedHistoryPoints.length ? Math.min(...cachedHistoryPoints) / 1000 : null;
     const historyMax = cachedHistoryPoints.length ? Math.max(...cachedHistoryPoints) / 1000 : null;
     const historyAvg = cachedHistoryPoints.length ? cachedHistoryPoints.reduce((sum, point) => sum + point, 0) / cachedHistoryPoints.length / 1000 : null;
-    const powerNumber = powerState && Number.isFinite(Number(powerState.state)) ? Number(powerState.state) / 1000 : null;
+    const powerNumber = powerNowWatts !== null ? powerNowWatts / 1000 : null;
     const loadLabel = powerNumber === null ? "" : powerNumber < 1 ? "Lav belastning" : powerNumber < 3 ? "Normal belastning" : "Høj belastning";
     const elapsedHours = Math.max(1, new Date().getHours() + new Date().getMinutes() / 60);
     const todayAveragePower = todayEnergyKwh !== null ? todayEnergyKwh / elapsedHours : null;
@@ -619,7 +652,7 @@
             ${priceDays.map((day) => `<button type="button" class="beast-content-toggle-btn${priceView === day.key ? " is-active" : ""}" data-view="${day.key}">${day.label}</button>`).join("")}
           </div>
         </div>
-        <div class="beast-energy-price-summary">
+        <div class="beast-energy-price-summary" ${nativeOption("energy-price-chart", "stats", true) ? "" : "hidden"}>
           ${rangeAverage !== null ? `
             <div><small>Gennemsnit</small><strong>${rangeAverage.toFixed(2)} <em>kr/kWh</em></strong></div>
             <div class="is-cheap"><small>Billigst kl. ${hourLabel(cheapest)}</small><strong>${cheapest.price.toFixed(2)} <em>kr/kWh</em></strong></div>
@@ -632,7 +665,7 @@
       <div class="beast-energy-chart-wrap beast-energy-chart-usage">
         <div class="beast-energy-chart-head">
           <span class="beast-panel-title">${escapeHtml(nativeCard("energy-usage-chart")?.label || "Forbrug seneste 24 timer")}</span>
-          <div class="beast-energy-price-range">
+          <div class="beast-energy-price-range" ${nativeOption("energy-usage-chart", "stats", true) ? "" : "hidden"}>
             ${historyAvg !== null ? `<span>Snit <strong>${historyAvg.toFixed(2)} kW</strong></span><span>Top <strong>${historyMax.toFixed(2)} kW</strong></span><span>Bund <strong>${historyMin.toFixed(2)} kW</strong></span>` : ""}
           </div>
         </div>
@@ -655,8 +688,12 @@
   }
 
   function refreshTodayTotals() {
-    loadTodayDelta(TOTAL_ENERGY_ID()).then((v) => { todayEnergyKwh = v; render(); });
-    loadTodayDelta(TOTAL_COST_ID()).then((v) => { todayCostKr = v; render(); });
+    const energyId = TOTAL_ENERGY_ID();
+    const costId = TOTAL_COST_ID();
+    if (energyId) loadTodayDelta(energyId).then((value) => { todayEnergyKwh = value ?? directTodayValue(energyId, "energy"); render(); });
+    else todayEnergyKwh = null;
+    if (costId) loadTodayDelta(costId).then((value) => { todayCostKr = value ?? directTodayValue(costId, "cost"); render(); });
+    else todayCostKr = null;
   }
 
   function init(root) {
@@ -677,9 +714,10 @@
       }
     });
 
-    [POWER_ENTITY_ID(), PRICE_ENTITY_ID(), PRICE_FORECAST_ENTITY_ID(), TOMORROW_ENTITY_ID(), ...NOW_SUMMARY_IDS(), ...NOW_GROUPS().flatMap((group) => group.ids)].filter(Boolean).forEach((id) => {
+    [POWER_ENTITY_ID(), PRICE_ENTITY_ID(), PRICE_FORECAST_ENTITY_ID(), TOMORROW_ENTITY_ID(), TOTAL_ENERGY_ID(), TOTAL_COST_ID(), ...NOW_SUMMARY_IDS(), ...NOW_GROUPS().flatMap((group) => group.ids)].filter(Boolean).forEach((id) => {
       BeastHaSocket.subscribeEntity(id, stableRender);
     });
+    [TOTAL_ENERGY_ID(), TOTAL_COST_ID()].filter(Boolean).forEach((id) => BeastHaSocket.subscribeEntity(id, refreshTodayTotals));
   }
 
   BeastCore.registerPanel("energy", "beastEnergyZone", init);

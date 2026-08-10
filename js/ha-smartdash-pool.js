@@ -144,7 +144,7 @@
         </section>
         <section class="beast-pool-live">
           <header><div><small>Livekamera</small><strong>Pool & terrasse</strong></div><span><i></i> LIVE</span></header>
-          <div class="beast-pool-live-frame"><iframe src="./camera-player.html?v=7&src=${encodeURIComponent(POOL_CAMERA_STREAM)}" title="Pool livekamera" frameborder="0" allow="autoplay"></iframe></div>
+          <div class="beast-pool-live-frame"><iframe src="./camera-player.html?v=14&src=${encodeURIComponent(POOL_CAMERA_STREAM)}" title="Pool livekamera" frameborder="0" allow="autoplay"></iframe></div>
           <footer><span>${BeastCore.icon("camera", { size: 16 })} Terrasse Syd</span><em>Forvarmet livevisning</em></footer>
         </section>
         <section class="beast-pool-insights">

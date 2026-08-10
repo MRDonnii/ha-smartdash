@@ -43,12 +43,21 @@ function releaseTag($htmlPath) {
 // dashboard's idle auto-updater won't silently reinstall it the next time
 // GitHub still reports it as latest. See update.php for the full rationale.
 function recordSkippedIfDowngrade($dataDir, $fromBuildId, $toBuildId) {
-  if (!$fromBuildId || !$toBuildId || $toBuildId >= $fromBuildId) return;
+  if (!$fromBuildId || !$toBuildId || compareBuildIds($toBuildId, $fromBuildId) >= 0) return;
   @file_put_contents($dataDir . "/update-skip.json", json_encode(["skippedBuildId" => $fromBuildId, "skippedAt" => time()]));
 }
 
 function isSafeVersion($version) {
   return is_string($version) && preg_match('/^[A-Za-z0-9._-]{1,64}$/', $version);
+}
+
+function compareBuildIds($a, $b) {
+  if (preg_match('/^(\d{8})-(\d+)$/', (string) $a, $left) && preg_match('/^(\d{8})-(\d+)$/', (string) $b, $right)) {
+    $dateCompare = strcmp($left[1], $right[1]);
+    if ($dateCompare !== 0) return $dateCompare;
+    return ((int) $left[2]) <=> ((int) $right[2]);
+  }
+  return version_compare((string) $a, (string) $b);
 }
 
 function copyRecursive($src, $dst) {
@@ -113,7 +122,7 @@ function listSnapshots($snapshotsDir, $changelog) {
       "snapshottedAt" => gmdate("c", filemtime($path) ?: time())
     ];
   }
-  usort($versions, function ($a, $b) { return strcmp($b["version"], $a["version"]); });
+  usort($versions, function ($a, $b) { return compareBuildIds($b["version"], $a["version"]); });
   return $versions;
 }
 

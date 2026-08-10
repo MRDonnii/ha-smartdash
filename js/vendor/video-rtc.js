@@ -250,6 +250,10 @@ export class VideoRTC extends HTMLElement {
 
         this.video.addEventListener('error', ev => {
             const err = this.video.error;
+            // Setting video.src to an empty string during an intentional
+            // pause/navigation emits MEDIA_ERR_ABORTED in Chromium. It is
+            // expected shutdown, not a broken camera stream.
+            if (err?.code === 1 || !this.wsURL || this.wsState === WebSocket.CLOSED) return;
             // https://developer.mozilla.org/en-US/docs/Web/API/MediaError/code
             const MEDIA_ERRORS = {
                 1: 'MEDIA_ERR_ABORTED',
@@ -454,6 +458,11 @@ export class VideoRTC extends HTMLElement {
             const sb = ms.addSourceBuffer(msg.value);
             sb.mode = 'segments'; // segments or sequence
             sb.addEventListener('updateend', () => {
+                // A reconnect replaces MediaSource/SourceBuffer while a final
+                // updateend event from the old stream may still be queued.
+                // Reading `buffered` on that detached SourceBuffer throws in
+                // Chromium and used to produce recurring camera errors.
+                if (ms.readyState !== 'open' || !ms.sourceBuffers || !Array.from(ms.sourceBuffers).includes(sb)) return;
                 if (!sb.updating && bufLen > 0) {
                     try {
                         const data = buf.slice(0, bufLen);
@@ -464,20 +473,22 @@ export class VideoRTC extends HTMLElement {
                     }
                 }
 
-                if (!sb.updating && sb.buffered && sb.buffered.length) {
-                    const end = sb.buffered.end(sb.buffered.length - 1);
-                    const start = end - 5;
-                    const start0 = sb.buffered.start(0);
-                    if (start > start0) {
-                        sb.remove(start0, start);
-                        ms.setLiveSeekableRange(start, end);
+                try {
+                    if (!sb.updating && sb.buffered && sb.buffered.length) {
+                        const end = sb.buffered.end(sb.buffered.length - 1);
+                        const start = end - 5;
+                        const start0 = sb.buffered.start(0);
+                        if (start > start0) {
+                            sb.remove(start0, start);
+                            ms.setLiveSeekableRange(start, end);
+                        }
+                        if (this.video.currentTime < start) this.video.currentTime = start;
+                        const gap = end - this.video.currentTime;
+                        this.video.playbackRate = gap > 0.1 ? gap : 0.1;
                     }
-                    if (this.video.currentTime < start) {
-                        this.video.currentTime = start;
-                    }
-                    const gap = end - this.video.currentTime;
-                    this.video.playbackRate = gap > 0.1 ? gap : 0.1;
-                    // console.debug('VideoRTC.buffered', gap, this.video.playbackRate, this.video.readyState);
+                } catch (_) {
+                    // The buffer was detached between the readyState check
+                    // and this callback. The new connection owns playback.
                 }
             });
 
@@ -485,6 +496,7 @@ export class VideoRTC extends HTMLElement {
             let bufLen = 0;
 
             this.ondata = data => {
+                if (ms.readyState !== 'open') return;
                 if (sb.updating || bufLen > 0) {
                     const b = new Uint8Array(data);
                     buf.set(b, bufLen);
@@ -693,4 +705,3 @@ export class VideoRTC extends HTMLElement {
         return window.btoa(binary);
     }
 }
-

@@ -20,6 +20,11 @@ window.BeastPageEditor = (() => {
 
   function escape(value) { const el = document.createElement("span"); el.textContent = String(value ?? ""); return el.innerHTML; }
   function cardsPath(section) { return `pageLayouts.${section}.cards`; }
+  function fitPath(section) {
+    const profile = window.BeastNativePageEditor?.activeProfile?.() || "dashboard";
+    const suffix = profile === "dashboard" ? "" : profile[0].toUpperCase() + profile.slice(1);
+    return `pageLayouts.${section}.responsiveFit${suffix}`;
+  }
   function entitiesFor(section) {
     const hints = DOMAIN_HINTS[section] || [];
     return BeastCardEditor.allEntities().filter((entity) => {
@@ -85,6 +90,9 @@ window.BeastPageEditor = (() => {
   function mount(section, zone) {
     if (!zone || EXCLUDED.has(section) || zone.dataset.pageEditorMounted === "true") return;
     zone.dataset.pageEditorMounted = "true";
+    const fitted = BeastConfig.get(fitPath(section)) === true;
+    zone.classList.toggle("is-responsive-fitted", fitted);
+    zone.closest?.(".beast-section")?.classList.toggle("is-responsive-fitted", fitted);
     zone.classList.add("beast-page-editor-scroll-host");
     const host = document.createElement("div");
     host.className = "beast-page-editor-host";
@@ -128,11 +136,31 @@ window.BeastPageEditor = (() => {
       await BeastConfig.set(cardsPath(section), fitted);
     }
     const root = document.querySelector(`.beast-section[data-section="${CSS.escape(section)}"]`);
+    await BeastConfig.set(fitPath(section), true);
     root?.classList.add("is-responsive-fitted");
     root?.querySelectorAll(".beast-overview-grid,.beast-page-builder-grid").forEach((grid) => { grid.style.maxWidth = "100%"; grid.style.width = "100%"; });
     window.dispatchEvent(new Event("resize"));
     document.dispatchEvent(new CustomEvent("beast:responsive-fit", { detail:{ section } }));
     return cards || [];
   }
-  return { mountAll, open: (section) => editors.get(section)?.enter(), fit };
+  async function reset(section) {
+    if (window.BeastNativePageEditor?.supports?.(section)) return BeastNativePageEditor.reset(section);
+    const cards = BeastConfig.get(cardsPath(section));
+    const profile = window.BeastNativePageEditor?.activeProfile?.() || "dashboard";
+    if (Array.isArray(cards)) {
+      const next = cards.map((card) => {
+        const templateSize = window.BeastCardTemplates?.get?.(card.templateId)?.size || {};
+        if (profile === "dashboard") return { ...card, desktop:{ ...(card.desktop || {}), w:Number(templateSize.w) || 3, h:Number(templateSize.h) || 1 } };
+        if (profile === "tablet") return { ...card, tablet:{ ...(card.tablet || {}), w:1, h:1 } };
+        return { ...card, portrait:{ ...(card.portrait || {}), h:1 } };
+      });
+      await BeastConfig.set(cardsPath(section), next);
+    }
+    await BeastConfig.set(fitPath(section), false);
+    const root = document.querySelector(`.beast-section[data-section="${CSS.escape(section)}"]`);
+    root?.classList.remove("is-responsive-fitted");
+    root?.querySelectorAll(".is-responsive-fitted").forEach((element) => element.classList.remove("is-responsive-fitted"));
+    window.location.reload();
+  }
+  return { mountAll, open: (section) => editors.get(section)?.enter(), fit, reset };
 })();
