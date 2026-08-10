@@ -7,6 +7,8 @@ const BeastScreenLock = (() => {
   const LEGACY_PIN_HASH_KEY = "beast_panel_screen_pin_hash_v1";
   const LEGACY_AUTOLOCK_KEY = "beast_panel_screen_autolock_v1";
   const PIN_LENGTH = 4;
+  const ADMIN_VERIFICATION_KEY = "beast_admin_pin_verified_v1";
+  const ADMIN_VERIFICATION_TTL_MS = 30 * 1000;
 
   let overlayEl = null;
   let mode = null; // 'locked' | 'set-first' | 'set-confirm' | 'verify'
@@ -377,6 +379,23 @@ const BeastScreenLock = (() => {
     render();
   }
 
+  // The dashboard verifies the PIN before navigating to Administration. Pass
+  // that result across the same-tab navigation as a short-lived, one-use
+  // grant so Admin does not immediately ask for the same PIN a second time.
+  // Direct visits to /admin/ do not have this grant and remain protected.
+  function grantAdminVerification() {
+    try { sessionStorage.setItem(ADMIN_VERIFICATION_KEY, String(Date.now())); } catch (_) {}
+  }
+
+  function consumeAdminVerification() {
+    let verifiedAt = 0;
+    try {
+      verifiedAt = Number(sessionStorage.getItem(ADMIN_VERIFICATION_KEY) || 0);
+      sessionStorage.removeItem(ADMIN_VERIFICATION_KEY);
+    } catch (_) {}
+    return verifiedAt > 0 && Date.now() - verifiedAt <= ADMIN_VERIFICATION_TTL_MS;
+  }
+
   function init() {
     if (alarmSubscribed || !window.BeastHaSocket) return;
     alarmSubscribed = true;
@@ -413,6 +432,8 @@ const BeastScreenLock = (() => {
     startRemovePin,
     resetPinAfterTrustedLogin,
     requestPinVerification,
+    grantAdminVerification,
+    consumeAdminVerification,
     init
   };
 })();

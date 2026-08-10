@@ -289,7 +289,7 @@
 .beast-security-hero {
   background:
     radial-gradient(circle at 88% 8%, color-mix(in srgb,var(--success) 15%,transparent), transparent 38%),
-    linear-gradient(145deg,color-mix(in srgb,var(--surface-2) 94%,var(--accent-a)),var(--surface-2));
+    linear-gradient(145deg,color-mix(in srgb,var(--surface-2-solid) 94%,var(--accent-a)),var(--surface-2-solid)),var(--surface-2);
 }
 .beast-security-hero::before {
   content:"";
@@ -312,7 +312,7 @@
   background:linear-gradient(145deg,color-mix(in srgb,var(--surface-solid) 92%,var(--success)),var(--surface-solid));
 }
 .beast-security-health > div::after { content:""; position:absolute; left:14px; right:14px; bottom:0; height:2px; border-radius:99px; background:linear-gradient(90deg,transparent,var(--success),transparent); opacity:.58; }
-.beast-security-systems,.beast-security-entries { background:linear-gradient(155deg,color-mix(in srgb,var(--surface-2) 95%,var(--accent-b)),var(--surface-2)); }
+.beast-security-systems,.beast-security-entries { background:linear-gradient(155deg,color-mix(in srgb,var(--surface-2-solid) 95%,var(--accent-b)),var(--surface-2-solid)),var(--surface-2); }
 .beast-security-system {
   position:relative;
   overflow:hidden;

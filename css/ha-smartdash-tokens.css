@@ -15,7 +15,14 @@
   --panel-shadow-opacity: 0.46;
   --ambient-strength: 0.82;
   --ambient-secondary-strength: 0.5;
-  --panel-surface: rgb(var(--panel-bg-rgb) / var(--card-opacity));
+  /* Same top-light gradient recipe as --surface/--surface-2 below, just
+     parameterized by --panel-bg-rgb/--card-opacity so it stays theme- and
+     opacity-aware -- .beast-panel cards (the front page + every page's
+     "extra cards") used to be a flat, much more opaque fill than the
+     specialised views' own cards (weather/rooms/etc, all on --surface-2/
+     --surface-solid), which is what made the front page look noticeably
+     darker/flatter than the rest of the app side by side. */
+  --panel-surface: linear-gradient(160deg, rgba(255, 255, 255, 0.07), rgba(255, 255, 255, 0.02)), rgb(var(--panel-bg-rgb) / var(--card-opacity));
   --panel-border: rgb(var(--panel-border-rgb) / var(--panel-border-opacity));
   /* Base + ambient glow */
   --bg: #050608;
@@ -121,6 +128,55 @@
   --bg-glow-b: rgba(236, 72, 153, 0.1);
 }
 
+:root[data-theme-palette="ruby"] {
+  --accent-a: #ff3d5f;
+  --accent-b: #ff7a5c;
+  --accent: #ff3d5f;
+  --accent-soft: rgba(255, 61, 95, 0.16);
+  --accent-border: rgba(255, 61, 95, 0.48);
+  --accent-glow: 0 0 0 1px var(--accent-border), 0 8px 28px rgba(255, 61, 95, 0.27);
+  --accent-gradient: linear-gradient(135deg, var(--accent-a), var(--accent-b));
+  --bg-glow-a: rgba(255, 61, 95, 0.17);
+  --bg-glow-b: rgba(255, 122, 92, 0.1);
+}
+
+:root[data-theme-palette="berry"] {
+  --accent-a: #c026d3;
+  --accent-b: #7c3aed;
+  --accent: #c026d3;
+  --accent-soft: rgba(192, 38, 211, 0.16);
+  --accent-border: rgba(192, 38, 211, 0.48);
+  --accent-glow: 0 0 0 1px var(--accent-border), 0 8px 28px rgba(192, 38, 211, 0.27);
+  --accent-gradient: linear-gradient(135deg, var(--accent-a), var(--accent-b));
+  --bg-glow-a: rgba(192, 38, 211, 0.16);
+  --bg-glow-b: rgba(124, 58, 237, 0.11);
+}
+
+:root[data-theme-palette="sunglow"] {
+  --accent-a: #ff9d3d;
+  --accent-b: #ff4d6a;
+  --accent: #ff9d3d;
+  --accent-soft: rgba(255, 157, 61, 0.16);
+  --accent-border: rgba(255, 157, 61, 0.48);
+  --accent-glow: 0 0 0 1px var(--accent-border), 0 8px 28px rgba(255, 157, 61, 0.27);
+  --accent-gradient: linear-gradient(135deg, var(--accent-a), var(--accent-b));
+  --bg-glow-a: rgba(255, 157, 61, 0.17);
+  --bg-glow-b: rgba(255, 77, 106, 0.1);
+}
+
+:root[data-theme-palette="graphite"] {
+  --accent-a: #7c8797;
+  --accent-b: #9aa5b3;
+  --accent: #838d9c;
+  --accent-soft: rgba(124, 135, 151, 0.14);
+  --accent-border: rgba(131, 141, 156, 0.4);
+  --accent-glow: 0 0 0 1px var(--accent-border), 0 8px 26px rgba(90, 100, 115, 0.2);
+  --accent-gradient: linear-gradient(135deg, var(--accent-a), var(--accent-b));
+  --bg-glow-a: rgba(100, 110, 125, 0.08);
+  --bg-glow-b: rgba(115, 125, 140, 0.06);
+  --bg-glow-c: rgba(90, 98, 110, 0.04);
+}
+
 :root[data-theme-palette="sage"] {
   --accent-a: #6f9d86;
   --accent-b: #75a9a4;
@@ -198,6 +254,7 @@
   --panel-border-rgb: 21 38 60;
   --ambient-strength: 0.48;
   --ambient-secondary-strength: 0.28;
+  --panel-surface: linear-gradient(160deg, rgba(255, 255, 255, 0.66), rgba(235, 241, 247, 0.44)), rgb(var(--panel-bg-rgb) / var(--card-opacity));
 }
 
 /* Aurora, ocean and ember are the three vivid/neon palettes designed to
@@ -262,4 +319,47 @@
   --bg-glow-a: rgba(91, 111, 137, 0.09);
   --bg-glow-b: rgba(92, 119, 133, 0.06);
   --accent: #50657d;
+}
+
+:root[data-color-mode="light"][data-theme-palette="ruby"] {
+  --accent-a: color-mix(in srgb, #ff3d5f 55%, black);
+  --accent-b: color-mix(in srgb, #ff7a5c 55%, black);
+  --accent: var(--accent-a);
+  --accent-soft: color-mix(in srgb, var(--accent-a) 14%, transparent);
+  --accent-border: color-mix(in srgb, var(--accent-a) 46%, transparent);
+  --accent-glow: 0 0 0 1px var(--accent-border), 0 8px 26px color-mix(in srgb, var(--accent-a) 22%, transparent);
+  --accent-gradient: linear-gradient(135deg, var(--accent-a), var(--accent-b));
+  --bg-glow-a: rgba(235, 40, 75, 0.12);
+  --bg-glow-b: rgba(220, 90, 60, 0.08);
+}
+
+:root[data-color-mode="light"][data-theme-palette="berry"] {
+  --accent-a: color-mix(in srgb, #c026d3 55%, black);
+  --accent-b: color-mix(in srgb, #7c3aed 55%, black);
+  --accent: var(--accent-a);
+  --accent-soft: color-mix(in srgb, var(--accent-a) 14%, transparent);
+  --accent-border: color-mix(in srgb, var(--accent-a) 46%, transparent);
+  --accent-glow: 0 0 0 1px var(--accent-border), 0 8px 26px color-mix(in srgb, var(--accent-a) 22%, transparent);
+  --accent-gradient: linear-gradient(135deg, var(--accent-a), var(--accent-b));
+  --bg-glow-a: rgba(170, 30, 190, 0.1);
+  --bg-glow-b: rgba(110, 50, 210, 0.08);
+}
+
+:root[data-color-mode="light"][data-theme-palette="sunglow"] {
+  --accent-a: color-mix(in srgb, #ff9d3d 55%, black);
+  --accent-b: color-mix(in srgb, #ff4d6a 55%, black);
+  --accent: var(--accent-a);
+  --accent-soft: color-mix(in srgb, var(--accent-a) 14%, transparent);
+  --accent-border: color-mix(in srgb, var(--accent-a) 46%, transparent);
+  --accent-glow: 0 0 0 1px var(--accent-border), 0 8px 26px color-mix(in srgb, var(--accent-a) 22%, transparent);
+  --accent-gradient: linear-gradient(135deg, var(--accent-a), var(--accent-b));
+  --bg-glow-a: rgba(230, 140, 40, 0.11);
+  --bg-glow-b: rgba(220, 70, 90, 0.08);
+}
+
+:root[data-color-mode="light"][data-theme-palette="graphite"] {
+  --bg: #eef0f2;
+  --bg-glow-a: rgba(100, 110, 125, 0.08);
+  --bg-glow-b: rgba(115, 125, 140, 0.06);
+  --accent: #5b6474;
 }
