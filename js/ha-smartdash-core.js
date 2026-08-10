@@ -31,11 +31,11 @@ const BeastCore = (() => {
   }
 
   function formatClock(date) {
-    return date.toLocaleTimeString("da-DK", { hour: "2-digit", minute: "2-digit", second: "2-digit" });
+    return date.toLocaleTimeString(window.HASmartdashI18n?.locale || "da-DK", { hour: "2-digit", minute: "2-digit", second: "2-digit" });
   }
 
   function formatDate(date) {
-    return date.toLocaleDateString("da-DK", { weekday: "long", day: "numeric", month: "long" });
+    return date.toLocaleDateString(window.HASmartdashI18n?.locale || "da-DK", { weekday: "long", day: "numeric", month: "long" });
   }
 
   function el(tag, className, children) {

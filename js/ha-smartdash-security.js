@@ -1,8 +1,8 @@
 (function () {
   const SECURITY_NATIVE_DEFAULTS = [
-    { id: "security-hero", kind: "security-hero", label: "Samlet sikkerhedsstatus", enabled: true, desktop: { x: 1, y: 1, w: 5, h: 6 }, bindings: {} },
-    { id: "security-systems", kind: "security-systems", label: "Alarmsystemer", enabled: true, desktop: { x: 6, y: 1, w: 7, h: 3 }, bindings: {} },
-    { id: "security-entries", kind: "security-entries", label: "Indgange, låse og åbninger", enabled: true, desktop: { x: 6, y: 4, w: 7, h: 3 }, bindings: {} },
+    { id: "security-hero", kind: "security-hero", label: "Samlet sikkerhedsstatus", enabled: true, desktop: { x: 1, y: 1, w: 5, h: 4 }, bindings: {} },
+    { id: "security-systems", kind: "security-systems", label: "Alarmsystemer", enabled: true, desktop: { x: 6, y: 1, w: 7, h: 4 }, bindings: {} },
+    { id: "security-entries", kind: "security-entries", label: "Indgange, låse og åbninger", enabled: true, desktop: { x: 1, y: 5, w: 12, h: 3 }, bindings: {}, options: { openingLimit: 10 } },
   ];
   let ENTRY_POINTS = [];
   let ALARM_PANELS = [];
@@ -23,13 +23,22 @@
   let pendingTimerId = null;
   let nativeEditing = false;
   let nativeDraftCards = null;
+  function securityCardsPath() { return window.BeastNativePageEditor?.storagePath?.("security") || "pageLayouts.security.nativeCards"; }
 
   function securityNativeCards() {
-    const saved = BeastConfig.get("pageLayouts.security.nativeCards");
+    const saved = BeastConfig.get(securityCardsPath());
     const cards = Array.isArray(saved) && saved.length ? saved : SECURITY_NATIVE_DEFAULTS;
+    const byId = (id) => cards.find((card) => card.id === id || card.kind === id)?.desktop || {};
+    const originalLayout = Number(byId("security-hero").x) === 1 && Number(byId("security-hero").y) === 1 && Number(byId("security-hero").w) === 5 && Number(byId("security-hero").h) === 6
+      && Number(byId("security-systems").x) === 6 && Number(byId("security-systems").y) === 1 && Number(byId("security-systems").w) === 7 && Number(byId("security-systems").h) === 3
+      && Number(byId("security-entries").x) === 6 && Number(byId("security-entries").y) === 4 && Number(byId("security-entries").w) === 7 && Number(byId("security-entries").h) === 3;
+    const firstRedesign = Number(byId("security-hero").x) === 1 && Number(byId("security-hero").y) === 1 && Number(byId("security-hero").w) === 5 && Number(byId("security-hero").h) === 3
+      && Number(byId("security-systems").x) === 6 && Number(byId("security-systems").y) === 1 && Number(byId("security-systems").w) === 7 && Number(byId("security-systems").h) === 3
+      && Number(byId("security-entries").x) === 1 && Number(byId("security-entries").y) === 4 && Number(byId("security-entries").w) === 12 && Number(byId("security-entries").h) === 3;
+    const legacyLayout = originalLayout || firstRedesign;
     return cards.map((card) => {
       const fallback = SECURITY_NATIVE_DEFAULTS.find((item) => item.id === card.id || item.kind === card.kind) || {};
-      return { ...fallback, ...card, kind: card.kind || fallback.kind || card.id, bindings: { ...(fallback.bindings || {}), ...(card.bindings || {}) }, desktop: { ...(fallback.desktop || {}), ...(card.desktop || {}) } };
+      return { ...fallback, ...card, kind: card.kind || fallback.kind || card.id, bindings: { ...(fallback.bindings || {}), ...(card.bindings || {}) }, desktop: legacyLayout ? { ...(fallback.desktop || {}) } : { ...(fallback.desktop || {}), ...(card.desktop || {}) } };
     });
   }
 
@@ -157,7 +166,7 @@
 
   function exitSecurityNativeEditor(save) {
     if (!nativeEditing) return;
-    if (save && nativeDraftCards) BeastConfig.set("pageLayouts.security.nativeCards", nativeDraftCards);
+    if (save && nativeDraftCards) BeastConfig.set(securityCardsPath(), nativeDraftCards);
     nativeEditing = false;
     nativeDraftCards = null;
     window.beastCardEditorActive = false;
@@ -214,11 +223,11 @@
     applySecurityNativeLayout(nativeDraftCards);
     command?.querySelectorAll(":scope > .beast-security-native-card").forEach(wireSecurityNativeCardEdit);
     const bar = document.createElement("div"); bar.id = "beastSecurityNativeEditBar"; bar.className = "beast-ov-edit-bar";
-    bar.innerHTML = `<span>${BeastCore.icon("shield", { size: 17 })}Redigerer sikkerhedskort</span><div class="beast-ov-edit-bar-actions"><button type="button" data-security-native-settings>Navne og entities</button><button type="button" data-security-native-cancel>Annullér</button><button type="button" class="beast-btn beast-btn-primary" data-security-native-save>Gem</button></div>`;
+    bar.innerHTML = `<div class="beast-editor-status"><i>${BeastCore.icon("shield", { size: 19 })}</i><span><small>Redigering</small><strong>Redigerer sikkerhedskort</strong></span></div><div class="beast-ov-edit-bar-actions"><button type="button" data-security-native-settings>Indstillinger</button><button type="button" class="beast-edit-cancel" data-security-native-cancel>Annullér</button><button type="button" class="beast-btn beast-btn-primary beast-edit-save" data-security-native-save>Gem</button></div>`;
     document.body.appendChild(bar);
     bar.querySelector("[data-security-native-cancel]").addEventListener("click", () => exitSecurityNativeEditor(false));
     bar.querySelector("[data-security-native-save]").addEventListener("click", () => exitSecurityNativeEditor(true));
-    bar.querySelector("[data-security-native-settings]").addEventListener("click", () => { BeastConfig.set("pageLayouts.security.nativeCards", nativeDraftCards); exitSecurityNativeEditor(false); openSecurityLayoutEditor(); });
+    bar.querySelector("[data-security-native-settings]").addEventListener("click", () => { BeastConfig.set(securityCardsPath(), nativeDraftCards); exitSecurityNativeEditor(false); openSecurityLayoutEditor(); });
   }
 
   function render() {
@@ -285,7 +294,7 @@
               <div><strong>${openSensors.length ? `${openSensors.length} åbne` : "Alle lukkede"}</strong><small>${openingSensors.length} dør- og vinduessensorer overvåges</small></div>
             </div>
             <div class="beast-security-opening-list">
-              ${openSensors.length ? openSensors.slice(0, 10).map((sensor) => `
+              ${openSensors.length ? openSensors.slice(0, Number(securityNativeCard("security-entries")?.options?.openingLimit || 10)).map((sensor) => `
                 <span class="beast-security-opening is-open">${BeastCore.icon(sensor.type === "window" ? "grid" : "unlock", { size: 15 })}${escapeHtml(sensor.label)}</span>
               `).join("") : `<span class="beast-security-opening is-closed">${BeastCore.icon("lock", { size: 15 })} Ingen åbne døre eller vinduer</span>`}
             </div>
@@ -330,16 +339,16 @@
       "security-systems": [["alarm1","Alarmsystem 1"],["alarm2","Alarmsystem 2"],["alarm3","Alarmsystem 3"],["alarm4","Alarmsystem 4"]],
       "security-entries": [["lock1","Lås 1"],["opening1","Åbning 1"],["lock2","Lås 2"],["opening2","Åbning 2"],["lock3","Lås 3"],["opening3","Åbning 3"],["lock4","Lås 4"],["opening4","Åbning 4"]]
     };
-    const rows = cards.map((card) => `<article class="beast-security-native-editor-card" data-security-settings-card="${escapeHtml(card.id)}"><header><label><input type="checkbox" data-security-enabled ${card.enabled !== false && !hidden.has(legacyIds[card.id]) ? "checked" : ""}><strong>${escapeHtml(card.label)}</strong></label></header><div><label>Navn<input data-security-label value="${escapeHtml(card.label)}"></label><label>Bredde<select data-security-width>${Array.from({length:12},(_,i)=>`<option value="${i+1}" ${Number(card.desktop?.w)===i+1?"selected":""}>${i+1}/12</option>`).join("")}</select></label><label>Højde<select data-security-height>${Array.from({length:8},(_,i)=>`<option value="${i+1}" ${Number(card.desktop?.h)===i+1?"selected":""}>${i+1}</option>`).join("")}</select></label>${(fields[card.kind]||[]).map(([key,label])=>`<label>${label}<input type="search" list="beastSecurityEntityList" data-security-binding="${key}" value="${escapeHtml(card.bindings?.[key]||"")}" placeholder="Brug serverstandard"></label>`).join("")}</div></article>`).join("");
+    const rows = cards.map((card) => `<article class="beast-security-native-editor-card" data-security-settings-card="${escapeHtml(card.id)}"><header><label><input type="checkbox" data-security-enabled ${card.enabled !== false && !hidden.has(legacyIds[card.id]) ? "checked" : ""}><strong>${escapeHtml(card.label)}</strong></label></header><div><label>Navn<input data-security-label value="${escapeHtml(card.label)}"></label><label>Bredde<select data-security-width>${Array.from({length:12},(_,i)=>`<option value="${i+1}" ${Number(card.desktop?.w)===i+1?"selected":""}>${i+1}/12</option>`).join("")}</select></label><label>Højde<select data-security-height>${Array.from({length:8},(_,i)=>`<option value="${i+1}" ${Number(card.desktop?.h)===i+1?"selected":""}>${i+1}</option>`).join("")}</select></label>${card.kind === "security-entries" ? `<label>Vis højst åbne sensorer<input type="number" min="1" max="30" data-security-opening-limit value="${Number(card.options?.openingLimit || 10)}"></label>` : ""}${(fields[card.kind]||[]).map(([key,label])=>`<label>${label}<input type="search" list="beastSecurityEntityList" data-security-binding="${key}" value="${escapeHtml(card.bindings?.[key]||"")}" placeholder="Brug serverstandard"></label>`).join("")}</div></article>`).join("");
     const overlay = document.createElement("div"); overlay.id = "beastSecurityLayoutEditor"; overlay.className = "beast-modal-overlay";
     overlay.innerHTML = `<div class="beast-modal beast-security-layout-modal" role="dialog" aria-modal="true"><div class="beast-modal-header"><div><small>Native sikkerhedskort</small><h3>Navne og entities</h3></div><button type="button" class="beast-modal-close" data-close>×</button></div><div class="beast-modal-body"><p class="beast-page-editor-hint">Tomme entityfelter bruger serverens sikkerhedskonfiguration. Ingen alarmkommandoer sendes herfra.</p><datalist id="beastSecurityEntityList">${entities.map((entity)=>`<option value="${escapeHtml(entity.id)}">${escapeHtml(entity.name)}</option>`).join("")}</datalist><div class="beast-security-layout-list">${rows}</div><button type="button" class="beast-btn beast-btn-primary" data-security-layout-save>Gem indstillinger</button></div></div>`;
     document.body.appendChild(overlay);
     overlay.addEventListener("click", (event) => {
       if (event.target === overlay || event.target.closest("[data-close]")) return overlay.remove();
       if (!event.target.closest("[data-security-layout-save]")) return;
-      const nextCards = Array.from(overlay.querySelectorAll("[data-security-settings-card]")).map((row) => { const card = cards.find((item)=>item.id===row.dataset.securitySettingsCard); const bindings={}; row.querySelectorAll("[data-security-binding]").forEach((input)=>{if(input.value.trim()) bindings[input.dataset.securityBinding]=input.value.trim();}); return {...card,label:row.querySelector("[data-security-label]").value.trim()||card.label,enabled:row.querySelector("[data-security-enabled]").checked,bindings,desktop:{...(card.desktop||{}),w:Number(row.querySelector("[data-security-width]").value),h:Number(row.querySelector("[data-security-height]").value)}}; });
+      const nextCards = Array.from(overlay.querySelectorAll("[data-security-settings-card]")).map((row) => { const card = cards.find((item)=>item.id===row.dataset.securitySettingsCard); const bindings={}; row.querySelectorAll("[data-security-binding]").forEach((input)=>{if(input.value.trim()) bindings[input.dataset.securityBinding]=input.value.trim();}); return {...card,label:row.querySelector("[data-security-label]").value.trim()||card.label,enabled:row.querySelector("[data-security-enabled]").checked,bindings,options:{...(card.options||{}),...(row.querySelector("[data-security-opening-limit]")?{openingLimit:Number(row.querySelector("[data-security-opening-limit]").value)||10}:{})},desktop:{...(card.desktop||{}),w:Number(row.querySelector("[data-security-width]").value),h:Number(row.querySelector("[data-security-height]").value)}}; });
       const nextHidden = nextCards.filter((card)=>!card.enabled).map((card)=>legacyIds[card.id]).filter(Boolean);
-      BeastConfig.set("pageLayouts.security.nativeCards", nextCards);
+      BeastConfig.set(securityCardsPath(), nextCards);
       BeastConfig.set("pageLayouts.security.securityLayout", { ...current, hidden: nextHidden });
       applyConfig(); overlay.remove(); render();
     });

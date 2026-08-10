@@ -38,6 +38,15 @@ function isSafeVersion($version) {
   return is_string($version) && preg_match('/^[A-Za-z0-9._-]{1,64}$/', $version);
 }
 
+function compareBuildIds($a, $b) {
+  if (preg_match('/^(\d{8})-(\d+)$/', (string) $a, $left) && preg_match('/^(\d{8})-(\d+)$/', (string) $b, $right)) {
+    $dateCompare = strcmp($left[1], $right[1]);
+    if ($dateCompare !== 0) return $dateCompare;
+    return ((int) $left[2]) <=> ((int) $right[2]);
+  }
+  return version_compare((string) $a, (string) $b);
+}
+
 // If installing $toBuildId is actually a downgrade from $fromBuildId,
 // remember $fromBuildId so the dashboard's own idle auto-updater (in
 // ha-smartdash-app.js) won't silently reinstall it the next time GitHub
@@ -48,7 +57,7 @@ function isSafeVersion($version) {
 // as GitHub's latest happens to equal this exact build; a genuinely new
 // release naturally supersedes it and check() stops suppressing anything.
 function recordSkippedIfDowngrade($dataDir, $fromBuildId, $toBuildId) {
-  if (!$fromBuildId || !$toBuildId || $toBuildId >= $fromBuildId) return;
+  if (!$fromBuildId || !$toBuildId || compareBuildIds($toBuildId, $fromBuildId) >= 0) return;
   @file_put_contents($dataDir . "/update-skip.json", json_encode(["skippedBuildId" => $fromBuildId, "skippedAt" => time()]));
 }
 
@@ -219,7 +228,7 @@ if ($action === "check") {
       "currentVersion" => $current,
       "tag" => $tag,
       "remoteVersion" => $remoteBuildId,
-      "updateAvailable" => $remoteBuildId > $current,
+      "updateAvailable" => compareBuildIds($remoteBuildId, $current) > 0,
       "releaseUrl" => $cached["releaseUrl"],
       "releaseNotes" => $cached["releaseNotes"],
       "publishedAt" => $cached["publishedAt"],
@@ -243,7 +252,7 @@ if ($action === "check") {
           "currentVersion" => $current,
           "tag" => $stale["tag"],
           "remoteVersion" => $stale["remoteVersion"],
-          "updateAvailable" => $stale["remoteVersion"] > $current,
+          "updateAvailable" => compareBuildIds($stale["remoteVersion"], $current) > 0,
           "releaseUrl" => $stale["releaseUrl"],
           "releaseNotes" => $stale["releaseNotes"],
           "publishedAt" => $stale["publishedAt"],
@@ -273,7 +282,7 @@ if ($action === "check") {
 
   echo json_encode([
     "currentVersion" => $current,
-    "updateAvailable" => $remoteBuildId > $current,
+    "updateAvailable" => compareBuildIds($remoteBuildId, $current) > 0,
     "cached" => false,
     "skipAutoInstall" => $skippedId !== null && $skippedId === $remoteBuildId,
   ] + $payload);

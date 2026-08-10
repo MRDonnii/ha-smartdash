@@ -132,8 +132,40 @@ body::after {
   gap: var(--space-2);
   padding: var(--space-4) var(--space-2);
   border-right: 1px solid var(--border);
-  overflow-y: auto;
+  overflow: hidden;
 }
+
+.beast-rail-pages {
+  min-height: 0;
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  gap: var(--space-2);
+  overflow-x: hidden;
+  overflow-y: auto;
+  scrollbar-width: none;
+}
+.beast-rail-pages::-webkit-scrollbar { display: none; }
+.beast-rail-tools {
+  flex: 0 0 auto;
+  display: grid;
+  gap: 5px;
+  margin: 0 -2px -2px;
+  padding: 8px 5px 5px;
+  border: 1px solid color-mix(in srgb, var(--accent-a) 18%, var(--border));
+  border-radius: 16px;
+  background: linear-gradient(160deg, color-mix(in srgb, var(--accent-a) 8%, var(--panel)), color-mix(in srgb, var(--panel) 96%, transparent));
+  box-shadow: 0 -10px 26px rgba(0,0,0,.06);
+}
+.beast-rail-tools::before { content: "Værktøjer"; display:block; padding:0 2px 2px; color:var(--ink-faint); font-size:8px; font-weight:850; letter-spacing:.1em; text-align:center; text-transform:uppercase; }
+.beast-rail-tools .beast-rail-page-edit { margin-bottom: 0; }
+.beast-rail-tools .beast-rail-page-edit { width:100%; margin-inline:0; }
+.beast-rail-tools .beast-rail-page-edit,
+.beast-rail-tools .beast-rail-admin { border:1px solid var(--border-strong) !important; background:var(--surface-solid) !important; color:var(--ink-muted) !important; box-shadow:none; }
+.beast-rail-tools .beast-rail-page-edit-icon { color:var(--ink-muted); background:transparent; box-shadow:none; }
+.beast-rail-admin { min-height:52px !important; }
+.beast-rail-tools .beast-rail-page-edit:hover,
+.beast-rail-admin:hover { border-color:color-mix(in srgb,var(--accent-b) 45%,var(--border)) !important; color:var(--ink) !important; }
 
 .beast-rail-brand {
   flex-shrink: 0;
@@ -148,6 +180,32 @@ body::after {
   color: var(--ink);
   word-break: break-word;
 }
+
+.beast-rail-page-edit {
+  flex: 0 0 auto;
+  width: calc(100% - 10px);
+  min-height: 58px;
+  display: grid;
+  grid-template-columns: 1fr;
+  grid-template-rows: 30px auto;
+  align-items: center;
+  gap: 3px;
+  margin: 2px 5px 7px;
+  padding: 5px 4px;
+  border: 1px solid color-mix(in srgb, var(--accent-a) 30%, var(--border));
+  border-radius: 14px;
+  background: color-mix(in srgb, var(--accent-a) 11%, var(--panel));
+  color: var(--ink);
+  font: 800 9px/1 var(--font-sans);
+  cursor: pointer;
+  touch-action: manipulation;
+  box-shadow: 0 8px 20px color-mix(in srgb, var(--accent-a) 9%, transparent);
+  transition: transform .16s ease, border-color .16s ease, background .16s ease;
+}
+.beast-rail-page-edit:hover { border-color: color-mix(in srgb, var(--accent-a) 58%, var(--border)); background: color-mix(in srgb, var(--accent-a) 16%, var(--panel)); }
+.beast-rail-page-edit:active { transform: scale(.97); }
+.beast-rail-page-edit-icon { width: 30px; height: 30px; display: grid; place-items: center; justify-self: center; border-radius: 9px; color: #fff; background: linear-gradient(135deg, var(--accent-a), var(--accent-b)); box-shadow: 0 5px 13px color-mix(in srgb, var(--accent-a) 28%, transparent); }
+.beast-rail-page-edit-label { width: 100%; min-width: 0; overflow: hidden; white-space: nowrap; text-align: center; }
 
 .beast-rail-btn,
 a.beast-rail-btn,

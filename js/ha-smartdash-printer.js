@@ -182,6 +182,7 @@
     }
     setText("beastPrinterTask", data.taskLabel);
     setText("beastPrinterStage", data.stageLabel);
+    setText("beastPrinterProgressStage", data.stageLabel);
     setText("beastPrinterPercent", String(Math.round(data.progress)));
     const progressBar = document.getElementById("beastPrinterProgressBar");
     if (progressBar) progressBar.style.width = `${Math.max(0, Math.min(100, data.progress))}%`;
@@ -207,8 +208,9 @@
     const active = String(activeTray).includes(String(index)) || String(activeTray).toLowerCase() === `tray ${index}`;
     return `
       <div class="beast-printer-tray${active ? " is-active" : ""}">
-        <span class="beast-printer-spool" style="${safeColor ? `--spool-color:${safeColor}` : ""}"></span>
-        <span><small>Plads ${index}${active ? " · aktiv" : ""}</small><strong>${escapeHtml(name)}</strong></span>
+        <span class="beast-printer-spool" style="${safeColor ? `--spool-color:${safeColor}` : ""}"><i></i></span>
+        <span><small>Plads ${index}</small><strong>${escapeHtml(name)}</strong></span>
+        ${active ? `<b>Aktiv</b>` : ""}
       </div>
     `;
   }
@@ -270,7 +272,7 @@
       return `<section class="beast-panel beast-ov-card beast-page-builder-card beast-printer-builder-card" ${cardSize(card)} data-printer-card="cameras" data-secondary-camera="${escapeHtml(secondary || "")}">
         <section class="beast-printer-visual">
           <div class="beast-printer-cam beast-printer-cam--main">
-            <iframe class="beast-printer-live-frame" id="beastPrinterLiveFrame" src="./camera-player.html?v=7&src=${encodeURIComponent(stream)}&transport=mse" title="3D-printer livekamera" frameborder="0" allow="autoplay"></iframe>
+            <iframe class="beast-printer-live-frame" id="beastPrinterLiveFrame" src="./camera-player.html?v=14&src=${encodeURIComponent(stream)}&transport=mse" title="3D-printer livekamera" frameborder="0" allow="autoplay"></iframe>
             <span class="beast-printer-cam-label">3D Printer · Livekamera</span>
             <span class="beast-printer-live"><i></i> Live</span>
           </div>
@@ -288,7 +290,17 @@
               <h2 id="beastPrinterTask">${escapeHtml(data.taskLabel)}</h2>
               <p id="beastPrinterStage">${escapeHtml(data.stageLabel)}</p>
             </div>
-            <strong class="beast-printer-percent"><span id="beastPrinterPercent">${Math.round(data.progress)}</span><small>%</small></strong>
+          </div>
+          <div class="beast-printer-progress-panel${data.printImages.length && card.showImages !== false ? " has-model" : ""}">
+            ${data.printImages.length && card.showImages !== false ? `<button type="button" class="beast-printer-progress-model" data-print-image="0"><img alt="${escapeHtml(data.printImages[0].label)}"><span>${escapeHtml(data.printImages[0].label)}</span></button>` : ""}
+            <div class="beast-printer-progress-content">
+              <header><span><small>Printets fremdrift</small><strong id="beastPrinterProgressStage">${escapeHtml(data.stageLabel)}</strong></span><b><span id="beastPrinterPercent">${Math.round(data.progress)}</span><small>%</small></b></header>
+              <div class="beast-printer-progress"><i id="beastPrinterProgressBar" style="width:${Math.max(0, Math.min(100, data.progress))}%"></i></div>
+              <footer>
+                <span>${BeastCore.icon("clock", { size:18 })}<small>Resterende</small><strong id="beastPrinterRemaining">${data.remainingText}</strong></span>
+                <span>${BeastCore.icon("grid", { size:18 })}<small>Aktuelt lag</small><strong id="beastPrinterLayer">${data.layer ?? "–"} / ${data.totalLayers ?? "–"}</strong></span>
+              </footer>
+            </div>
           </div>
           <div class="beast-printer-quick-controls">
             <button type="button" class="beast-printer-light${data.printerLight?.state === "on" ? " is-on" : ""}" id="beastPrinterLight" ${data.printerLight ? "" : "disabled"}>
@@ -297,20 +309,9 @@
               <i aria-hidden="true"></i>
             </button>
           </div>
-          <div class="beast-printer-progress"><i id="beastPrinterProgressBar" style="width:${Math.max(0, Math.min(100, data.progress))}%"></i></div>
-          ${data.printImages.length ? `
-            <div class="beast-printer-model-section">
-              <div class="beast-printer-model-head"><span><small>Printjob</small><strong>Billeder af emnet</strong></span><em>${data.printImages.length} ${data.printImages.length === 1 ? "billede" : "billeder"}</em></div>
-              <div class="beast-printer-model-gallery">
-                ${data.printImages.map((image, index) => `<button type="button" class="beast-printer-model-image" data-print-image="${index}"><img alt="${escapeHtml(image.label)}"><span>${escapeHtml(image.label)}</span></button>`).join("")}
-              </div>
-            </div>
-          ` : ""}
           <div class="beast-printer-metrics">
-            <div><small>Resterende</small><strong id="beastPrinterRemaining">${data.remainingText}</strong></div>
-            <div><small>Lag</small><strong id="beastPrinterLayer">${data.layer ?? "–"} / ${data.totalLayers ?? "–"}</strong></div>
-            <div><small>Dyse</small><strong id="beastPrinterNozzle">${data.nozzleText} / ${data.nozzleTargetText}</strong></div>
-            <div><small>Byggeplade</small><strong id="beastPrinterBed">${data.bedText} / ${data.bedTargetText}</strong></div>
+            <div class="is-nozzle"><span>${BeastCore.icon("thermometer", { size:22 })}</span><div><small>Dysetemperatur · nu / mål</small><strong id="beastPrinterNozzle">${data.nozzleText} / ${data.nozzleTargetText}</strong></div></div>
+            <div class="is-bed"><span>${BeastCore.icon("thermometer", { size:22 })}</span><div><small>Byggeplade · nu / mål</small><strong id="beastPrinterBed">${data.bedText} / ${data.bedTargetText}</strong></div></div>
           </div>
           ${data.printing ? `
             <div class="beast-printer-actions">
@@ -319,12 +320,14 @@
               <button type="button" class="beast-security-action-btn is-danger" id="beastPrinterStop">■&nbsp; Stop print</button>
             </div>
           ` : ""}
-          <div class="beast-printer-ams-head">
-            <div><small>AMS</small><strong>Filament</strong></div>
-            <span id="beastPrinterAmsMeta">${data.amsHumidityText} fugt · ${data.totalUsageText} drift</span>
-          </div>
-          <div class="beast-printer-trays">
-            ${[IDS.tray1, IDS.tray2, IDS.tray3, IDS.tray4].map((id, index) => trayDetails(id, index + 1, data.activeTray)).join("")}
+          <div class="beast-printer-ams-section">
+            <div class="beast-printer-ams-head">
+              <div><small>AMS</small><strong>Filament</strong></div>
+              <span id="beastPrinterAmsMeta">${data.amsHumidityText} fugt · ${data.totalUsageText} drift</span>
+            </div>
+            <div class="beast-printer-trays">
+              ${[IDS.tray1, IDS.tray2, IDS.tray3, IDS.tray4].map((id, index) => trayDetails(id, index + 1, data.activeTray)).join("")}
+            </div>
           </div>
         </section></section>`;
   }
@@ -421,7 +424,7 @@
     const overlay = document.createElement("div");
     overlay.id = "beastPrinterCardSettings";
     overlay.className = "beast-modal-overlay";
-    const cameraFields = card.type === "cameras" ? `<label>Livekamera<select data-live-camera>${optionsMarkup(cameraEntities(false), card.entity)}</select></label><label>Statuskamera<select data-secondary-camera>${optionsMarkup(cameraEntities(true), card.secondaryEntity)}</select></label>` : `<label>Visning<select data-display><option value="full">Alt indhold</option><option value="compact">Kompakt status og styring</option><option value="status">Kun status og målinger</option></select></label>`;
+    const cameraFields = card.type === "cameras" ? `<label>Livekamera<select data-live-camera>${optionsMarkup(cameraEntities(false), card.entity)}</select></label><label>Statuskamera<select data-secondary-camera>${optionsMarkup(cameraEntities(true), card.secondaryEntity)}</select></label>` : `<label>Visning<select data-display><option value="full">Alt indhold</option><option value="compact">Kompakt status og styring</option><option value="status">Kun status og målinger</option></select></label><label><input type="checkbox" data-show-images ${card.showImages === false ? "" : "checked"}> Vis billeder af emnet</label><label>Maks. billeder<input type="number" min="1" max="6" data-image-limit value="${Number(card.imageLimit || 3)}"></label>`;
     overlay.innerHTML = `<div class="beast-modal beast-page-card-settings" role="dialog" aria-modal="true"><div class="beast-modal-header"><div><small>3D Printer</small><h3>Indstil kort</h3></div><button type="button" class="beast-modal-close" data-close>${BeastCore.icon("close", { size: 22 })}</button></div><div class="beast-modal-body">${cameraFields}<p>Størrelsen ændres direkte med håndtaget i kortets nederste højre hjørne.</p></div><div class="beast-modal-actions"><button type="button" data-close>Annullér</button><button type="button" class="beast-btn beast-btn-primary" data-save>Gem kort</button></div></div>`;
     document.body.appendChild(overlay);
     if (overlay.querySelector("[data-display]")) overlay.querySelector("[data-display]").value = card.display || "full";
@@ -432,7 +435,7 @@
       if (card.type === "cameras") {
         updated.entity = overlay.querySelector("[data-live-camera]").value || null;
         updated.secondaryEntity = overlay.querySelector("[data-secondary-camera]").value || null;
-      } else updated.display = overlay.querySelector("[data-display]").value;
+      } else { updated.display = overlay.querySelector("[data-display]").value; updated.showImages = overlay.querySelector("[data-show-images]").checked; updated.imageLimit = Number(overlay.querySelector("[data-image-limit]").value) || 3; }
       commit(updated);
       overlay.remove();
     });

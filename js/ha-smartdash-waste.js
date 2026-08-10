@@ -3,6 +3,60 @@
   function calendarEntityIds() { return BeastConfig.get("panels.waste.calendars") || []; }
 
   let containerEl = null;
+  let calendarRequest = 0;
+
+  function weatherEntityId() { return BeastConfig.get("panels.weather.entity"); }
+
+  async function loadCalendarWeather() {
+    const entityId = weatherEntityId();
+    if (!entityId) return { daily:[], hourly:[] };
+    const fetchType = (type) => BeastAuth.haFetch("/api/services/weather/get_forecasts?return_response", {
+      method:"POST", headers:{ "Content-Type":"application/json" },
+      body:JSON.stringify({ entity_id:entityId, type })
+    });
+    const results = await Promise.allSettled([fetchType("daily"), fetchType("hourly")]);
+    const extract = (result) => {
+      if (result.status !== "fulfilled") return [];
+      const response = result.value?.service_response || result.value;
+      const entityResult = response?.[entityId] || response;
+      return Array.isArray(entityResult?.forecast) ? entityResult.forecast : [];
+    };
+    const fallback = BeastHaSocket.getState(entityId)?.attributes?.forecast;
+    return { daily:extract(results[0]).length ? extract(results[0]) : (Array.isArray(fallback) ? fallback : []), hourly:extract(results[1]) };
+  }
+
+  function forecastForDay(weather, date) {
+    const key = `${date.getFullYear()}-${String(date.getMonth()+1).padStart(2,"0")}-${String(date.getDate()).padStart(2,"0")}`;
+    return weather.daily.find((item) => String(item.datetime || "").slice(0,10) === key) || null;
+  }
+
+  function forecastForEvent(weather, event) {
+    const startValue = event.start?.dateTime || event.start?.date;
+    if (!startValue) return null;
+    const eventDate = new Date(startValue);
+    if (event.start?.dateTime && weather.hourly.length) {
+      const nearest = weather.hourly.reduce((best, item) => {
+        const distance = Math.abs(new Date(item.datetime).getTime() - eventDate.getTime());
+        return !best || distance < best.distance ? { item, distance } : best;
+      }, null);
+      if (nearest && nearest.distance <= 3 * 60 * 60 * 1000) return nearest.item;
+    }
+    return forecastForDay(weather, eventDate);
+  }
+
+  function weatherBadge(item, compact = false) {
+    if (!item) return "";
+    const temperature = Number(item.temperature);
+    const meta = BeastCore.weatherMeta(item.condition);
+    return `<span class="beast-calendar-weather${compact ? " is-compact" : ""}" title="${escapeHtml(meta.label)}">${BeastCore.animatedWeatherIcon(meta.mood, compact ? 25 : 29)}<strong>${Number.isFinite(temperature) ? `${Math.round(temperature)}°` : "–"}</strong></span>`;
+  }
+
+  function cardRows(cardId, fallback = 12) {
+    const path = window.BeastNativePageEditor?.storagePath?.("waste") || "pageLayouts.waste.nativeCards";
+    const cards = BeastConfig.get(path);
+    const value = Array.isArray(cards) ? cards.find((card) => card.id === cardId)?.options?.rows : null;
+    return Math.max(1, Math.min(30, Number(value) || fallback));
+  }
 
   function escapeHtml(value) {
     return String(value ?? "").replace(/[&<>"']/g, (char) => ({
@@ -23,12 +77,15 @@
 
     if (!items.length) return `<p class="beast-music-empty">Ingen affaldsdata.</p>`;
 
-    return items.map((item) => BeastCore.statTile({
-      icon: "calendar",
-      label: escapeHtml(item.name),
-      value: item.days === 0 ? "I dag" : item.days === 1 ? "I morgen" : `Om ${item.days}<small>dage</small>`,
-      meta: escapeHtml(item.dateLabel)
-    })).join("");
+    const visibleItems = items.slice(0, cardRows("waste", 6));
+    return visibleItems.map((item, index) => {
+      const when = item.days === 0 ? "I dag" : item.days === 1 ? "I morgen" : `Om ${item.days} dage`;
+      return `<article class="beast-calendar-waste-item${index === 0 ? " is-next" : ""}">
+        <span class="beast-calendar-waste-icon">${BeastCore.icon("calendar", { size:index === 0 ? 26 : 21 })}</span>
+        <div><small>${index === 0 ? "Næste afhentning" : escapeHtml(item.dateLabel || "Planlagt")}</small><strong>${escapeHtml(item.name || "Affald")}</strong>${index === 0 && item.dateLabel ? `<em>${escapeHtml(item.dateLabel)}</em>` : ""}</div>
+        <b>${escapeHtml(when)}</b>
+      </article>`;
+    }).join("");
   }
 
   function formatEventTime(event) {
@@ -36,11 +93,13 @@
     if (!start) return "";
     const date = new Date(start);
     const isAllDay = !event.start?.dateTime;
-    if (isAllDay) return date.toLocaleDateString("da-DK", { day: "numeric", month: "short" });
-    return date.toLocaleString("da-DK", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
+    const locale = window.HASmartdashI18n?.locale || "da-DK";
+    if (isAllDay) return date.toLocaleDateString(locale, { day: "numeric", month: "short" });
+    return date.toLocaleString(locale, { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
   }
 
   async function loadCalendarEvents() {
+    const requestId = ++calendarRequest;
     const start = new Date();
     const end = new Date(Date.now() + 14 * 24 * 60 * 60 * 1000);
     const allStates = BeastHaSocket.getAllStates();
@@ -55,23 +114,55 @@
       }
     }));
 
+    if (requestId !== calendarRequest) return null;
+    const now = Date.now();
+    const today = new Date();
+    const todayKey = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
     return results.flat()
+      .filter((event) => {
+        const startValue = event.start?.dateTime || event.start?.date;
+        if (!startValue) return false;
+        // A date-only event is relevant for its named local calendar day.
+        // Timed events must still be upcoming (with a tiny clock-skew grace).
+        if (!event.start?.dateTime) return String(startValue).slice(0, 10) >= todayKey;
+        const startMs = new Date(startValue).getTime();
+        return Number.isFinite(startMs) && startMs >= now - 5 * 60 * 1000;
+      })
       .sort((a, b) => new Date(a.start?.dateTime || a.start?.date) - new Date(b.start?.dateTime || b.start?.date))
-      .slice(0, 12);
+      .slice(0, cardRows("events", 12));
   }
 
-  function renderCalendarEvents(events) {
+  function renderCalendarEvents(events, weather = { daily:[], hourly:[] }) {
     const host = document.getElementById("beastCalendarEvents");
-    if (!host) return;
-    if (!events.length) {
-      host.innerHTML = `<p class="beast-music-empty">Ingen kommende begivenheder.</p>`;
-      return;
-    }
-    host.innerHTML = events.map((event) => BeastCore.statTile({
-      icon: "calendar",
-      label: escapeHtml(formatEventTime(event)),
-      value: escapeHtml(event.summary || "Uden titel")
-    })).join("");
+    if (!host || events === null) return;
+    const locale = window.HASmartdashI18n?.locale || "da-DK";
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const eventDayKey = (event) => String(event.start?.dateTime || event.start?.date || "").slice(0, 10);
+    const dayStrip = Array.from({ length:7 }, (_, offset) => {
+      const day = new Date(today); day.setDate(today.getDate() + offset);
+      const key = `${day.getFullYear()}-${String(day.getMonth() + 1).padStart(2,"0")}-${String(day.getDate()).padStart(2,"0")}`;
+      const count = events.filter((event) => eventDayKey(event) === key).length;
+      return `<div class="beast-calendar-day${offset === 0 ? " is-today" : ""}${count ? " has-events" : ""}"><small>${day.toLocaleDateString(locale,{weekday:"short"}).replace(".","")}</small><strong>${day.getDate()}</strong>${weatherBadge(forecastForDay(weather, day), true)}<i>${count || ""}</i></div>`;
+    }).join("");
+    const agenda = events.map((event, index) => {
+      const calendar = BeastHaSocket.getState(event.calendarId);
+      const calendarName = calendar?.attributes?.friendly_name || event.calendarId?.replace("calendar.", "") || "Kalender";
+      const start = event.start?.dateTime || event.start?.date;
+      const date = new Date(start);
+      const allDay = !event.start?.dateTime;
+      const day = date.toLocaleDateString(locale, { weekday:"short", day:"numeric", month:"short" });
+      const time = allDay ? "Hele dagen" : date.toLocaleTimeString(locale, { hour:"2-digit", minute:"2-digit" });
+      const eventWeather = forecastForEvent(weather, event);
+      return `<article class="beast-calendar-event${index === 0 ? " is-next" : ""}">
+        <time><strong>${escapeHtml(day.replace(".",""))}</strong><span>${escapeHtml(time)}</span></time>
+        <i aria-hidden="true"></i>
+        <div><strong>${escapeHtml(event.summary || "Uden titel")}</strong><span>${escapeHtml(calendarName)}</span></div>
+        ${weatherBadge(eventWeather)}
+        ${index === 0 ? `<b>Næste</b>` : ""}
+      </article>`;
+    }).join("") || `<div class="beast-calendar-empty">${BeastCore.icon("calendar", { size:30 })}<strong>Kalenderen er fri</strong><span>Ingen kommende begivenheder de næste 14 dage.</span></div>`;
+    host.innerHTML = `<div class="beast-calendar-week">${dayStrip}</div><div class="beast-calendar-agenda">${agenda}</div>`;
   }
 
   function render() {
@@ -79,17 +170,19 @@
     containerEl.innerHTML = `
       <button type="button" class="beast-page-edit-trigger" id="beastCalendarLayoutEdit" aria-label="Rediger kalenderlayout">⋮</button>
       <section class="beast-waste-section" data-calendar-section="waste">
-        <p class="beast-panel-title">Affaldskalender</p>
-        <div class="beast-stat-grid">${buildWasteMarkup()}</div>
+        <header class="beast-calendar-section-head"><span>${BeastCore.icon("calendar", { size:22 })}</span><div><small>Husets afhentninger</small><h2>Affald</h2></div></header>
+        <div class="beast-calendar-waste-list" style="--calendar-item-rows:${Math.max(1, Math.min(cardRows("waste", 6), wasteSensorIds().length || 1))}">${buildWasteMarkup()}</div>
       </section>
       <section class="beast-waste-section" data-calendar-section="events">
-        <p class="beast-panel-title">Kommende begivenheder</p>
-        <div class="beast-stat-grid" id="beastCalendarEvents"><p class="beast-music-empty">Henter…</p></div>
+        <header class="beast-calendar-section-head"><span>${BeastCore.icon("calendar", { size:22 })}</span><div><small>De næste 14 dage</small><h2>Kommende aftaler</h2></div><time>${new Date().toLocaleDateString(window.HASmartdashI18n?.locale || "da-DK", { weekday:"long", day:"numeric", month:"long" })}</time></header>
+        <div class="beast-calendar-events" id="beastCalendarEvents"><p class="beast-music-empty">Henter…</p></div>
       </section>
     `;
     wireCalendarLayout();
 
-    loadCalendarEvents().then(renderCalendarEvents);
+    Promise.all([loadCalendarEvents(), loadCalendarWeather()])
+      .then(([events, weather]) => renderCalendarEvents(events, weather))
+      .catch(() => renderCalendarEvents([]));
   }
 
   function wireCalendarLayout() {
@@ -97,9 +190,9 @@
     const hidden = new Set(Array.isArray(layout.hidden) ? layout.hidden : []);
     containerEl.querySelectorAll("[data-calendar-section]").forEach((el) => el.classList.toggle("is-layout-hidden", hidden.has(el.dataset.calendarSection)));
     BeastNativePageEditor.mount({ section:"waste", label:"Kalender", root:()=>containerEl, host:()=>containerEl, trigger:"#beastCalendarLayoutEdit", cards:()=>[
-      { id:"waste", label:"Affald og afhentning", selector:'[data-calendar-section="waste"]', titleSelector:".beast-panel-title", enabled:!hidden.has("waste"), desktop:{x:1,y:1,w:5,h:12} },
-      { id:"events", label:"Kommende kalenderaftaler", selector:'[data-calendar-section="events"]', titleSelector:".beast-panel-title", enabled:!hidden.has("events"), desktop:{x:6,y:1,w:7,h:12} }
-    ] });
+      { id:"waste", label:"Affald og afhentning", selector:'[data-calendar-section="waste"]', titleSelector:"h2", enabled:!hidden.has("waste"), desktop:{x:1,y:1,w:4,h:12}, options:{rows:cardRows("waste",6)}, controls:[{key:"rows",label:"Antal viste rækker",min:1,max:30,default:6}] },
+      { id:"events", label:"Kommende kalenderaftaler", selector:'[data-calendar-section="events"]', titleSelector:"h2", enabled:!hidden.has("events"), desktop:{x:5,y:1,w:8,h:12}, options:{rows:cardRows("events",12)}, controls:[{key:"rows",label:"Antal viste rækker",min:1,max:30,default:12}] }
+    ], onSave:()=>render() });
   }
 
   function openCalendarLayout(layout) {
@@ -129,6 +222,11 @@
 
     BeastHaSocket.onStatusChange((status) => { if (status === "connected") render(); });
     wasteSensorIds().forEach((id) => BeastHaSocket.subscribeEntity(id, stableRender));
+    if (weatherEntityId()) BeastHaSocket.subscribeEntity(weatherEntityId(), stableRender);
+    BeastHaSocket.subscribeDomain("calendar", stableRender);
+    window.setInterval(() => {
+      if (containerEl?.closest(".beast-section")?.classList.contains("is-active")) render();
+    }, 5 * 60 * 1000);
   }
 
   BeastCore.registerPanel("waste", "beastWasteZone", init);

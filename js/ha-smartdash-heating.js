@@ -49,16 +49,16 @@
     const on = s && s.state !== "off";
 
     return `
-      <div class="beast-heating-room-card${heating ? " is-heating" : ""}">
+      <div class="beast-heating-room-card${heating ? " is-heating" : ""}${on ? " is-on" : " is-off"}">
         <div class="beast-heating-room-head">
           <span class="beast-heating-room-name">${escapeHtml(room.label)}</span>
           <span class="beast-room-badge${on ? " is-active" : ""}">${on ? (heating ? "Varmer" : "Tændt") : "Slukket"}</span>
         </div>
-        <span class="beast-heating-room-current">${current}°</span>
+        <div class="beast-heating-room-reading"><span class="beast-heating-room-current">${current}°</span><i aria-hidden="true">${BeastCore.icon(heating ? "bolt" : "thermometer", { size: 17 })}</i></div>
         <div class="beast-stepper">
-          <button type="button" class="beast-transport-btn" data-action="heat-down" data-entity="${room.id}">${BeastCore.icon("minus", { size: 16 })}</button>
+          <button type="button" class="beast-transport-btn" data-action="heat-down" data-entity="${room.id}" aria-label="Sænk temperaturen i ${escapeHtml(room.label)}">${BeastCore.icon("minus", { size: 16 })}</button>
           <span class="beast-stepper-value">${target !== null ? `${target}°` : "–"}</span>
-          <button type="button" class="beast-transport-btn" data-action="heat-up" data-entity="${room.id}">${BeastCore.icon("plus", { size: 16 })}</button>
+          <button type="button" class="beast-transport-btn" data-action="heat-up" data-entity="${room.id}" aria-label="Hæv temperaturen i ${escapeHtml(room.label)}">${BeastCore.icon("plus", { size: 16 })}</button>
         </div>
       </div>
     `;
@@ -87,18 +87,22 @@
     const preset = s?.attributes?.preset_mode || "auto";
     const modes = s?.attributes?.hvac_modes || ["off", "heat", "cool", "heat_cool"];
     const modeLabels = { off: "Fra", heat: "Varme", cool: "Køl", heat_cool: "Auto" };
+    const pumpName = String(pump.label || pump.id).replace(/^varmepumpe\s+/i, "").replace(/^qlima\s+/i, "");
+    const statusLabel = action === "heating" ? "Varmer" : action === "cooling" ? "Køler" : s?.state === "off" ? "Slukket" : "Klar";
+    const statusIcon = action === "heating" ? "bolt" : action === "cooling" ? "droplet" : "wind";
     return `
       <article class="beast-heatpump-card is-${escapeHtml(action)}">
         <div class="beast-heatpump-head">
-          <div><small>Varmepumpe</small><strong>${escapeHtml(pump.label)}</strong></div>
-          <span>${action === "heating" ? "Varmer" : action === "cooling" ? "Køler" : s?.state === "off" ? "Slukket" : "Klar"}</span>
+          <div><small>Varmepumpe</small><strong>${escapeHtml(pumpName)}</strong></div>
+          <span>${BeastCore.icon(statusIcon, { size: 15 })}${statusLabel}</span>
         </div>
+        <div class="beast-heatpump-visual" aria-hidden="true"><span>${BeastCore.icon("wind", { size: 28 })}</span><i></i><i></i><i></i></div>
         <div class="beast-heatpump-temperature">
           <span><small>Rum</small><strong>${current}°</strong></span>
           <div class="beast-stepper">
-            <button type="button" class="beast-transport-btn" data-action="pump-temp-down" data-entity="${pump.id}">${BeastCore.icon("minus", { size: 18 })}</button>
+            <button type="button" class="beast-transport-btn" data-action="pump-temp-down" data-entity="${pump.id}" aria-label="Sænk måltemperatur">${BeastCore.icon("minus", { size: 18 })}</button>
             <span class="beast-stepper-value"><small>Mål</small>${target !== null ? `${target.toFixed(1)}°` : "–"}</span>
-            <button type="button" class="beast-transport-btn" data-action="pump-temp-up" data-entity="${pump.id}">${BeastCore.icon("plus", { size: 18 })}</button>
+            <button type="button" class="beast-transport-btn" data-action="pump-temp-up" data-entity="${pump.id}" aria-label="Hæv måltemperatur">${BeastCore.icon("plus", { size: 18 })}</button>
           </div>
         </div>
         <div class="beast-heatpump-modes">
@@ -122,31 +126,40 @@
     const alarmOk = alarm && alarm.state === "OK";
     const automation = BeastHaSocket.getState(AUTOMATION_ID);
     const automationOn = automation && automation.state === "on";
+    const heatingRooms = ROOMS.filter((room) => BeastHaSocket.getState(room.id)?.attributes?.hvac_action === "heating").length;
+    const activePumps = HEAT_PUMPS.filter((pump) => ["heating", "cooling"].includes(BeastHaSocket.getState(pump.id)?.attributes?.hvac_action)).length;
+    const roomTemperatures = ROOMS.map((room) => Number(BeastHaSocket.getState(room.id)?.attributes?.current_temperature)).filter(Number.isFinite);
+    const averageTemperature = roomTemperatures.length ? (roomTemperatures.reduce((sum, value) => sum + value, 0) / roomTemperatures.length).toFixed(1) : "–";
+    const supplyFan = Number(BeastHaSocket.getState(DANTHERM.supplyFan)?.state);
+    const extractFan = Number(BeastHaSocket.getState(DANTHERM.extractFan)?.state);
+    const ventilationActive = (Number.isFinite(supplyFan) && supplyFan > 0) || (Number.isFinite(extractFan) && extractFan > 0);
+    const districtPower = Number(BeastHaSocket.getState(DISTRICT.power)?.state);
 
     containerEl.innerHTML = `
       <div class="beast-heating-main">
         <div class="beast-heating-hero">
           <div>
-            <span class="beast-panel-title">Komfortzoner</span>
-            <h2>Styr varmen rum for rum</h2>
-            <p>${ROOMS.filter((room) => BeastHaSocket.getState(room.id)?.attributes?.hvac_action === "heating").length} rum varmer lige nu</p>
+            <span class="beast-panel-title">Klima og komfort</span>
+            <h2>Husets varme</h2>
+            <p>${heatingRooms ? `${heatingRooms} rum varmer` : "Alle rum er i balance"} · gennemsnit ${averageTemperature}° · ${activePumps ? `${activePumps} varmepumpe aktiv` : "varmepumper i ro"}</p>
           </div>
           <button type="button" class="beast-heating-auto${automationOn ? " is-on" : ""}" id="beastHeatingAutoBtn">
             ${BeastCore.icon("bolt", { size: 20 })}<span><small>Automatisk styring</small><strong>${automationOn ? "Aktiv" : "Slået fra"}</strong></span>
           </button>
-          <button type="button" class="beast-heating-layout-btn" id="beastHeatingLayoutEdit" aria-label="Rediger varmelayout">⋮</button>
+          <button type="button" class="beast-page-edit-trigger beast-heating-layout-btn" id="beastHeatingLayoutEdit" aria-label="Rediger varmelayout">⋮</button>
         </div>
         <div class="beast-heating-room-grid">${ROOMS.map(buildRoomCard).join("")}</div>
-        <div class="beast-heating-pumps-head"><span>Varmepumper</span><small>Fuld direkte styring</small></div>
+        <div class="beast-heating-pumps-head"><span>Varmepumper</span><small>Temperatur · drift · blæser · retning</small></div>
         <div class="beast-heatpump-grid">${HEAT_PUMPS.map(buildHeatPumpCard).join("")}</div>
       </div>
       <aside class="beast-heating-sidebar">
-        <section class="beast-heating-side-card beast-dantherm-card">
+        <section class="beast-heating-side-card beast-dantherm-card${ventilationActive ? " is-running" : ""}">
           <div class="beast-heating-side-head"><span>Dantherm ventilation</span><small>${escapeHtml(BeastHaSocket.getState(DANTHERM.mode)?.state || "–")}</small></div>
           <div class="beast-dantherm-air">
             <div><small>Indblæsning</small><strong>${num(DANTHERM.supplyTemp)}°</strong><i style="--air:${num(DANTHERM.supplyFan, 0)}%"></i></div>
             <div><small>Udsugning</small><strong>${num(DANTHERM.extractTemp)}°</strong><i style="--air:${num(DANTHERM.extractFan, 0)}%"></i></div>
           </div>
+          <div class="beast-dantherm-visual" aria-hidden="true"><span>${BeastCore.icon("wind", { size: 34 })}</span><div><i></i><i></i><i></i></div><small>${ventilationActive ? "Luftskifte aktivt" : "Ventilation i ro"}</small></div>
           <div class="beast-dantherm-metrics">
             <span><small>CO₂</small><strong>${num(DANTHERM.co2, 0)} ppm</strong></span>
             <span><small>Genvinding</small><strong>${num(DANTHERM.recovery, 0)}%</strong></span>
@@ -154,7 +167,7 @@
             <span><small>Bypass</small><strong>${BeastHaSocket.getState(DANTHERM.bypass)?.state === "on" ? "Åben" : "Lukket"}</strong></span>
           </div>
         </section>
-        <section class="beast-heating-side-card beast-district-compact">
+        <section class="beast-heating-side-card beast-district-compact${Number.isFinite(districtPower) && districtPower > 0.05 ? " is-flowing" : ""}">
           <div class="beast-heating-side-head"><span>Fjernvarme</span><small class="${alarmOk ? "is-ok" : "is-warning"}">${escapeHtml(alarm?.state || "–")}</small></div>
           <div class="beast-district-flow">
             <span><small>Fremløb</small><strong>${num(DISTRICT.supply)}°</strong></span>

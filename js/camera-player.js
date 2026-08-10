@@ -1,4 +1,4 @@
-import { VideoRTC } from "/js/vendor/video-rtc.js?v=1";
+import { VideoRTC } from "/js/vendor/video-rtc.js?v=3";
 
 const params = new URLSearchParams(window.location.search);
 let GO2RTC_BASE_URL = params.get("base") || "";
@@ -15,6 +15,10 @@ let connected = false;
 let streamReady = false;
 let audioMuted = true;
 let heartbeatTimer = null;
+let reconnectTimer = null;
+let lastVideoTime = -1;
+let lastVideoProgressAt = 0;
+let reconnectAttempts = 0;
 
 document.body.classList.add(`position-${position}`);
 
@@ -26,6 +30,8 @@ function postHealth(state) {
 function markReady() {
   if (!connected) return;
   streamReady = true;
+  reconnectAttempts = 0;
+  lastVideoProgressAt = Date.now();
   document.body.classList.add("ready");
   if (window.parent !== window) {
     window.parent.postMessage({ type: "camera-player-ready", src: resolvedSrc }, window.location.origin);
@@ -95,6 +101,7 @@ function connect() {
 }
 
 function disconnect() {
+  if (!connected && !stream.ws && !stream.pc) return;
   connected = false;
   streamReady = false;
   document.body.classList.remove("ready");
@@ -102,14 +109,17 @@ function disconnect() {
     window.clearTimeout(stream.reconnectTID);
     stream.reconnectTID = 0;
   }
-  stream.ondisconnect();
+  try { stream.ondisconnect(); } catch (_) {}
   stream.wsURL = "";
   postHealth("paused");
 }
 
 function reconnect() {
+  if (reconnectTimer || document.hidden) return;
   disconnect();
-  window.setTimeout(connect, 120);
+  const delay = Math.min(2500, 180 + reconnectAttempts * 320);
+  reconnectAttempts += 1;
+  reconnectTimer = window.setTimeout(() => { reconnectTimer = null; connect(); }, delay);
 }
 
 function shouldStartImmediately() {
@@ -146,7 +156,16 @@ async function initPlayer() {
   if (!GO2RTC_BASE_URL || !resolvedSrc) { postHealth("unavailable"); return; }
   refreshPoster();
   heartbeatTimer = window.setInterval(() => {
-    if (connected && streamReady) postHealth("playing");
+    if (!connected || !streamReady) return;
+    const current = Number(stream.video?.currentTime);
+    if (Number.isFinite(current) && current > lastVideoTime + 0.02) {
+      lastVideoTime = current;
+      lastVideoProgressAt = Date.now();
+      postHealth("playing");
+    } else if (lastVideoProgressAt && Date.now() - lastVideoProgressAt > 12000) {
+      postHealth("stalled");
+      reconnect();
+    }
   }, 5000);
   if (shouldStartImmediately()) connect();
   else postHealth("paused");

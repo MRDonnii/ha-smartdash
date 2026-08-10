@@ -167,7 +167,7 @@
     };
   }
 
-  function buildGenericRobot(entityId, domain) {
+  function buildGenericRobot(entityId, domain, options = {}) {
     const entity = state(entityId);
     const features = robotFeatures(entityId);
     const name = entity?.attributes?.friendly_name || BeastEntityPicker.friendlyName(entityId);
@@ -192,7 +192,7 @@
         </div>
         ${actions(entityId, domain, startService)}
         ${features.selects.length ? `<div class="beast-robot-settings">${features.selects.map((id) => selectControl(id, BeastEntityPicker.friendlyName(id))).join("")}</div>` : ""}
-        ${features.buttons.length ? `<div class="beast-robot-quick-actions">${features.buttons.slice(0, 4).map((id) => `<button type="button" data-command="button|press|${escapeHtml(id)}">${escapeHtml(BeastEntityPicker.friendlyName(id))}</button>`).join("")}</div>` : ""}
+        ${features.buttons.length ? `<div class="beast-robot-quick-actions">${features.buttons.slice(0, Number(options.quickActions || 4)).map((id) => `<button type="button" data-command="button|press|${escapeHtml(id)}">${escapeHtml(BeastEntityPicker.friendlyName(id))}</button>`).join("")}</div>` : ""}
       </article>`;
   }
   function selectControl(entityId, label) {
@@ -317,7 +317,7 @@
     else if (card.entity === SPECIAL_ROBOTS.leonora) content = buildLeonora();
     else if (card.entity === SPECIAL_ROBOTS.gunner) content = buildGunner();
     else if (card.entity === SPECIAL_ROBOTS.poul) content = buildPoul();
-    else if (card.entity) content = buildGenericRobot(card.entity, card.entity.startsWith("lawn_mower.") ? "lawn_mower" : "vacuum");
+    else if (card.entity) content = buildGenericRobot(card.entity, card.entity.startsWith("lawn_mower.") ? "lawn_mower" : "vacuum", card);
     return `<section class="beast-panel beast-ov-card beast-page-builder-card beast-robot-builder-card" ${cardSize(card)} data-card-display="${escapeHtml(card.display || "full")}">${content}</section>`;
   }
 
@@ -441,7 +441,7 @@
       <div class="beast-modal-header"><div><small>Robotter</small><h3>Indhold i kortet</h3></div><button type="button" class="beast-modal-close" data-close>${BeastCore.icon("close", { size: 22 })}</button></div>
       <div class="beast-modal-body"><label>Robot<select data-robot>${robotOptions}</select></label><label>Visning<select data-display>
         <option value="full">Komplet styring</option><option value="compact">Kompakt status</option><option value="media">Kun billede eller kort</option><option value="controls">Kun status og styring</option>
-      </select></label><p>Størrelsen ændres direkte med håndtaget i kortets nederste højre hjørne.</p></div>
+      </select></label><label>Hurtige enhedsknapper<input type="number" min="0" max="10" data-quick-actions value="${Number(card.quickActions || 4)}"></label><p>Størrelsen ændres direkte med håndtaget i kortets nederste højre hjørne.</p></div>
       <div class="beast-modal-actions"><button type="button" data-close>Annullér</button><button type="button" class="beast-btn beast-btn-primary" data-save>Gem kort</button></div>
     </div>`;
     document.body.appendChild(overlay);
@@ -449,7 +449,7 @@
     overlay.addEventListener("click", (event) => {
       if (event.target === overlay || event.target.closest("[data-close]")) return overlay.remove();
       if (!event.target.closest("[data-save]")) return;
-      commit({ ...card, type: "robot", entity: overlay.querySelector("[data-robot]").value, display: overlay.querySelector("[data-display]").value });
+      commit({ ...card, type: "robot", entity: overlay.querySelector("[data-robot]").value, display: overlay.querySelector("[data-display]").value, quickActions:Number(overlay.querySelector("[data-quick-actions]").value)||0 });
       overlay.remove();
     });
   }

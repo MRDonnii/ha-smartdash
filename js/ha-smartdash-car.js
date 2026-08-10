@@ -92,7 +92,7 @@
     const chargerPower = num(IDS.chargerPower, 1);
     const finishState = stateOf(IDS.chargingFinishAt);
     const finishLabel = finishState && finishState.state && !Number.isNaN(Date.parse(finishState.state))
-      ? new Date(finishState.state).toLocaleTimeString("da-DK", { hour: "2-digit", minute: "2-digit" }) : null;
+      ? new Date(finishState.state).toLocaleTimeString(window.HASmartdashI18n?.locale || "da-DK", { hour: "2-digit", minute: "2-digit" }) : null;
 
     containerEl.innerHTML = `
       <button type="button" class="beast-page-edit-trigger" id="beastCarLayoutEdit" aria-label="Rediger billayout">⋮</button><div class="beast-car-top">
