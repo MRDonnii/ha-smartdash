@@ -1510,14 +1510,18 @@
   function renderSecurityView() {
     const hasPin = window.BeastScreenLock?.hasPin();
     const autoLockOn = window.BeastScreenLock?.isAutoLockEnabled();
+    const alarmScreenOffOn = window.BeastScreenLock?.isAlarmScreenOffEnabled();
+    const selectedLockAlarm = BeastConfig.get("screenLock.alarmEntity") || BeastConfig.get("panels.security.primaryAlarm");
+    const alarmUnlockMode = BeastConfig.get("screenLock.alarmUnlockMode") === "disarm" ? "disarm" : "pin";
     const showAdminButton = BeastConfig.get("showAdminButton") !== false;
     return `<section class="admin-view${activeView === "security-settings" ? " is-active" : ""}" data-admin-view="security-settings">
       <div class="admin-security-hero"><span>${BeastCore.icon("shield", { size: 30 })}</span><div><h2>Sikkerhed og adgang</h2><p>Administrér skærmlås, gendannelse og adgangen til adminpanelet samlet ét sted.</p></div></div>
       <div class="admin-card admin-settings-group"><div class="admin-card-head"><div><h2>Pinkode og skærmlås</h2><p>Pinkoden gemmes i serverkonfigurationen og gælder på alle skærme.</p></div></div><div class="beast-stat-grid">
         ${BeastCore.statTile({ icon:"lock", label:"Pinkode", value:hasPin ? "Aktiveret" : "Ikke oprettet", id:"adminPinTile", extra:`<div class="beast-stat-tile-actions"><button type="button" class="beast-security-action-btn" id="adminPinSet">${hasPin ? "Skift pinkode" : "Opret pinkode"}</button>${hasPin ? `<button type="button" class="beast-security-action-btn is-disarm" id="adminPinRemove">Fjern</button>` : ""}</div>` })}
         ${BeastCore.statTile({ icon:"shield", label:"Automatisk lås", value:autoLockOn ? "Til ved aktiveret alarm" : "Fra", id:"adminAutoLockTile", extra:`<div class="beast-stat-tile-actions"><button type="button" class="beast-security-action-btn${autoLockOn ? " is-disarm" : ""}" id="adminAutoLockBtn" ${hasPin ? "" : "disabled"}>${autoLockOn ? "Slå fra" : "Slå til"}</button></div>` })}
+        ${BeastCore.statTile({ icon:"moon", label:"Skærm ved alarm", value:alarmScreenOffOn ? "Sluk efter lås" : "Forbliv tændt", id:"adminAlarmScreenOffTile", extra:`<div class="beast-stat-tile-actions"><button type="button" class="beast-security-action-btn${alarmScreenOffOn ? " is-disarm" : ""}" id="adminAlarmScreenOffBtn" ${hasPin ? "" : "disabled"}>${alarmScreenOffOn ? "Behold skærmen tændt" : "Sluk skærmen"}</button></div>` })}
         ${BeastCore.statTile({ icon:"lock", label:"Lås denne skærm", value:hasPin ? "Klar" : "Kræver pinkode", id:"adminLockNowTile", extra:`<div class="beast-stat-tile-actions"><button type="button" class="beast-security-action-btn" id="adminLockNowBtn" ${hasPin ? "" : "disabled"}>Lås nu</button></div>` })}
-      </div>${hasPin ? `<div class="admin-security-recovery"><div><strong>Glemt pinkode?</strong><p>Bekræft din identitet med en ny Home Assistant-login og opret derefter en ny kode.</p></div><button type="button" class="beast-security-action-btn" id="adminPinRecover">Nulstil med HA-login</button></div>` : ""}</div>
+      </div><div class="admin-security-alarm-rule"><label class="admin-field"><span>Alarm der låser kiosken</span>${BeastEntityPicker.selectHtml({ id:"adminLockAlarmEntity", domain:"alarm_control_panel", selected:selectedLockAlarm })}<small>Listen viser udelukkende alarm-enheder fra Home Assistant.</small></label><label class="admin-field"><span>Når alarmen frakobles</span><select id="adminAlarmUnlockMode"><option value="pin"${alarmUnlockMode === "pin" ? " selected" : ""}>Behold låsen · kræv PIN ved første brug</option><option value="disarm"${alarmUnlockMode === "disarm" ? " selected" : ""}>Fjern låsen · følg normal presence-styring</option></select></label><div><strong>Ved fuld sikring</strong><small>Dashboardet låses ved fuld tilkobling. Hvis skærmslukning er aktiv, slukkes kioskskærmen bagefter.</small><button type="button" class="beast-security-action-btn" id="adminSaveAlarmLockRule">Gem alarmregel</button></div></div>${hasPin ? `<div class="admin-security-recovery"><div><strong>Glemt pinkode?</strong><p>Bekræft din identitet med en ny Home Assistant-login og opret derefter en ny kode.</p></div><button type="button" class="beast-security-action-btn" id="adminPinRecover">Nulstil med HA-login</button></div>` : ""}</div>
       <div class="admin-card admin-settings-group"><div class="admin-card-head"><div><h2>Adgang til administration</h2><p>Bestem om genvejen vises i dashboardet. Adminpanelet er altid tilgængeligt på <code>/admin/</code>.</p></div></div>
         <label class="admin-security-toggle"><span><strong>Vis Administration-knappen</strong><small>Skjul genvejen på kiosker, hvor almindelige brugere ikke skal se den.</small></span><input type="checkbox" id="adminShowAdminButton"${showAdminButton ? " checked" : ""}></label>
         <div class="admin-security-warning"${showAdminButton ? " hidden" : ""} id="adminHiddenAccessNote">Knappen er skjult. Åbn admin manuelt ved at skrive <strong>/admin/</strong> efter dashboardets adresse.</div>
@@ -1572,7 +1576,7 @@
             <button class="${activeView === "screensaver" ? "is-active" : ""}" type="button" data-view="screensaver">${t("Pauseskærm", "Screensaver")}</button>
             <button class="${activeView === "advarsler" ? "is-active" : ""}" type="button" data-view="advarsler">${t("Advarsler", "Alerts")}</button>
             <p class="admin-nav-section">Sikkerhed</p>
-            <button class="${activeView === "security-settings" ? "is-active" : ""}" type="button" data-view="security-settings">Adgang & pinkode</button>
+            <button class="${activeView === "security-settings" ? "is-active" : ""}" type="button" data-view="security-settings">Sikkerhed</button>
             <p class="admin-nav-section">Vedligeholdelse</p>
             <button class="${activeView === "backup" ? "is-active" : ""}" type="button" data-view="backup">Backup & gendannelse</button>
             <button class="${activeView === "updates" ? "is-active" : ""}" type="button" data-view="updates">Opdatering</button>
@@ -2015,6 +2019,22 @@
       window.BeastScreenLock.setAutoLockEnabled(!autoLockOn);
       renderShell();
     });
+    document.getElementById("adminAlarmScreenOffBtn")?.addEventListener("click", () => {
+      const enabled = window.BeastScreenLock?.isAlarmScreenOffEnabled();
+      window.BeastScreenLock.setAlarmScreenOffEnabled(!enabled);
+      renderShell();
+    });
+    document.getElementById("adminSaveAlarmLockRule")?.addEventListener("click", async (event) => {
+      const button = event.currentTarget;
+      button.disabled = true;
+      await BeastConfig.set("screenLock", {
+        ...(BeastConfig.get("screenLock") || {}),
+        alarmEntity: document.getElementById("adminLockAlarmEntity")?.value || null,
+        alarmUnlockMode: document.getElementById("adminAlarmUnlockMode")?.value === "disarm" ? "disarm" : "pin"
+      });
+      button.textContent = "Gemt · genindlæs dashboardet";
+      window.setTimeout(() => { button.disabled = false; button.textContent = "Gem alarmregel"; }, 1800);
+    });
     document.getElementById("adminLockNowBtn")?.addEventListener("click", () => { window.BeastScreenLock.lockNow(); });
     document.getElementById("adminScreensaverBgFile")?.addEventListener("change", (event) => {
       const file = event.currentTarget.files?.[0];
@@ -2215,6 +2235,10 @@
     if (!BeastAuth.getHaBaseUrl() && BeastConfig.get("haBaseUrl")) BeastAuth.setHaBaseUrl(BeastConfig.get("haBaseUrl"));
     if (pinRecoveryPending && !callback) { BeastAuth.startLogin({ forceLogin: true }); return; }
     if (!BeastAuth.hasSession()) { renderLogin(); return; }
+    if (window.BeastScreenLock?.hasPin() && !pinRecoveryPending) {
+      const verified = await new Promise((resolve) => window.BeastScreenLock.requestPinVerification(resolve));
+      if (!verified) { window.location.href = "/"; return; }
+    }
     const returnView = sessionStorage.getItem("beast_admin_return_view_v1");
     if (returnView) { activeView = returnView; sessionStorage.removeItem("beast_admin_return_view_v1"); }
     renderShell();

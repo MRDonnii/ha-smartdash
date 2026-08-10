@@ -96,6 +96,13 @@ function setKioskScreenPower(on) {
   });
 }
 
+document.addEventListener("beast:alarm-screen-off", () => {
+  hideAmbientMode();
+  window.clearTimeout(ambientModeTimerId);
+  window.clearTimeout(screenOffTimerId);
+  setKioskScreenPower(false);
+});
+
 function doorbellCameraStream() {
   const cameras = window.BeastCameras?.getAllCameras?.() || [];
   const configuredCameraId = BeastConfig.get("appEntities.doorbellCamera");

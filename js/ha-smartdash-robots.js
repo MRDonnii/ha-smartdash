@@ -68,18 +68,18 @@
   let gunnerMapLastFetchAt = 0;
   const GUNNER_MAP_REFRESH_MS = 5000;
 
-  function refreshGunnerMap(map) {
-    if (!map || !IDS.gunnerMap) return;
-    if (IDS.gunnerMap !== gunnerMapEntityId) {
+  function refreshGunnerMap(map, entityId = IDS.gunnerMap) {
+    if (!map || !entityId) return;
+    if (entityId !== gunnerMapEntityId) {
       if (gunnerMapObjectUrl) URL.revokeObjectURL(gunnerMapObjectUrl);
       gunnerMapObjectUrl = null;
-      gunnerMapEntityId = IDS.gunnerMap;
+      gunnerMapEntityId = entityId;
       gunnerMapLastFetchAt = 0;
     }
     const now = Date.now();
     if (gunnerMapObjectUrl && now - gunnerMapLastFetchAt < GUNNER_MAP_REFRESH_MS) return;
     gunnerMapLastFetchAt = now;
-    BeastAuth.haFetchBlob(`/api/image_proxy/${IDS.gunnerMap}`).then((blob) => {
+    BeastAuth.haFetchBlob(entityId.startsWith("camera.") ? (state(entityId)?.attributes?.entity_picture || `/api/camera_proxy/${entityId}`) : `/api/image_proxy/${entityId}`).then((blob) => {
       const objectUrl = URL.createObjectURL(blob);
       if (gunnerMapObjectUrl) URL.revokeObjectURL(gunnerMapObjectUrl);
       gunnerMapObjectUrl = objectUrl;
@@ -174,29 +174,36 @@
   function buildGenericRobot(entityId, domain, options = {}) {
     const entity = state(entityId);
     const features = robotFeatures(entityId);
-    const name = entity?.attributes?.friendly_name || BeastEntityPicker.friendlyName(entityId);
-    const model = BeastRegistry.getDevice(BeastRegistry.getEntityMeta(entityId)?.deviceId)?.model || (domain === "vacuum" ? "Robotstøvsuger" : "Robotplæneklipper");
+    const name = options.name || options.label || entity?.attributes?.friendly_name || BeastEntityPicker.friendlyName(entityId);
+    const model = options.model || BeastRegistry.getDevice(BeastRegistry.getEntityMeta(entityId)?.deviceId)?.model || (domain === "vacuum" ? "Robotstøvsuger" : "Robotplæneklipper");
+    const bindings = options.bindings || {};
+    const batteryEntity = bindings.battery || features.battery;
+    const binEntity = bindings.bin || features.bin;
+    const progressEntity = bindings.progress || features.progress;
+    const areaEntity = bindings.area || features.area;
+    const mediaEntity = bindings.media || features.map;
+    const visible = { battery:true, status:true, facts:true, controls:true, settings:true, quickActions:true, ...(options.visible || {}) };
     const startService = domain === "vacuum" ? "start" : "start_mowing";
     const extraFacts = [
-      features.bin ? `<span>${BeastCore.icon("grid", { size: 15 })} ${value(features.bin, "off") === "on" ? "Beholder kræver opmærksomhed" : "Beholder klar"}</span>` : "",
-      features.progress ? `<span>${BeastCore.icon("check", { size: 15 })} ${escapeHtml(value(features.progress))}%</span>` : "",
-      features.area ? `<span>${BeastCore.icon("home", { size: 15 })} ${escapeHtml(value(features.area))}</span>` : ""
+      binEntity ? `<span>${BeastCore.icon("grid", { size: 15 })} ${value(binEntity, "off") === "on" ? "Beholder kræver opmærksomhed" : "Beholder klar"}</span>` : "",
+      progressEntity ? `<span>${BeastCore.icon("check", { size: 15 })} ${escapeHtml(value(progressEntity))}%</span>` : "",
+      areaEntity ? `<span>${BeastCore.icon("home", { size: 15 })} ${escapeHtml(value(areaEntity))}</span>` : ""
     ].filter(Boolean).join("");
     return `
       <article class="beast-robot-card beast-robot-card--product">
         <div class="beast-robot-card-head">
           <div><small>${escapeHtml(model)}</small><strong class="beast-robot-name">${escapeHtml(name)}</strong></div>
-          ${statusPill(entityId)}
+          ${visible.status ? statusPill(entityId) : ""}
         </div>
-        <div class="beast-robot-media">${features.map ? `<img data-robot-image="${escapeHtml(features.map)}" alt="${escapeHtml(name)}">` : `<span class="beast-robot-generic-icon">${BeastCore.icon("robot", { size: 72 })}</span>`}</div>
-        <div class="beast-robot-facts">
-          ${battery(entityId, features.battery)}
+        <div class="beast-robot-media">${options.imageUrl ? `<img data-robot-url="${escapeHtml(options.imageUrl)}" alt="${escapeHtml(name)}">` : mediaEntity ? `<img data-robot-image="${escapeHtml(mediaEntity)}" alt="${escapeHtml(name)}">` : `<span class="beast-robot-generic-icon">${BeastCore.icon(options.icon || "robot", { size: 72 })}</span>`}</div>
+        ${visible.facts ? `<div class="beast-robot-facts">
+          ${visible.battery ? battery(entityId, batteryEntity) : ""}
           <span>${BeastCore.icon("home", { size: 15 })} ${escapeHtml(STATE_LABELS[entity?.state] || entity?.state || "Offline")}</span>
           ${extraFacts}
-        </div>
-        ${actions(entityId, domain, startService)}
-        ${features.selects.length ? `<div class="beast-robot-settings">${features.selects.map((id) => selectControl(id, BeastEntityPicker.friendlyName(id))).join("")}</div>` : ""}
-        ${features.buttons.length ? `<div class="beast-robot-quick-actions">${features.buttons.slice(0, Number(options.quickActions || 4)).map((id) => `<button type="button" data-command="button|press|${escapeHtml(id)}">${escapeHtml(BeastEntityPicker.friendlyName(id))}</button>`).join("")}</div>` : ""}
+        </div>` : ""}
+        ${visible.controls ? actions(entityId, domain, startService) : ""}
+        ${visible.settings && features.selects.length ? `<div class="beast-robot-settings">${features.selects.map((id) => selectControl(id, BeastEntityPicker.friendlyName(id))).join("")}</div>` : ""}
+        ${visible.quickActions && features.buttons.length ? `<div class="beast-robot-quick-actions">${features.buttons.slice(0, Number(options.quickActions ?? 4)).map((id) => `<button type="button" data-command="button|press|${escapeHtml(id)}">${escapeHtml(BeastEntityPicker.friendlyName(id))}</button>`).join("")}</div>` : ""}
       </article>`;
   }
   function selectControl(entityId, label) {
@@ -224,34 +231,46 @@
     `;
   }
 
-  function buildLeonora() {
+  function buildLeonora(card = {}) {
+    const robotId = card.entity || IDS.leonora;
+    const name = card.name || card.label || "Leonora";
+    const model = card.model || "iRobot Roomba 860";
+    const batteryId = card.bindings?.battery || IDS.leonoraBattery;
+    const binId = card.bindings?.bin || IDS.leonoraBin;
+    const visible = { battery:true, status:true, facts:true, controls:true, ...(card.visible || {}) };
     return `
       <article class="beast-robot-card beast-robot-card--product">
         <div class="beast-robot-card-head">
-          <div><small>iRobot Roomba 860</small><strong class="beast-robot-name">Leonora</strong></div>
-          ${statusPill(IDS.leonora)}
+          <div><small>${escapeHtml(model)}</small><strong class="beast-robot-name">${escapeHtml(name)}</strong></div>
+          ${visible.status ? statusPill(robotId) : ""}
         </div>
-        <div class="beast-robot-media">${IDS.leonoraImage ? `<img data-robot-image="${escapeHtml(IDS.leonoraImage)}" alt="Leonora · iRobot Roomba 860">` : `<picture><img class="beast-robot-theme-image is-dark" src="./assets/robots/leonora-roomba-860.png" alt="Leonora · iRobot Roomba 860"><img class="beast-robot-theme-image is-light" src="./assets/robots/leonora-roomba-860-light.png" alt=""></picture>`}</div>
-        <div class="beast-robot-facts">
-          ${battery(IDS.leonora, IDS.leonoraBattery)}
-          <span>${BeastCore.icon("grid", { size: 15 })} Beholder ${value(IDS.leonoraBin, "off") === "on" ? "fuld" : "klar"}</span>
-        </div>
-        ${actions(IDS.leonora, "vacuum", "start")}
+        <div class="beast-robot-media">${card.imageUrl ? `<img data-robot-url="${escapeHtml(card.imageUrl)}" alt="${escapeHtml(name)}">` : card.bindings?.media || IDS.leonoraImage ? `<img data-robot-image="${escapeHtml(card.bindings?.media || IDS.leonoraImage)}" alt="${escapeHtml(name)}">` : `<picture><img class="beast-robot-theme-image is-dark" src="./assets/robots/leonora-roomba-860.png" alt="${escapeHtml(name)}"><img class="beast-robot-theme-image is-light" src="./assets/robots/leonora-roomba-860-light.png" alt=""></picture>`}</div>
+        ${visible.facts ? `<div class="beast-robot-facts">
+          ${visible.battery ? battery(robotId, batteryId) : ""}
+          <span>${BeastCore.icon("grid", { size: 15 })} Beholder ${value(binId, "off") === "on" ? "fuld" : "klar"}</span>
+        </div>` : ""}
+        ${visible.controls ? actions(robotId, "vacuum", "start") : ""}
       </article>
     `;
   }
 
-  function buildGunner() {
+  function buildGunner(card = {}) {
+    const name = card.name || card.label || "Gunneren";
+    const model = card.model || "Roborock S7 MaxV";
+    const visible = { battery:true, status:true, facts:true, controls:true, settings:true, quickActions:true, ...(card.visible || {}) };
+    const mapEntity = card.bindings?.media || IDS.gunnerMap;
+    const areaEntity = card.bindings?.area || IDS.gunnerRoom;
+    const progressEntity = card.bindings?.progress || IDS.gunnerProgress;
     const selectedCount = GUNNER_ROOMS.filter((room) => state(room.id)?.state === "on").length;
     return `
       <article class="beast-robot-card beast-robot-card--map">
         <div class="beast-robot-card-head">
-          <div><small>Roborock S7 MaxV</small><strong class="beast-robot-name">Gunneren</strong></div>
-          ${statusPill(IDS.gunner)}
+          <div><small>${escapeHtml(model)}</small><strong class="beast-robot-name">${escapeHtml(name)}</strong></div>
+          ${visible.status ? statusPill(IDS.gunner) : ""}
         </div>
         <div class="beast-robot-map">
           <div class="beast-robot-map-canvas">
-            <img id="beastGunnerMap" alt="Gunnerens rengøringskort"${gunnerMapObjectUrl ? ` src="${gunnerMapObjectUrl}"` : ""}>
+            <img id="beastGunnerMap" data-gunner-map="${escapeHtml(mapEntity || "")}" alt="${escapeHtml(name)} rengøringskort"${gunnerMapObjectUrl ? ` src="${gunnerMapObjectUrl}"` : ""}>
             <div class="beast-robot-room-layer" aria-label="Vælg rum på kortet">
               ${GUNNER_ROOMS.map((room) => `
                 <button type="button" class="beast-map-room beast-map-room--${room.cls}${state(room.id)?.state === "on" ? " is-selected" : ""}" data-room="${room.id}" aria-label="${escapeHtml(room.label)}" title="${escapeHtml(room.label)}" aria-pressed="${state(room.id)?.state === "on"}">
@@ -261,17 +280,17 @@
               `).join("")}
             </div>
           </div>
-          <div class="beast-robot-map-stats">
-            ${battery(IDS.gunner, IDS.gunnerBattery)}
-            <span>${escapeHtml(value(IDS.gunnerRoom, "Intet rum"))}</span>
-            <span>${escapeHtml(value(IDS.gunnerProgress, "0"))}%</span>
-          </div>
+          ${visible.facts ? `<div class="beast-robot-map-stats">
+            ${visible.battery ? battery(IDS.gunner, card.bindings?.battery || IDS.gunnerBattery) : ""}
+            <span>${escapeHtml(value(areaEntity, "Intet rum"))}</span>
+            <span>${escapeHtml(value(progressEntity, "0"))}%</span>
+          </div>` : ""}
         </div>
-        <div class="beast-robot-quick-actions">
+        ${visible.quickActions ? `<div class="beast-robot-quick-actions">
           <button type="button" data-gunner-action="dock">${BeastCore.icon("home", { size: 17 })}<span>Send i dock</span></button>
           <button type="button" data-gunner-action="empty">${BeastCore.icon("grid", { size: 17 })}<span>Tøm beholder</span></button>
-        </div>
-        <div class="beast-robot-selection">
+        </div>` : ""}
+        ${visible.controls ? `<div class="beast-robot-selection">
           <span>${roomLayoutEditing ? `<strong>Flyt</strong> knapperne med fingeren` : `<strong>${wholeHouseSelected ? "Alle" : selectedCount}</strong> ${wholeHouseSelected ? "rum · hele huset" : selectedCount === 1 ? "rum valgt" : "rum valgt"}`}</span>
           <div>
             ${roomLayoutEditing ? `
@@ -284,30 +303,34 @@
               <button type="button" class="is-start" data-room-action="start"${selectedCount || wholeHouseSelected ? "" : " disabled"}>${BeastCore.icon("check", { size: 18 })} Start rengøring</button>
             `}
           </div>
-        </div>
-        <div class="beast-robot-settings">
+        </div>` : ""}
+        ${visible.settings ? `<div class="beast-robot-settings">
           ${suctionControl()}
           ${selectControl(IDS.gunnerMop, "Vand")}
           ${selectControl(IDS.gunnerMopMode, "Moppetype")}
-        </div>
+        </div>` : ""}
       </article>
     `;
   }
 
-  function buildPoul() {
+  function buildPoul(card = {}) {
+    const robotId = card.entity || IDS.poul;
+    const name = card.name || card.label || "Poul";
+    const model = card.model || "WORX Landroid M500 Plus";
+    const visible = { battery:true, status:true, facts:true, controls:true, ...(card.visible || {}) };
     return `
       <article class="beast-robot-card beast-robot-card--product">
         <div class="beast-robot-card-head">
-          <div><small>WORX Landroid M500 Plus</small><strong class="beast-robot-name">Poul</strong></div>
-          ${statusPill(IDS.poul)}
+          <div><small>${escapeHtml(model)}</small><strong class="beast-robot-name">${escapeHtml(name)}</strong></div>
+          ${visible.status ? statusPill(robotId) : ""}
         </div>
-        <div class="beast-robot-media">${IDS.poulImage ? `<img data-robot-image="${escapeHtml(IDS.poulImage)}" alt="Poul · WORX Landroid M500 Plus">` : `<picture><img class="beast-robot-theme-image is-dark" src="./assets/robots/poul-landroid-m500-plus.png" alt="Poul · WORX Landroid M500 Plus"><img class="beast-robot-theme-image is-light" src="./assets/robots/poul-landroid-m500-plus-light.png" alt=""></picture>`}</div>
-        <div class="beast-robot-facts">
-          ${battery(IDS.poul, IDS.poulBattery)}
+        <div class="beast-robot-media">${card.imageUrl ? `<img data-robot-url="${escapeHtml(card.imageUrl)}" alt="${escapeHtml(name)}">` : card.bindings?.media || IDS.poulImage ? `<img data-robot-image="${escapeHtml(card.bindings?.media || IDS.poulImage)}" alt="${escapeHtml(name)}">` : `<picture><img class="beast-robot-theme-image is-dark" src="./assets/robots/poul-landroid-m500-plus.png" alt="${escapeHtml(name)}"><img class="beast-robot-theme-image is-light" src="./assets/robots/poul-landroid-m500-plus-light.png" alt=""></picture>`}</div>
+        ${visible.facts ? `<div class="beast-robot-facts">
+          ${visible.battery ? battery(robotId, card.bindings?.battery || IDS.poulBattery) : ""}
           <span>${BeastCore.icon("robot", { size: 15 })} ${value(IDS.poulOnline, "off") === "on" ? "Forbundet" : "Offline"}</span>
           <span>${value(IDS.poulCharging, "off") === "on" ? "Oplader" : "Klar"}</span>
-        </div>
-        ${actions(IDS.poul, "lawn_mower", "start_mowing")}
+        </div>` : ""}
+        ${visible.controls ? actions(robotId, "lawn_mower", "start_mowing") : ""}
       </article>
     `;
   }
@@ -315,9 +338,9 @@
   function robotCardMarkup(card) {
     if (BeastStandardCards.isStandardType(card.type)) return BeastStandardCards.renderMarkup(card);
     let content = "";
-    if (card.type === "leonora") content = buildLeonora();
-    else if (card.type === "gunner") content = buildGunner();
-    else if (card.type === "poul") content = buildPoul();
+    if (card.type === "leonora") content = buildLeonora(card);
+    else if (card.type === "gunner") content = buildGunner(card);
+    else if (card.type === "poul") content = buildPoul(card);
     else if (card.entity) content = buildGenericRobot(card.entity, card.entity.startsWith("lawn_mower.") ? "lawn_mower" : "vacuum", card);
     return `<section class="beast-panel beast-ov-card beast-page-builder-card beast-robot-builder-card" ${cardSize(card)} data-card-display="${escapeHtml(card.display || "full")}">${content}</section>`;
   }
@@ -340,10 +363,13 @@
     roomLayer?.classList.toggle("is-editing", roomLayoutEditing);
     if (roomLayer) applyRoomPositions(roomLayer);
     const map = document.getElementById("beastGunnerMap");
-    if (map) refreshGunnerMap(map);
+    if (map) refreshGunnerMap(map, map.dataset.gunnerMap || IDS.gunnerMap);
     containerEl.querySelectorAll("[data-robot-image]").forEach((image) => {
-      BeastAuth.setAuthedImageSrc(image, `/api/image_proxy/${image.dataset.robotImage}`);
+      const entityId = image.dataset.robotImage;
+      const path = entityId.startsWith("camera.") ? (state(entityId)?.attributes?.entity_picture || `/api/camera_proxy/${entityId}`) : `/api/image_proxy/${entityId}`;
+      BeastAuth.setAuthedImageSrc(image, path);
     });
+    containerEl.querySelectorAll("[data-robot-url]").forEach((image) => { image.src = image.dataset.robotUrl; });
 
     containerEl.querySelectorAll("[data-command]").forEach((button) => {
       button.addEventListener("click", () => {
@@ -438,19 +464,31 @@
     overlay.className = "beast-modal-overlay";
     const selectedRobot = card.entity || (card.type === "leonora" ? IDS.leonora : card.type === "gunner" ? IDS.gunner : card.type === "poul" ? IDS.poul : "");
     const robotOptions = robotEntities().map((entity) => `<option value="${escapeHtml(entity.id)}"${entity.id === selectedRobot ? " selected" : ""}>${escapeHtml(entity.name)}</option>`).join("");
-    overlay.innerHTML = `<div class="beast-modal beast-page-card-settings" role="dialog" aria-modal="true">
-      <div class="beast-modal-header"><div><small>Robotter</small><h3>Indhold i kortet</h3></div><button type="button" class="beast-modal-close" data-close>${BeastCore.icon("close", { size: 22 })}</button></div>
-      <div class="beast-modal-body"><label>Robot<select data-robot>${robotOptions}</select></label><label>Visning<select data-display>
-        <option value="full">Komplet styring</option><option value="compact">Kompakt status</option><option value="media">Kun billede eller kort</option><option value="controls">Kun status og styring</option>
-      </select></label><label>Hurtige enhedsknapper<input type="number" min="0" max="10" data-quick-actions value="${Number(card.quickActions || 4)}"></label><p>Størrelsen ændres direkte med håndtaget i kortets nederste højre hjørne.</p></div>
+    const allEntities = BeastCardEditor.allEntities();
+    const entityOptions = allEntities.map((entity) => `<option value="${escapeHtml(entity.id)}">${escapeHtml(entity.name)}</option>`).join("");
+    const binding = (key) => escapeHtml(card.bindings?.[key] || "");
+    const visible = { battery:true, status:true, facts:true, controls:true, settings:true, quickActions:true, ...(card.visible || {}) };
+    const check = (key, label) => `<label class="beast-page-editor-check"><input type="checkbox" data-visible="${key}"${visible[key] ? " checked" : ""}> ${label}</label>`;
+    overlay.innerHTML = `<div class="beast-modal beast-page-card-settings beast-robot-card-settings" role="dialog" aria-modal="true">
+      <div class="beast-modal-header"><div><small>Robotkort</small><h3>Indhold og styring</h3><p>Tilpas navn, datakilder og præcis hvad kortet viser.</p></div><button type="button" class="beast-modal-close" data-close>${BeastCore.icon("close", { size: 22 })}</button></div>
+      <div class="beast-modal-body"><div class="beast-robot-editor-grid">
+        <section><h4>Robot og udseende</h4><label>Robot<select data-robot>${robotOptions}</select></label><label>Skabelon<select data-template><option value="robot">Automatisk / generisk</option><option value="leonora">Leonora · Roomba</option><option value="gunner">Gunneren · kortstyring</option><option value="poul">Poul · plæneklipper</option></select></label><label>Navn<input type="text" data-name value="${escapeHtml(card.name || card.label || "")}" placeholder="Brug navn fra Home Assistant"></label><label>Model / undertitel<input type="text" data-model value="${escapeHtml(card.model || "")}" placeholder="Brug model fra Home Assistant"></label><label>Billed- eller kort-entity<input type="search" list="beastRobotMediaEntities" data-binding="media" value="${binding("media")}" placeholder="image.* eller camera.*"></label><label>Alternativ billed-URL<input type="url" data-image-url value="${escapeHtml(card.imageUrl || "")}" placeholder="https://…"></label></section>
+        <section><h4>Sensorer</h4><label>Batteri<input type="search" list="beastRobotAllEntities" data-binding="battery" value="${binding("battery")}" placeholder="Findes automatisk"></label><label>Beholder / advarsel<input type="search" list="beastRobotAllEntities" data-binding="bin" value="${binding("bin")}" placeholder="Findes automatisk"></label><label>Fremdrift<input type="search" list="beastRobotAllEntities" data-binding="progress" value="${binding("progress")}" placeholder="Findes automatisk"></label><label>Aktuelt rum / område<input type="search" list="beastRobotAllEntities" data-binding="area" value="${binding("area")}" placeholder="Findes automatisk"></label><label>Hurtige enhedsknapper<input type="number" min="0" max="10" data-quick-actions value="${Number(card.quickActions ?? 4)}"></label></section>
+        <section><h4>Visning og betjening</h4><label>Visning<select data-display><option value="full">Komplet styring</option><option value="compact">Kompakt status</option><option value="media">Kun billede eller kort</option><option value="controls">Kun status og styring</option></select></label><div class="beast-robot-editor-checks">${check("status","Statusmærke")}${check("battery","Batteri")}${check("facts","Nøgletal")}${check("controls","Start, pause og hjem")}${check("settings","Robotindstillinger")}${check("quickActions","Hurtigknapper")}</div><p>Placering og størrelse ændres direkte på kortet. Tomme sensorfelter findes automatisk fra robotten.</p></section>
+      </div><datalist id="beastRobotAllEntities">${entityOptions}</datalist><datalist id="beastRobotMediaEntities">${allEntities.filter((entity) => /^(image|camera)\./.test(entity.id)).map((entity) => `<option value="${escapeHtml(entity.id)}">${escapeHtml(entity.name)}</option>`).join("")}</datalist></div>
       <div class="beast-modal-actions"><button type="button" data-close>Annullér</button><button type="button" class="beast-btn beast-btn-primary" data-save>Gem kort</button></div>
     </div>`;
     document.body.appendChild(overlay);
     overlay.querySelector("[data-display]").value = card.display || "full";
+    overlay.querySelector("[data-template]").value = ["leonora","gunner","poul"].includes(card.type) ? card.type : "robot";
     overlay.addEventListener("click", (event) => {
       if (event.target === overlay || event.target.closest("[data-close]")) return overlay.remove();
       if (!event.target.closest("[data-save]")) return;
-      commit({ ...card, type: "robot", entity: overlay.querySelector("[data-robot]").value, display: overlay.querySelector("[data-display]").value, quickActions:Number(overlay.querySelector("[data-quick-actions]").value)||0 });
+      const bindings = {};
+      overlay.querySelectorAll("[data-binding]").forEach((input) => { if (input.value.trim()) bindings[input.dataset.binding] = input.value.trim(); });
+      const nextVisible = {};
+      overlay.querySelectorAll("[data-visible]").forEach((input) => { nextVisible[input.dataset.visible] = input.checked; });
+      commit({ ...card, type: overlay.querySelector("[data-template]").value, entity: overlay.querySelector("[data-robot]").value, name: overlay.querySelector("[data-name]").value.trim(), label: overlay.querySelector("[data-name]").value.trim(), model: overlay.querySelector("[data-model]").value.trim(), imageUrl: overlay.querySelector("[data-image-url]").value.trim(), bindings, visible:nextVisible, display: overlay.querySelector("[data-display]").value, quickActions:Number(overlay.querySelector("[data-quick-actions]").value)||0 });
       overlay.remove();
     });
   }
