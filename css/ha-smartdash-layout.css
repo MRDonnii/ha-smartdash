@@ -552,6 +552,27 @@ a.beast-rail-btn:visited {
   gap: var(--space-5);
 }
 
+.beast-modal-actions {
+  flex: 0 0 auto;
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--space-3);
+  padding: var(--space-4) var(--space-5);
+  border-top: 1px solid var(--border);
+  background: var(--surface-2-solid, #161923);
+}
+
+.beast-modal-actions button {
+  min-width: 132px;
+  min-height: var(--touch-min);
+  padding: 0 var(--space-5);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm);
+  background: var(--surface-solid);
+  color: var(--ink);
+  font: 800 var(--text-sm) var(--font-sans);
+}
+
 .beast-modal-section-title {
   margin: 0 0 var(--space-3);
   font-size: var(--text-xs);

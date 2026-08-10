@@ -1652,6 +1652,17 @@
 .beast-page-card-settings .beast-modal-body label { display: grid; gap: 8px; color: var(--ink-muted); font-weight: 700; }
 .beast-page-card-settings select { min-height: 52px; padding: 0 12px; border: 1px solid var(--border-strong); border-radius: var(--radius-sm); background: var(--surface-2); color: var(--ink); font: 700 var(--text-sm) var(--font-sans); }
 .beast-page-card-settings p { color: var(--ink-muted); }
+.beast-robot-card-settings { width:min(1180px, calc(100vw - 32px)); max-width:1180px; }
+.beast-robot-card-settings .beast-modal-body { overflow:auto; }
+.beast-robot-editor-grid { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:18px; align-items:start; }
+.beast-robot-editor-grid > section { min-width:0; display:grid; gap:12px; padding:18px; border:1px solid var(--border); border-radius:var(--radius-md); background:var(--surface-2); }
+.beast-robot-editor-grid h4 { margin:0 0 2px; color:var(--ink); font-size:var(--text-md); }
+.beast-robot-card-settings input:is([type="text"],[type="url"],[type="search"],[type="number"]) { width:100%; min-width:0; min-height:52px; padding:0 12px; border:1px solid var(--border-strong); border-radius:var(--radius-sm); background:var(--surface-1); color:var(--ink); font:700 var(--text-sm) var(--font-sans); }
+.beast-robot-editor-checks { display:grid; grid-template-columns:1fr 1fr; gap:9px; }
+.beast-robot-editor-checks .beast-page-editor-check { min-height:48px; padding:8px 10px; border:1px solid var(--border); border-radius:var(--radius-sm); background:var(--surface-1); display:flex; align-items:center; gap:9px; }
+.beast-robot-editor-checks input { width:22px; height:22px; accent-color:var(--accent-b); }
+@media (max-width:1100px) { .beast-robot-editor-grid { grid-template-columns:1fr 1fr; } .beast-robot-editor-grid > section:last-child { grid-column:1/-1; } }
+@media (max-width:720px) { .beast-robot-editor-grid { grid-template-columns:1fr; } .beast-robot-editor-grid > section:last-child { grid-column:auto; } }
 
 .beast-robot-card {
   background: var(--surface-2);

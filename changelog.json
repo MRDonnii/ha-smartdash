@@ -1,5 +1,21 @@
 [
   {
+    "version": "20260810-105",
+    "tag": "v0.7.27",
+    "date": "2026-08-10",
+    "changes": [
+      "Robot cards are now fully editable, including the displayed name, model, robot entity, generic or specialized template, image or map source, battery, bin, progress and area bindings.",
+      "Each robot card can independently show or hide its status, battery, facts, transport controls, device settings and quick actions, while existing specialized robot layouts remain available as explicit templates.",
+      "Robot media supports Home Assistant image and camera entities as well as external image URLs, with responsive touch-friendly editing on kiosk, tablet and desktop layouts.",
+      "Admin now contains a dedicated Security section for the shared server-side PIN, Admin access, manual kiosk locking and alarm-driven screen behavior.",
+      "A selected Home Assistant alarm_control_panel entity can lock the dashboard when it becomes fully armed and can optionally switch off the configured kiosk display after the lock screen has rendered.",
+      "When the selected alarm is disarmed, users can choose to keep the lock until the next PIN entry or remove only the alarm-created lock and return to normal presence-based screen behavior without forcing the display on.",
+      "Direct access to the Admin panel now uses the same shared PIN as the kiosk lock, while Home Assistant re-authentication remains available for trusted PIN recovery.",
+      "The English README has been comprehensively updated to document the dashboard vision, editable views, camera fallback chain, device controls, update safety, kiosk behavior and current feature set. Release notes are English from this version onward.",
+      "The repository screenshot gallery has been rebuilt from a production-faithful synthetic showcase with the current navigation, overview proportions, room cards, energy charts, three-device robot layout and Security administration view; no private installation data is included."
+    ]
+  },
+  {
     "version": "20260810-104",
     "tag": "v0.7.26",
     "date": "2026-08-10",
