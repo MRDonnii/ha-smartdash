@@ -808,11 +808,18 @@
 .beast-ov-camera-option.is-selected > i { display: flex; }
 
 .beast-ov-camera-picker-done {
-  align-self: flex-end;
   min-width: 140px;
   min-height: 48px;
   background: var(--accent-gradient);
   border-color: transparent;
+}
+.beast-ov-camera-picker-actions { min-width:0; display:flex; align-items:center; justify-content:flex-end; gap:12px; }
+.beast-ov-camera-picker-save-state { min-width:0; flex:1; color:var(--danger); font-size:var(--text-xs); font-weight:750; text-align:right; }
+.beast-ov-camera-picker-done.is-busy { opacity:.7; cursor:wait; }
+@media (max-width:620px) {
+  .beast-ov-camera-picker-actions { align-items:stretch; flex-direction:column; }
+  .beast-ov-camera-picker-save-state { text-align:left; }
+  .beast-ov-camera-picker-done { width:100%; }
 }
 
 .beast-ov-camera-thumb {

@@ -1,5 +1,17 @@
 [
   {
+    "version": "20260810-107",
+    "tag": "v0.7.29",
+    "date": "2026-08-10",
+    "changes": [
+      "The Overview camera strip now respects the user's centrally saved camera selection exactly instead of forcing the configured doorbell camera into the strip and pushing the final selected camera out.",
+      "Doorbell events still open the configured front-door camera in the dedicated full-screen view; the event behavior is now independent of the normal Overview camera selection.",
+      "The camera picker now has an explicit Save camera selection action that waits for server confirmation before closing and reports a connection error when persistence fails.",
+      "Closing the camera picker with the close button or backdrop now cancels unsaved changes instead of silently saving them.",
+      "The camera-picker save controls remain touch-friendly and stack cleanly on compact browser and tablet widths."
+    ]
+  },
+  {
     "version": "20260810-106",
     "tag": "v0.7.28",
     "date": "2026-08-10",

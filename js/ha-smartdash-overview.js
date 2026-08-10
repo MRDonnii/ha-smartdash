@@ -1162,6 +1162,7 @@
     }
     const cameraBySlug = new Map(allCameras.map((camera) => [camera.slug, camera]));
     const centralSelection = BeastConfig.get("overviewCameraEntities");
+    const hasCentralSelection = Array.isArray(centralSelection) && centralSelection.length > 0;
     let selectedSlugs = (Array.isArray(centralSelection) ? centralSelection : [])
       .map((id) => window.BeastCameras.resolveGroup(id)?.slug || window.BeastCameras.resolveCamera(id)?.slug || id)
       .filter((slug) => cameraBySlug.has(slug)).slice(0, OVERVIEW_CAMERA_LIMIT);
@@ -1173,10 +1174,19 @@
         if (Array.isArray(legacy)) selectedSlugs = legacy.filter((slug) => cameraBySlug.has(slug)).slice(0, OVERVIEW_CAMERA_LIMIT);
       } catch (_) { selectedSlugs = []; }
     }
-    if (doorbellCamera && !selectedSlugs.includes(doorbellCamera.slug)) {
-      selectedSlugs = [doorbellCamera.slug, ...selectedSlugs].slice(0, OVERVIEW_CAMERA_LIMIT);
+    // An explicit overview choice must win exactly as saved. The doorbell
+    // camera still opens full-screen for a ring event, but forcing it into
+    // this strip used to push the user's final selected camera out.
+    if (!selectedSlugs.length) {
+      const fallback = doorbellCamera
+        ? [doorbellCamera, ...allCameras.filter((camera) => camera.slug !== doorbellCamera.slug)]
+        : allCameras;
+      selectedSlugs = fallback.slice(0, OVERVIEW_CAMERA_LIMIT).map((camera) => camera.slug);
+    } else if (!hasCentralSelection) {
+      // Keep a legacy browser selection intact during its one-time migration;
+      // it becomes an explicit central selection the first time it is saved.
+      selectedSlugs = selectedSlugs.slice(0, OVERVIEW_CAMERA_LIMIT);
     }
-    if (!selectedSlugs.length) selectedSlugs = allCameras.slice(0, OVERVIEW_CAMERA_LIMIT).map((camera) => camera.slug);
     let cameras = selectedSlugs.map((slug) => cameraBySlug.get(slug)).filter(Boolean);
     if (autoFocusEnabled() && motionFocusSlug && cameraBySlug.has(motionFocusSlug)) {
       cameras = [cameraBySlug.get(motionFocusSlug), ...cameras.filter((camera) => camera.slug !== motionFocusSlug)].slice(0, OVERVIEW_CAMERA_LIMIT);
@@ -1228,16 +1238,21 @@
               </button>
             `).join("")}
           </div>
-          <button type="button" class="beast-btn beast-ov-camera-picker-done" data-close>Færdig</button>
+          <div class="beast-ov-camera-picker-actions">
+            <span class="beast-ov-camera-picker-save-state" role="status" aria-live="polite"></span>
+            <button type="button" class="beast-btn beast-ov-camera-picker-done" data-save-camera-selection>Gem kameravalg</button>
+          </div>
         </div>
       </div>
     `;
 
-    function saveAndRender() {
+    async function saveAndRender() {
       const entities = selected.map((slug) => cameras.find((camera) => camera.slug === slug)?.entityId).filter(Boolean);
-      BeastConfig.set("overviewCameraEntities", entities);
+      const result = await BeastConfig.set("overviewCameraEntities", entities);
+      if (result?.success === false) return false;
       localStorage.removeItem(OVERVIEW_CAMERA_KEY);
       renderCameras();
+      return true;
     }
 
     function renderSelectedOrder() {
@@ -1275,17 +1290,26 @@
         syncSelection();
       });
     });
-    overlay.querySelectorAll("[data-close]").forEach((button) => {
-      button.addEventListener("click", () => {
-        saveAndRender();
+    overlay.querySelectorAll("[data-close]").forEach((button) => button.addEventListener("click", () => overlay.remove()));
+    overlay.querySelector("[data-save-camera-selection]")?.addEventListener("click", async (event) => {
+      const button = event.currentTarget;
+      const status = overlay.querySelector(".beast-ov-camera-picker-save-state");
+      button.disabled = true;
+      button.classList.add("is-busy");
+      button.textContent = "Gemmer…";
+      if (status) status.textContent = "";
+      const saved = await saveAndRender();
+      if (saved) {
         overlay.remove();
-      });
+        return;
+      }
+      button.disabled = false;
+      button.classList.remove("is-busy");
+      button.textContent = "Prøv igen";
+      if (status) status.textContent = "Kunne ikke gemme kameravalget. Kontroller forbindelsen til serveren.";
     });
     overlay.addEventListener("click", (event) => {
-      if (event.target === overlay) {
-        saveAndRender();
-        overlay.remove();
-      }
+      if (event.target === overlay) overlay.remove();
     });
     renderSelectedOrder();
     document.body.appendChild(overlay);
