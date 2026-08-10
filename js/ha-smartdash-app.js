@@ -209,11 +209,14 @@ function showDoorbellView() {
   const useStream = camera && window.BeastCameras?.hasGo2rtc?.() && (camera.resolvedStreamName || camera.streamName);
   const cameraMarkup = useStream
     ? `<iframe src="./camera-player.html?v=14&src=${encodeURIComponent(camera.resolvedStreamName || camera.streamName)}" title="Fordør livekamera" frameborder="0" allow="autoplay"></iframe>`
-    : `<img class="beast-doorbell-ha-camera" data-doorbell-picture="${camera?.entityPicture || ""}" alt="Fordør kamera">`;
+    : camera?.haStreamUrl
+      ? `<img class="beast-doorbell-ha-camera" src="${camera.haStreamUrl}" data-doorbell-picture="${camera.entityPicture || ""}" alt="Fordør livekamera">`
+      : `<img class="beast-doorbell-ha-camera" data-doorbell-picture="${camera?.entityPicture || ""}" alt="Fordør kamera">`;
   overlay.innerHTML = `${cameraMarkup}<div class="beast-doorbell-head"><span>${BeastCore.icon("bell", { size: 25 })}</span><div><strong>Det ringer på</strong><small>Fordør · kamera</small></div></div><button type="button" class="beast-doorbell-close" aria-label="Luk dørkamera">${BeastCore.icon("close", { size: 24 })}<span>Luk</span></button><div class="beast-doorbell-live"><i></i> Live</div>`;
   document.body.appendChild(overlay);
   const fallbackImage = overlay.querySelector("[data-doorbell-picture]");
-  if (fallbackImage?.dataset.doorbellPicture) BeastAuth.setAuthedImageSrc(fallbackImage, fallbackImage.dataset.doorbellPicture);
+  if (fallbackImage?.dataset.doorbellPicture && !fallbackImage.getAttribute("src")) BeastAuth.setAuthedImageSrc(fallbackImage, fallbackImage.dataset.doorbellPicture);
+  fallbackImage?.addEventListener("error", () => BeastAuth.setAuthedImageSrc(fallbackImage, fallbackImage.dataset.doorbellPicture), { once:true });
   document.body.classList.add("beast-doorbell-active");
   overlay.querySelector(".beast-doorbell-close")?.addEventListener("click", (event) => { event.stopPropagation(); closeDoorbellView(); });
   doorbellTimerId = window.setTimeout(closeDoorbellView, DOORBELL_VIEW_MS);
@@ -323,6 +326,9 @@ function ambientCameraMarkup(config) {
     if (window.BeastCameras?.hasGo2rtc?.() && camera.streamName) {
       const src = `./camera-player.html?v=12&transport=mse&src=${encodeURIComponent(camera.resolvedStreamName || camera.streamName)}`;
       return `<div class="beast-ambient-camera-tile"><iframe class="beast-ambient-camera-tile-frame" src="${src}" allow="autoplay"></iframe></div>`;
+    }
+    if (camera.haStreamUrl) {
+      return `<div class="beast-ambient-camera-tile"><img class="beast-ambient-camera-tile-frame" src="${camera.haStreamUrl}" data-ambient-camera-picture="${camera.entityPicture || ""}" alt=""></div>`;
     }
     if (camera.entityPicture) {
       return `<div class="beast-ambient-camera-tile"><img class="beast-ambient-camera-tile-frame" data-ambient-camera-picture="${camera.entityPicture}" alt=""></div>`;

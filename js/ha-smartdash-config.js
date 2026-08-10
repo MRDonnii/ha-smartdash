@@ -57,7 +57,7 @@ const BeastConfig = (() => {
     },
     waste: { sensors: [], calendars: [], showCalendarCard: true, showWasteCard: true },
     heating: {
-      rooms: [], heatPumps: [], heatPumpUnits: {}, automation: null, districtSensors: [], ventilationSensors: []
+      rooms: [], heatPumps: [], heatPumpUnits: {}, automation: null, districtSensors: [], ventilationSensors: [], districtPlacement: "sidebar"
     },
     music: { configEntryId: null, stereoGroups: {} }
   };
@@ -94,6 +94,9 @@ const BeastConfig = (() => {
       wideBottom: { type: "energy", entity: null, label: "" }
     },
     overviewCards: [],
+    // Centrally stored, ordered camera entities for the overview. An empty
+    // array means "use the camera panel selection", not "restore defaults".
+    overviewCameraEntities: [],
     pageLayouts: {
       robots: { cards: [] },
       printer: { cards: [] },

@@ -1152,18 +1152,29 @@
   function renderCameras() {
     const host = document.getElementById("beastOvCameras");
     if (!host || !window.BeastCameras) return;
-    const allCameras = window.BeastCameras.getAllCameras();
+    let allCameras = window.BeastCameras.getAllCameras();
+    const doorbellId = BeastConfig.get("appEntities.doorbellCamera");
+    const doorbellCamera = doorbellId ? window.BeastCameras.resolveCamera(doorbellId) : null;
+    if (doorbellCamera && !allCameras.some((camera) => camera.slug === doorbellCamera.slug)) allCameras = [doorbellCamera, ...allCameras];
     if (!allCameras.length) {
       host.innerHTML = `<p class="beast-music-empty">Ingen kameraer.</p>`;
       return;
     }
     const cameraBySlug = new Map(allCameras.map((camera) => [camera.slug, camera]));
-    let selectedSlugs = [];
-    try {
-      const stored = JSON.parse(localStorage.getItem(OVERVIEW_CAMERA_KEY) || "[]");
-      if (Array.isArray(stored)) selectedSlugs = stored.filter((slug) => cameraBySlug.has(slug)).slice(0, OVERVIEW_CAMERA_LIMIT);
-    } catch (error) {
-      selectedSlugs = [];
+    const centralSelection = BeastConfig.get("overviewCameraEntities");
+    let selectedSlugs = (Array.isArray(centralSelection) ? centralSelection : [])
+      .map((id) => window.BeastCameras.resolveGroup(id)?.slug || window.BeastCameras.resolveCamera(id)?.slug || id)
+      .filter((slug) => cameraBySlug.has(slug)).slice(0, OVERVIEW_CAMERA_LIMIT);
+    // One-time migration from the old per-browser selection. It is copied
+    // centrally only when no server-side choice exists.
+    if (!selectedSlugs.length) {
+      try {
+        const legacy = JSON.parse(localStorage.getItem(OVERVIEW_CAMERA_KEY) || "[]");
+        if (Array.isArray(legacy)) selectedSlugs = legacy.filter((slug) => cameraBySlug.has(slug)).slice(0, OVERVIEW_CAMERA_LIMIT);
+      } catch (_) { selectedSlugs = []; }
+    }
+    if (doorbellCamera && !selectedSlugs.includes(doorbellCamera.slug)) {
+      selectedSlugs = [doorbellCamera.slug, ...selectedSlugs].slice(0, OVERVIEW_CAMERA_LIMIT);
     }
     if (!selectedSlugs.length) selectedSlugs = allCameras.slice(0, OVERVIEW_CAMERA_LIMIT).map((camera) => camera.slug);
     let cameras = selectedSlugs.map((slug) => cameraBySlug.get(slug)).filter(Boolean);
@@ -1223,7 +1234,9 @@
     `;
 
     function saveAndRender() {
-      localStorage.setItem(OVERVIEW_CAMERA_KEY, JSON.stringify(selected));
+      const entities = selected.map((slug) => cameras.find((camera) => camera.slug === slug)?.entityId).filter(Boolean);
+      BeastConfig.set("overviewCameraEntities", entities);
+      localStorage.removeItem(OVERVIEW_CAMERA_KEY);
       renderCameras();
     }
 

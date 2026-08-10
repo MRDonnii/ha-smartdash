@@ -1,5 +1,20 @@
 [
   {
+    "version": "20260810-104",
+    "tag": "v0.7.26",
+    "date": "2026-08-10",
+    "changes": [
+      "Eksplicitte brugervalg bevares nu ved opdatering, inklusive tomme og korte arrays samt bevidst slettede robot- og printerkort.",
+      "Dantherm-kortet vises kun, når ventilationssensorer faktisk er konfigureret. Fjernvarme kan vælges i højre side eller placeres sammen med varmepumperne.",
+      "Nye robotopsætninger bygger generiske 50/50-kort fra de valgte HA-entities i stedet for at tildele Leonora-, Gunner- eller Poul-layout efter arrayposition. Eksisterende eksplicitte specialkort bevares.",
+      "Forsidens kameravalg gemmes centralt i serverkonfigurationen, og det konfigurerede fordørskamera bliver tilgængeligt og prioriteret uafhængigt af Kamera-viewets filter.",
+      "Kameravisninger bruger nu go2rtc, Home Assistants camera_proxy_stream og et godkendt HA-snapshot som kontrolleret fallbackkæde.",
+      "3D Printer-kameraer bruger den samme HA-streamfallback og respekterer eksplicit tomme kortlayouts.",
+      "Installationer har fået et beskyttet lokalt profil-lag via data/local-profile.css og data/local-profile.js, som updateren ikke overskriver.",
+      "Admin kan styre fjernvarmens placering, og eksempelfilen indeholder den centrale kamerakonfiguration."
+    ]
+  },
+  {
     "version": "20260810-103",
     "tag": "v0.7.25",
     "date": "2026-08-10",

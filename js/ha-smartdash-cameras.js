@@ -95,11 +95,13 @@
     const slug = identity.slug;
     const streamName = STREAM_NAME_MAP[slug] || null;
     const detection = smartDetectionForCamera(slug);
+    const cameraToken = state.attributes.access_token || null;
     return {
       slug,
       quality: identity.quality,
       entityId,
       streamName,
+      haStreamUrl: cameraToken ? `${BeastAuth.HA_PROXY_PATH}/api/camera_proxy_stream/${entityId}?token=${encodeURIComponent(cameraToken)}` : null,
       // Some camera integrations expose a valid camera entity without an
       // entity_picture attribute. HA's authenticated camera proxy still
       // works and is the universal fallback for those installations.
@@ -176,7 +178,7 @@
     // authenticated Home Assistant camera image is the reliable fallback.
     const streamName = GO2RTC_BASE_URL ? (camera.resolvedStreamName || camera.streamName) : null;
     return `<div class="beast-shared-camera ${className}" data-shared-camera="${escapeHtml(camera.slug)}">
-      <div class="beast-shared-camera-frame">${streamName ? `<iframe class="beast-shared-camera-live" src="./camera-player.html?v=14&transport=mse&src=${encodeURIComponent(streamName)}${options.audio ? "&audio=1" : ""}" title="${escapeHtml(camera.label)} livekamera" frameborder="0" allow="autoplay"></iframe>` : `<img class="beast-shared-camera-snapshot" data-camera-picture="${escapeHtml(camera.entityPicture || "")}" alt="${escapeHtml(camera.label)}">`}</div>
+      <div class="beast-shared-camera-frame">${streamName ? `<iframe class="beast-shared-camera-live" src="./camera-player.html?v=14&transport=mse&src=${encodeURIComponent(streamName)}${options.audio ? "&audio=1" : ""}" title="${escapeHtml(camera.label)} livekamera" frameborder="0" allow="autoplay"></iframe>` : camera.haStreamUrl ? `<img class="beast-shared-camera-live beast-shared-camera-ha-stream" src="${escapeHtml(camera.haStreamUrl)}" data-camera-fallback-picture="${escapeHtml(camera.entityPicture || "")}" alt="${escapeHtml(camera.label)} livekamera">` : `<img class="beast-shared-camera-snapshot" data-camera-picture="${escapeHtml(camera.entityPicture || "")}" alt="${escapeHtml(camera.label)}">`}</div>
       ${qualityMenuMarkup(camera)}
       ${options.motion !== false && camera.motion ? `<span class="beast-camera-motion-badge">${BeastCore.icon("bolt", { size: 11 })} ${escapeHtml(camera.motionLabel || "Hændelse")}</span>` : ""}
       ${options.label === false ? "" : `<span class="beast-shared-camera-label">${escapeHtml(camera.label)}</span>`}
@@ -185,6 +187,14 @@
 
   function wireSharedCameras(root, onQualityChanged) {
     root?.querySelectorAll(".beast-shared-camera-snapshot[data-camera-picture]").forEach((img) => { if (img.dataset.cameraPicture) BeastAuth.setAuthedImageSrc(img, img.dataset.cameraPicture); });
+    root?.querySelectorAll(".beast-shared-camera-ha-stream[data-camera-fallback-picture]").forEach((img) => {
+      img.addEventListener("error", () => {
+        const picture = img.dataset.cameraFallbackPicture;
+        img.classList.remove("beast-shared-camera-ha-stream");
+        img.classList.add("beast-shared-camera-snapshot");
+        if (picture) BeastAuth.setAuthedImageSrc(img, picture);
+      }, { once: true });
+    });
     root?.querySelectorAll("[data-camera-quality-slug]").forEach((menu) => {
       const toggle = menu.querySelector(".beast-camera-quality-toggle"); const popover = menu.querySelector(".beast-camera-quality-popover");
       toggle?.addEventListener("click", (event) => { event.preventDefault(); event.stopPropagation(); const open = toggle.getAttribute("aria-expanded") === "true"; toggle.setAttribute("aria-expanded", String(!open)); popover.hidden = open; });
