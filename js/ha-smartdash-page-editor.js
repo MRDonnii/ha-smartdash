@@ -162,5 +162,14 @@ window.BeastPageEditor = (() => {
     root?.querySelectorAll(".is-responsive-fitted").forEach((element) => element.classList.remove("is-responsive-fitted"));
     window.location.reload();
   }
-  return { mountAll, open: (section) => editors.get(section)?.enter(), fit, reset };
+  return {
+    mountAll,
+    open: (section) => editors.get(section)?.enter(),
+    openAdd: (section) => {
+      mountAll();
+      window.setTimeout(() => editors.get(section)?.openAdd?.(), 40);
+    },
+    fit,
+    reset
+  };
 })();

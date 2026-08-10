@@ -227,7 +227,10 @@ window.BeastNativePageEditor = (() => {
       bar.querySelector("[data-native-cancel]").addEventListener("click", () => finish(false));
       bar.querySelector("[data-native-save]").addEventListener("click", () => finish(true));
       bar.querySelector("[data-native-settings]").addEventListener("click", settings);
-      bar.querySelector("[data-native-add]").addEventListener("click", () => { finish(true); window.BeastPageEditor?.open?.(state.section); });
+      bar.querySelector("[data-native-add]").addEventListener("click", () => {
+        finish(true);
+        window.BeastPageEditor?.openAdd?.(state.section);
+      });
     }
 
     function mount() {

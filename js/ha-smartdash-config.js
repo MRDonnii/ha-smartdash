@@ -104,7 +104,8 @@ const BeastConfig = (() => {
     // The two small tiles under the clock/calendar card -- each is one of
     // "car"/"pool"/"robots"/"printer" (same set as the top-level generic
     // overview card types) or omitted entirely to turn that tile off.
-    overviewQuickTiles: ["car", "pool"],
+    // Optional means optional. Updates must never re-enable Pool.
+    overviewQuickTiles: [],
     hiddenSections: [],
     pages: { order: [], removed: [], custom: [], overrides: {} },
     appEntities: { kioskScreenLight: null, kioskEntities: {}, doorbellBinarySensor: null, doorbellEvent: null, doorbellCamera: null, mailPresent: null, mailCount: null, mailDescription: null, mailImage: null, mailImageCarport: null, mailImageForhaven: null, quickScenes: [] },

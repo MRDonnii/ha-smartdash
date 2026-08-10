@@ -267,12 +267,13 @@
     if (card.type === "cameras") {
       const liveEntity = card.entity || BeastConfig.get("panels.printer.liveCamera");
       const resolved = liveEntity ? window.BeastCameras?.resolveCamera?.(liveEntity) : null;
-      const stream = resolved?.streamName || PRINTER_LIVE_STREAM;
       const secondary = card.secondaryEntity || IDS.camera;
+      const fallbackState = liveEntity ? BeastHaSocket.getState(liveEntity) : null;
+      const liveCamera = resolved || (liveEntity ? { slug: liveEntity.replace(/^camera\./, ""), entityId: liveEntity, label: fallbackState?.attributes?.friendly_name || "3D Printer", entityPicture: fallbackState?.attributes?.entity_picture || null } : null);
       return `<section class="beast-panel beast-ov-card beast-page-builder-card beast-printer-builder-card" ${cardSize(card)} data-printer-card="cameras" data-secondary-camera="${escapeHtml(secondary || "")}">
         <section class="beast-printer-visual">
           <div class="beast-printer-cam beast-printer-cam--main">
-            <iframe class="beast-printer-live-frame" id="beastPrinterLiveFrame" src="./camera-player.html?v=14&src=${encodeURIComponent(stream)}&transport=mse" title="3D-printer livekamera" frameborder="0" allow="autoplay"></iframe>
+            ${liveCamera ? BeastCameras.sharedCameraMarkup(liveCamera, { className: "beast-printer-live-frame", label: false, motion: false }) : `<div class="beast-printer-camera-empty">Vælg et kamera</div>`}
             <span class="beast-printer-cam-label">3D Printer · Livekamera</span>
             <span class="beast-printer-live"><i></i> Live</span>
           </div>
@@ -336,6 +337,7 @@
     if (!gridEl) return;
     const data = printerData();
     BeastStandardCards.wire(gridEl);
+    BeastCameras?.wireSharedCameras?.(gridEl, render);
     refreshBambuSnapshot(true);
     data.printImages.forEach((image, index) => {
       const img = containerEl.querySelector(`[data-print-image="${index}"] img`);
@@ -386,12 +388,19 @@
   }
 
   async function refreshBambuSnapshot(force = false) {
+    const liveImg = containerEl?.querySelector(".beast-printer-cam--main .beast-shared-camera-snapshot[data-camera-picture]");
+    if (liveImg && (force || BeastCore.isPanelVisible(containerEl))) BeastAuth.setAuthedImageSrc(liveImg, liveImg.dataset.cameraPicture);
     const img = document.getElementById("beastPrinterCamImg");
     if (!img || (!force && !BeastCore.isPanelVisible(containerEl))) return;
     const selectedCamera = img.closest("[data-secondary-camera]")?.dataset.secondaryCamera || IDS.camera;
     if (!selectedCamera) return;
     try {
-      const blob = await BeastAuth.haFetchBlob(`/api/image_proxy/${selectedCamera}`);
+      const selectedState = BeastHaSocket.getState(selectedCamera);
+      const picturePath = selectedCamera.startsWith("camera.")
+        ? selectedState?.attributes?.entity_picture
+        : `/api/image_proxy/${selectedCamera}`;
+      if (!picturePath) return;
+      const blob = await BeastAuth.haFetchBlob(picturePath);
       const objectUrl = URL.createObjectURL(blob);
       const preload = new Image();
       preload.src = objectUrl;
