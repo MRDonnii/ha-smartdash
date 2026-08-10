@@ -492,13 +492,15 @@ a.beast-rail-btn:visited {
   align-items: center;
   justify-content: center;
   z-index: 100;
-  padding: var(--space-6);
+  padding: clamp(10px, 2vw, var(--space-6));
+  overflow: hidden;
 }
 
 .beast-modal {
-  width: 100%;
-  max-width: 640px;
-  max-height: 88vh;
+  box-sizing: border-box;
+  width: min(680px, calc(100vw - 20px));
+  max-width: 680px;
+  max-height: calc(100dvh - 20px);
   background: var(--surface-2-solid, #161923);
   border: 1px solid var(--border-strong);
   border-radius: var(--radius-lg);
@@ -517,6 +519,9 @@ a.beast-rail-btn:visited {
   border-bottom: 1px solid var(--border);
   flex-shrink: 0;
 }
+
+.beast-modal-header > :not(.beast-modal-close) { min-width: 0; }
+.beast-modal-header :is(h2,h3,p,small) { overflow-wrap: anywhere; }
 
 .beast-modal-header h3 {
   margin: 0;
@@ -545,12 +550,19 @@ a.beast-rail-btn:visited {
 }
 
 .beast-modal-body {
+  min-width: 0;
+  min-height: 0;
   padding: var(--space-5);
   overflow-y: auto;
+  overflow-x: hidden;
   display: flex;
   flex-direction: column;
   gap: var(--space-5);
+  overscroll-behavior: contain;
 }
+
+.beast-modal-body > * { min-width: 0; max-width: 100%; }
+.beast-modal :is(input,select,textarea,button) { max-width: 100%; box-sizing: border-box; }
 
 .beast-modal-actions {
   flex: 0 0 auto;
@@ -560,6 +572,7 @@ a.beast-rail-btn:visited {
   padding: var(--space-4) var(--space-5);
   border-top: 1px solid var(--border);
   background: var(--surface-2-solid, #161923);
+  flex-wrap: wrap;
 }
 
 .beast-modal-actions button {
@@ -583,6 +596,15 @@ a.beast-rail-btn:visited {
   display: flex;
   align-items: center;
   justify-content: space-between;
+}
+
+@media (max-width: 680px) {
+  .beast-modal-overlay { padding: 8px; align-items: stretch; }
+  .beast-modal { width: 100%; max-width: none; max-height: calc(100dvh - 16px); margin: auto 0; border-radius: 16px; }
+  .beast-modal-header { padding: 16px; }
+  .beast-modal-body { padding: 16px; gap: 14px; }
+  .beast-modal-actions { padding: 12px 16px; }
+  .beast-modal-actions button { flex: 1 1 150px; min-width: 0; }
 }
 
 .beast-placeholder-panel {

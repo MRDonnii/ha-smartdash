@@ -1,5 +1,20 @@
 [
   {
+    "version": "20260810-106",
+    "tag": "v0.7.28",
+    "date": "2026-08-10",
+    "changes": [
+      "The Security administration view now follows the selected Danish or English language throughout, with a cleaner responsive status-card layout and a consistently aligned alarm-lock rule.",
+      "The Camera view now supports a centrally stored manual order for physical cameras. Quality variants remain grouped with their camera, and newly discovered cameras are appended safely without replacing the user's order.",
+      "Camera ordering is available directly from the existing page editor settings through a touch-friendly reorder dialog, and older saved layouts automatically receive the new control instead of hiding it.",
+      "The camera-order action has been redesigned as a properly aligned full-width settings button with a clear icon, stable touch target and no text overflow.",
+      "The shared modal system has been comprehensively audited: large editors are no longer constrained by the former 640-pixel maximum, content cannot overflow horizontally, and tall dialogs scroll internally without losing headers or actions.",
+      "Specialized dialogs for native cards, entities, pages, templates, energy, security, rooms, cameras, music, heating, pool, car, calendar, robots and printer cards now use appropriate responsive widths.",
+      "Room controls, music details, modal action rows and Administration dialogs now adapt cleanly to kiosk, desktop and tablet dimensions while preserving touch-sized controls.",
+      "Popup layouts were verified at 1709x862, 1024x768 and 768x1024 with no horizontal overflow in the tested camera settings, card gallery and room-control dialogs."
+    ]
+  },
+  {
     "version": "20260810-105",
     "tag": "v0.7.27",
     "date": "2026-08-10",

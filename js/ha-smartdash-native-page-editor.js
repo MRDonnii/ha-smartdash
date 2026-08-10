@@ -33,7 +33,10 @@ window.BeastNativePageEditor = (() => {
     const source = Array.isArray(saved) && saved.length ? saved : (Array.isArray(dashboard) && dashboard.length ? dashboard : defaults);
     return defaults.map((fallback) => {
       const card = source.find((item) => item.id === fallback.id) || fallback;
-      return { ...fallback, ...card, desktop: { ...fallback.desktop, ...(card.desktop || {}) }, bindings: { ...(fallback.bindings || {}), ...(card.bindings || {}) } };
+      // Runtime controls belong to the current card definition. Older saved
+      // layouts contain a snapshot of the former controls array and must not
+      // hide controls introduced by a later dashboard update.
+      return { ...fallback, ...card, controls: fallback.controls || [], desktop: { ...fallback.desktop, ...(card.desktop || {}) }, bindings: { ...(fallback.bindings || {}), ...(card.bindings || {}) } };
     });
   }
 
@@ -193,6 +196,7 @@ window.BeastNativePageEditor = (() => {
       const overlay = document.createElement("div"); overlay.id = "beastNativePageSettings"; overlay.className = "beast-modal-overlay";
       const controlMarkup = (card, control) => {
         const value = card.options?.[control.key] ?? control.default ?? "";
+        if (control.type === "action") return `<button type="button" class="beast-btn beast-native-option-action" data-native-action="${escape(control.key)}" data-native-action-card="${escape(card.id)}">${control.icon ? BeastCore.icon(control.icon,{size:18}) : ""}<span>${escape(control.label)}</span></button>`;
         if (control.type === "select") return `<label>${escape(control.label)}<select data-native-option="${escape(control.key)}">${(control.choices || []).map((choice) => `<option value="${escape(choice.value)}" ${String(choice.value) === String(value) ? "selected" : ""}>${escape(choice.label)}</option>`).join("")}</select></label>`;
         if (control.type === "checkbox") return `<label class="beast-native-option-check"><input type="checkbox" data-native-option="${escape(control.key)}" ${value ? "checked" : ""}><span>${escape(control.label)}</span></label>`;
         return `<label>${escape(control.label)}<input type="number" data-native-option="${escape(control.key)}" min="${Number(control.min)||1}" max="${Number(control.max)||50}" step="${Number(control.step)||1}" value="${escape(value)}"></label>`;
@@ -201,6 +205,12 @@ window.BeastNativePageEditor = (() => {
       document.body.appendChild(overlay);
       overlay.addEventListener("click", (event) => {
         if (event.target === overlay || event.target.closest("[data-close]")) return overlay.remove();
+        const action = event.target.closest("[data-native-action]");
+        if (action) {
+          event.preventDefault();
+          state.onSettingsAction?.(action.dataset.nativeAction, { cardId:action.dataset.nativeActionCard, overlay, list });
+          return;
+        }
         if (!event.target.closest("[data-native-settings-save]")) return;
         overlay.querySelectorAll("[data-native-settings-card]").forEach((row) => {
           const card = list.find((item) => item.id === row.dataset.nativeSettingsCard); if (!card) return;

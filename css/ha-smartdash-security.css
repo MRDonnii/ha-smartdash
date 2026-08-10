@@ -365,7 +365,7 @@
 }
 .beast-security-command .is-layout-hidden { display: none !important; }
 .beast-security-layout-btn { position: absolute; top: 12px; right: 12px; z-index: 5; width: 44px; height: 44px; border: 0; background: transparent; color: var(--ink-muted); font-size: 28px; }
-.beast-security-layout-modal { width: min(1050px, calc(100vw - 32px)); max-height: calc(100dvh - 28px); }
+.beast-security-layout-modal { width: min(1100px, calc(100vw - 28px)); max-width:1100px; max-height: calc(100dvh - 28px); }
 .beast-security-layout-list { display: grid; gap: 10px; margin: 16px 0 20px; }
 .beast-security-native-editor-card { padding: 13px; border: 1px solid var(--border); border-radius: var(--radius-md); background: var(--surface-2); }
 .beast-security-native-editor-card header label { min-height: 42px; display: flex; align-items: center; gap: 10px; }
