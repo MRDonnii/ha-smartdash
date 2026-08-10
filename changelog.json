@@ -1,5 +1,20 @@
 [
   {
+    "version": "20260811-108",
+    "tag": "v0.7.30",
+    "date": "2026-08-11",
+    "changes": [
+      "Administration now has a dedicated Theme and design view shared with the dashboard settings, so visual controls no longer drift between the two interfaces.",
+      "Themes now combine light, dark or automatic color mode with Glass, Clean and Rich presentation styles, each with its own card opacity, corner radius, border, shadow and ambient-background treatment.",
+      "Four additional color palettes — Ruby, Berry, Sunglow and Graphite — join the existing Aurora, Ocean, Ember, Sage, Sand and Slate palettes.",
+      "The theme editor includes a live card preview and keeps card-background opacity independently adjustable after selecting a presentation style.",
+      "Opening Administration from the dashboard now requires the shared PIN only once. The successful check is passed as a short-lived, same-tab, one-use authorization while direct visits to /admin/ remain PIN-protected.",
+      "Layered card surfaces across Overview, Music, Energy, Heating, Calendar, Security and Administration now use valid solid colors inside gradients and color mixing, preventing transparent cards and visually clipped rounded corners.",
+      "Theme-specific backgrounds, translucent panels and weather surfaces now render consistently across light and dark modes without invalid nested-gradient declarations.",
+      "All restored theme work is included in the release-owned source instead of existing only in a live installation, so future updates preserve the complete design system."
+    ]
+  },
+  {
     "version": "20260810-107",
     "tag": "v0.7.29",
     "date": "2026-08-10",

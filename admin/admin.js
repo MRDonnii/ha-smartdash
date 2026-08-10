@@ -587,43 +587,11 @@
     `;
   }
 
-  function renderThemePanel() {
-    const theme = window.BeastTheme?.getSettings() || { mode: "auto", palette: "aurora", resolved: "dark" };
-    const modes = [
-      ["auto", "settings", "Auto", "Følger skærmen"],
-      ["light", "sun", "Lys", "Lyst og tydeligt"],
-      ["dark", "moon", "Mørk", "Behageligt om aftenen"]
-    ];
-    const palettes = [
-      ["aurora", "Aurora", "Violet · cyan"],
-      ["ocean", "Ocean", "Blå · turkis"],
-      ["ember", "Ember", "Orange · pink"],
-      ["sage", "Salvie", "Rolig grøn · hav"],
-      ["sand", "Sand", "Varm beige · kobber"],
-      ["slate", "Skifer", "Neutral blågrå"]
-    ];
+  function renderThemeView() {
     return `
-      <section class="beast-theme-settings" aria-label="Udseende">
-        <div class="beast-settings-section-head">
-          <div><p class="beast-panel-title">Udseende</p><span>Tilpas skærmen uden genindlæsning</span></div>
-          <span class="beast-theme-current">${theme.mode === "auto" ? `Auto · ${theme.resolved === "light" ? "lys" : "mørk"}` : theme.mode === "light" ? "Lys" : "Mørk"}</span>
-        </div>
-        <div class="beast-theme-mode-grid">
-          ${modes.map(([id, icon, title, subtitle]) => `<button type="button" data-theme-mode="${id}" class="${theme.mode === id ? "is-active" : ""}" aria-pressed="${theme.mode === id}">
-            ${BeastCore.icon(icon, { size: 22 })}<span><strong>${title}</strong><small>${subtitle}</small></span>
-          </button>`).join("")}
-        </div>
-        <div class="beast-theme-palette-grid">
-          ${palettes.map(([id, title, subtitle]) => `<button type="button" data-theme-palette="${id}" class="${theme.palette === id ? "is-active" : ""}" aria-pressed="${theme.palette === id}">
-            <i class="beast-theme-swatch is-${id}"></i><span><strong>${title}</strong><small>${subtitle}</small></span>${theme.palette === id ? BeastCore.icon("check", { size: 18 }) : ""}
-          </button>`).join("")}
-        </div>
-        <label class="beast-theme-opacity">
-          <span class="beast-theme-opacity-icon">${BeastCore.icon("grid", { size: 21 })}</span>
-          <span><strong>Store kortområder</strong><small>0 % fjerner rammerne, mens knapper og styring bevares</small></span>
-          <input type="range" id="beastThemeOpacity" min="0" max="100" step="1" value="${theme.cardOpacity ?? 92}">
-          <output id="beastThemeOpacityValue">${theme.cardOpacity ?? 92}%</output>
-        </label>
+      <section class="admin-view${activeView === "theme" ? " is-active" : ""}" data-admin-view="theme">
+        <div class="admin-settings-intro"><div><h2>Tema og design</h2><p>Farve, stil og lystilstand for hele dashboardet. Ændringer virker med det samme og gemmes kun i denne browser.</p></div></div>
+        <div class="admin-card admin-settings-group admin-settings-theme">${window.BeastTheme?.renderPanel() || ""}</div>
       </section>
     `;
   }
@@ -1259,8 +1227,7 @@
     const floatingPlayerOn = isFloatingPlayerEnabled();
     return `
       <section class="admin-view${activeView === "settings" ? " is-active" : ""}" data-admin-view="settings">
-        <div class="admin-settings-intro"><div><h2>Udseende & denne enhed</h2><p>Visuelle valg og maskinspecifik adfærd er opdelt nedenfor. De fleste valg gemmes kun i denne browser.</p></div></div>
-        <div class="admin-card admin-settings-group admin-settings-theme">${renderThemePanel()}</div>
+        <div class="admin-settings-intro"><div><h2>Denne enhed</h2><p>Maskinspecifik adfærd for netop denne kiosk eller browser. Visuelle valg (tema, farver, stil) findes under Tema og design.</p></div></div>
         <div class="admin-card admin-settings-group"><div class="admin-card-head"><div><h2>Dashboard på denne skærm</h2><p>Forbindelsesstatus og elementer, som kun påvirker den aktuelle kiosk eller browser.</p></div></div><div class="beast-stat-grid">
           ${BeastCore.statTile({ icon: "check", label: "HA-forbindelse", value: CONN_STATUS_LABELS[currentConnState] || currentConnState, id: "adminConnTile" })}
           ${BeastCore.statTile({ icon: "grid", label: "Entities i cache", value: String(BeastHaSocket.getAllStates().size), id: "adminCountTile" })}
@@ -1535,6 +1502,7 @@
     if (activeView === "devices") return renderDevicesView();
     if (activeView === "setup") return renderSetupOverview();
     if (activeView === "forside") return renderForsideView();
+    if (activeView === "theme") return renderThemeView();
     if (activeView === "settings") return renderSettingsView();
     if (activeView === "security-settings") return renderSecurityView();
     if (activeView === "screensaver") return renderScreensaverView();
@@ -1548,12 +1516,12 @@
   function adminViewTitle() {
     const panel = PANELS.find((item) => item.id === activeView);
     if (panel) return panel.title;
-    return ({ overview:"Overblik", pages:"Sider og navigation", devices:"Enheder og datakilder", setup:"Forbindelser & kiosk", settings:"Udseende & enhed", "security-settings":"Sikkerhed", screensaver:t("Pauseskærm", "Screensaver"), advarsler:t("Advarsler", "Alerts"), backup:"Backup & gendannelse", updates:"Opdatering" })[activeView] || "Administration";
+    return ({ overview:"Overblik", pages:"Sider og navigation", devices:"Enheder og datakilder", setup:"Forbindelser & kiosk", theme:"Tema og design", settings:"Denne enhed", "security-settings":"Sikkerhed", screensaver:t("Pauseskærm", "Screensaver"), advarsler:t("Advarsler", "Alerts"), backup:"Backup & gendannelse", updates:"Opdatering" })[activeView] || "Administration";
   }
 
   function adminViewDescription() {
     if (PANELS.some((panel) => panel.id === activeView) || activeView === "devices") return "Forbind Home Assistant-data til dashboardets funktioner. Layout redigeres på selve dashboard-siden.";
-    return ({ pages:"Opret og organiser dashboardets sider ét samlet sted.", setup:"Serverforbindelse, kioskfunktioner og hændelser.", updates:"Se hvad der er nyt, og gendan en tidligere version om nødvendigt.", "security-settings":"Lokal adgang, pinkode og beskyttelse af adminpanelet.", screensaver:t("Styrer denne skærm/browser — hver kiosk kan have sin egen tidsplan.", "Controls this screen/browser only — each kiosk can have its own schedule."), advarsler:t("Alt om post-banneret samlet ét sted — slå til/fra og vælg entities.", "Everything about the post banner in one place — turn it on/off and pick entities.") })[activeView] || "Konfigurationen gemmes centralt på serveren.";
+    return ({ pages:"Opret og organiser dashboardets sider ét samlet sted.", setup:"Serverforbindelse, kioskfunktioner og hændelser.", theme:"Farve, stil og lystilstand for hele dashboardet.", settings:"Maskinspecifik adfærd for netop denne kiosk eller browser.", updates:"Se hvad der er nyt, og gendan en tidligere version om nødvendigt.", "security-settings":"Lokal adgang, pinkode og beskyttelse af adminpanelet.", screensaver:t("Styrer denne skærm/browser — hver kiosk kan have sin egen tidsplan.", "Controls this screen/browser only — each kiosk can have its own schedule."), advarsler:t("Alt om post-banneret samlet ét sted — slå til/fra og vælg entities.", "Everything about the post banner in one place — turn it on/off and pick entities.") })[activeView] || "Konfigurationen gemmes centralt på serveren.";
   }
 
   function renderShell(options = {}) {
@@ -1572,7 +1540,8 @@
             <p class="admin-nav-section">System</p>
             <button class="${activeView === "setup" ? "is-active" : ""}" type="button" data-view="setup">Forbindelser & kiosk</button>
             <p class="admin-nav-section">Skærm</p>
-            <button class="${activeView === "settings" ? "is-active" : ""}" type="button" data-view="settings">Udseende & enhed</button>
+            <button class="${activeView === "theme" ? "is-active" : ""}" type="button" data-view="theme">Tema og design</button>
+            <button class="${activeView === "settings" ? "is-active" : ""}" type="button" data-view="settings">Denne enhed</button>
             <button class="${activeView === "screensaver" ? "is-active" : ""}" type="button" data-view="screensaver">${t("Pauseskærm", "Screensaver")}</button>
             <button class="${activeView === "advarsler" ? "is-active" : ""}" type="button" data-view="advarsler">${t("Advarsler", "Alerts")}</button>
             <p class="admin-nav-section">Sikkerhed</p>
@@ -1976,6 +1945,9 @@
     document.querySelectorAll("button[data-theme-palette]").forEach((button) => {
       button.addEventListener("click", () => { window.BeastTheme?.setPalette(button.dataset.themePalette); renderShell(); });
     });
+    document.querySelectorAll("button[data-theme-style]").forEach((button) => {
+      button.addEventListener("click", () => { window.BeastTheme?.setStyle(button.dataset.themeStyle); renderShell(); });
+    });
     document.getElementById("beastThemeOpacity")?.addEventListener("input", (event) => {
       const value = Number(event.currentTarget.value);
       const output = document.getElementById("beastThemeOpacityValue");
@@ -2235,7 +2207,8 @@
     if (!BeastAuth.getHaBaseUrl() && BeastConfig.get("haBaseUrl")) BeastAuth.setHaBaseUrl(BeastConfig.get("haBaseUrl"));
     if (pinRecoveryPending && !callback) { BeastAuth.startLogin({ forceLogin: true }); return; }
     if (!BeastAuth.hasSession()) { renderLogin(); return; }
-    if (window.BeastScreenLock?.hasPin() && !pinRecoveryPending) {
+    const alreadyVerifiedForAdmin = window.BeastScreenLock?.consumeAdminVerification?.() === true;
+    if (window.BeastScreenLock?.hasPin() && !pinRecoveryPending && !alreadyVerifiedForAdmin) {
       const verified = await new Promise((resolve) => window.BeastScreenLock.requestPinVerification(resolve));
       if (!verified) { window.location.href = "/"; return; }
     }

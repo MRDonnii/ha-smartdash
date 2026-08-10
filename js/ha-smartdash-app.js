@@ -912,7 +912,9 @@ function setupNavigation() {
     if (!window.BeastScreenLock?.hasPin()) return;
     event.preventDefault();
     window.BeastScreenLock.requestPinVerification((ok) => {
-      if (ok) window.location.href = "/admin/";
+      if (!ok) return;
+      window.BeastScreenLock.grantAdminVerification();
+      window.location.href = "/admin/";
     });
   });
 

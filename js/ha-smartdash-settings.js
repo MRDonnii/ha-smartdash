@@ -167,47 +167,6 @@
     `;
   }
 
-  function renderThemePanel() {
-    const theme = window.BeastTheme?.getSettings() || { mode: "auto", palette: "aurora", resolved: "dark" };
-    const modes = [
-      ["auto", "settings", "Auto", "Følger skærmen"],
-      ["light", "sun", "Lys", "Lyst og tydeligt"],
-      ["dark", "moon", "Mørk", "Behageligt om aftenen"]
-    ];
-    const palettes = [
-      ["aurora", "Aurora", "Violet · cyan"],
-      ["ocean", "Ocean", "Blå · turkis"],
-      ["ember", "Ember", "Orange · pink"],
-      ["sage", "Salvie", "Rolig grøn · hav"],
-      ["sand", "Sand", "Varm beige · kobber"],
-      ["slate", "Skifer", "Neutral blågrå"]
-    ];
-    return `
-      <section class="beast-theme-settings" aria-label="Udseende">
-        <div class="beast-settings-section-head">
-          <div><p class="beast-panel-title">Udseende</p><span>Tilpas skærmen uden genindlæsning</span></div>
-          <span class="beast-theme-current">${theme.mode === "auto" ? `Auto · ${theme.resolved === "light" ? "lys" : "mørk"}` : theme.mode === "light" ? "Lys" : "Mørk"}</span>
-        </div>
-        <div class="beast-theme-mode-grid">
-          ${modes.map(([id, icon, title, subtitle]) => `<button type="button" data-theme-mode="${id}" class="${theme.mode === id ? "is-active" : ""}" aria-pressed="${theme.mode === id}">
-            ${BeastCore.icon(icon, { size: 22 })}<span><strong>${title}</strong><small>${subtitle}</small></span>
-          </button>`).join("")}
-        </div>
-        <div class="beast-theme-palette-grid">
-          ${palettes.map(([id, title, subtitle]) => `<button type="button" data-theme-palette="${id}" class="${theme.palette === id ? "is-active" : ""}" aria-pressed="${theme.palette === id}">
-            <i class="beast-theme-swatch is-${id}"></i><span><strong>${title}</strong><small>${subtitle}</small></span>${theme.palette === id ? BeastCore.icon("check", { size: 18 }) : ""}
-          </button>`).join("")}
-        </div>
-        <label class="beast-theme-opacity">
-          <span class="beast-theme-opacity-icon">${BeastCore.icon("grid", { size: 21 })}</span>
-          <span><strong>Store kortområder</strong><small>0 % fjerner rammerne, mens knapper og styring bevares</small></span>
-          <input type="range" id="beastThemeOpacity" min="0" max="100" step="1" value="${theme.cardOpacity ?? 92}">
-          <output id="beastThemeOpacityValue">${theme.cardOpacity ?? 92}%</output>
-        </label>
-      </section>
-    `;
-  }
-
   function render() {
     if (!containerEl) return;
     const hasPin = window.BeastScreenLock?.hasPin();
@@ -216,7 +175,7 @@
     const screensaver = BeastConfig.get("screensaver") || { enabled: true, schedule: "custom", startTime: "23:00", endTime: "05:30", offAfterMinutes: 5 };
 
     containerEl.innerHTML = `
-      ${renderThemePanel()}
+      ${window.BeastTheme?.renderPanel() || ""}
       <div class="beast-settings-divider"></div>
       <p class="beast-panel-title">Forbindelse</p>
       <div class="beast-stat-grid">
@@ -290,6 +249,12 @@
     containerEl.querySelectorAll("[data-theme-palette]").forEach((button) => {
       button.addEventListener("click", () => {
         window.BeastTheme?.setPalette(button.dataset.themePalette);
+        render();
+      });
+    });
+    containerEl.querySelectorAll("[data-theme-style]").forEach((button) => {
+      button.addEventListener("click", () => {
+        window.BeastTheme?.setStyle(button.dataset.themeStyle);
         render();
       });
     });

@@ -3,7 +3,7 @@
   height: 100%;
   min-height: 0;
   display: grid;
-  grid-template-columns: minmax(430px, .78fr) minmax(650px, 1.22fr);
+  grid-template-columns: minmax(min(430px, 32vw), .78fr) minmax(min(650px, 40vw), 1.22fr);
   grid-template-rows: minmax(0, 1fr) 245px;
   gap: var(--space-4);
 }

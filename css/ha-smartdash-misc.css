@@ -36,6 +36,7 @@
 }
 
 .beast-theme-mode-grid,
+.beast-theme-style-grid,
 .beast-theme-palette-grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -43,6 +44,7 @@
 }
 
 .beast-theme-mode-grid button,
+.beast-theme-style-grid button,
 .beast-theme-palette-grid button {
   appearance: none;
   min-height: 76px;
@@ -60,18 +62,23 @@
 }
 
 .beast-theme-mode-grid button > span,
+.beast-theme-style-grid button > span,
 .beast-theme-palette-grid button > span { min-width: 0; flex: 1; }
 .beast-theme-mode-grid strong,
+.beast-theme-style-grid strong,
 .beast-theme-palette-grid strong { display: block; font-size: var(--text-md); }
 .beast-theme-mode-grid small,
+.beast-theme-style-grid small,
 .beast-theme-palette-grid small { display: block; margin-top: 2px; color: var(--ink-muted); font-size: var(--text-xs); }
 .beast-theme-mode-grid button.is-active,
+.beast-theme-style-grid button.is-active,
 .beast-theme-palette-grid button.is-active {
   border-color: var(--accent-border);
   background: var(--accent-soft);
   box-shadow: inset 0 0 0 1px var(--accent-border);
 }
 .beast-theme-mode-grid button.is-active > svg,
+.beast-theme-style-grid button.is-active > svg,
 .beast-theme-palette-grid button.is-active > svg { color: var(--accent); }
 
 .beast-theme-swatch {
@@ -88,6 +95,76 @@
 .beast-theme-swatch.is-sage { background: linear-gradient(135deg, #6f9d86, #75a9a4); }
 .beast-theme-swatch.is-sand { background: linear-gradient(135deg, #b98d68, #c2a878); }
 .beast-theme-swatch.is-slate { background: linear-gradient(135deg, #7186a0, #8299a8); }
+.beast-theme-swatch.is-ruby { background: linear-gradient(135deg, #ff3d5f, #ff7a5c); }
+.beast-theme-swatch.is-berry { background: linear-gradient(135deg, #c026d3, #7c3aed); }
+.beast-theme-swatch.is-sunglow { background: linear-gradient(135deg, #ff9d3d, #ff4d6a); }
+.beast-theme-swatch.is-graphite { background: linear-gradient(135deg, #7c8797, #9aa5b3); }
+
+/* Design-style swatches (js/ha-smartdash-theme.js STYLE_TOKENS) -- each
+   preview is self-contained (own border-radius/shadow, not driven by the
+   live --radius-*/--panel-shadow-opacity vars) so all three stay visibly
+   different from one another regardless of which style is currently
+   active, letting people compare before switching. */
+.beast-theme-style-swatch {
+  width: 42px;
+  height: 42px;
+  flex: 0 0 42px;
+  background: linear-gradient(160deg, color-mix(in srgb, var(--accent-a) 22%, var(--surface-2-solid)), var(--surface-2-solid));
+}
+.beast-theme-style-swatch.is-glass {
+  border-radius: 14px;
+  border: 1px solid color-mix(in srgb, var(--ink) 14%, transparent);
+  box-shadow: 0 10px 18px -8px rgba(0, 0, 0, .4);
+}
+.beast-theme-style-swatch.is-clean {
+  border-radius: 9px;
+  border: 1px solid color-mix(in srgb, var(--ink) 8%, transparent);
+  box-shadow: 0 4px 8px -4px rgba(0, 0, 0, .2);
+}
+.beast-theme-style-swatch.is-rich {
+  border-radius: 20px;
+  border: 1px solid color-mix(in srgb, var(--ink) 20%, transparent);
+  box-shadow: 0 16px 26px -8px rgba(0, 0, 0, .55);
+}
+
+/* Live preview -- reuses .beast-panel itself (not a lookalike copy) so it
+   renders with the exact same --panel-surface/--panel-border/--radius-lg/
+   --panel-shadow-opacity every real dashboard card uses. Admin's own
+   .admin-card chrome is a separate, hardcoded skin that doesn't consume
+   those tokens, so without this the style/opacity pickers above would
+   change nothing visible anywhere on the admin page itself. */
+.beast-theme-preview-wrap { display: grid; gap: var(--space-2); }
+/* Renders the actual page background (var(--bg) -- a flat color for
+   glass/clean, a gradient for rich, see apply() in ha-smartdash-theme.js)
+   behind the preview card, not just the card itself -- the background
+   treatment is the single biggest visible difference between styles and
+   was invisible before this stage existed. */
+.beast-theme-preview-stage {
+  padding: var(--space-5);
+  border-radius: var(--radius-lg);
+  background: var(--bg);
+  border: 1px solid var(--border);
+  overflow: hidden;
+}
+.beast-theme-preview-card {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-4) var(--space-5);
+}
+.beast-theme-preview-icon {
+  width: 46px;
+  height: 46px;
+  flex: 0 0 46px;
+  display: grid;
+  place-items: center;
+  border-radius: 13px;
+  color: var(--accent);
+  background: var(--accent-soft);
+}
+.beast-theme-preview-card strong,
+.beast-theme-preview-card small { display: block; }
+.beast-theme-preview-card small { margin-top: 2px; color: var(--ink-muted); font-size: var(--text-xs); }
 
 .beast-theme-opacity {
   min-height: 78px;
@@ -481,7 +558,8 @@
   border-color: color-mix(in srgb, var(--energy-tile-accent), transparent 78%);
   background:
     radial-gradient(circle at 100% 0%, color-mix(in srgb, var(--energy-tile-accent), transparent 86%), transparent 48%),
-    linear-gradient(145deg, var(--surface-2), color-mix(in srgb, var(--energy-tile-accent), var(--surface-2) 94%));
+    linear-gradient(145deg, var(--surface-2-solid), color-mix(in srgb, var(--energy-tile-accent), var(--surface-2-solid) 94%)),
+    var(--surface-2);
   box-shadow: inset 3px 0 0 color-mix(in srgb, var(--energy-tile-accent), transparent 18%);
 }
 
@@ -1507,7 +1585,7 @@
 .beast-card-editor-tools-grid strong,.beast-card-editor-tools-grid small { display:block; }
 .beast-card-editor-tools-grid small { margin-top:3px; color:var(--ink-muted); font-size:11px; }
 .beast-card-editor-tools-grid > button:disabled { opacity:.4; }
-.beast-card-editor-tools-grid > button.is-danger { border-color:color-mix(in srgb,var(--danger) 35%,var(--border)); color:var(--danger); background:color-mix(in srgb,var(--danger) 8%,var(--surface-2)); }
+.beast-card-editor-tools-grid > button.is-danger { border-color:color-mix(in srgb,var(--danger) 35%,var(--border)); color:var(--danger); background:color-mix(in srgb,var(--danger) 8%,var(--surface-2-solid)); }
 @media (max-width:620px) { .beast-card-editor-tools-grid { grid-template-columns:minmax(0,1fr); } }
 .beast-page-editor-field { display: grid; gap: 7px; margin-bottom: 14px; color: var(--ink-muted); font-size: var(--text-sm); }
 .beast-page-editor-field input { min-height: 50px; padding: 0 14px; border: 1px solid var(--border-strong); border-radius: var(--radius-md); background: var(--surface-solid); color: var(--ink); font: inherit; }
@@ -1665,10 +1743,16 @@
 @media (max-width:1100px) { .beast-robot-editor-grid { grid-template-columns:1fr 1fr; } .beast-robot-editor-grid > section:last-child { grid-column:1/-1; } }
 @media (max-width:720px) { .beast-robot-editor-grid { grid-template-columns:1fr; } .beast-robot-editor-grid > section:last-child { grid-column:auto; } }
 
+/* Same background/border/radius/shadow recipe as .beast-panel (front page +
+   every page's "extra cards") instead of the static --surface-2 this used
+   to sit on -- --surface-2 never responds to the theme/design opacity
+   picker, so robot cards used to stay fixed while every other page's
+   cards moved when that setting changed. */
 .beast-robot-card {
-  background: var(--surface-2);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-md);
+  background: var(--panel-surface);
+  border: 1px solid var(--panel-border);
+  border-radius: var(--radius-lg);
+  box-shadow: 0 20px 40px -12px rgb(0 0 0 / var(--panel-shadow-opacity));
   padding: var(--space-5);
   display: flex;
   flex-direction: column;
@@ -2512,7 +2596,7 @@
   padding: 10px;
   gap: 5px;
   border-radius: 16px;
-  background: linear-gradient(160deg, color-mix(in srgb, var(--surface-2) 94%, white 6%), var(--surface-2));
+  background: linear-gradient(160deg, color-mix(in srgb, var(--surface-2-solid) 94%, white 6%), var(--surface-2-solid)), var(--surface-2);
   box-shadow: 0 8px 24px rgba(0,0,0,.06);
 }
 .beast-heating-room-card.is-off { opacity: .72; }
@@ -2537,7 +2621,7 @@
   padding:12px;
   gap:8px;
   border-radius:18px;
-  background:linear-gradient(155deg, color-mix(in srgb, var(--surface-2) 92%, white 8%), var(--surface-solid));
+  background:linear-gradient(155deg, color-mix(in srgb, var(--surface-2-solid) 92%, white 8%), var(--surface-solid));
   box-shadow:0 14px 34px rgba(0,0,0,.08);
 }
 .beast-heatpump-head strong { max-width:170px; overflow:hidden; font-size:17px; text-overflow:ellipsis; text-transform:capitalize; white-space:nowrap; }
@@ -2568,7 +2652,7 @@
 .beast-heatpump-options { grid-template-columns:1.15fr .9fr .9fr; align-items:end; gap:5px; }
 .beast-heatpump-select select { min-height:40px; }
 
-.beast-heating-side-card { overflow:hidden; border-radius:18px; background:linear-gradient(155deg,var(--surface-2),var(--surface-solid)); box-shadow:0 14px 32px rgba(0,0,0,.07); }
+.beast-heating-side-card { overflow:hidden; border-radius:18px; background:linear-gradient(155deg,var(--surface-2-solid),var(--surface-solid)),var(--surface-2); box-shadow:0 14px 32px rgba(0,0,0,.07); }
 .beast-dantherm-card { flex:1 1 auto; padding:14px; }
 .beast-dantherm-air > div { position:relative; overflow:hidden; border:1px solid var(--border); border-radius:13px; }
 .beast-dantherm-card.is-running .beast-dantherm-air > div::after { content:""; position:absolute; inset:0; background:linear-gradient(100deg,transparent 20%,color-mix(in srgb,var(--accent-b) 16%,transparent),transparent 80%); transform:translateX(-100%); animation:beast-vent-flow 3s linear infinite; pointer-events:none; }
@@ -2634,7 +2718,7 @@
 
 /* Calendar dashboard */
 .beast-waste-panel { grid-template-columns:minmax(330px,4fr) minmax(0,8fr); gap:clamp(12px,1.2vw,22px); }
-.beast-waste-section { position:relative; overflow:hidden; padding:clamp(16px,1.4vw,24px); border-color:var(--border-strong); background:linear-gradient(145deg,color-mix(in srgb,var(--surface-2-solid) 94%,var(--accent-soft)),var(--surface-2)); box-shadow:0 16px 42px rgba(0,0,0,.12); }
+.beast-waste-section { position:relative; overflow:hidden; padding:clamp(16px,1.4vw,24px); border-color:var(--border-strong); background:linear-gradient(145deg,color-mix(in srgb,var(--surface-2-solid) 94%,var(--accent-soft)),var(--surface-2-solid)),var(--surface-2); box-shadow:0 16px 42px rgba(0,0,0,.12); }
 .beast-waste-section::after { content:""; position:absolute; width:220px; height:220px; right:-100px; top:-120px; border-radius:50%; background:var(--accent-soft); filter:blur(12px); opacity:.45; pointer-events:none; }
 .beast-calendar-section-head { position:relative; z-index:1; min-height:58px; display:flex; align-items:center; gap:12px; margin-bottom:16px; }
 .beast-calendar-section-head > span { width:48px; height:48px; display:grid; place-items:center; flex:0 0 auto; border-radius:15px; color:#fff; background:var(--accent-gradient); box-shadow:var(--accent-glow); }
