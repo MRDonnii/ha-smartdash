@@ -4,6 +4,8 @@
   let HEAT_PUMPS = [];
   let AUTOMATION_ID = null;
   let DANTHERM = {};
+  let HAS_VENTILATION = false;
+  let HAS_DISTRICT = false;
 
   let containerEl = null;
 
@@ -13,10 +15,12 @@
     HEAT_PUMPS = (config.heatPumps || []).map((id) => ({ id, unit: config.heatPumpUnits?.[id] || id, label: BeastEntityPicker.friendlyName(id) }));
     AUTOMATION_ID = config.automation || null;
     const district = Array.isArray(config.districtSensors) ? config.districtSensors : [];
+    HAS_DISTRICT = district.some(Boolean);
     ["supply", "return", "cooling", "power", "energyToday", "energyMonth", "flow", "alarm"].forEach((key, index) => {
       DISTRICT[key] = district[index] || null;
     });
     const ventilation = Array.isArray(config.ventilationSensors) ? config.ventilationSensors : [];
+    HAS_VENTILATION = ventilation.some(Boolean);
     ["mode", "co2", "supplyTemp", "extractTemp", "recovery", "supplyFan", "extractFan", "filterLife", "filterAlarm", "bypass"].forEach((key, index) => {
       DANTHERM[key] = ventilation[index] || null;
     });
@@ -134,6 +138,12 @@
     const extractFan = Number(BeastHaSocket.getState(DANTHERM.extractFan)?.state);
     const ventilationActive = (Number.isFinite(supplyFan) && supplyFan > 0) || (Number.isFinite(extractFan) && extractFan > 0);
     const districtPower = Number(BeastHaSocket.getState(DISTRICT.power)?.state);
+    const districtPlacement = (BeastConfig.get("pageLayouts.heating.heatingLayout.districtPlacement") || BeastConfig.get("panels.heating.districtPlacement")) === "pumps" ? "pumps" : "sidebar";
+    const districtMarkup = HAS_DISTRICT ? `<section class="beast-heating-side-card beast-district-compact${districtPlacement === "pumps" ? " is-by-pumps" : ""}${Number.isFinite(districtPower) && districtPower > 0.05 ? " is-flowing" : ""}">
+      <div class="beast-heating-side-head"><span>Fjernvarme</span><small class="${alarmOk ? "is-ok" : "is-warning"}">${escapeHtml(alarm?.state || "–")}</small></div>
+      <div class="beast-district-flow"><span><small>Fremløb</small><strong>${num(DISTRICT.supply)}°</strong></span><i></i><span><small>Retur</small><strong>${num(DISTRICT.return)}°</strong></span></div>
+      <div class="beast-district-meta"><span>Afkøling ${num(DISTRICT.cooling)}°</span><span>${num(DISTRICT.power, 1)} kW</span><span>${num(DISTRICT.energyToday, 1)} kWh i dag</span></div>
+    </section>` : "";
 
     containerEl.innerHTML = `
       <div class="beast-heating-main">
@@ -150,10 +160,10 @@
         </div>
         <div class="beast-heating-room-grid">${ROOMS.map(buildRoomCard).join("")}</div>
         <div class="beast-heating-pumps-head"><span>Varmepumper</span><small>Temperatur · drift · blæser · retning</small></div>
-        <div class="beast-heatpump-grid">${HEAT_PUMPS.map(buildHeatPumpCard).join("")}</div>
+        <div class="beast-heatpump-grid">${HEAT_PUMPS.map(buildHeatPumpCard).join("")}${districtPlacement === "pumps" ? districtMarkup : ""}</div>
       </div>
       <aside class="beast-heating-sidebar">
-        <section class="beast-heating-side-card beast-dantherm-card${ventilationActive ? " is-running" : ""}">
+        ${HAS_VENTILATION ? `<section class="beast-heating-side-card beast-dantherm-card${ventilationActive ? " is-running" : ""}">
           <div class="beast-heating-side-head"><span>Dantherm ventilation</span><small>${escapeHtml(BeastHaSocket.getState(DANTHERM.mode)?.state || "–")}</small></div>
           <div class="beast-dantherm-air">
             <div><small>Indblæsning</small><strong>${num(DANTHERM.supplyTemp)}°</strong><i style="--air:${num(DANTHERM.supplyFan, 0)}%"></i></div>
@@ -166,16 +176,8 @@
             <span><small>Filter</small><strong class="${BeastHaSocket.getState(DANTHERM.filterAlarm)?.state === "on" ? "is-warning" : ""}">${num(DANTHERM.filterLife, 0)}%</strong></span>
             <span><small>Bypass</small><strong>${BeastHaSocket.getState(DANTHERM.bypass)?.state === "on" ? "Åben" : "Lukket"}</strong></span>
           </div>
-        </section>
-        <section class="beast-heating-side-card beast-district-compact${Number.isFinite(districtPower) && districtPower > 0.05 ? " is-flowing" : ""}">
-          <div class="beast-heating-side-head"><span>Fjernvarme</span><small class="${alarmOk ? "is-ok" : "is-warning"}">${escapeHtml(alarm?.state || "–")}</small></div>
-          <div class="beast-district-flow">
-            <span><small>Fremløb</small><strong>${num(DISTRICT.supply)}°</strong></span>
-            <i></i>
-            <span><small>Retur</small><strong>${num(DISTRICT.return)}°</strong></span>
-          </div>
-          <div class="beast-district-meta"><span>Afkøling ${num(DISTRICT.cooling)}°</span><span>${num(DISTRICT.power, 1)} kW</span><span>${num(DISTRICT.energyToday, 1)} kWh i dag</span></div>
-        </section>
+        </section>` : ""}
+        ${districtPlacement === "sidebar" ? districtMarkup : ""}
       </aside>
     `;
     wireHeatingLayout();
@@ -216,6 +218,8 @@
   function wireHeatingLayout() {
     const layout = BeastConfig.get("pageLayouts.heating.heatingLayout") || {};
     const hidden = new Set(Array.isArray(layout.hidden) ? layout.hidden : []);
+    if (!HAS_VENTILATION) hidden.add("dantherm");
+    if (!HAS_DISTRICT) hidden.add("district");
     const selectors = { rooms: ".beast-heating-room-grid", pumps: ".beast-heating-pumps-head, .beast-heatpump-grid", dantherm: ".beast-dantherm-card", district: ".beast-district-compact" };
     Object.entries(selectors).forEach(([id, selector]) => containerEl.querySelectorAll(selector).forEach((el) => el.classList.toggle("is-layout-hidden", hidden.has(id))));
     BeastNativePageEditor.mount({ section:"heating", label:"Varme", root:()=>containerEl, host:()=>containerEl, trigger:"#beastHeatingLayoutEdit", cards:()=>[
@@ -229,13 +233,13 @@
     const hidden = new Set(Array.isArray(layout.hidden) ? layout.hidden : []);
     const items = [["rooms", "Komfortzoner"], ["pumps", "Varmepumper"], ["dantherm", "Dantherm ventilation"], ["district", "Fjernvarme"]];
     const overlay = document.createElement("div"); overlay.id = "beastHeatingLayoutEditor"; overlay.className = "beast-modal-overlay";
-    overlay.innerHTML = `<div class="beast-modal beast-heating-layout-modal"><div class="beast-modal-header"><h3>Rediger varmelayout</h3><button type="button" class="beast-modal-close" data-close>×</button></div><div class="beast-modal-body"><div class="beast-heating-layout-list">${items.map(([id,label]) => `<label><input type="checkbox" data-heating-section="${id}" ${hidden.has(id) ? "" : "checked"}><strong>${label}</strong></label>`).join("")}</div><button type="button" class="beast-btn beast-btn-primary" data-save-heating-layout>Gem layout</button></div></div>`;
+    overlay.innerHTML = `<div class="beast-modal beast-heating-layout-modal"><div class="beast-modal-header"><h3>Rediger varmelayout</h3><button type="button" class="beast-modal-close" data-close>×</button></div><div class="beast-modal-body"><div class="beast-heating-layout-list">${items.map(([id,label]) => `<label><input type="checkbox" data-heating-section="${id}" ${hidden.has(id) ? "" : "checked"}><strong>${label}</strong></label>`).join("")}</div><label class="beast-heating-placement">Placering af fjernvarme<select data-district-placement><option value="sidebar"${layout.districtPlacement === "pumps" ? "" : " selected"}>Højre side</option><option value="pumps"${layout.districtPlacement === "pumps" ? " selected" : ""}>Ved varmepumper</option></select></label><button type="button" class="beast-btn beast-btn-primary" data-save-heating-layout>Gem layout</button></div></div>`;
     document.body.appendChild(overlay);
     overlay.addEventListener("click", (event) => {
       if (event.target === overlay || event.target.closest("[data-close]")) return overlay.remove();
       if (!event.target.closest("[data-save-heating-layout]")) return;
       const nextHidden = items.filter(([id]) => !overlay.querySelector(`[data-heating-section="${id}"]`).checked).map(([id]) => id);
-      BeastConfig.set("pageLayouts.heating.heatingLayout", { ...layout, hidden: nextHidden }); overlay.remove(); render();
+      BeastConfig.set("pageLayouts.heating.heatingLayout", { ...layout, hidden: nextHidden, districtPlacement: overlay.querySelector("[data-district-placement]").value }); overlay.remove(); render();
     });
   }
 

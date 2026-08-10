@@ -82,6 +82,7 @@
       { key: "heatPumps", label: "Varmepumper", type: "multi", domain: "climate" },
       { key: "automation", label: "Automatisk varmestyring", type: "single", domain: "input_boolean", hints: ["varme", "heat", "calefa"], filterHints: true },
       { key: "districtSensors", label: "Fjernvarme-sensorer", type: "multi", domain: "sensor", hints: ["kamstrup", "multical"], filterHints: true },
+      { key: "districtPlacement", label: "Placering af fjernvarme", type: "select", choices: [["sidebar", "Højre side"], ["pumps", "Ved varmepumper"]] },
       { key: "ventilationSensors", label: "Dantherm-sensorer", type: "multi", domain: "sensor", hints: ["dantherm", "hch5"], filterHints: true }
     ]},
     { id: "car", title: "Bil", description: "Energitte: batteri, opladning, lås, lokation, temperatur og dæktryk.", fields: [
@@ -414,6 +415,9 @@
     if (field.type === "boolean") {
       const checked = selected !== false;
       return `<select id="${fieldId(panel.id, field.key)}"><option value="1"${checked ? " selected" : ""}>Til</option><option value="0"${checked ? "" : " selected"}>Fra</option></select>`;
+    }
+    if (field.type === "select") {
+      return `<select id="${fieldId(panel.id, field.key)}">${(field.choices || []).map(([value, label]) => `<option value="${escapeHtml(value)}"${selected === value ? " selected" : ""}>${escapeHtml(label)}</option>`).join("")}</select>`;
     }
     if (field.type === "areas") {
       const ids = Array.isArray(selected) ? selected : [];

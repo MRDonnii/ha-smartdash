@@ -20,6 +20,7 @@
 
   function savedCards() {
     const cards = BeastConfig.get("pageLayouts.printer.cards");
+    if (BeastConfig.get("pageLayouts.printer.cardsConfigured") === true && Array.isArray(cards)) return cards;
     return Array.isArray(cards) && cards.length ? cards : defaultCards();
   }
 

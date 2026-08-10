@@ -643,6 +643,10 @@ window.BeastCardEditor = (function () {
       if (save) {
         saveSnapshot(configPath, BeastConfig.get(configPath) || [], "Før seneste gemning");
         BeastConfig.set(configPath, draftCards);
+        // Distinguish "the user deliberately saved zero cards" from an old
+        // config where the cards property did not exist yet. Array length is
+        // not a valid migration signal: [] is a real user choice.
+        if (/\.cards$/.test(configPath)) BeastConfig.set(configPath.replace(/\.cards$/, ".cardsConfigured"), true);
         saveSnapshot(configPath, draftCards, "Gemte layout");
       }
       editing = false;

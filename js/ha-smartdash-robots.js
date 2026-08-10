@@ -34,15 +34,19 @@
   const ROOM_LAYOUT_KEY = "beast_gunner_room_button_positions_v1";
 
   function defaultCards() {
-    const cards = [];
-    if (IDS.leonora) cards.push({ id: "robot_leonora", type: "leonora", display: "full", desktop: { w: 3, h: 2 }, tablet: { w: 1, h: 2 }, portrait: { h: 2 } });
-    if (IDS.gunner) cards.push({ id: "robot_gunner", type: "gunner", display: "full", desktop: { w: 6, h: 2 }, tablet: { w: 2, h: 2 }, portrait: { h: 2 } });
-    if (IDS.poul) cards.push({ id: "robot_poul", type: "poul", display: "full", desktop: { w: 3, h: 2 }, tablet: { w: 1, h: 2 }, portrait: { h: 2 } });
-    return cards;
+    // Never infer a branded/special template from array position. Existing
+    // saved leonora/gunner/poul cards remain untouched; new installations
+    // get neutral cards built from their actual HA entities.
+    return [...selectedVacuums, ...selectedMowers].map((entity, index) => ({
+      id: `robot_${entity.replace(/[^a-z0-9_]+/gi, "_")}_${index}`,
+      type: "robot", entity, display: "full",
+      desktop: { w: 6, h: 2 }, tablet: { w: 2, h: 2 }, portrait: { h: 2 }
+    }));
   }
 
   function savedCards() {
     const cards = BeastConfig.get("pageLayouts.robots.cards");
+    if (BeastConfig.get("pageLayouts.robots.cardsConfigured") === true && Array.isArray(cards)) return cards;
     return Array.isArray(cards) && cards.length ? cards : defaultCards();
   }
 
@@ -314,9 +318,6 @@
     if (card.type === "leonora") content = buildLeonora();
     else if (card.type === "gunner") content = buildGunner();
     else if (card.type === "poul") content = buildPoul();
-    else if (card.entity === SPECIAL_ROBOTS.leonora) content = buildLeonora();
-    else if (card.entity === SPECIAL_ROBOTS.gunner) content = buildGunner();
-    else if (card.entity === SPECIAL_ROBOTS.poul) content = buildPoul();
     else if (card.entity) content = buildGenericRobot(card.entity, card.entity.startsWith("lawn_mower.") ? "lawn_mower" : "vacuum", card);
     return `<section class="beast-panel beast-ov-card beast-page-builder-card beast-robot-builder-card" ${cardSize(card)} data-card-display="${escapeHtml(card.display || "full")}">${content}</section>`;
   }
