@@ -3364,6 +3364,21 @@
 .beast-waste-section[data-calendar-section="waste"] .beast-calendar-waste-item.is-next { width:100%; min-width:0; min-height:0; height:100%; padding:7px 9px; }
 .beast-waste-section[data-calendar-section="waste"] .beast-calendar-waste-icon,
 .beast-waste-section[data-calendar-section="waste"] .beast-calendar-waste-item.is-next .beast-calendar-waste-icon { width:38px; height:38px; border-radius:11px; }
+.beast-waste-section[data-calendar-section="waste"] { padding:10px 12px; }
+.beast-waste-section[data-calendar-section="waste"] .beast-calendar-section-head { min-height:34px; margin-bottom:6px; gap:9px; }
+.beast-waste-section[data-calendar-section="waste"] .beast-calendar-section-head > span { width:32px; height:32px; border-radius:10px; }
+.beast-waste-section[data-calendar-section="waste"] .beast-calendar-section-head small { font-size:9px; }
+.beast-waste-section[data-calendar-section="waste"] .beast-calendar-section-head h2 { margin-top:0; font-size:1.08rem; }
+.beast-waste-section[data-calendar-section="waste"] .beast-calendar-waste-list { gap:5px; grid-template-rows:repeat(var(--calendar-item-rows,1),minmax(34px,1fr)); grid-auto-rows:minmax(34px,1fr); }
+.beast-waste-section[data-calendar-section="waste"] .beast-calendar-waste-item,
+.beast-waste-section[data-calendar-section="waste"] .beast-calendar-waste-item.is-next { padding:4px 7px; grid-template-columns:30px minmax(0,1fr) auto; gap:7px; border-radius:10px; }
+.beast-waste-section[data-calendar-section="waste"] .beast-calendar-waste-icon,
+.beast-waste-section[data-calendar-section="waste"] .beast-calendar-waste-item.is-next .beast-calendar-waste-icon { width:28px; height:28px; border-radius:8px; }
+.beast-waste-section[data-calendar-section="waste"] .beast-calendar-waste-item small,
+.beast-waste-section[data-calendar-section="waste"] .beast-calendar-waste-item em { font-size:9px; }
+.beast-waste-section[data-calendar-section="waste"] .beast-calendar-waste-item strong { margin:0; font-size:11px; }
+.beast-waste-section[data-calendar-section="waste"] .beast-calendar-waste-item > b,
+.beast-waste-section[data-calendar-section="waste"] .beast-calendar-waste-item.is-next > b { padding:4px 6px; font-size:10px; }
 
 /* Calendar cards share the available panel height instead of growing the page.
    The row count is supplied by the panel renderer and remains stable between

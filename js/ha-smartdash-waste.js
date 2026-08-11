@@ -474,8 +474,8 @@
         const id = `schedule-${scheduleCardSlug(entityId)}`;
         return { id, label: `${t("Skema", "Schedule")} · ${scheduleCardLabel(entityId)}`, selector: `[data-calendar-section="${id}"]`, titleSelector: "h2", enabled: !hidden.has(id), desktop: { x: 1, y: 1 + index * 12, w: 8, h: 12 } };
       }),
-      { id:"waste", label:t("Affald og afhentning", "Waste and collections"), selector:'[data-calendar-section="waste"]', titleSelector:"h2", available:()=>wasteSensorIds().length > 0, enabled:!hidden.has("waste"), desktop:{x:9,y:13,w:4,h:6}, options:{rows:cardRows("waste",3)}, controls:[{key:"rows",label:t("Antal viste rækker", "Visible rows"),min:1,max:30,default:3}] },
-      { id:"events", label:t("Kommende kalenderaftaler", "Upcoming calendar events"), selector:'[data-calendar-section="events"]', titleSelector:"h2", available:()=>calendarEntityIds().length > 0, enabled:!hidden.has("events"), desktop:{x:9,y:1,w:4,h:12}, options:{rows:cardRows("events",12)}, controls:[{key:"rows",label:t("Antal viste rækker", "Visible rows"),min:1,max:30,default:12}] }
+      { id:"waste", label:t("Affald og afhentning", "Waste and collections"), selector:'[data-calendar-section="waste"]', titleSelector:"h2", available:()=>wasteSensorIds().length > 0, enabled:!hidden.has("waste"), desktop:{x:9,y:21,w:4,h:4}, options:{rows:cardRows("waste",3)}, controls:[{key:"rows",label:t("Antal viste rækker", "Visible rows"),min:1,max:30,default:3}] },
+      { id:"events", label:t("Kommende kalenderaftaler", "Upcoming calendar events"), selector:'[data-calendar-section="events"]', titleSelector:"h2", available:()=>calendarEntityIds().length > 0, enabled:!hidden.has("events"), desktop:{x:9,y:1,w:4,h:20}, options:{rows:cardRows("events",12)}, controls:[{key:"rows",label:t("Antal viste rækker", "Visible rows"),min:1,max:30,default:12}] }
     ], onSave:()=>render() });
   }
 
@@ -579,6 +579,24 @@
     BeastConfig.set(path, saved);
   }
 
+  // v0.7.91 makes waste a deliberately secondary compact footer in the
+  // side column. Only migrate the exact previous defaults so manually
+  // positioned or resized cards are never moved.
+  function migrateCalendarLayoutToCompactWaste() {
+    const path = window.BeastNativePageEditor?.storagePath?.("waste") || "pageLayouts.waste.nativeCards";
+    const saved = BeastConfig.get(path);
+    if (!Array.isArray(saved) || !saved.length) return;
+    const waste = saved.find((card) => card.id === "waste");
+    const events = saved.find((card) => card.id === "events");
+    const wd = waste?.desktop || {};
+    const ed = events?.desktop || {};
+    if (wd.x !== 9 || wd.y !== 13 || wd.w !== 4 || wd.h !== 6) return;
+    if (ed.x !== 9 || ed.y !== 1 || ed.w !== 4 || ed.h !== 12) return;
+    waste.desktop = { x: 9, y: 21, w: 4, h: 4 };
+    events.desktop = { x: 9, y: 1, w: 4, h: 20 };
+    BeastConfig.set(path, saved);
+  }
+
   function init(root) {
     containerEl = root;
     containerEl.classList.add("beast-waste-panel");
@@ -591,6 +609,7 @@
     migrateCalendarLayoutToScheduleFirst();
     migrateCalendarLayoutToFullSchedule();
     migrateCalendarLayoutToReadableWaste();
+    migrateCalendarLayoutToCompactWaste();
     containerEl.innerHTML = `<p class="beast-music-empty">${t("Henter…", "Loading…")}</p>`;
     const stableRender = BeastCore.stableUpdater(containerEl, render, 500);
 

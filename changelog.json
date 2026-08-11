@@ -1,5 +1,15 @@
 [
   {
+    "version": "20260811-169",
+    "tag": "v0.7.91",
+    "date": "2026-08-11",
+    "changes": [
+      { "da": "Affaldskortet er gjort markant lavere og mere kompakt, men beholder sine afhentninger som en lodret liste.", "en": "The waste card is now significantly shorter and more compact while keeping its collections in a vertical list." },
+      { "da": "Begge skoleskemaer bevares som store hovedkort, og Kommende aftaler overtager den frigivne højde i sidekolonnen.", "en": "Both school schedules remain large primary cards, while Upcoming events uses the freed space in the side column." },
+      { "da": "Eksisterende standardlayouts flyttes automatisk til den nye prioritering; manuelt tilpassede layouts ændres ikke.", "en": "Existing default layouts automatically migrate to the new priority, while manually customized layouts remain unchanged." }
+    ]
+  },
+  {
     "version": "20260811-168",
     "tag": "v0.7.90",
     "date": "2026-08-11",
