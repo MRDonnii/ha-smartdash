@@ -200,6 +200,8 @@ const BeastCore = (() => {
     shield: '<path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>',
     music: '<path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/>',
     bolt: '<polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" fill="currentColor" stroke="none"/>',
+    flame: '<path d="M12 22c4.4 0 8-3.2 8-7.7 0-3.1-1.7-5.9-4.8-8.6.1 2.1-.7 3.7-2 4.7.1-3.4-1.8-6.4-5-8.4.4 3.5-4.2 6.8-4.2 12.3C4 18.8 7.6 22 12 22z"/><path d="M9.2 17.2c0 1.6 1.2 2.8 2.8 2.8s2.8-1.2 2.8-2.8c0-1.5-.9-2.8-2.7-4.2.1 1-.3 1.8-.9 2.4-.2-1.2-.9-2.2-2-3.1.2 1.8 0 3.1 0 4.9z" fill="currentColor" stroke="none"/>',
+    snowflake: '<line x1="12" y1="2" x2="12" y2="22"/><line x1="4.93" y1="6" x2="19.07" y2="18"/><line x1="4.93" y1="18" x2="19.07" y2="6"/><polyline points="9 4 12 7 15 4"/><polyline points="9 20 12 17 15 20"/><polyline points="5.5 9 9.5 9 9 5.5"/><polyline points="18.5 15 14.5 15 15 18.5"/><polyline points="5.5 15 9.5 15 9 18.5"/><polyline points="18.5 9 14.5 9 15 5.5"/>',
     car: '<path d="M5 11l1.5-4.5A2 2 0 0 1 8.4 5h7.2a2 2 0 0 1 1.9 1.5L19 11"/><rect x="3" y="11" width="18" height="6" rx="2"/><circle cx="7.5" cy="17" r="1.5"/><circle cx="16.5" cy="17" r="1.5"/>',
     droplet: '<path d="M12 2s6 7 6 12a6 6 0 0 1-12 0c0-5 6-12 6-12z"/>',
     calendar: '<rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/>',

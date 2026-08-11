@@ -110,15 +110,16 @@
     const current = s && Number.isFinite(Number(s.attributes.current_temperature)) ? Number(s.attributes.current_temperature).toFixed(1) : "–";
     const target = s && Number.isFinite(Number(s.attributes.temperature)) ? Number(s.attributes.temperature) : null;
     const heating = s && s.attributes.hvac_action === "heating";
+    const cooling = s && s.attributes.hvac_action === "cooling";
     const on = s && s.state !== "off";
 
     return `
-      <div class="beast-heating-room-card${heating ? " is-heating" : ""}${on ? " is-on" : " is-off"}">
+      <div class="beast-heating-room-card${heating ? " is-heating" : ""}${cooling ? " is-cooling" : ""}${on ? " is-on" : " is-off"}">
         <div class="beast-heating-room-head">
           <span class="beast-heating-room-name">${escapeHtml(room.label)}</span>
-          <span class="beast-room-badge${on ? " is-active" : ""}">${on ? (heating ? "Varmer" : "Tændt") : "Slukket"}</span>
+          <span class="beast-room-badge${on ? " is-active" : ""}">${on ? (heating ? "Varmer" : cooling ? "Køler" : "Tændt") : "Slukket"}</span>
         </div>
-        <div class="beast-heating-room-reading"><span><small>Rumtemperatur</small><strong class="beast-heating-room-current">${current}°</strong></span><i aria-hidden="true">${BeastCore.icon(heating ? "bolt" : "thermometer", { size: 19 })}</i></div>
+        <div class="beast-heating-room-reading"><span><small>Rumtemperatur</small><strong class="beast-heating-room-current">${current}°</strong></span><i aria-hidden="true">${BeastCore.icon(heating ? "flame" : cooling ? "snowflake" : "thermometer", { size: 19 })}</i></div>
         <div class="beast-stepper">
           <button type="button" class="beast-transport-btn" data-action="heat-down" data-entity="${room.id}" aria-label="Sænk temperaturen i ${escapeHtml(room.label)}">${BeastCore.icon("minus", { size: 16 })}</button>
           <span class="beast-stepper-value"><small>Måltemperatur</small><strong>${target !== null ? `${target}°` : "–"}</strong></span>
@@ -162,7 +163,7 @@
     const modes = s?.attributes?.hvac_modes || ["off", "heat", "cool", "heat_cool"];
     const pumpName = String(pump.label || pump.id).replace(/^varmepumpe\s+/i, "").replace(/^qlima\s+/i, "");
     const statusLabel = action === "heating" ? "Varmer" : action === "cooling" ? "Køler" : s?.state === "off" ? "Slukket" : "Klar";
-    const statusIcon = action === "heating" ? "bolt" : action === "cooling" ? "droplet" : "wind";
+    const statusIcon = action === "heating" ? "flame" : action === "cooling" ? "snowflake" : "wind";
     return `
       <article class="beast-heatpump-card is-${escapeHtml(action)}">
         <div class="beast-heatpump-head">

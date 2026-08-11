@@ -6,6 +6,22 @@
   overflow-y: auto;
 }
 
+/* Live HVAC activity: flame for heat, snowflake for cooling. */
+.beast-heating-room-card.is-cooling { border-color:rgba(66,200,255,.55); box-shadow:inset 0 0 28px rgba(66,200,255,.08),0 0 15px rgba(66,200,255,.12); }
+.beast-heating-room-card.is-cooling .beast-heating-room-reading i { color:#42c8ff; background:rgba(66,200,255,.13); }
+.beast-heating-room-card.is-heating .beast-heating-room-reading i svg,
+.beast-heatpump-card.is-heating .beast-heatpump-head > i svg { animation:beast-flame-dance 1.15s ease-in-out infinite; transform-origin:50% 85%; }
+.beast-heating-room-card.is-cooling .beast-heating-room-reading i svg,
+.beast-heatpump-card.is-cooling .beast-heatpump-head > i svg { animation:beast-snow-turn 5s linear infinite; transform-origin:center; }
+@keyframes beast-flame-dance { 0%,100% { transform:scale(.94) rotate(-2deg); filter:drop-shadow(0 0 3px rgba(255,126,34,.55)); } 50% { transform:scale(1.08) rotate(2deg); filter:drop-shadow(0 0 7px rgba(255,185,54,.9)); } }
+@keyframes beast-snow-turn { to { transform:rotate(360deg); } }
+@media (prefers-reduced-motion:reduce) {
+  .beast-heating-room-card.is-heating .beast-heating-room-reading i svg,
+  .beast-heatpump-card.is-heating .beast-heatpump-head > i svg,
+  .beast-heating-room-card.is-cooling .beast-heating-room-reading i svg,
+  .beast-heatpump-card.is-cooling .beast-heatpump-head > i svg { animation:none; }
+}
+
 .beast-settings-panel {
   overflow-y: auto;
 }
