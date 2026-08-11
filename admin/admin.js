@@ -59,7 +59,8 @@
     ]},
     { id: "waste", title: "Kalender & affald", description: "Kalendere og affaldssensorer. Om de vises på forsiden styres under Forside.", fields: [
       { key: "calendars", label: "Kalendere (bruges også af forsidens \"Næste aftaler\" -- tomt viser alle kalendere)", type: "multi", domain: "calendar" },
-      { key: "sensors", label: "Affaldssensorer", type: "multi", domain: "sensor", hints: ["affald", "waste", "trash", "bin"] }
+      { key: "sensors", label: "Affaldssensorer", type: "multi", domain: "sensor", hints: ["affald", "waste", "trash", "bin"] },
+      { key: "scheduleCalendars", label: "Skoleskema-kalendere (ét kort pr. valgt kalender, fx AULA)", type: "multi", domain: "calendar", hints: ["skole", "skema", "aula"] }
     ]},
     { id: "music", title: "Musik", description: "Music Assistant-integration til bibliotek og søgning.", fields: [
       { key: "configEntryId", label: "Music Assistant config entry-id", type: "text", placeholder: "fx 01KK8RSBAW369PSMQMG6CE5HGB" }
@@ -1591,6 +1592,23 @@
           <label><span>${t("Til", "To")}</span><input type="time" id="adminAdvarslerScheduleEnd" value="${escapeHtml(banners.scheduleEnd || "06:00")}"></label>
         </div>
       </div>
+      <div class="admin-card admin-settings-group"><div class="admin-card-head"><div><h2>${t("AULA", "AULA")}</h2><p>${t("Skole-besked og kommende lektioner fra de skoleskema-kalendere der er valgt under Kalender & affald.", "School messages and upcoming lessons from the schedule calendars picked under Calendar & waste.")}</p></div></div><div class="beast-mqtt-config">
+        <label><span>${t("AULA-besked-banner", "AULA message banner")}</span>
+          <select id="adminAdvarslerAulaMessageBanner">
+            <option value="1" ${features.aulaMessageBanner === true ? "selected" : ""}>${t("Til", "On")}</option>
+            <option value="0" ${features.aulaMessageBanner !== true ? "selected" : ""}>${t("Fra — vises aldrig", "Off — never shown")}</option>
+          </select>
+        </label>
+        <label><span>${t("Lektions-banner", "Lesson banner")}</span>
+          <select id="adminAdvarslerAulaLessonBanner">
+            <option value="1" ${features.aulaLessonBanner === true ? "selected" : ""}>${t("Til", "On")}</option>
+            <option value="0" ${features.aulaLessonBanner !== true ? "selected" : ""}>${t("Fra — vises aldrig", "Off — never shown")}</option>
+          </select>
+        </label>
+        <label><span>${t("Advar før lektion (minutter)", "Warn before lesson (minutes)")}</span><input type="number" min="1" max="60" id="adminAdvarslerAulaMinutes" value="${Number(banners.aulaLessonMinutes) || 10}"></label>
+        <label><span>${t("AULA besked-sensor (valgfri)", "AULA message sensor (optional)")}</span>${BeastEntityPicker.selectHtml({ id: "adminAdvarslerAulaMessage", domain: "binary_sensor", keywordHints: ["aula", "besked", "message"], selected: app.aulaMessageSensor })}</label>
+        <p class="admin-field-hint">${t("Kræver mindst én skoleskema-kalender valgt under Kalender & affald.", "Requires at least one schedule calendar picked under Calendar & waste.")}</p>
+      </div></div>
       <div class="admin-actions"><button type="button" class="beast-btn beast-btn-primary" id="adminAdvarslerSave">${t("Gem advarsler", "Save alerts")}</button><span class="admin-save-state" data-save-state="advarsler"></span></div>
     </section>`;
   }
@@ -2247,7 +2265,9 @@
         ...(BeastConfig.get("features") || {}),
         postBanner: document.getElementById("adminAdvarslerPostBanner").value === "1",
         printerBanner: document.getElementById("adminAdvarslerPrinterBanner").value === "1",
-        doorBanner: document.getElementById("adminAdvarslerDoorBanner").value === "1"
+        doorBanner: document.getElementById("adminAdvarslerDoorBanner").value === "1",
+        aulaMessageBanner: document.getElementById("adminAdvarslerAulaMessageBanner").value === "1",
+        aulaLessonBanner: document.getElementById("adminAdvarslerAulaLessonBanner").value === "1"
       };
       const appEntities = {
         ...(BeastConfig.get("appEntities") || {}),
@@ -2256,7 +2276,8 @@
         mailDescription: document.getElementById("adminAdvarslerMailDescription").value || null,
         mailImage: document.getElementById("adminAdvarslerMailImage").value || null,
         mailImageCarport: document.getElementById("adminAdvarslerMailImageCarport").value || null,
-        mailImageForhaven: document.getElementById("adminAdvarslerMailImageForhaven").value || null
+        mailImageForhaven: document.getElementById("adminAdvarslerMailImageForhaven").value || null,
+        aulaMessageSensor: document.getElementById("adminAdvarslerAulaMessage").value || null
       };
       const banners = {
         ...(BeastConfig.get("banners") || {}),
@@ -2265,7 +2286,8 @@
         scheduleEnabled: document.getElementById("adminAdvarslerScheduleEnabled").checked,
         scheduleStart: document.getElementById("adminAdvarslerScheduleStart").value || "22:00",
         scheduleEnd: document.getElementById("adminAdvarslerScheduleEnd").value || "06:00",
-        layoutMode: document.getElementById("adminAdvarslerLayoutMode").value === "stacked" ? "stacked" : "separate"
+        layoutMode: document.getElementById("adminAdvarslerLayoutMode").value === "stacked" ? "stacked" : "separate",
+        aulaLessonMinutes: Math.max(1, Number(document.getElementById("adminAdvarslerAulaMinutes").value) || 10)
       };
       const result = await BeastConfig.setMany({ features, appEntities, banners });
       return { success: result?.success !== false };

@@ -1,5 +1,22 @@
 [
   {
+    "version": "20260811-137",
+    "tag": "v0.7.59",
+    "date": "2026-08-11",
+    "changes": [
+      { "da": "Skoleskemaet viser nu fagenes rigtige navne i stedet for AULA's forkortelser (fx \"Matematik\" i stedet for \"MAT\"), og en times fag vises altid korrekt selvom en ekstra støttelærer er tilknyttet samme tidspunkt.", "en": "The school schedule now shows subjects' real names instead of AULA's abbreviations (e.g. \"Matematik\" instead of \"MAT\"), and a lesson's subject always shows correctly even when an extra support teacher is attached to the same period." }
+    ]
+  },
+  {
+    "version": "20260811-136",
+    "tag": "v0.7.58",
+    "date": "2026-08-11",
+    "changes": [
+      { "da": "Nyt skoleskema på Kalender-siden: vælg én eller flere skema-kalendere (fx AULA) i Admin, og få ét kort pr. valgt kalender med dagens lektioner. Lektioner der dækkes af flere lærere samtidig vises samlet som én linje i stedet for gentaget.", "en": "New school schedule on the Calendar page: pick one or more schedule calendars (e.g. AULA) in Admin and get one card per calendar showing today's lessons. Lessons covered by multiple teachers at once are merged into a single line instead of repeating." },
+      { "da": "Nye valgfrie dashboard-advarsler: en lektion der starter om kort tid, og en ny besked i skole-appen -- begge slået fra som standard og styres under Admin -> Advarsler.", "en": "New optional dashboard alerts: a lesson starting soon, and a new message in the school app -- both off by default and controlled under Admin -> Alerts." }
+    ]
+  },
+  {
     "version": "20260811-135",
     "tag": "v0.7.57",
     "date": "2026-08-11",
