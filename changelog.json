@@ -1,5 +1,13 @@
 [
   {
+    "version": "20260811-124",
+    "tag": "v0.7.46",
+    "date": "2026-08-11",
+    "changes": [
+      "Thermostat cards now use equal flex distribution so the complete one-column list fills all remaining vertical space from the header to the bottom of the Heating container."
+    ]
+  },
+  {
     "version": "20260811-123",
     "tag": "v0.7.45",
     "date": "2026-08-11",
