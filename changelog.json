@@ -1,5 +1,18 @@
 [
   {
+    "version": "20260811-117",
+    "tag": "v0.7.39",
+    "date": "2026-08-11",
+    "changes": [
+      "The Heating page now gives thermostats the primary space with larger two-row comfort cards while heat-pump controls use a compact lower row by default.",
+      "Thermostat cards now have clearer current and target temperatures, larger touch controls, richer active-heating feedback and improved visual hierarchy.",
+      "A dedicated Heating card-view editor can independently choose spacious or compact thermostats, compact or animated heat-pump cards, section visibility and district-heating placement, while the existing move and resize editor remains available separately.",
+      "Front-page editing is now always available from the shared Edit action, even when the camera card has been removed or hidden; camera-specific options remain conditional on an active camera card.",
+      "The complete front-page editor bundle is now cache-versioned together, preventing an older cached editor script from showing card outlines without the move, resize and card-action controls.",
+      "Front-page hourly and daily weather forecasts now load independently using the same Home Assistant response formats as the Weather page, so one unavailable forecast type can no longer leave the whole weather card stuck loading."
+    ]
+  },
+  {
     "version": "20260811-116",
     "tag": "v0.7.38",
     "date": "2026-08-11",
