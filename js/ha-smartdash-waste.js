@@ -449,7 +449,7 @@
     BeastNativePageEditor.mount({ section:"waste", label:t("Kalender", "Calendar"), root:()=>containerEl, host:()=>containerEl, trigger:"#beastCalendarLayoutEdit", cards:()=>[
       ...scheduleCalendarIds().map((entityId, index) => {
         const id = `schedule-${scheduleCardSlug(entityId)}`;
-        return { id, label: `${t("Skema", "Schedule")} · ${scheduleCardLabel(entityId)}`, selector: `[data-calendar-section="${id}"]`, titleSelector: "h2", enabled: !hidden.has(id), desktop: { x: 1, y: 1 + index * 8, w: 8, h: 8 } };
+        return { id, label: `${t("Skema", "Schedule")} · ${scheduleCardLabel(entityId)}`, selector: `[data-calendar-section="${id}"]`, titleSelector: "h2", enabled: !hidden.has(id), desktop: { x: 1, y: 1 + index * 12, w: 8, h: 12 } };
       }),
       { id:"waste", label:t("Affald og afhentning", "Waste and collections"), selector:'[data-calendar-section="waste"]', titleSelector:"h2", enabled:!hidden.has("waste"), desktop:{x:9,y:13,w:4,h:3}, options:{rows:cardRows("waste",3)}, controls:[{key:"rows",label:t("Antal viste rækker", "Visible rows"),min:1,max:30,default:3}] },
       { id:"events", label:t("Kommende kalenderaftaler", "Upcoming calendar events"), selector:'[data-calendar-section="events"]', titleSelector:"h2", enabled:!hidden.has("events"), desktop:{x:9,y:1,w:4,h:12}, options:{rows:cardRows("events",12)}, controls:[{key:"rows",label:t("Antal viste rækker", "Visible rows"),min:1,max:30,default:12}] }
@@ -523,6 +523,24 @@
     if (changed) BeastConfig.set(path, saved);
   }
 
+  // v0.7.63 made school schedules the primary wide card, but its eight-row
+  // height still forced the weekly timetable to scroll. Expand only that
+  // release's exact default; manually resized schedules remain untouched.
+  function migrateCalendarLayoutToFullSchedule() {
+    const path = window.BeastNativePageEditor?.storagePath?.("waste") || "pageLayouts.waste.nativeCards";
+    const saved = BeastConfig.get(path);
+    if (!Array.isArray(saved) || !saved.length) return;
+    let changed = false;
+    saved.filter((card) => String(card.id || "").startsWith("schedule-")).forEach((card, index) => {
+      const d = card.desktop || {};
+      if (d.x === 1 && d.y === 1 + index * 8 && d.w === 8 && d.h === 8) {
+        card.desktop = { x: 1, y: 1 + index * 12, w: 8, h: 12 };
+        changed = true;
+      }
+    });
+    if (changed) BeastConfig.set(path, saved);
+  }
+
   function init(root) {
     containerEl = root;
     containerEl.classList.add("beast-waste-panel");
@@ -533,6 +551,7 @@
     }
     migrateWasteLayoutForSchedule();
     migrateCalendarLayoutToScheduleFirst();
+    migrateCalendarLayoutToFullSchedule();
     containerEl.innerHTML = `<p class="beast-music-empty">${t("Henter…", "Loading…")}</p>`;
     const stableRender = BeastCore.stableUpdater(containerEl, render, 500);
 
