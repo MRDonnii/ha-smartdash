@@ -1,10 +1,99 @@
 (function () {
   function wasteSensorIds() { return BeastConfig.get("panels.waste.sensors") || []; }
   function calendarEntityIds() { return BeastConfig.get("panels.waste.calendars") || []; }
+  function scheduleCalendarIds() { return BeastConfig.get("panels.waste.scheduleCalendars") || []; }
 
   let containerEl = null;
   let calendarRequest = 0;
   let selectedCalendarDay = "all";
+  // One card per configured schedule calendar (e.g. one per child) -- each
+  // navigates its own day independently, so this is keyed by entity_id
+  // rather than a single shared value.
+  let scheduleDayOffsets = {};
+  let scheduleRequestId = 0;
+
+  // Slugifies an entity_id into something safe to use in a DOM id/selector
+  // (data-calendar-section="schedule-..."). Not meant to be reversed --
+  // the real entity_id is looked up separately wherever needed.
+  function scheduleCardSlug(entityId) {
+    return String(entityId).replace(/[^a-z0-9]/gi, "-");
+  }
+
+  // The calendar's own friendly_name already carries the child's name (per
+  // the family's own naming convention, e.g. "Skoleskema Mads Thorn Halle")
+  // -- stripping a leading "Skoleskema"/"Schedule" word gives a clean card
+  // title without needing a separate label field in Admin.
+  function scheduleCardLabel(entityId) {
+    const name = BeastHaSocket.getState(entityId)?.attributes?.friendly_name || entityId.replace("calendar.", "");
+    return name.replace(/^(skoleskema|schedule)\s+/i, "").trim() || name;
+  }
+
+  // AULA-style summaries are "<FAGKODE>, <Lærernavn>" (e.g. "MAT, Tine Bach
+  // Christensen"), sometimes "KRI, VIKAR: Amar Jusic" for a substitute. Not
+  // every calendar will follow this exact shape, so a summary without a
+  // comma just becomes the subject with no teacher rather than failing.
+  function parseScheduleSummary(summary) {
+    const raw = String(summary || "").trim();
+    const commaIndex = raw.indexOf(",");
+    if (commaIndex === -1) return { subject: raw, teacher: "" };
+    return { subject: raw.slice(0, commaIndex).trim(), teacher: raw.slice(commaIndex + 1).trim() };
+  }
+
+  // AULA's subject codes as seen on this family's own timetable, mapped to
+  // their real Danish names (confirmed against AULA's own schedule view --
+  // codes not in this list, e.g. an unlabelled block code, are shown as-is
+  // rather than guessed).
+  const SCHEDULE_SUBJECT_NAMES = {
+    idr: "Idræt", mat: "Matematik", dan: "Dansk", mus: "Musik",
+    kri: "Kristendomskundskab", "n/t": "Natur/teknologi"
+  };
+  function scheduleSubjectLabel(code) {
+    const raw = String(code || "").trim();
+    return SCHEDULE_SUBJECT_NAMES[raw.toLowerCase()] || raw;
+  }
+
+  // "2-lærer" (co-teacher) and "Klpæd" (class pedagogue) are AULA's way of
+  // attaching a second staff member to a period -- they show up as their
+  // OWN calendar event at the exact same start/end as the real lesson, not
+  // as an attribute of it. They must never be picked as the row's subject
+  // (only the real lesson code should be), but their teacher name still
+  // belongs in the merged row's teacher list.
+  const SCHEDULE_SUBJECT_PLACEHOLDERS = ["2-lærer", "klpæd"];
+  function isPlaceholderSubject(code) {
+    return SCHEDULE_SUBJECT_PLACEHOLDERS.includes(String(code || "").trim().toLowerCase());
+  }
+
+  // Multiple teachers/roles can cover the exact same period (co-teaching,
+  // support staff) -- AULA represents that as separate events sharing one
+  // start/end instead of one event with several teachers. Grouping by
+  // start+end merges those back into the single row a person actually
+  // wants to see, rather than duplicate-looking rows for the same lesson.
+  function mergeScheduleEvents(events) {
+    const groups = new Map();
+    events.forEach((event) => {
+      const start = event.start?.dateTime || event.start?.date || "";
+      const end = event.end?.dateTime || event.end?.date || "";
+      const key = `${start}|${end}`;
+      if (!groups.has(key)) groups.set(key, { start, end, parts: [] });
+      groups.get(key).parts.push({ ...parseScheduleSummary(event.summary), location: event.location || "" });
+    });
+    return Array.from(groups.values())
+      .sort((a, b) => new Date(a.start) - new Date(b.start))
+      .map((group) => {
+        const primary = group.parts.find((part) => part.subject && !isPlaceholderSubject(part.subject)) || group.parts[0];
+        return {
+          start: group.start,
+          end: group.end,
+          location: primary?.location || group.parts.find((part) => part.location)?.location || "",
+          subject: primary?.subject || "",
+          teachers: group.parts.map((part) => part.teacher).filter(Boolean)
+        };
+      });
+  }
+
+  // Shared with the AULA lesson-soon banner (ha-smartdash-overview.js) so
+  // subject-code translation and multi-teacher merging stay in one place.
+  window.BeastScheduleSubjects = { label: scheduleSubjectLabel, mergeEvents: mergeScheduleEvents };
 
   function weatherEntityId() { return BeastConfig.get("panels.weather.entity"); }
 
@@ -87,6 +176,69 @@
         <b>${escapeHtml(when)}</b>
       </article>`;
     }).join("");
+  }
+
+  async function loadScheduleDay(entityId, dayOffset) {
+    const day = new Date();
+    day.setHours(0, 0, 0, 0);
+    day.setDate(day.getDate() + dayOffset);
+    const start = new Date(day);
+    const end = new Date(day);
+    end.setDate(end.getDate() + 1);
+    try {
+      const events = await BeastAuth.haFetch(`/api/calendars/${entityId}?start=${start.toISOString()}&end=${end.toISOString()}`);
+      return mergeScheduleEvents(events || []);
+    } catch (error) {
+      return [];
+    }
+  }
+
+  function renderScheduleRows(rows, locale) {
+    if (!rows.length) return `<div class="beast-calendar-empty">${BeastCore.icon("calendar", { size: 26 })}<strong>Ingen timer</strong></div>`;
+    return rows.map((row) => {
+      const time = row.start && row.start.length > 10
+        ? new Date(row.start).toLocaleTimeString(locale, { hour: "2-digit", minute: "2-digit" })
+        : "";
+      const teacherText = row.teachers.map((teacher) => {
+        const isSub = /^vikar/i.test(teacher);
+        const clean = teacher.replace(/^vikar:?\s*/i, "");
+        return isSub ? `<em class="is-substitute">VIKAR: ${escapeHtml(clean)}</em>` : escapeHtml(teacher);
+      }).join(" + ");
+      return `<article class="beast-schedule-row">
+        <time>${escapeHtml(time)}</time>
+        <div><strong>${escapeHtml(scheduleSubjectLabel(row.subject) || "Ukendt fag")}</strong>${teacherText ? `<span>${teacherText}</span>` : ""}</div>
+        ${row.location ? `<b>${escapeHtml(row.location)}</b>` : ""}
+      </article>`;
+    }).join("");
+  }
+
+  function scheduleDayLabel(dayOffset, locale) {
+    if (dayOffset === 0) return "I dag";
+    if (dayOffset === 1) return "I morgen";
+    if (dayOffset === -1) return "I går";
+    const day = new Date();
+    day.setDate(day.getDate() + dayOffset);
+    return day.toLocaleDateString(locale, { weekday: "long", day: "numeric", month: "short" });
+  }
+
+  async function renderScheduleCard(entityId) {
+    const slug = scheduleCardSlug(entityId);
+    const host = document.getElementById(`beastSchedule-${slug}`);
+    if (!host) return;
+    const requestId = ++scheduleRequestId;
+    const dayOffset = scheduleDayOffsets[entityId] || 0;
+    const locale = window.HASmartdashI18n?.locale || "da-DK";
+    host.innerHTML = `<p class="beast-music-empty">Henter…</p>`;
+    const rows = await loadScheduleDay(entityId, dayOffset);
+    if (requestId !== scheduleRequestId) return;
+    host.innerHTML = `
+      <div class="beast-schedule-nav">
+        <button type="button" class="beast-schedule-nav-btn is-prev" data-schedule-prev="${escapeHtml(entityId)}" aria-label="Forrige dag">${BeastCore.icon("chevron-right", { size: 16 })}</button>
+        <strong>${escapeHtml(scheduleDayLabel(dayOffset, locale))}</strong>
+        <button type="button" class="beast-schedule-nav-btn" data-schedule-next="${escapeHtml(entityId)}" aria-label="Næste dag">${BeastCore.icon("chevron-right", { size: 16 })}</button>
+      </div>
+      <div class="beast-schedule-rows">${renderScheduleRows(rows, locale)}</div>
+    `;
   }
 
   function formatEventTime(event) {
@@ -180,8 +332,17 @@
 
   function render() {
     if (!containerEl) return;
+    const scheduleIds = scheduleCalendarIds();
+    const scheduleSections = scheduleIds.map((entityId) => {
+      const slug = scheduleCardSlug(entityId);
+      return `<section class="beast-waste-section" data-calendar-section="schedule-${slug}">
+        <header class="beast-calendar-section-head"><span>${BeastCore.icon("calendar", { size:22 })}</span><div><small>Skoleskema</small><h2>${escapeHtml(scheduleCardLabel(entityId))}</h2></div></header>
+        <div class="beast-schedule-body" id="beastSchedule-${slug}"><p class="beast-music-empty">Henter…</p></div>
+      </section>`;
+    }).join("");
     containerEl.innerHTML = `
       <button type="button" class="beast-page-edit-trigger" id="beastCalendarLayoutEdit" aria-label="Rediger kalenderlayout">⋮</button>
+      ${scheduleSections}
       <section class="beast-waste-section" data-calendar-section="waste">
         <header class="beast-calendar-section-head"><span>${BeastCore.icon("calendar", { size:22 })}</span><div><small>Husets afhentninger</small><h2>Affald</h2></div></header>
         <div class="beast-calendar-waste-list" style="--calendar-item-rows:${Math.max(1, Math.min(cardRows("waste", 6), wasteSensorIds().length || 1))}">${buildWasteMarkup()}</div>
@@ -192,10 +353,25 @@
       </section>
     `;
     wireCalendarLayout();
+    wireScheduleNav();
 
+    scheduleIds.forEach((entityId) => renderScheduleCard(entityId));
     Promise.all([loadCalendarEvents(), loadCalendarWeather()])
       .then(([events, weather]) => renderCalendarEvents(events, weather))
       .catch(() => renderCalendarEvents([]));
+  }
+
+  function wireScheduleNav() {
+    containerEl.querySelectorAll(".beast-schedule-body").forEach((host) => {
+      host.addEventListener("click", (event) => {
+        const prevBtn = event.target.closest("[data-schedule-prev]");
+        const nextBtn = event.target.closest("[data-schedule-next]");
+        const entityId = prevBtn?.dataset.schedulePrev || nextBtn?.dataset.scheduleNext;
+        if (!entityId) return;
+        scheduleDayOffsets[entityId] = (scheduleDayOffsets[entityId] || 0) + (prevBtn ? -1 : 1);
+        renderScheduleCard(entityId);
+      });
+    });
   }
 
   function wireCalendarLayout() {
@@ -203,7 +379,14 @@
     const hidden = new Set(Array.isArray(layout.hidden) ? layout.hidden : []);
     containerEl.querySelectorAll("[data-calendar-section]").forEach((el) => el.classList.toggle("is-layout-hidden", hidden.has(el.dataset.calendarSection)));
     BeastNativePageEditor.mount({ section:"waste", label:"Kalender", root:()=>containerEl, host:()=>containerEl, trigger:"#beastCalendarLayoutEdit", cards:()=>[
-      { id:"waste", label:"Affald og afhentning", selector:'[data-calendar-section="waste"]', titleSelector:"h2", enabled:!hidden.has("waste"), desktop:{x:1,y:1,w:4,h:12}, options:{rows:cardRows("waste",6)}, controls:[{key:"rows",label:"Antal viste rækker",min:1,max:30,default:6}] },
+      // One card per configured schedule calendar, stacked in the column
+      // Affald used to occupy -- scales to however many are configured
+      // (one per child), not fixed to any specific number.
+      ...scheduleCalendarIds().map((entityId, index) => {
+        const id = `schedule-${scheduleCardSlug(entityId)}`;
+        return { id, label: `Skema · ${scheduleCardLabel(entityId)}`, selector: `[data-calendar-section="${id}"]`, titleSelector: "h2", enabled: !hidden.has(id), desktop: { x: 1, y: 1 + index * 6, w: 4, h: 6 } };
+      }),
+      { id:"waste", label:"Affald og afhentning", selector:'[data-calendar-section="waste"]', titleSelector:"h2", enabled:!hidden.has("waste"), desktop:{x:1,y:13,w:12,h:4}, options:{rows:cardRows("waste",6)}, controls:[{key:"rows",label:"Antal viste rækker",min:1,max:30,default:6}] },
       { id:"events", label:"Kommende kalenderaftaler", selector:'[data-calendar-section="events"]', titleSelector:"h2", enabled:!hidden.has("events"), desktop:{x:5,y:1,w:8,h:12}, options:{rows:cardRows("events",12)}, controls:[{key:"rows",label:"Antal viste rækker",min:1,max:30,default:12}] }
     ], onSave:()=>render() });
   }
@@ -225,7 +408,7 @@
   function init(root) {
     containerEl = root;
     containerEl.classList.add("beast-waste-panel");
-    if (!wasteSensorIds().length && !calendarEntityIds().length) {
+    if (!wasteSensorIds().length && !calendarEntityIds().length && !scheduleCalendarIds().length) {
       containerEl.innerHTML = BeastCore.notConfiguredMarkup("Affald & kalender", "Vælg affaldssensorer og/eller kalendere i Administration for at aktivere dette panel.");
       BeastCore.wireNotConfiguredLinks(containerEl);
       return;

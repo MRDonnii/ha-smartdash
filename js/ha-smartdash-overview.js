@@ -30,6 +30,8 @@
   let PRINTER_TASK_ID = null;
   let PRINTER_CAMERA_IMAGE_ID = null;
   let PRINTER_BANNER_CAMERA_ID = null;
+  let AULA_MESSAGE_ID = null;
+  let AULA_LESSON_MINUTES = 10;
   const NOTIFICATION_SNOOZE_KEY = "beast_notification_snooze_v1";
   const OVERVIEW_CAMERA_LIMIT = 3;
   let UTILITY_VIEWS = {};
@@ -68,6 +70,8 @@
     PRINTER_STATUS_ID = printer.statusSensor; PRINTER_PROGRESS_ID = printer.progressSensor; PRINTER_REMAINING_ID = printer.remainingSensor;
     PRINTER_TASK_ID = printer.taskName; PRINTER_CAMERA_IMAGE_ID = printer.cameraImage;
     PRINTER_BANNER_CAMERA_ID = bannerSettings.printerCameraOverride || null;
+    AULA_MESSAGE_ID = app.aulaMessageSensor || null;
+    AULA_LESSON_MINUTES = Math.max(1, Number(bannerSettings.aulaLessonMinutes) || 10);
     UTILITY_VIEWS = {
       electric: { label: "El", current: energy.powerSensor, today: energy.totalEnergySensor, history: energy.powerSensor, mode: "average", unit: "W", todayUnit: "kWh" },
       ...(energy.showHeatOnOverview !== false ? { heat: { label: "Varme", current: energy.heatPowerSensor, today: energy.heatEnergySensor, history: energy.heatEnergySensor, mode: "delta", unit: "kW", todayUnit: "kWh" } } : {}),
@@ -483,6 +487,50 @@
     };
   }
 
+  // Same "background-fetch into a cache, activeBanners() just reads the
+  // cache synchronously" shape as printerImages() above -- a calendar's own
+  // state doesn't expose "is anything starting soon" the way a sensor
+  // state does, so this has to actually fetch upcoming events. Checked at
+  // most once a minute; only triggers a re-render when the result changes,
+  // so an idle screen isn't redrawn every minute for no reason.
+  const aulaLessonCache = { checkedAt: 0, key: "", lessons: [] };
+  const AULA_LESSON_CHECK_MS = 60000;
+
+  async function refreshAulaLessonCache() {
+    const calendarIds = BeastConfig.get("panels.waste.scheduleCalendars") || [];
+    if (!calendarIds.length) { aulaLessonCache.lessons = []; return; }
+    const now = Date.now();
+    if (now - aulaLessonCache.checkedAt < AULA_LESSON_CHECK_MS) return;
+    aulaLessonCache.checkedAt = now;
+    const windowEndMs = now + AULA_LESSON_MINUTES * 60000;
+    const results = await Promise.all(calendarIds.map(async (id) => {
+      try {
+        const events = await BeastAuth.haFetch(`/api/calendars/${id}?start=${new Date(now).toISOString()}&end=${new Date(windowEndMs).toISOString()}`);
+        // Co-taught periods are separate same-time events (see waste.js) --
+        // merge per calendar so a two-teacher lesson doesn't produce two
+        // near-duplicate banner rows.
+        return window.BeastScheduleSubjects?.mergeEvents(events || []) || [];
+      } catch (error) {
+        return [];
+      }
+    }));
+    const upcoming = results.flat().filter((lesson) => {
+      const startMs = new Date(lesson.start).getTime();
+      return Number.isFinite(startMs) && startMs >= now && startMs <= windowEndMs;
+    }).sort((a, b) => new Date(a.start) - new Date(b.start));
+    const key = upcoming.map((lesson) => `${lesson.start}|${lesson.subject}`).join(",");
+    if (key !== aulaLessonCache.key) {
+      aulaLessonCache.key = key;
+      aulaLessonCache.lessons = upcoming;
+      renderBanners();
+    }
+  }
+
+  function aulaLessons() {
+    refreshAulaLessonCache();
+    return aulaLessonCache.lessons;
+  }
+
   const PRINTER_ACTIVE_STATES = ["running", "prepare", "slicing", "pause"];
 
   // Each banner type is independent: its own on/off toggle, its own trigger
@@ -549,6 +597,34 @@
         banners.push({
           type: "doors", title: `${rows.length} ${rows.length === 1 ? "indgang har" : "indgange har"} stået åbne/ulåste længe`,
           detail: rows.join(" · "), icon: "unlock", image: null, rows, compact: true
+        });
+      }
+    }
+
+    if (featureEnabled("aulaMessageBanner") && AULA_MESSAGE_ID && BeastHaSocket.getState(AULA_MESSAGE_ID)?.state === "on") {
+      const state = BeastHaSocket.getState(AULA_MESSAGE_ID);
+      const subject = validText(state?.attributes?.subject);
+      const sender = validText(state?.attributes?.sender);
+      banners.push({
+        type: "aulaMessage", title: "Ny AULA-besked",
+        detail: [subject, sender ? `fra ${sender}` : ""].filter(Boolean).join(" · ") || "Ny besked i AULA",
+        icon: "bell", image: null, compact: true
+      });
+    }
+
+    if (featureEnabled("aulaLessonBanner")) {
+      const lessons = aulaLessons();
+      if (lessons.length) {
+        const locale = window.HASmartdashI18n?.locale || "da-DK";
+        const rows = lessons.map((lesson) => {
+          const subject = window.BeastScheduleSubjects?.label(lesson.subject) || lesson.subject || "Ukendt fag";
+          const teacher = lesson.teachers[0] || "";
+          const time = new Date(lesson.start).toLocaleTimeString(locale, { hour: "2-digit", minute: "2-digit" });
+          return `${time} · ${subject}${teacher ? ` — ${teacher}` : ""}`;
+        });
+        banners.push({
+          type: "aulaLesson", title: lessons.length === 1 ? "Lektion starter snart" : `${lessons.length} lektioner starter snart`,
+          detail: rows.join(" · "), icon: "calendar", image: null, rows, compact: true
         });
       }
     }
@@ -2058,6 +2134,7 @@
     [PRINTER_STATUS_ID, PRINTER_PROGRESS_ID, PRINTER_REMAINING_ID, PRINTER_TASK_ID, PRINTER_CAMERA_IMAGE_ID, PRINTER_BANNER_CAMERA_ID].filter(Boolean).forEach((id) => BeastHaSocket.subscribeEntity(id, () => { renderBanners(); renderSecurity(); }));
     WASTE_SENSORS.forEach((id) => BeastHaSocket.subscribeEntity(id, renderClock));
     [MAIL_PRESENT_ID, MAIL_COUNT_ID, MAIL_DESCRIPTION_ID, MAIL_IMAGE_ID, MAIL_IMAGE_CARPORT_ID, MAIL_IMAGE_FORHAVEN_ID].filter(Boolean).forEach((id) => BeastHaSocket.subscribeEntity(id, renderBanners));
+    if (AULA_MESSAGE_ID) BeastHaSocket.subscribeEntity(AULA_MESSAGE_ID, renderBanners);
     // The "open/unlocked too long" door banner is duration-based, not just
     // state-based -- a door that's been open past the threshold needs its
     // banner to appear even without a NEW state change firing this second.
