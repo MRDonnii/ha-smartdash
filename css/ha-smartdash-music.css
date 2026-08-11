@@ -895,38 +895,43 @@
   height: 30px;
   margin-top: -10px;
 }
+/* This compact preview (shown while the speaker drawer is open, at any
+   screen size -- it's a fixed-small box regardless of the card's own
+   width) used to be a rigid 330x330 box with a 184px cover and an
+   absolutely positioned dock reserving a fixed 88px at the bottom. Real
+   title/artist text plus three dock buttons routinely needed more than
+   that, so text overlapped the dock or a destination button (volume/
+   group/output) got clipped off the edge -- on any screen, not just
+   narrow ones. Dropping the cover and letting the dock sit in normal
+   flow below the text removes the fixed-box ceiling entirely. */
 .beast-speaker-drawer.is-open + .beast-now-playing {
-  position:relative;
-  flex: 0 0 330px;
-  height: 330px;
-  min-height: 330px;
-  grid-template-columns: 184px minmax(0, 1fr);
-  grid-template-rows: minmax(0, 1fr);
-  align-items: start;
-  padding:14px 14px 88px;
-  gap: 10px 16px;
-}
-.beast-speaker-drawer.is-open + .beast-now-playing .beast-now-playing-cover {
-  width: 184px;
-  height: 184px;
+  position: relative;
+  flex: none;
+  height: auto;
   min-height: 0;
-  align-self: start;
-  margin-top: 0;
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-rows: auto auto;
+  align-items: start;
+  padding: 14px;
+  gap: 8px;
 }
-.beast-speaker-drawer.is-open + .beast-now-playing .beast-now-playing-body { align-self:start; height:auto; max-height:100%; gap:8px; padding-bottom:76px; overflow:hidden; }
+.beast-speaker-drawer.is-open + .beast-now-playing .beast-now-playing-cover { display: none; }
+.beast-speaker-drawer.is-open + .beast-now-playing .beast-now-playing-body { align-self:start; height:auto; max-height:none; gap:8px; padding-bottom:0; overflow:visible; }
 .beast-speaker-drawer.is-open + .beast-now-playing .beast-now-playing-album { display: none; }
 .beast-speaker-drawer.is-open + .beast-now-playing .beast-now-playing-title { font-size: 1.45rem; }
 .beast-speaker-drawer.is-open + .beast-now-playing .beast-transport-btn { width: 48px; height: 48px; }
 .beast-speaker-drawer.is-open + .beast-now-playing .beast-transport-btn.beast-play-btn { width: 58px; height: 58px; }
 .beast-speaker-drawer.is-open + .beast-now-playing .beast-player-dock {
-  position:absolute;
-  left:14px;
-  right:14px;
-  bottom:14px;
-  min-height:62px;
-  width:auto;
-  margin:0;
+  position: static;
+  width: 100%;
+  min-height: 0;
+  margin: 8px 0 0;
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-rows: auto auto;
+  row-gap: 6px;
 }
+.beast-speaker-drawer.is-open + .beast-now-playing .beast-player-dock .beast-transport-row { grid-column: 1; grid-row: 1; justify-self: center; }
+.beast-speaker-drawer.is-open + .beast-now-playing .beast-player-dock .beast-player-destinations { grid-column: 1; grid-row: 2; min-width: 0; justify-content: center; }
 .beast-speaker-drawer.is-open + .beast-now-playing .beast-player-dock + .beast-progress-row { display: none; }
 
 @media (max-width: 1200px) {

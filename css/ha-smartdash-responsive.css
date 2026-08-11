@@ -617,21 +617,8 @@ html, body, .beast-app { width: 100%; height: 100%; height: 100dvh; }
   }
   .beast-player-dock .beast-transport-row { grid-column: 1; grid-row: 1; justify-self: center; }
   .beast-player-dock .beast-player-destinations { grid-column: 1; grid-row: 2; min-width: 0; justify-content: center; }
-  .beast-speaker-drawer.is-open + .beast-now-playing {
-    flex: none !important;
-    height: auto !important;
-    min-height: 0 !important;
-    grid-template-columns: minmax(0, 1fr) !important;
-    grid-template-rows: auto auto !important;
-    padding: 14px !important;
-  }
-  .beast-speaker-drawer.is-open + .beast-now-playing .beast-now-playing-cover { display: none; }
-  .beast-speaker-drawer.is-open + .beast-now-playing .beast-player-dock {
-    position: static !important;
-    left: auto; right: auto; bottom: auto;
-    width: 100% !important;
-    margin-top: 8px;
-  }
+  /* The speaker-drawer-open compact preview is fixed-size at any screen
+     width, so its own fix lives unscoped in ha-smartdash-music.css. */
 }
 
 /* One editor dock for every page editor (overview/custom cards, native

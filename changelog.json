@@ -1,5 +1,13 @@
 [
   {
+    "version": "20260811-182",
+    "tag": "v0.7.104",
+    "date": "2026-08-11",
+    "changes": [
+      { "da": "Rettet at den kompakte afspiller-visning (når højttalermenuen er åben) kunne have overlappende tekst eller en afspilningsknap der forsvandt ud af kortet på alle skærmstørrelser, ikke kun tablets -- forhaandsvisningen var altid en fast 330x330px boks uanset skærmstørrelse, så den forrige rettelse kun dækkede tablet-bredder.", "en": "Fixed the compact player view (when the speaker menu is open) potentially having overlapping text or a playback button running off the card on any screen size, not just tablets -- the preview was always a fixed 330x330px box regardless of screen size, so the previous fix only covered tablet widths." }
+    ]
+  },
+  {
     "version": "20260811-181",
     "tag": "v0.7.103",
     "date": "2026-08-11",
