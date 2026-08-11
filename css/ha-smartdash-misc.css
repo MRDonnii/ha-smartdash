@@ -6,21 +6,10 @@
   overflow-y: auto;
 }
 
-/* Live HVAC activity: flame for heat, snowflake for cooling. */
+/* Live HVAC activity. The icon identifies the state; the full-width strip
+   along the bottom carries the motion so activity reads across the card. */
 .beast-heating-room-card.is-cooling { border-color:rgba(66,200,255,.55); box-shadow:inset 0 0 28px rgba(66,200,255,.08),0 0 15px rgba(66,200,255,.12); }
 .beast-heating-room-card.is-cooling .beast-heating-room-reading i { color:#42c8ff; background:rgba(66,200,255,.13); }
-.beast-heating-room-card.is-heating .beast-heating-room-reading i svg,
-.beast-heatpump-card.is-heating .beast-heatpump-head > i svg { animation:beast-flame-dance 1.15s ease-in-out infinite; transform-origin:50% 85%; }
-.beast-heating-room-card.is-cooling .beast-heating-room-reading i svg,
-.beast-heatpump-card.is-cooling .beast-heatpump-head > i svg { animation:beast-snow-turn 5s linear infinite; transform-origin:center; }
-@keyframes beast-flame-dance { 0%,100% { transform:scale(.94) rotate(-2deg); filter:drop-shadow(0 0 3px rgba(255,126,34,.55)); } 50% { transform:scale(1.08) rotate(2deg); filter:drop-shadow(0 0 7px rgba(255,185,54,.9)); } }
-@keyframes beast-snow-turn { to { transform:rotate(360deg); } }
-@media (prefers-reduced-motion:reduce) {
-  .beast-heating-room-card.is-heating .beast-heating-room-reading i svg,
-  .beast-heatpump-card.is-heating .beast-heatpump-head > i svg,
-  .beast-heating-room-card.is-cooling .beast-heating-room-reading i svg,
-  .beast-heatpump-card.is-cooling .beast-heatpump-head > i svg { animation:none; }
-}
 
 .beast-settings-panel {
   overflow-y: auto;
@@ -2431,11 +2420,44 @@
 .beast-heating-room-card.is-heating::after {
   content: "";
   position: absolute;
-  inset: auto -30% -65% -30%;
-  height: 100%;
-  background: radial-gradient(circle, rgba(255, 167, 65, .22), transparent 65%);
-  animation: beast-heat-breathe 2.8s ease-in-out infinite;
+  z-index: 0;
+  inset: auto -8% -2px;
+  height: 27px;
+  background:
+    radial-gradient(ellipse at 50% 100%,rgba(255,225,92,.95) 0 18%,rgba(255,135,36,.82) 20% 38%,transparent 41%) 0 7px/25px 23px repeat-x,
+    radial-gradient(ellipse at 50% 100%,rgba(255,167,43,.72) 0 30%,transparent 34%) 12px 2px/31px 28px repeat-x,
+    linear-gradient(0deg,rgba(255,91,20,.55),transparent 82%);
+  filter:drop-shadow(0 -3px 7px rgba(255,126,34,.5));
+  transform-origin:50% 100%;
+  animation:beast-card-flames .95s ease-in-out infinite alternate;
   pointer-events: none;
+}
+
+.beast-heating-room-card.is-cooling::after {
+  content:"";
+  position:absolute;
+  z-index:0;
+  inset:auto -8% -2px;
+  height:25px;
+  background:
+    radial-gradient(circle,rgba(204,246,255,.9) 0 2px,transparent 2.7px) 0 2px/24px 18px repeat-x,
+    radial-gradient(circle,rgba(66,200,255,.7) 0 1.5px,transparent 2.3px) 11px 8px/29px 17px repeat-x,
+    linear-gradient(0deg,rgba(35,171,232,.38),transparent 88%);
+  filter:drop-shadow(0 -2px 6px rgba(66,200,255,.45));
+  animation:beast-card-frost 2.4s linear infinite;
+  pointer-events:none;
+}
+.beast-heating-room-card > * { position:relative; z-index:1; }
+
+@keyframes beast-card-flames {
+  0% { background-position:0 7px,12px 3px,0 0; transform:scaleY(.78) skewX(-2deg); opacity:.72; }
+  55% { background-position:-8px 3px,20px 7px,0 0; transform:scaleY(1.08) skewX(2deg); opacity:1; }
+  100% { background-position:-15px 6px,29px 1px,0 0; transform:scaleY(.9) skewX(-1deg); opacity:.86; }
+}
+@keyframes beast-card-frost {
+  from { background-position:0 2px,11px 8px,0 0; opacity:.68; }
+  50% { opacity:1; }
+  to { background-position:48px -7px,-47px 1px,0 0; opacity:.68; }
 }
 
 @keyframes beast-heat-breathe {
@@ -2489,22 +2511,42 @@
 }
 .beast-heatpump-card.is-heating { border-color: rgba(255,168,70,.48); box-shadow: inset 0 0 35px rgba(255,168,70,.07); }
 .beast-heatpump-card.is-cooling { border-color: rgba(83,190,255,.48); box-shadow: inset 0 0 35px rgba(83,190,255,.08); }
-.beast-heatpump-card.is-heating::before,
-.beast-heatpump-card.is-cooling::before {
+.beast-heatpump-card.is-heating::before {
   content: "";
   position: absolute;
-  width: 150px;
-  height: 150px;
-  right: -60px;
-  top: -70px;
-  border-radius: 50%;
-  background: radial-gradient(circle, currentColor, transparent 68%);
-  opacity: .12;
-  animation: beast-heat-breathe 2.8s ease-in-out infinite;
+  z-index:0;
+  inset:auto -8% -2px;
+  height:30px;
+  background:
+    radial-gradient(ellipse at 50% 100%,rgba(255,225,92,.95) 0 18%,rgba(255,135,36,.82) 20% 38%,transparent 41%) 0 8px/27px 25px repeat-x,
+    radial-gradient(ellipse at 50% 100%,rgba(255,167,43,.72) 0 30%,transparent 34%) 13px 2px/34px 31px repeat-x,
+    linear-gradient(0deg,rgba(255,91,20,.58),transparent 84%);
+  filter:drop-shadow(0 -3px 8px rgba(255,126,34,.55));
+  transform-origin:50% 100%;
+  animation:beast-card-flames .95s ease-in-out infinite alternate;
+  pointer-events:none;
+}
+.beast-heatpump-card.is-cooling::before {
+  content:"";
+  position:absolute;
+  z-index:0;
+  inset:auto -8% -2px;
+  height:28px;
+  background:
+    radial-gradient(circle,rgba(204,246,255,.9) 0 2px,transparent 2.7px) 0 2px/24px 18px repeat-x,
+    radial-gradient(circle,rgba(66,200,255,.7) 0 1.5px,transparent 2.3px) 11px 8px/29px 17px repeat-x,
+    linear-gradient(0deg,rgba(35,171,232,.42),transparent 88%);
+  filter:drop-shadow(0 -2px 7px rgba(66,200,255,.5));
+  animation:beast-card-frost 2.4s linear infinite;
+  pointer-events:none;
 }
 .beast-heatpump-card.is-heating { color: var(--warning); }
 .beast-heatpump-card.is-cooling { color: var(--accent-b); }
 .beast-heatpump-card > * { position: relative; z-index: 1; }
+@media (prefers-reduced-motion:reduce) {
+  .beast-heating-room-card:is(.is-heating,.is-cooling)::after,
+  .beast-heatpump-card:is(.is-heating,.is-cooling)::before { animation:none; }
+}
 .beast-heatpump-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 8px; color: var(--ink); }
 .beast-heatpump-head small { display: block; color: var(--ink-muted); font-size: var(--text-xs); }
 .beast-heatpump-head strong { display: block; margin-top: 2px; font-size: var(--text-lg); }
