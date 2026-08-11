@@ -1,5 +1,14 @@
 [
   {
+    "version": "20260811-159",
+    "tag": "v0.7.81",
+    "date": "2026-08-11",
+    "changes": [
+      { "da": "Musikbiblioteket viser nu seks playlister, album, radiostationer eller søgeresultater pr. række på brede skærme, så mere af biblioteket er synligt samtidig.", "en": "The music library now shows six playlists, albums, radio stations, or search results per row on wide screens, keeping more of the library visible at once." },
+      { "da": "Antallet af kort tilpasses automatisk på smallere skærme, så covers og titler fortsat er lette at bruge.", "en": "The number of cards now adapts automatically on narrower screens so covers and titles remain easy to use." }
+    ]
+  },
+  {
     "version": "20260811-158",
     "tag": "v0.7.80",
     "date": "2026-08-11",
