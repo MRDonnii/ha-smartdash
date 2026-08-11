@@ -1,5 +1,13 @@
 [
   {
+    "version": "20260811-126",
+    "tag": "v0.7.48",
+    "date": "2026-08-11",
+    "changes": [
+      "The thermostat column now uses a true flex-height layout and each room card uses a compact horizontal control arrangement, keeping both temperature buttons inside the card while all rows fill the column."
+    ]
+  },
+  {
     "version": "20260811-125",
     "tag": "v0.7.47",
     "date": "2026-08-11",
