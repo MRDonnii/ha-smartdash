@@ -1,5 +1,13 @@
 [
   {
+    "version": "20260811-130",
+    "tag": "v0.7.52",
+    "date": "2026-08-11",
+    "changes": [
+      "The configured doorbell camera overlay now opens independently of the generic event-focus feature, fixing installations where valid doorbell entities and streams were silently ignored."
+    ]
+  },
+  {
     "version": "20260811-129",
     "tag": "v0.7.51",
     "date": "2026-08-11",
