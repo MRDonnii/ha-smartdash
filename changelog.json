@@ -1,5 +1,15 @@
 [
   {
+    "version": "20260811-175",
+    "tag": "v0.7.97",
+    "date": "2026-08-11",
+    "changes": [
+      { "da": "Forsidens grafer for El, Varme og Vand viser nu det aktuelle lokale døgn fra midnat til nu over hele grafens bredde.", "en": "The overview charts for Electricity, Heating, and Water now show the current local day from midnight until now across the full chart width." },
+      { "da": "Tidsaksen på alle tre grafer følger dagens klokkeslæt og slutter med Nu.", "en": "The timeline on all three charts now follows today's clock times and ends with Now." },
+      { "da": "Den valgte forsidegraf genindlæses hvert femte minut og starter automatisk på et nyt døgn efter midnat.", "en": "The selected overview chart reloads every five minutes and automatically starts a new day after midnight." }
+    ]
+  },
+  {
     "version": "20260811-174",
     "tag": "v0.7.96",
     "date": "2026-08-11",

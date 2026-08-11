@@ -104,6 +104,7 @@
   let utilityView = "electric";
   let utilityHistory = [];
   let utilityHistoryLoading = false;
+  let utilityHistoryTimerId = null;
   let overviewPriceView = "today";
   let stableMusicRender = null;
   let overviewPlayerExpanded = false;
@@ -1678,12 +1679,8 @@
     }));
   }
 
-  // x maps to real minutes-since-midnight over a fixed 1440-minute (full
-  // day) axis — like Home Assistant's own history graphs, which show the
-  // whole day's timeline and just let the data stop wherever "now" is,
-  // rather than stretching whatever's been recorded so far to fill the
-  // full width (that made the chart's shape change size/meaning every time
-  // it redrew, and never looked like a real "today" graph).
+  // Use the same current-day window as the detailed Energy graph: local
+  // midnight through now, expanded across the available chart width.
   function buildOverviewUsageLine(points) {
     if (!points.length) return "";
     const width = 600;
@@ -1693,8 +1690,10 @@
     const min = Math.min(...values);
     const max = Math.max(...values);
     const range = max - min || 1;
+    const now = new Date();
+    const elapsedMinutes = Math.max(1, now.getHours() * 60 + now.getMinutes() + now.getSeconds() / 60);
     const coordinates = points.map((item, index) => [
-      (item.minutes / 1440) * width,
+      Math.min(1, item.minutes / elapsedMinutes) * width,
       padY + (height - padY * 2) - ((values[index] - min) / range) * (height - padY * 2)
     ]);
     // Curved rather than straight segments purely for a smoother-looking
@@ -1733,10 +1732,16 @@
     </div>`;
   }
 
-  // Fixed full-day markers — accurate now that buildOverviewUsageLine plots
-  // against a real 1440-minute axis instead of stretching whatever's been
-  // recorded so far to fill the width.
-  const UTILITY_AXIS_LABELS = ["00:00", "06:00", "12:00", "18:00", "24:00"];
+  // Keep the five axis markers aligned with the current-day window.
+  function utilityAxisLabels() {
+    const now = new Date();
+    const elapsedMinutes = now.getHours() * 60 + now.getMinutes();
+    return Array.from({ length: 5 }, (_, index) => {
+      if (index === 4) return t("Nu", "Now");
+      const minutes = Math.round((elapsedMinutes * index) / 4);
+      return `${String(Math.floor(minutes / 60)).padStart(2, "0")}:${String(minutes % 60).padStart(2, "0")}`;
+    });
+  }
 
   function renderEnergy() {
     const host = document.getElementById("beastOvEnergy");
@@ -1774,7 +1779,7 @@
         <div class="beast-ov-utility-chart">
           ${utilityHistory.length ? buildOverviewUsageLine(utilityHistory) : `<i>${utilityHistoryLoading ? "Henter dagsgraf…" : "Ingen historik"}</i>`}
         </div>
-        <div class="beast-ov-chart-axis">${UTILITY_AXIS_LABELS.map((label) => `<span>${label}</span>`).join("")}</div>
+        <div class="beast-ov-chart-axis">${utilityAxisLabels().map((label) => `<span>${label}</span>`).join("")}</div>
         <div class="beast-ov-price-head">
           <div>
             <span class="beast-ov-energy-price ${level.cls}">${price !== null ? price.toFixed(2) : "–"} kr/kWh · ${level.label}</span>
@@ -2105,6 +2110,8 @@
     // forecast/history loaders would otherwise never run.
     loadWeatherForecast();
     loadUtilityHistory();
+    window.clearInterval(utilityHistoryTimerId);
+    utilityHistoryTimerId = window.setInterval(loadUtilityHistory, 5 * 60 * 1000);
     document.addEventListener("beast:overview-player-setting-changed", () => stableMusicRender());
     document.addEventListener("beast:camera-streams-changed", () => renderAll());
 
