@@ -1,5 +1,13 @@
 [
   {
+    "version": "20260811-135",
+    "tag": "v0.7.57",
+    "date": "2026-08-11",
+    "changes": [
+      { "da": "Samme indhold som v0.7.56, udgivet på Beta-kanalen for at bekræfte at kanal-skiftet reelt finder og henter en nyere Beta-udgivelse.", "en": "Same content as v0.7.56, published to the Beta channel to confirm the channel switch actually discovers and fetches a newer Beta release." }
+    ]
+  },
+  {
     "version": "20260811-134",
     "tag": "v0.7.56",
     "date": "2026-08-11",
