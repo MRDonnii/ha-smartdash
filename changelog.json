@@ -1,5 +1,13 @@
 [
   {
+    "version": "20260811-138",
+    "tag": "v0.7.60",
+    "date": "2026-08-11",
+    "changes": [
+      { "da": "Rettet at opdateringstjekket sammenlignede den installerede version mod en fil der ikke var blevet opdateret i de seneste par udgivelser, hvilket kunne betyde at en ny udgivelse aldrig blev vist som tilgængelig -- gælder både Stable og Beta.", "en": "Fixed the update check comparing the installed version against a file that hadn't been updated in the last couple of releases, which could mean a new release never showed up as available -- affects both Stable and Beta." }
+    ]
+  },
+  {
     "version": "20260811-137",
     "tag": "v0.7.59",
     "date": "2026-08-11",
