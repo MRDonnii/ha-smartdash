@@ -1,24 +1,9 @@
 (function () {
   let GO2RTC_BASE_URL = "";
   let configuredCameraIds = null;
+  let go2rtcStreamGroups = new Map();
+  let go2rtcDiscoveryPromise = null;
   const SNAPSHOT_REFRESH_MS = 8000;
-
-  // Hand-curated slug -> go2rtc stream-name mapping, carried over from TH dash's
-  // proven go2rtc setup (only these cameras have a working go2rtc source).
-  const STREAM_NAME_MAP = {
-    fordor: "Fordor",
-    forhaven: "Forhaven",
-    carport: "carport",
-    baghaven: "Baghaven",
-    langs_huset: "Langs_huset",
-    indkorsel: "Indkorsel",
-    terrasse: "Terrasse",
-    terrasse_syd: "Terrasse_syd",
-    sandkassen: "sandkassen",
-    trampolin: "trampolin",
-    "3d_printer": "3dprinter",
-    bag_indgang: "Bag_indgang"
-  };
 
   let containerEl = null;
   let refreshTimerId = null;
@@ -35,6 +20,67 @@
 
   function qualityLabel(quality) {
     return ({ high: "Høj", medium: "Mellem", low: "Lav", standard: "Standard" })[quality] || quality;
+  }
+
+  function normalizedStreamKey(value) {
+    return String(value || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/[^a-z0-9]+/g, "_").replace(/^_+|_+$/g, "");
+  }
+
+  function streamIdentity(streamName) {
+    const raw = normalizedStreamKey(streamName);
+    const match = raw.match(/_(high|medium|low|hd|sd|sub|main)(?:_stream|_resolution|_channel)?$/i);
+    const token = match?.[1]?.toLowerCase();
+    const quality = ({ high:"high", hd:"high", main:"high", medium:"medium", sd:"medium", low:"low", sub:"low" })[token] || "standard";
+    return { base: match ? raw.slice(0, -match[0].length) : raw, quality };
+  }
+
+  async function discoverGo2rtcStreams(force = false) {
+    if (!GO2RTC_BASE_URL) { go2rtcStreamGroups = new Map(); return go2rtcStreamGroups; }
+    if (go2rtcDiscoveryPromise && !force) return go2rtcDiscoveryPromise;
+    go2rtcDiscoveryPromise = fetch(`${GO2RTC_BASE_URL}/api/streams`, { cache: "no-store" })
+      .then((response) => response.ok ? response.json() : Promise.reject(new Error(`HTTP ${response.status}`)))
+      .then((payload) => {
+        const groups = new Map();
+        Object.keys(payload && typeof payload === "object" ? payload : {}).forEach((streamName) => {
+          const identity = streamIdentity(streamName);
+          if (!identity.base) return;
+          if (!groups.has(identity.base)) groups.set(identity.base, []);
+          groups.get(identity.base).push({ streamName, quality: identity.quality });
+        });
+        const rank = { high:0, standard:1, medium:2, low:3 };
+        groups.forEach((variants) => {
+          if (variants.length > 1 && variants.some((item) => item.quality !== "standard")) {
+            variants.forEach((item) => { if (item.quality === "standard") item.quality = "high"; });
+          }
+          variants.sort((a,b) => (rank[a.quality] ?? 9) - (rank[b.quality] ?? 9) || a.streamName.localeCompare(b.streamName));
+        });
+        go2rtcStreamGroups = groups;
+        return groups;
+      })
+      .catch((error) => {
+        console.warn("[Kameraer] Kunne ikke hente streamlisten fra go2rtc", error);
+        go2rtcStreamGroups = new Map();
+        return go2rtcStreamGroups;
+      })
+      .finally(() => { go2rtcDiscoveryPromise = null; });
+    return go2rtcDiscoveryPromise;
+  }
+
+  function go2rtcVariantsForCamera(slug) {
+    const key = normalizedStreamKey(slug);
+    return go2rtcStreamGroups.get(key) || go2rtcStreamGroups.get(key.replace(/_camera$/, "")) || [];
+  }
+
+  function reconcileSavedCameraQualities() {
+    const current = BeastConfig.get("pageLayouts.cameras.qualityByCamera") || {};
+    const next = { ...current };
+    let changed = false;
+    discoverCameras().forEach((camera) => {
+      if (!Object.prototype.hasOwnProperty.call(next, camera.slug)) return;
+      if (camera.qualityOptions.some((option) => option.quality === next[camera.slug])) return;
+      delete next[camera.slug]; changed = true;
+    });
+    return changed ? BeastConfig.set("pageLayouts.cameras.qualityByCamera", next) : Promise.resolve({ success:true });
   }
 
   function cleanCameraLabel(value, slug) {
@@ -93,14 +139,15 @@
     if (!state) return null;
     const identity = cameraIdentity(entityId);
     const slug = identity.slug;
-    const streamName = STREAM_NAME_MAP[slug] || null;
+    const streamVariants = go2rtcVariantsForCamera(slug);
+    const streamName = streamVariants[0]?.streamName || null;
     const detection = smartDetectionForCamera(slug);
     const cameraToken = state.attributes.access_token || null;
     return {
       slug,
       quality: identity.quality,
       entityId,
-      streamName,
+      streamName, streamVariants,
       haStreamUrl: cameraToken ? `${BeastAuth.HA_PROXY_PATH}/api/camera_proxy_stream/${entityId}?token=${encodeURIComponent(cameraToken)}` : null,
       // Some camera integrations expose a valid camera entity without an
       // entity_picture attribute. HA's authenticated camera proxy still
@@ -140,17 +187,21 @@
     const rank = { high: 0, medium: 1, standard: 2, low: 3 };
     const cameras = [...groups.values()].map((variants) => {
       variants.sort((a, b) => (rank[a.quality] ?? 9) - (rank[b.quality] ?? 9));
+      const streamVariants = go2rtcVariantsForCamera(variants[0].slug);
+      const qualityOptions = streamVariants.length
+        ? streamVariants.map((variant, index) => ({
+            quality: streamVariants.filter((item) => item.quality === variant.quality).length > 1 ? `stream:${index}` : variant.quality,
+            label: variant.quality === "standard" && streamVariants.length > 1 ? variant.streamName : qualityLabel(variant.quality),
+            streamName: variant.streamName
+          }))
+        : variants.map((variant) => ({ quality: variant.quality, label: qualityLabel(variant.quality), entityId: variant.entityId }));
       const preferred = qualityByCamera[variants[0].slug];
-      const selectedQuality = preferred === "high" ? "high" : "low";
-      const selected = selectedQuality === "high"
-        ? (variants.find((variant) => variant.quality === "high") || variants[0])
-        : (variants.find((variant) => variant.quality === "low") || variants.find((variant) => variant.quality === "medium") || variants[0]);
-      const useSub = selectedQuality === "low";
-      const resolvedStreamName = selected.streamName ? `${selected.streamName}${useSub ? "_sub" : ""}` : null;
-      const qualityOptions = selected.streamName
-        ? [{ quality: "high", label: "Høj" }, { quality: "low", label: "Lav" }]
-        : variants.map((variant) => ({ quality: variant.quality, label: qualityLabel(variant.quality) }));
-      return { ...selected, variants, selectedQuality, qualityOptions, useSub, resolvedStreamName };
+      const selectedOption = qualityOptions.find((option) => option.quality === preferred)
+        || qualityOptions.find((option) => option.quality === "high") || qualityOptions[0];
+      const selected = selectedOption?.entityId ? (variants.find((variant) => variant.entityId === selectedOption.entityId) || variants[0]) : variants[0];
+      const selectedQuality = selectedOption?.quality || selected.quality;
+      const resolvedStreamName = selectedOption?.streamName || selected.streamName || null;
+      return { ...selected, variants, selectedQuality, qualityOptions, useSub: selectedQuality === "low", resolvedStreamName, streamName: resolvedStreamName || selected.streamName };
     });
     const savedOrder = BeastConfig.get("pageLayouts.cameras.cameraOrder") || [];
     const orderIndex = new Map((Array.isArray(savedOrder) ? savedOrder : []).map((slug, index) => [slug, index]));
@@ -270,7 +321,7 @@
     if (!containerEl || !BeastCore.isPanelVisible(containerEl)) return;
     containerEl.querySelectorAll(".beast-camera-snapshot").forEach((img) => {
       const tile = img.closest(".beast-camera-tile");
-      const streamName = tile?.dataset.streamName || STREAM_NAME_MAP[tile?.dataset.slug];
+      const streamName = tile?.dataset.streamName || go2rtcVariantsForCamera(tile?.dataset.slug)[0]?.streamName;
       if (streamName) { swapSnapshot(img, snapshotUrl(streamName)); return; }
       const state = tile?.dataset.entityId && BeastHaSocket.getState(tile.dataset.entityId);
       if (state?.attributes?.entity_picture) BeastAuth.setAuthedImageSrc(img, state.attributes.entity_picture);
@@ -396,6 +447,10 @@
     containerEl = root;
     containerEl.classList.add("beast-cameras-panel");
     containerEl.innerHTML = `<p class="beast-music-empty">Henter kameraer…</p>`;
+    discoverGo2rtcStreams().then(() => reconcileSavedCameraQualities()).then(() => {
+      render();
+      document.dispatchEvent(new CustomEvent("beast:camera-streams-changed"));
+    });
     BeastHaSocket.onStatusChange((status) => {
       if (status === "connected") render();
     });
@@ -424,6 +479,9 @@
     sharedCameraMarkup,
     wireSharedCameras,
     hasGo2rtc,
-    isSmartDetectionEntity
+    isSmartDetectionEntity,
+    refreshStreams: () => discoverGo2rtcStreams(true).then(() => reconcileSavedCameraQualities()).then(() => {
+      render(); document.dispatchEvent(new CustomEvent("beast:camera-streams-changed")); return discoverCameras();
+    })
   };
 })();

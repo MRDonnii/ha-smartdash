@@ -326,7 +326,7 @@ window.BeastCardEditor = (function () {
         card.classList.remove("is-dragging");
         if (drag.moved) {
           window.beastCardDraggedUntil = Date.now() + 400;
-          syncDraftCardOrderFromDom();
+          syncDraftCardsFromDom();
         }
         drag = null;
       };
@@ -334,10 +334,24 @@ window.BeastCardEditor = (function () {
       handle.addEventListener("pointercancel", finish);
     }
 
-    function syncDraftCardOrderFromDom() {
+    function syncDraftCardsFromDom() {
       if (!draftCards) return;
-      const order = Array.from(zoneEl.querySelectorAll(":scope > .beast-ov-card:not(.beast-ov-card-add)")).map((el) => el.dataset.builderCard);
-      draftCards.sort((a, b) => order.indexOf(a.id) - order.indexOf(b.id));
+      const elements = Array.from(zoneEl.querySelectorAll(":scope > .beast-ov-card[data-builder-card]:not(.beast-ov-card-add)"));
+      const byId = new Map(draftCards.map((card) => [card.id, card]));
+      const ordered = elements.map((element, index) => {
+        const card = byId.get(element.dataset.builderCard);
+        if (!card) return null;
+        const width = Number(element.style.getPropertyValue("--desktop-w"));
+        const height = Number(element.style.getPropertyValue("--desktop-h"));
+        if (Number.isFinite(width) && width > 0 && Number.isFinite(height) && height > 0) {
+          card.desktop = { ...(card.desktop || {}), w: width, h: height };
+        }
+        card.order = index;
+        byId.delete(card.id);
+        return card;
+      }).filter(Boolean);
+      byId.forEach((card) => ordered.push(card));
+      draftCards = ordered;
     }
 
     // Resize measures the card's OWN currently-rendered size divided by its
@@ -561,7 +575,13 @@ window.BeastCardEditor = (function () {
         });
       });
       bar.querySelector("[data-ov-edit-cancel]").addEventListener("click", () => exit(false));
-      bar.querySelector("[data-ov-edit-save]").addEventListener("click", () => exit(true));
+      bar.querySelector("[data-ov-edit-save]").addEventListener("click", () => {
+        // Remote desktop and touch browsers can lose the final pointerup
+        // even after the DOM card was visibly moved. Read the rendered grid
+        // again here so Save can never persist the stale pre-drag array.
+        syncDraftCardsFromDom();
+        exit(true);
+      });
       bar.querySelector("[data-ov-edit-undo]").addEventListener("click", () => {
         const previous = history.pop();
         if (!previous) return;
@@ -639,6 +659,7 @@ window.BeastCardEditor = (function () {
     }
 
     function exit(save) {
+      if (save) syncDraftCardsFromDom();
       const nextCards = save ? draftCards : (BeastConfig.get(configPath) || []);
       if (save) {
         saveSnapshot(configPath, BeastConfig.get(configPath) || [], "Før seneste gemning");

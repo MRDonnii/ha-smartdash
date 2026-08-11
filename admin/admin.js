@@ -43,7 +43,7 @@
   ];
   const OVERVIEW_SLOT_OPTIONS = [
     ["empty","Tom plads"],["cameras","Kameraer"],["clock","Ur, kalender og affald"],["weather","Vejr"],["security","Sikkerhed"],["energy","Energi"],
-    ["car","Bil"],["pool","Pool"],["robots","Robotter"],["printer","3D-printer"],["custom","Valgfri HA-entity"]
+    ["car","Bil"],["pool","Pool"],["robots","Robotter"],["printer","3D-printer"],["heatpump","Varmepumpe"],["custom","Valgfri HA-entity"]
   ];
   // Order matters here beyond just labeling: when overviewCards is still
   // empty and this list gets synthesized into freeform cards below, dense
@@ -867,9 +867,12 @@
     const row = (card,index) => {
         const key = card.id || `card_${index}`;
         const entitySelectId = `admin_overview_card_${key}_entity`;
-        selectSources.set(entitySelectId, allEntities);
-        entityFieldBaseSources.set(entitySelectId, allEntities);
-        return `<div class="admin-overview-slot admin-overview-card-row" draggable="true" data-overview-card="${escapeHtml(key)}"><div class="admin-overview-row-head"><span class="admin-overview-drag-handle" data-overview-drag-handle aria-label="Træk for at flytte kort" title="Træk for at flytte">${BeastCore.icon("grip", { size: 18 })}</span><strong>Kort ${index+1}</strong><div class="admin-icon-actions"><button class="admin-icon-action" type="button" data-overview-move="up" aria-label="Flyt kort op" title="Flyt op">${BeastCore.icon("chevron-up", { size: 18 })}</button><button class="admin-icon-action" type="button" data-overview-move="down" aria-label="Flyt kort ned" title="Flyt ned">${BeastCore.icon("chevron-down", { size: 18 })}</button><button class="admin-icon-action is-danger" type="button" data-overview-remove aria-label="Fjern kort" title="Fjern kort">${BeastCore.icon("close", { size: 18 })}</button></div></div><label>Indhold<select data-overview-type>${OVERVIEW_SLOT_OPTIONS.filter(([value])=>value!=="empty").map(([value,name]) => `<option value="${value}"${card.type === value ? " selected" : ""}>${name}</option>`).join("")}</select></label><label>Titel<input type="text" data-overview-label value="${escapeHtml(card.label || "")}" placeholder="Valgfri titel"></label><div class="admin-overview-custom"${card.type === "custom" ? "" : " hidden"}><input class="admin-filter" type="search" placeholder="Søg efter entity…" data-filter-select="${entitySelectId}"><select id="${entitySelectId}" data-overview-entity size="5">${renderSelectOptions(entitySelectId, card.entity)}</select></div><div class="admin-overview-sizes"><fieldset><legend>Stor skærm · 12 kolonner</legend><label>Bredde<select data-size="desktop.w">${sizeOptions(card.desktop?.w || 4,12)}</select></label><label>Højde<select data-size="desktop.h">${sizeOptions(Math.min(card.desktop?.h || 1,2),2)}</select></label></fieldset><fieldset><legend>Smal/tablet · 2 kolonner</legend><label>Bredde<select data-size="tablet.w">${sizeOptions(card.tablet?.w || 1,2)}</select></label><label>Højde<select data-size="tablet.h">${sizeOptions(card.tablet?.h || 1,3)}</select></label></fieldset><fieldset><legend>Lodret/mobil · 1 kolonne</legend><label>Højde<select data-size="portrait.h">${sizeOptions(card.portrait?.h || 1,3)}</select></label></fieldset></div></div>`;
+        const entitySource = card.type === "heatpump" ? allEntities.filter((entity) => entity.id.startsWith("climate.")) : allEntities;
+        selectSources.set(entitySelectId, entitySource);
+        entityFieldBaseSources.set(entitySelectId, entitySource);
+        const needsEntity = card.type === "custom" || card.type === "heatpump";
+        const entityLabel = card.type === "heatpump" ? "Vælg varmepumpe" : "Vælg entity";
+        return `<div class="admin-overview-slot admin-overview-card-row" draggable="true" data-overview-card="${escapeHtml(key)}"><div class="admin-overview-row-head"><span class="admin-overview-drag-handle" data-overview-drag-handle aria-label="Træk for at flytte kort" title="Træk for at flytte">${BeastCore.icon("grip", { size: 18 })}</span><strong>Kort ${index+1}</strong><div class="admin-icon-actions"><button class="admin-icon-action" type="button" data-overview-move="up" aria-label="Flyt kort op" title="Flyt op">${BeastCore.icon("chevron-up", { size: 18 })}</button><button class="admin-icon-action" type="button" data-overview-move="down" aria-label="Flyt kort ned" title="Flyt ned">${BeastCore.icon("chevron-down", { size: 18 })}</button><button class="admin-icon-action is-danger" type="button" data-overview-remove aria-label="Fjern kort" title="Fjern kort">${BeastCore.icon("close", { size: 18 })}</button></div></div><label>Indhold<select data-overview-type>${OVERVIEW_SLOT_OPTIONS.filter(([value])=>value!=="empty").map(([value,name]) => `<option value="${value}"${card.type === value ? " selected" : ""}>${name}</option>`).join("")}</select></label><label>Titel<input type="text" data-overview-label value="${escapeHtml(card.label || "")}" placeholder="Valgfri titel"></label><div class="admin-overview-custom"${needsEntity ? "" : " hidden"}><strong data-overview-entity-label>${entityLabel}</strong><input class="admin-filter" type="search" placeholder="Søg efter entity…" data-filter-select="${entitySelectId}"><select id="${entitySelectId}" data-overview-entity size="5">${renderSelectOptions(entitySelectId, card.entity)}</select></div><div class="admin-overview-sizes"><fieldset><legend>Stor skærm · 12 kolonner</legend><label>Bredde<select data-size="desktop.w">${sizeOptions(card.desktop?.w || 4,12)}</select></label><label>Højde<select data-size="desktop.h">${sizeOptions(Math.min(card.desktop?.h || 1,2),2)}</select></label></fieldset><fieldset><legend>Smal/tablet · 2 kolonner</legend><label>Bredde<select data-size="tablet.w">${sizeOptions(card.tablet?.w || 1,2)}</select></label><label>Højde<select data-size="tablet.h">${sizeOptions(card.tablet?.h || 1,3)}</select></label></fieldset><fieldset><legend>Lodret/mobil · 1 kolonne</legend><label>Højde<select data-size="portrait.h">${sizeOptions(card.portrait?.h || 1,3)}</select></label></fieldset></div></div>`;
       };
     return `<div class="admin-card"><div class="admin-card-head"><div><h2>Visuel forsidebygger</h2><p>Træk kortene for at flytte dem rundt. Skift indhold, titel og størrelse nedenfor — forhåndsvisningerne opdateres med det samme.</p></div></div><div class="admin-overview-visual-preview" id="adminOverviewVisualPreview"></div><div class="admin-overview-preview" id="adminOverviewPreview"></div><div class="admin-overview-builder" data-overview-card-list>${cards.map(row).join("")}</div><div class="admin-actions"><button type="button" class="beast-btn" data-add-overview-card>+ Tilføj kort</button><button class="admin-save" type="button" data-save-overview-cards>Gem og anvend forside</button><span class="admin-save-state" data-save-state="overviewCards"></span></div></div>`;
   }
@@ -945,8 +948,8 @@
     refreshVisualOverviewPreview(cards);
   }
 
-  const OVERVIEW_CARD_ICONS = { cameras: "camera", clock: "calendar", weather: "cloud", security: "shield", energy: "bolt", custom: "grid" };
-  const OVERVIEW_CARD_LABELS = { cameras: "Live kameraer", clock: "Tid, kalender og affald", weather: "Vejr", security: "Sikkerhed", energy: "Energi" };
+  const OVERVIEW_CARD_ICONS = { cameras: "camera", clock: "calendar", weather: "cloud", security: "shield", energy: "bolt", heatpump: "wind", custom: "grid" };
+  const OVERVIEW_CARD_LABELS = { cameras: "Live kameraer", clock: "Tid, kalender og affald", weather: "Vejr", security: "Sikkerhed", energy: "Energi", heatpump: "Varmepumpe" };
   const WEATHER_ICON_MAP = { sunny: "sun", "clear-night": "moon", partlycloudy: "cloud", cloudy: "cloud", rainy: "cloud-rain", pouring: "cloud-rain", snowy: "cloud", fog: "cloud", windy: "wind", "windy-variant": "wind", lightning: "cloud-rain", "lightning-rainy": "cloud-rain" };
 
   function overviewCardVisualMarkup(card) {
@@ -987,6 +990,14 @@
       const watts = Number(powerState?.state);
       const label = Number.isFinite(watts) ? `${(watts / 1000).toFixed(1)} kW` : t("Ingen data endnu", "No data yet");
       body = `<div class="admin-ov-preview-hero">${BeastCore.icon("bolt", { size: 34 })}<div><strong>${escapeHtml(label)}</strong><span>${t("Forbrug nu", "Usage now")}</span></div></div>`;
+    } else if (card.type === "heatpump") {
+      const pumpId = card.entity || (BeastConfig.get("panels.heating.heatPumps") || [])[0];
+      const pump = BeastHaSocket.getState(pumpId);
+      const current = Number(pump?.attributes?.current_temperature);
+      const target = Number(pump?.attributes?.temperature);
+      const value = Number.isFinite(current) ? `${current.toFixed(1)}°` : t("Ingen data endnu", "No data yet");
+      const detail = Number.isFinite(target) ? `${t("Mål", "Target")} ${target.toFixed(1)}°` : (pump?.state || "");
+      body = `<div class="admin-ov-preview-hero">${BeastCore.icon("wind", { size: 34 })}<div><strong>${escapeHtml(value)}</strong><span>${escapeHtml(detail)}</span></div></div>`;
     } else if (card.type === "custom" && card.entity) {
       const state = BeastHaSocket.getState(card.entity);
       body = `<div class="admin-ov-preview-hero">${BeastCore.icon("grid", { size: 34 })}<div><strong>${escapeHtml(state?.state ?? "–")}</strong><span>${escapeHtml(state?.attributes?.friendly_name || card.entity)}</span></div></div>`;
@@ -1099,12 +1110,15 @@
       <div class="admin-card"><div class="admin-card-head"><div><h2>Denne installation</h2><p>Versionen der kører lige nu, og hvad der senest er ændret.</p></div><button type="button" class="beast-btn" data-check-updates>Tjek for opdateringer</button></div>
         <div class="beast-stat-grid">${BeastCore.statTile({ icon: "sparkles", label: "Nuværende version", value: "Henter…", meta: "…", id: "adminCurrentVersionTile" })}</div>
         <div class="admin-update-status" id="adminUpdateStatus" data-state="checking"><span class="admin-update-status-dot"></span><span id="adminUpdateStatusText">Tjekker…</span></div>
+        <div id="adminInstallLatest" class="admin-install-latest-slot"><p class="admin-empty">Henter…</p></div>
         <div id="adminUpdateSkipNote"></div>
-        <div class="admin-changelog-list" id="adminChangelogList"><p class="admin-empty">Henter ændringslog…</p></div>
+        <details class="admin-changelog-details">
+          <summary>${t("Vis ændringer og release notes", "Show changes and release notes")}</summary>
+          <div class="admin-changelog-list" id="adminChangelogList"><p class="admin-empty">Henter ændringslog…</p></div>
+        </details>
       </div>
       <div class="admin-card"><div class="admin-card-head"><div><h2>Versionshistorik</h2><p>Du kan altid installere den nyeste version, eller vælge en ældre at gendanne. Den nuværende version gemmes altid først, så det kan fortrydes.</p></div><button type="button" class="beast-btn" data-reload-versions>Opdatér liste</button></div>
         <div id="adminVersionSection">
-          <div id="adminInstallLatest"><p class="admin-empty">Henter…</p></div>
           <div class="admin-old-versions">
             <span class="admin-field-label">Tidligere versioner</span>
             <div class="admin-old-versions-row">
@@ -1200,14 +1214,17 @@
 
       if (installLatestEl) {
         if (latestVersion && latestVersion !== current) {
-          const changesHtml = githubIsNewer
+          const changesContent = githubIsNewer
             ? (github.releaseNotes ? `<p class="admin-install-latest-notes">${escapeHtml(String(github.releaseNotes)).slice(0, 600)}</p>` : "")
             : (latestEntry?.changes?.length ? `<ul>${latestEntry.changes.slice(0, 4).map((change) => `<li>${escapeHtml(change)}</li>`).join("")}</ul>` : "");
+          const changesHtml = changesContent
+            ? `<details class="admin-install-latest-details"><summary>${t("Vis ændringer", "Show changes")}</summary>${changesContent}</details>`
+            : "";
           const installSource = githubIsNewer ? "github" : "local";
           const installTag = githubIsNewer ? escapeHtml(github.tag || "") : "";
           const latestTag = githubIsNewer ? github.tag : latestEntry?.tag;
           const latestLabel = latestTag ? `HA Smartdash ${latestTag}` : formatVersionLabel(latestVersion);
-          installLatestEl.innerHTML = `<div class="admin-install-latest"><div><strong>${t("Ny version klar", "New version ready")}</strong><span>${escapeHtml(latestLabel)}</span>${changesHtml}</div><button type="button" class="beast-btn beast-btn-primary" data-rollback-version="${escapeHtml(latestVersion)}" data-is-newer="true" data-is-latest="true" data-install-source="${installSource}" data-install-tag="${installTag}">${t("Installer ny version", "Install new version")}</button></div>`;
+          installLatestEl.innerHTML = `<div class="admin-install-latest"><div><strong>${t("Ny version klar", "New version ready")}</strong><span>${escapeHtml(latestLabel)}</span></div><button type="button" class="beast-btn beast-btn-primary" data-rollback-version="${escapeHtml(latestVersion)}" data-is-newer="true" data-is-latest="true" data-install-source="${installSource}" data-install-tag="${installTag}">${t("Installer ny version", "Install new version")}</button>${changesHtml}</div>`;
         } else {
           installLatestEl.innerHTML = `<p class="admin-empty">${t("Du kører den nyeste version.", "You're on the latest version.")}</p>`;
         }
@@ -1836,7 +1853,18 @@
       const meta = document.querySelector(`[data-picker-meta="${select.id}"] strong`);
       if (meta) meta.textContent = select.value ? BeastEntityPicker.friendlyName(select.value) : "Ikke valgt";
     }));
-    document.querySelectorAll("[data-overview-type]").forEach((select) => select.addEventListener("change", () => { const custom = select.closest("[data-overview-card]").querySelector(".admin-overview-custom"); custom.hidden = select.value !== "custom"; }));
+    document.querySelectorAll("[data-overview-type]").forEach((select) => select.addEventListener("change", () => {
+      const row = select.closest("[data-overview-card]");
+      const custom = row.querySelector(".admin-overview-custom");
+      const needsEntity = select.value === "custom" || select.value === "heatpump";
+      custom.hidden = !needsEntity;
+      if (!needsEntity) return;
+      const picker = row.querySelector("[data-overview-entity]");
+      const source = select.value === "heatpump" ? allOverviewEntities().filter((entity) => entity.id.startsWith("climate.")) : allOverviewEntities();
+      selectSources.set(picker.id, source); entityFieldBaseSources.set(picker.id, source);
+      row.querySelector("[data-overview-entity-label]").textContent = select.value === "heatpump" ? "Vælg varmepumpe" : "Vælg entity";
+      picker.innerHTML = renderSelectOptions(picker.id, picker.value);
+    }));
     document.querySelectorAll("[data-filter-overview-device]").forEach((input) => input.addEventListener("input", () => { const select = document.getElementById(input.dataset.filterOverviewDevice), query = input.value.trim().toLowerCase(); Array.from(select.options).forEach((option,index) => { option.hidden = Boolean(index && query && !option.dataset.search.includes(query)); }); }));
     document.querySelectorAll("[data-overview-device]").forEach((deviceSelect) => deviceSelect.addEventListener("change", () => {
       const entitySelect = document.getElementById(deviceSelect.dataset.targetEntity), selected = entitySelect.value;

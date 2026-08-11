@@ -1,5 +1,17 @@
 [
   {
+    "version": "20260811-111",
+    "tag": "v0.7.33",
+    "date": "2026-08-11",
+    "changes": [
+      "The new-version install action now appears at the top of the update page, directly below the current update status.",
+      "Release notes and the complete changelog are collapsed by default and can be expanded when needed.",
+      "A new heat-pump template can replace any front-page card, uses a selected Home Assistant climate entity, shows current and target temperature and opens the complete Heating page when pressed.",
+      "The live front-page editor now reads the visible card order and dimensions again when Save is pressed, preventing moved cards from jumping back after an interrupted pointer or remote-desktop drag.",
+      "Camera quality menus are now generated from the streams currently returned by go2rtc instead of the original installation's hard-coded camera and _sub stream assumptions; stale saved qualities fall back to a stream that actually exists."
+    ]
+  },
+  {
     "version": "20260811-110",
     "tag": "v0.7.32",
     "date": "2026-08-11",
