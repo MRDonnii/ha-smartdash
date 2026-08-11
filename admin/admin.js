@@ -63,7 +63,8 @@
       { key: "scheduleCalendars", label: t("Skoleskema-kalendere (ét kort pr. valgt kalender, fx AULA)", "School schedule calendars (one card per selected calendar, e.g. AULA)"), type: "multi", domain: "calendar", hints: ["skole", "skema", "aula"] }
     ]},
     { id: "music", title: "Musik", description: "Music Assistant-integration til bibliotek og søgning.", fields: [
-      { key: "configEntryId", label: "Music Assistant config entry-id", type: "text", placeholder: "fx 01KK8RSBAW369PSMQMG6CE5HGB" }
+      { key: "configEntryId", label: "Music Assistant config entry-id", type: "text", placeholder: "fx 01KK8RSBAW369PSMQMG6CE5HGB" },
+      { key: "visiblePlayers", label: t("Synlige afspillere i musikvinduet", "Players visible in the Music view"), type: "multi", domain: "media_player", musicAssistantOnly: true, defaultAllWhenUnset: true }
     ]},
     { id: "rooms", title: "Rum", description: "Rumkort, klima, lys, åbninger og øvrige kontroller. Områderne bestemmer hvilke rum der vises; de nuværende rum er valgt på forhånd.", fields: [
       { key: "areaIds", label: "Synlige Home Assistant-områder", type: "areas" }
@@ -218,14 +219,19 @@
     const cacheKey = JSON.stringify({
       domain: field.domain || "",
       deviceClasses: field.deviceClasses || [],
-      hints: field.hints || []
+      hints: field.hints || [],
+      musicAssistantOnly: field.musicAssistantOnly === true
     });
     if (!entityCandidateCache.has(cacheKey)) {
-      entityCandidateCache.set(cacheKey, BeastEntityPicker.candidates({
+      let items = BeastEntityPicker.candidates({
         domain: field.domain,
         deviceClasses: field.deviceClasses,
         keywordHints: field.hints
-      }));
+      });
+      if (field.musicAssistantOnly) {
+        items = items.filter((item) => BeastHaSocket.getState(item.id)?.attributes?.app_id === "music_assistant");
+      }
+      entityCandidateCache.set(cacheKey, items);
     }
     return entityCandidateCache.get(cacheKey).slice();
   }
@@ -447,7 +453,8 @@
       return `<select id="${fieldId(panel.id, field.key)}">${(field.choices || []).map(([value, label]) => `<option value="${escapeHtml(value)}"${selected === value ? " selected" : ""}>${escapeHtml(label)}</option>`).join("")}</select>`;
     }
     if (field.type === "areas") {
-      const ids = Array.isArray(selected) ? selected : [];
+      const available = baseCandidates(field);
+      const ids = Array.isArray(selected) ? selected : (field.defaultAllWhenUnset ? available.map((item) => item.id) : []);
       const areas = BeastRegistry.getAllAreas().map((area) => ({ id: area.area_id, name: area.name || area.area_id }));
       return renderCheckList(panel, field, ids, areas);
     }
@@ -455,7 +462,7 @@
       const ids = Array.isArray(selected) ? selected : [];
       const id = fieldId(panel.id, field.key);
       const scope = entityDeviceScope(panel, field, ids);
-      const base = baseCandidates(field);
+      const base = available;
       const seen = new Set(base.map((item) => item.id));
       ids.filter(Boolean).forEach((entityId) => { if (!seen.has(entityId)) base.unshift({ id: entityId, name: BeastEntityPicker.friendlyName(entityId) }); });
       entityFieldBaseSources.set(id, base);
