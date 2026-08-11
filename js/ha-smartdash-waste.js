@@ -227,6 +227,29 @@
     return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
   }
 
+  const scheduleOverflowObservers = new WeakMap();
+  function wireScheduleOverflowText(host) {
+    scheduleOverflowObservers.get(host)?.disconnect();
+    const measure = () => {
+      host.querySelectorAll(".beast-schedule-scroll-line").forEach((line) => {
+        const content = line.querySelector(".beast-schedule-scroll-content");
+        if (!content) return;
+        line.classList.remove("is-overflowing");
+        line.style.removeProperty("--schedule-scroll-distance");
+        line.style.removeProperty("--schedule-scroll-duration");
+        const overflow = Math.ceil(content.scrollWidth - line.clientWidth);
+        if (overflow <= 2) return;
+        line.style.setProperty("--schedule-scroll-distance", `${overflow}px`);
+        line.style.setProperty("--schedule-scroll-duration", `${Math.max(6, Math.min(16, 4 + overflow / 22)).toFixed(1)}s`);
+        line.classList.add("is-overflowing");
+      });
+    };
+    const observer = new ResizeObserver(() => window.requestAnimationFrame(measure));
+    observer.observe(host);
+    scheduleOverflowObservers.set(host, observer);
+    window.requestAnimationFrame(measure);
+  }
+
   // Weekday columns x time-of-day rows -- rows are the distinct start times
   // actually seen this week (school periods are fixed, but a half-day or a
   // cancelled first period shouldn't invent an empty row that never occurs).
@@ -261,8 +284,8 @@
           return isSub ? `<em class="is-substitute">${t("VIKAR", "SUBSTITUTE")}: ${escapeHtml(clean)}</em>` : escapeHtml(teacher);
         }).join(" + ");
         return `<div class="beast-schedule-week-cell" style="--subject-color:${scheduleSubjectColor(row.subject)}">
-          <strong>${escapeHtml(scheduleSubjectLabel(row.subject) || t("Ukendt fag", "Unknown subject"))}</strong>
-          ${teacherText ? `<span>${teacherText}</span>` : ""}
+          <strong class="beast-schedule-scroll-line"><span class="beast-schedule-scroll-content">${escapeHtml(scheduleSubjectLabel(row.subject) || t("Ukendt fag", "Unknown subject"))}</span></strong>
+          ${teacherText ? `<span class="beast-schedule-scroll-line"><span class="beast-schedule-scroll-content">${teacherText}</span></span>` : ""}
         </div>`;
       }).join("");
       return `<div class="beast-schedule-week-row">${timeCell}${dayCells}</div>`;
@@ -302,6 +325,7 @@
       </div>
       ${renderScheduleWeekGrid(rows, weekStart, locale)}
     `;
+    wireScheduleOverflowText(host);
   }
 
   function formatEventTime(event) {

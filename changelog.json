@@ -1,5 +1,14 @@
 [
   {
+    "version": "20260811-168",
+    "tag": "v0.7.90",
+    "date": "2026-08-11",
+    "changes": [
+      { "da": "For lange fag- og lærertekster i skoleskemaet ruller nu roligt frem og tilbage, men kun når teksten ikke kan være i feltet.", "en": "Long subject and teacher text in the school schedule now scrolls gently back and forth, but only when it does not fit inside the cell." },
+      { "da": "Rulletekstens afstand og hastighed tilpasses automatisk kortets størrelse og tekstens længde, og reduceret animation respekteres.", "en": "Scrolling distance and speed now adapt automatically to the card size and text length, while reduced-motion preferences are respected." }
+    ]
+  },
+  {
     "version": "20260811-167",
     "tag": "v0.7.89",
     "date": "2026-08-11",
