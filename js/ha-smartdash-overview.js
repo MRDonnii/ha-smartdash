@@ -1985,7 +1985,7 @@
     const config = BeastConfig.getAll();
     return {
       car: { label:"Bil", entity:config.panels?.car?.battery, suffix:"%", icon:"car", detail:"Batteri" },
-      pool: { label:"Pool", entity:config.panels?.pool?.waterTemp, suffix:"°", icon:"droplet", detail:"Vandtemperatur" },
+      pool: { label:"Pool", entity:config.panels?.pool?.waterTemp, suffix:"°", icon:"droplet", detail:"Temperatur" },
       robots: { label:"Robotter", entity:[...(config.panels?.robots?.vacuums || []),...(config.panels?.robots?.mowers || [])][0], suffix:"", icon:"robot", detail:"Aktuel status" },
       printer: { label:"3D-printer", entity:config.panels?.printer?.statusSensor, suffix:"", icon:"printer", detail:"Printstatus" },
       heatpump: { label:"Varmepumpe", entity:(config.panels?.heating?.heatPumps || [])[0], suffix:"", icon:"wind", detail:"Varme og temperatur" }
