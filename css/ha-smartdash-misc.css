@@ -3049,6 +3049,19 @@
 .beast-schedule-week-cell.is-empty { min-height:0; border:1px dashed var(--border); background:transparent; }
 .beast-schedule-week-cell strong { overflow:hidden; font-size:12px; font-weight:800; line-height:1.15; white-space:nowrap; text-overflow:ellipsis; }
 .beast-schedule-week-cell span { overflow:hidden; color:rgba(255,255,255,.88); font-size:10px; line-height:1.15; white-space:nowrap; text-overflow:ellipsis; }
+.beast-schedule-scroll-line { display:block; min-width:0; overflow:hidden; text-overflow:clip !important; }
+.beast-schedule-scroll-content { width:max-content; min-width:100%; display:inline-flex; align-items:baseline; overflow:visible !important; color:inherit !important; font:inherit; line-height:inherit; white-space:nowrap; }
+.beast-schedule-scroll-line.is-overflowing .beast-schedule-scroll-content { animation:beast-schedule-text-scroll var(--schedule-scroll-duration, 8s) ease-in-out infinite alternate; }
+.beast-schedule-scroll-line.is-overflowing:hover .beast-schedule-scroll-content,
+.beast-schedule-scroll-line.is-overflowing:focus-within .beast-schedule-scroll-content { animation-play-state:paused; }
+@keyframes beast-schedule-text-scroll {
+  0%, 16% { transform:translateX(0); }
+  84%, 100% { transform:translateX(calc(-1 * var(--schedule-scroll-distance, 0px))); }
+}
+@media (prefers-reduced-motion:reduce) {
+  .beast-schedule-scroll-line.is-overflowing .beast-schedule-scroll-content { animation:none; }
+  .beast-schedule-scroll-line { text-overflow:ellipsis !important; }
+}
 .beast-schedule-week-cell span em.is-substitute { color:#ffd76b; font-style:normal; font-weight:700; }
 @media (min-width:1400px) and (min-height:1200px) { .beast-schedule-week-time { font-size:11px; } .beast-schedule-week-cell { padding:9px 11px; } .beast-schedule-week-cell strong { font-size:13px; } .beast-schedule-week-cell span { font-size:11px; } }
 @media (max-width:1050px) { .beast-waste-panel { grid-template-columns:minmax(280px,4fr) minmax(0,8fr); } .beast-calendar-event { grid-template-columns:90px 4px minmax(0,1fr) auto auto; } }
