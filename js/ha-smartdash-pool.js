@@ -1,6 +1,7 @@
 (function () {
   let IDS = {};
   let POOL_CAMERA_STREAM = "";
+  let POOL_CAMERA = null;
 
   function applyConfig() {
     const config = BeastConfig.get("panels.pool") || {};
@@ -8,7 +9,8 @@
       temperature: config.waterTemp, pump: config.pumpSwitch, status: config.pumpStatus,
       runtime: config.runtime, person: config.personInWater, automation: config.automationToggle
     };
-    POOL_CAMERA_STREAM = config.cameraStream || "";
+    POOL_CAMERA = config.cameraEntity ? window.BeastCameras?.resolveCamera?.(config.cameraEntity) : null;
+    POOL_CAMERA_STREAM = POOL_CAMERA?.streamName || config.cameraStream || "";
   }
 
   let containerEl = null;
@@ -94,6 +96,12 @@
     const priceAverage = Number(status?.attributes?.elpris_gennemsnit_i_dag);
     const runtimePct = Number.isFinite(Number(runtimeH)) && Number.isFinite(goalH) && goalH > 0 ? Math.min(100, (Number(runtimeH) / goalH) * 100) : 0;
     const comfort = tempNumber === null ? "Ingen temperaturdata" : tempNumber >= 27 ? "Perfekt badevand" : tempNumber >= 24 ? "Behageligt" : tempNumber >= 20 ? "Friskt" : "Køligt";
+    const cameraLabel = POOL_CAMERA?.label || "Pool & terrasse";
+    const cameraMarkup = POOL_CAMERA
+      ? window.BeastCameras.sharedCameraMarkup(POOL_CAMERA, { className: "beast-pool-shared-camera", label: false, motion: false })
+      : POOL_CAMERA_STREAM
+        ? `<iframe src="./camera-player.html?v=14&transport=mse&src=${encodeURIComponent(POOL_CAMERA_STREAM)}" title="Pool livekamera" frameborder="0" allow="autoplay"></iframe>`
+        : `<div class="beast-pool-camera-empty">Vælg et kamera under Administration → Pool</div>`;
 
     if (containerEl.querySelector(".beast-pool-dashboard")) {
       document.getElementById("beastPoolHeaderStatus").textContent = escapeHtml(status?.state || "Ukendt status");
@@ -121,7 +129,7 @@
     }
 
     containerEl.innerHTML = `
-      <div class="beast-pool-dashboard">
+      <button type="button" class="beast-page-edit-trigger" id="beastPoolLayoutEdit" aria-label="Rediger poollayout">⋮</button><div class="beast-pool-dashboard">
         <section class="beast-pool-hero">
           <header><span>${BeastCore.icon("droplet", { size: 22 })} Pool</span><em id="beastPoolHeaderStatus">${escapeHtml(status?.state || "Ukendt status")}</em></header>
           <div class="beast-pool-water-orb">
@@ -143,9 +151,9 @@
           </div>
         </section>
         <section class="beast-pool-live">
-          <header><div><small>Livekamera</small><strong>Pool & terrasse</strong></div><span><i></i> LIVE</span></header>
-          <div class="beast-pool-live-frame"><iframe src="./camera-player.html?v=7&src=${encodeURIComponent(POOL_CAMERA_STREAM)}" title="Pool livekamera" frameborder="0" allow="autoplay"></iframe></div>
-          <footer><span>${BeastCore.icon("camera", { size: 16 })} Terrasse Syd</span><em>Forvarmet livevisning</em></footer>
+          <header><div><small>Livekamera</small><strong>${escapeHtml(cameraLabel)}</strong></div><span><i></i> LIVE</span></header>
+          <div class="beast-pool-live-frame">${cameraMarkup}</div>
+          <footer><span>${BeastCore.icon("camera", { size: 16 })} ${escapeHtml(cameraLabel)}</span><em>Livevisning</em></footer>
         </section>
         <section class="beast-pool-insights">
           <div class="beast-pool-temperature-chart-card" id="beastPoolTemperatureHistory"><p class="beast-music-empty">Henter temperaturhistorik…</p></div>
@@ -155,6 +163,8 @@
         </section>
       </div>
     `;
+    wirePoolLayout();
+    window.BeastCameras?.wireSharedCameras?.(containerEl);
     renderTemperatureHistory();
 
     document.getElementById("beastPoolPumpBtn")?.addEventListener("click", () => {
@@ -164,6 +174,32 @@
     document.getElementById("beastPoolAutoBtn")?.addEventListener("click", () => {
       const button = document.getElementById("beastPoolAutoBtn");
       callService("input_boolean", button.dataset.on === "true" ? "turn_off" : "turn_on", IDS.automation);
+    });
+  }
+
+  function wirePoolLayout() {
+    const layout = BeastConfig.get("pageLayouts.pool.poolLayout") || {};
+    const hidden = new Set(Array.isArray(layout.hidden) ? layout.hidden : []);
+    const selectors = { hero: ".beast-pool-hero", camera: ".beast-pool-live", insights: ".beast-pool-insights" };
+    Object.entries(selectors).forEach(([id, selector]) => containerEl.querySelectorAll(selector).forEach((el) => el.classList.toggle("is-layout-hidden", hidden.has(id))));
+    BeastNativePageEditor.mount({ section: "pool", label: "Pool", root: () => containerEl, host: () => containerEl.querySelector(".beast-pool-dashboard"), trigger: "#beastPoolLayoutEdit", cards: () => [
+      { id:"hero", label:"Poolstatus og styring", selector:".beast-pool-hero", titleSelector:":scope > header > span", enabled:!hidden.has("hero"), desktop:{x:1,y:1,w:4,h:9} },
+      { id:"camera", label:"Livekamera", selector:".beast-pool-live", titleSelector:":scope > header strong", enabled:!hidden.has("camera"), desktop:{x:5,y:1,w:8,h:9} },
+      { id:"insights", label:"Temperatur og driftsindsigt", selector:".beast-pool-insights", enabled:!hidden.has("insights"), desktop:{x:1,y:10,w:12,h:3} }
+    ] });
+  }
+
+  function openPoolLayout(layout) {
+    const hidden = new Set(Array.isArray(layout.hidden) ? layout.hidden : []);
+    const items = [["hero", "Poolstatus og styring"], ["camera", "Livekamera"], ["insights", "Temperatur og driftsindsigt"]];
+    const overlay = document.createElement("div"); overlay.className = "beast-modal-overlay";
+    overlay.innerHTML = `<div class="beast-modal beast-pool-layout-modal"><div class="beast-modal-header"><h3>Rediger poollayout</h3><button type="button" class="beast-modal-close" data-close>×</button></div><div class="beast-modal-body"><div class="beast-pool-layout-list">${items.map(([id,label]) => `<label><input type="checkbox" data-pool-section="${id}" ${hidden.has(id) ? "" : "checked"}><strong>${label}</strong></label>`).join("")}</div><button type="button" class="beast-btn beast-btn-primary" data-save-pool-layout>Gem layout</button></div></div>`;
+    document.body.appendChild(overlay);
+    overlay.addEventListener("click", (event) => {
+      if (event.target === overlay || event.target.closest("[data-close]")) return overlay.remove();
+      if (!event.target.closest("[data-save-pool-layout]")) return;
+      const nextHidden = items.filter(([id]) => !overlay.querySelector(`[data-pool-section="${id}"]`).checked).map(([id]) => id);
+      BeastConfig.set("pageLayouts.pool.poolLayout", { ...layout, hidden: nextHidden }); overlay.remove(); render();
     });
   }
 

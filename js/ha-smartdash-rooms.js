@@ -5,6 +5,7 @@
   const PRESENCE_CLASSES = ["motion", "occupancy", "presence"];
   let ROOM_CLIMATE_SENSORS = {};
   let ROOM_POPUP_ENTITIES = {};
+  let ROOM_LAYOUT = { order: [], hidden: [], sizes: {} };
 
   // No real photo on file for every area — these self-contained gradient
   // placeholders (no external image dependency) stand in where one is missing.
@@ -62,15 +63,20 @@
   }
 
   function roomEntityIds(areaId, domain) {
-    const configured = ROOM_POPUP_ENTITIES[areaId];
-    const source = configured ? configured.filter((entityId) => entityId.startsWith(`${domain}.`)) : BeastRegistry.getAreaEntityIds(areaId, domain);
+    const configured = Array.isArray(ROOM_POPUP_ENTITIES[areaId]) ? ROOM_POPUP_ENTITIES[areaId] : [];
+    // Manual room entities supplement HA's own area assignment. This lets a
+    // user expose a useful control in a room without moving the underlying
+    // device in HA or losing everything HA already assigned automatically.
+    const source = [...new Set([
+      ...BeastRegistry.getAreaEntityIds(areaId, domain),
+      ...configured.filter((entityId) => entityId.startsWith(`${domain}.`))
+    ])];
     return source.filter((entityId) => {
       const meta = BeastRegistry.getEntityMeta(entityId);
       const state = BeastHaSocket.getState(entityId);
       const text = `${entityId} ${meta?.platform || ""} ${meta?.name || ""} ${meta?.originalName || ""} ${state?.attributes?.friendly_name || ""}`.toLowerCase();
       if (text.includes("unifi") || text.includes("protect")) return false;
       if (domain === "climate" && !text.includes("better_thermostat") && !text.includes("better thermostat")) return false;
-      if (ROOM_POPUP_ENTITIES[areaId] && !ROOM_POPUP_ENTITIES[areaId].includes(entityId)) return false;
       return true;
     });
   }
@@ -91,19 +97,41 @@
     return Number.isFinite(value) ? value : null;
   }
 
+  function discoveredClimateSensor(areaId, deviceClass) {
+    const candidates = BeastRegistry.getAreaEntityIds(areaId, "sensor").map((entityId) => {
+      const state = BeastHaSocket.getState(entityId);
+      const stateDeviceClass = state?.attributes?.device_class;
+      const unit = String(state?.attributes?.unit_of_measurement || "").toLowerCase();
+      const unitMatches = deviceClass === "temperature" ? ["°c", "°f"].includes(unit) : unit === "%";
+      if (stateDeviceClass !== deviceClass && !unitMatches) return null;
+      const value = Number(state?.state);
+      if (!Number.isFinite(value)) return null;
+      const name = String(state?.attributes?.friendly_name || entityId).toLowerCase();
+      let score = stateDeviceClass === deviceClass ? 10 : 0;
+      if (name.includes(deviceClass === "temperature" ? "temperatur" : "fugt")) score += 2;
+      if (!name.includes("battery") && !name.includes("batteri")) score += 1;
+      return { entityId, score };
+    }).filter(Boolean);
+    candidates.sort((a, b) => b.score - a.score || a.entityId.localeCompare(b.entityId));
+    return candidates[0]?.entityId || null;
+  }
+
   function roomClimate(areaId, climateIds) {
     const configured = ROOM_CLIMATE_SENSORS[areaId] || [];
     let temperature = sensorNumber(configured[0]);
     let humidity = sensorNumber(configured[1]);
 
+    const area = BeastRegistry.getArea(areaId);
+    if (temperature === null && area?.temperature_entity_id) temperature = sensorNumber(area.temperature_entity_id);
+    if (humidity === null && area?.humidity_entity_id) humidity = sensorNumber(area.humidity_entity_id);
+
+    if (temperature === null) temperature = sensorNumber(discoveredClimateSensor(areaId, "temperature"));
+    if (humidity === null) humidity = sensorNumber(discoveredClimateSensor(areaId, "humidity"));
+
     if (temperature === null && climateIds.length) {
       const value = Number(BeastHaSocket.getState(climateIds[0])?.attributes?.current_temperature);
       if (Number.isFinite(value)) temperature = value;
     }
-
-    const area = BeastRegistry.getArea(areaId);
-    if (temperature === null && area?.temperature_entity_id) temperature = sensorNumber(area.temperature_entity_id);
-    if (humidity === null && area?.humidity_entity_id) humidity = sensorNumber(area.humidity_entity_id);
 
     return {
       temperatureLabel: temperature === null ? "–" : `${temperature.toFixed(1)}°`,
@@ -143,16 +171,25 @@
   // only the text/badges that actually change get touched, and a card's
   // photo is fetched once, on creation, never again.
   function renderGrid() {
+    const configured = BeastConfig.get("pageLayouts.rooms") || {};
+    ROOM_LAYOUT = configured.roomLayout || ROOM_LAYOUT;
+    const hidden = new Set(Array.isArray(ROOM_LAYOUT.hidden) ? ROOM_LAYOUT.hidden : []);
+    const order = Array.isArray(ROOM_LAYOUT.order) ? ROOM_LAYOUT.order : [];
+    const orderIndex = new Map(order.map((id, index) => [id, index]));
     const areas = ROOM_ORDER
       .map((areaId) => BeastRegistry.getArea(areaId))
-      .filter(Boolean);
+      .filter((area) => area && !hidden.has(area.area_id))
+      .sort((a, b) => (orderIndex.get(a.area_id) ?? 9999) - (orderIndex.get(b.area_id) ?? 9999));
 
     let grid = document.getElementById("beastRoomsGrid");
     if (!grid) {
-      containerEl.innerHTML = `<div class="beast-rooms-grid" id="beastRoomsGrid"></div><div id="beastRoomModalHost"></div>`;
+      containerEl.innerHTML = `<button type="button" class="beast-page-edit-trigger beast-rooms-layout-trigger" id="beastRoomsLayoutEdit" aria-label="Rediger rumkort" title="Rediger rumkort">⋮</button><div class="beast-rooms-grid" id="beastRoomsGrid"></div><div id="beastRoomModalHost"></div>`;
       grid = document.getElementById("beastRoomsGrid");
       observeGridResize(grid);
     }
+    grid.querySelectorAll("[data-area-id]").forEach((card) => {
+      if (!areas.some((area) => area.area_id === card.dataset.areaId)) card.remove();
+    });
 
     areas.forEach((area) => {
       const summary = roomSummary(area.area_id);
@@ -184,6 +221,11 @@
       card.type = "button";
       card.className = "beast-room-card";
       card.dataset.areaId = area.area_id;
+      const size = ROOM_LAYOUT.sizes?.[area.area_id];
+      if (size?.w || size?.h) {
+        card.style.setProperty("--room-card-w", String(Math.max(1, Math.min(4, Number(size.w) || 1))));
+        card.style.setProperty("--room-card-h", String(Math.max(1, Math.min(2, Number(size.h) || 1))));
+      }
       card.innerHTML = `
         <div class="beast-room-photo">${roomPhotoMarkup(area)}</div>
         <div class="beast-room-climate" aria-label="Temperatur ${summary.temperatureLabel}, fugtighed ${summary.humidityLabel}">
@@ -201,9 +243,43 @@
       if (img) BeastAuth.setAuthedImageSrc(img, img.dataset.haPath);
     });
     balanceGridColumns(grid);
+    BeastNativePageEditor.mount({ section:"rooms", label:"Rum", root:()=>containerEl, host:()=>containerEl.querySelector("#beastRoomsGrid"), trigger:"#beastRoomsLayoutEdit", cards:()=>{
+      const hidden = new Set((BeastConfig.get("pageLayouts.rooms.roomLayout") || {}).hidden || []);
+      const ids = ROOM_ORDER.filter((id) => BeastRegistry.getArea(id));
+      return ids.map((id,index)=>({ id, label:BeastRegistry.getArea(id)?.name || id, selector:`[data-area-id="${CSS.escape(id)}"]`, titleSelector:".beast-room-name", enabled:!hidden.has(id), desktop:{x:(index%3)*4+1,y:Math.floor(index/3)*5+1,w:4,h:5} }));
+    }, onSave:(cards)=>{
+      const roomLayout = BeastConfig.get("pageLayouts.rooms.roomLayout") || {};
+      BeastConfig.set("pageLayouts.rooms.roomLayout", { ...roomLayout, hidden:cards.filter((card)=>card.enabled===false).map((card)=>card.id) });
+    }, onFinish:()=>renderGrid() });
   }
 
-  const GRID_MIN_CARD_WIDTH = 280;
+  function openRoomLayoutEditor() {
+    document.getElementById("beastRoomLayoutEditor")?.remove();
+    const layout = BeastConfig.get("pageLayouts.rooms.roomLayout") || {};
+    const hidden = new Set(Array.isArray(layout.hidden) ? layout.hidden : []);
+    const order = Array.isArray(layout.order) && layout.order.length ? layout.order.slice() : ROOM_ORDER.slice();
+    const ids = [...new Set([...order, ...ROOM_ORDER])].filter((id) => ROOM_ORDER.includes(id));
+    const overlay = document.createElement("div"); overlay.id = "beastRoomLayoutEditor"; overlay.className = "beast-modal-overlay";
+    overlay.innerHTML = `<div class="beast-modal beast-room-layout-modal" role="dialog" aria-modal="true"><div class="beast-modal-header"><h3>Rediger rumkort</h3><button type="button" class="beast-modal-close" data-close>×</button></div><div class="beast-modal-body"><p class="beast-page-editor-hint">Skjul rum eller ændr rækkefølgen. Popup-styringen i hvert rum ændres ikke.</p><div class="beast-room-layout-list">${ids.map((id, index) => { const area = BeastRegistry.getArea(id); return `<div class="beast-room-layout-row" data-room-layout-id="${id}"><label><input type="checkbox" data-room-visible ${hidden.has(id) ? "" : "checked"}> <strong>${area?.name || id}</strong></label><div><button type="button" data-room-up ${index ? "" : "disabled"}>↑</button><button type="button" data-room-down ${index < ids.length - 1 ? "" : "disabled"}>↓</button></div></div>`; }).join("")}</div><button type="button" class="beast-btn beast-btn-primary" data-room-layout-save>Gem rumlayout</button></div></div>`;
+    document.body.appendChild(overlay);
+    const list = overlay.querySelector(".beast-room-layout-list");
+    overlay.addEventListener("click", (event) => {
+      if (event.target === overlay || event.target.closest("[data-close]")) return overlay.remove();
+      if (event.target.closest("[data-room-layout-save]")) {
+        const nextOrder = [...list.querySelectorAll("[data-room-layout-id]")].map((item) => item.dataset.roomLayoutId);
+        const nextHidden = [...list.querySelectorAll("[data-room-layout-id]")].filter((item) => !item.querySelector("[data-room-visible]").checked).map((item) => item.dataset.roomLayoutId);
+        BeastConfig.set("pageLayouts.rooms.roomLayout", { ...layout, order: nextOrder, hidden: nextHidden });
+        overlay.remove(); renderGrid(); return;
+      }
+      const row = event.target.closest("[data-room-layout-id]"); if (!row) return;
+      if (event.target.closest("[data-room-up]") && row.previousElementSibling) list.insertBefore(row, row.previousElementSibling);
+      if (event.target.closest("[data-room-down]") && row.nextElementSibling) list.insertBefore(row.nextElementSibling, row);
+      if (event.target.closest("[data-room-up], [data-room-down]")) overlay.querySelectorAll(".beast-room-layout-row").forEach((item, i, all) => { item.querySelector("[data-room-up]").disabled = i === 0; item.querySelector("[data-room-down]").disabled = i === all.length - 1; });
+    });
+  }
+
+  const GRID_MIN_CARD_WIDTH = 210;
+  const GRID_MIN_CARD_HEIGHT = 165;
 
   // grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)) fills rows
   // left-to-right and just stops -- a trailing row with far fewer cards
@@ -213,15 +289,29 @@
   // the actual card count as evenly as possible (e.g. 5, 5, 5 for the same
   // 15 cards) removes that dead space instead.
   function balanceGridColumns(grid) {
-    const itemCount = grid.children.length;
+    const itemCount = grid.querySelectorAll(":scope > .beast-room-card:not(.is-layout-hidden)").length;
     if (!itemCount) return;
     const containerWidth = grid.clientWidth;
-    if (!containerWidth) return;
-    const gapPx = parseFloat(getComputedStyle(grid).columnGap) || 0;
-    const maxColumnsThatFit = Math.max(1, Math.floor((containerWidth + gapPx) / (GRID_MIN_CARD_WIDTH + gapPx)));
-    const rows = Math.ceil(itemCount / maxColumnsThatFit);
-    const columns = Math.ceil(itemCount / rows);
-    grid.style.gridTemplateColumns = `repeat(${columns}, minmax(min(${GRID_MIN_CARD_WIDTH}px, 100%), 1fr))`;
+    const containerHeight = grid.clientHeight;
+    if (!containerWidth || !containerHeight || grid.closest(".is-native-page-editing")) return;
+    const style = getComputedStyle(grid);
+    const gapX = parseFloat(style.columnGap) || 0;
+    const gapY = parseFloat(style.rowGap) || gapX;
+    const maxColumns = Math.max(1, Math.min(itemCount, Math.floor((containerWidth + gapX) / (GRID_MIN_CARD_WIDTH + gapX))));
+    let best = null;
+    for (let columns = 1; columns <= maxColumns; columns += 1) {
+      const rows = Math.ceil(itemCount / columns);
+      const width = (containerWidth - gapX * (columns - 1)) / columns;
+      const height = (containerHeight - gapY * (rows - 1)) / rows;
+      if (width < GRID_MIN_CARD_WIDTH || height < GRID_MIN_CARD_HEIGHT) continue;
+      const score = Math.abs(width / height - 1.42) + Math.abs(columns * rows - itemCount) * .08;
+      if (!best || score < best.score) best = { columns, rows, score };
+    }
+    const columns = best?.columns || maxColumns;
+    const rows = Math.ceil(itemCount / columns);
+    grid.style.setProperty("--rooms-fit-columns", String(columns));
+    grid.style.setProperty("--rooms-fit-rows", String(rows));
+    grid.classList.toggle("is-room-grid-fitted", Boolean(best));
   }
 
   let gridResizeObserver = null;
@@ -494,7 +584,7 @@
     });
   }
 
-  const ROOM_RELEVANT_DOMAINS = ["light", "climate", "binary_sensor", "cover", "lock", "switch"];
+  const ROOM_RELEVANT_DOMAINS = ["light", "climate", "sensor", "binary_sensor", "cover", "lock", "switch"];
 
   function init(root) {
     const roomConfig = BeastConfig.get("panels.rooms") || {};
@@ -519,6 +609,7 @@
     ROOM_RELEVANT_DOMAINS.forEach((domain) => {
       BeastHaSocket.subscribeDomain(domain, debouncedRender);
     });
+    document.addEventListener("beast:registry-updated", debouncedRender);
   }
 
   BeastCore.registerPanel("rooms", "beastRoomsZone", init);

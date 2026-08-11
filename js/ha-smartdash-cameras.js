@@ -1,33 +1,130 @@
 (function () {
   let GO2RTC_BASE_URL = "";
   let configuredCameraIds = null;
+  let go2rtcStreamGroups = new Map();
+  let go2rtcDiscoveryPromise = null;
   const SNAPSHOT_REFRESH_MS = 8000;
-
-  // Hand-curated slug -> go2rtc stream-name mapping, carried over from TH dash's
-  // proven go2rtc setup (only these cameras have a working go2rtc source).
-  const STREAM_NAME_MAP = {
-    fordor: "Fordor",
-    forhaven: "Forhaven",
-    carport: "carport",
-    baghaven: "Baghaven",
-    langs_huset: "Langs_huset",
-    indkorsel: "Indkorsel",
-    terrasse: "Terrasse",
-    terrasse_syd: "Terrasse_syd",
-    sandkassen: "sandkassen",
-    trampolin: "trampolin",
-    "3d_printer": "3dprinter",
-    bag_indgang: "Bag_indgang"
-  };
 
   let containerEl = null;
   let refreshTimerId = null;
   let featuredSlug = null;
 
-  function getCameraSlug(entityId) {
-    return entityId
-      .replace(/^camera\./, "")
-      .replace(/_medium_resolution_channel$/, "");
+  function cameraIdentity(entityId) {
+    const raw = entityId.replace(/^camera\./, "");
+    const named = raw.match(/_(high|medium|low)(?:_resolution)?(?:_channel)?$/i);
+    const short = raw.match(/_(hd|sd|sub|main)(?:_stream)?$/i);
+    const match = named || short;
+    const quality = named ? named[1].toLowerCase() : short ? ({ hd: "high", main: "high", sd: "medium", sub: "low" })[short[1].toLowerCase()] : "standard";
+    return { slug: match ? raw.slice(0, -match[0].length) : raw, quality };
+  }
+
+  function qualityLabel(quality) {
+    return ({ high: "Høj", medium: "Mellem", low: "Lav", standard: "Standard" })[quality] || quality;
+  }
+
+  function normalizedStreamKey(value) {
+    return String(value || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/[^a-z0-9]+/g, "_").replace(/^_+|_+$/g, "");
+  }
+
+  function streamIdentity(streamName) {
+    const raw = normalizedStreamKey(streamName);
+    const match = raw.match(/_(high|medium|low|hd|sd|sub|main)(?:_stream|_resolution|_channel)?$/i);
+    const token = match?.[1]?.toLowerCase();
+    const quality = ({ high:"high", hd:"high", main:"high", medium:"medium", sd:"medium", low:"low", sub:"low" })[token] || "standard";
+    return { base: match ? raw.slice(0, -match[0].length) : raw, quality };
+  }
+
+  async function discoverGo2rtcStreams(force = false) {
+    if (!GO2RTC_BASE_URL) { go2rtcStreamGroups = new Map(); return go2rtcStreamGroups; }
+    if (go2rtcDiscoveryPromise && !force) return go2rtcDiscoveryPromise;
+    go2rtcDiscoveryPromise = fetch(`${GO2RTC_BASE_URL}/api/streams`, { cache: "no-store" })
+      .then((response) => response.ok ? response.json() : Promise.reject(new Error(`HTTP ${response.status}`)))
+      .then((payload) => {
+        const groups = new Map();
+        Object.keys(payload && typeof payload === "object" ? payload : {}).forEach((streamName) => {
+          const identity = streamIdentity(streamName);
+          if (!identity.base) return;
+          if (!groups.has(identity.base)) groups.set(identity.base, []);
+          groups.get(identity.base).push({ streamName, quality: identity.quality });
+        });
+        const rank = { high:0, standard:1, medium:2, low:3 };
+        groups.forEach((variants) => {
+          if (variants.length > 1 && variants.some((item) => item.quality !== "standard")) {
+            variants.forEach((item) => { if (item.quality === "standard") item.quality = "high"; });
+          }
+          variants.sort((a,b) => (rank[a.quality] ?? 9) - (rank[b.quality] ?? 9) || a.streamName.localeCompare(b.streamName));
+        });
+        go2rtcStreamGroups = groups;
+        return groups;
+      })
+      .catch((error) => {
+        console.warn("[Kameraer] Kunne ikke hente streamlisten fra go2rtc", error);
+        go2rtcStreamGroups = new Map();
+        return go2rtcStreamGroups;
+      })
+      .finally(() => { go2rtcDiscoveryPromise = null; });
+    return go2rtcDiscoveryPromise;
+  }
+
+  function go2rtcVariantsForCamera(slug) {
+    const key = normalizedStreamKey(slug);
+    return go2rtcStreamGroups.get(key) || go2rtcStreamGroups.get(key.replace(/_camera$/, "")) || [];
+  }
+
+  function reconcileSavedCameraQualities() {
+    const current = BeastConfig.get("pageLayouts.cameras.qualityByCamera") || {};
+    const next = { ...current };
+    let changed = false;
+    discoverCameras().forEach((camera) => {
+      if (!Object.prototype.hasOwnProperty.call(next, camera.slug)) return;
+      if (camera.qualityOptions.some((option) => option.quality === next[camera.slug])) return;
+      delete next[camera.slug]; changed = true;
+    });
+    return changed ? BeastConfig.set("pageLayouts.cameras.qualityByCamera", next) : Promise.resolve({ success:true });
+  }
+
+  function cleanCameraLabel(value, slug) {
+    let label = String(value || slug).trim();
+    // Home Assistant integrations often append the provider, entity type and
+    // stream quality to every friendly name. The picker only needs the
+    // physical camera name; quality remains available in the camera menu.
+    const technicalSuffixes = [
+      /\s*[-–—·|]\s*UniFi\s+Protect(?:\s+(?:camera|kamera))?\s*$/i,
+      /\s*\((?:UniFi\s+Protect|camera|kamera)\)\s*$/i,
+      /\s*[-–—·|]?\s*(high|medium|low)\s+resolution\s+channel\s*$/i,
+      /\s*[-–—·|]?\s*(high|medium|low|hd|sd|main|sub)(\s+stream)?\s*$/i,
+      /\s*[-–—·|]?\s*(høj|mellem|lav)\s*(kvalitet|opløsning)?\s*$/i,
+      /\s*[-–—·|]\s*(camera|kamera)\s*$/i
+    ];
+    // Run twice because a name can contain both provider and quality suffixes.
+    for (let pass = 0; pass < 2; pass += 1) technicalSuffixes.forEach((pattern) => { label = label.replace(pattern, "").trim(); });
+    if (label) return label;
+    return String(slug || "Kamera").replace(/_/g, " ").replace(/\b\w/g, (char) => char.toUpperCase());
+  }
+
+  function escapeRegExp(value) {
+    return String(value || "").replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  }
+
+  function smartDetectionForCamera(slug) {
+    const pattern = new RegExp(`^binary_sensor\\.${escapeRegExp(slug)}_(person|vehicle|animal|pet|dog|cat)(?:_detected)?$`, "i");
+    const labels = { person: "Person", vehicle: "Bil", animal: "Dyr", pet: "Dyr", dog: "Dyr", cat: "Dyr" };
+    const detections = [];
+    BeastHaSocket.getAllStates().forEach((state, entityId) => {
+      const match = entityId.match(pattern);
+      if (!match || state.state !== "on") return;
+      detections.push({
+        type: match[1].toLowerCase(),
+        label: labels[match[1].toLowerCase()] || "Hændelse",
+        changedAt: new Date(state.last_changed || 0).getTime() || 0
+      });
+    });
+    detections.sort((a, b) => b.changedAt - a.changedAt);
+    return detections[0] || null;
+  }
+
+  function isSmartDetectionEntity(entityId) {
+    return /^binary_sensor\..+_(?:person|vehicle|animal|pet|dog|cat)(?:_detected)?$/i.test(String(entityId || ""));
   }
 
   // Shared per-entity lookup used both by discoverCameras() (filtered by
@@ -40,24 +137,34 @@
   function cameraInfoFor(entityId) {
     const state = BeastHaSocket.getState(entityId);
     if (!state) return null;
-    const slug = getCameraSlug(entityId);
-    const streamName = STREAM_NAME_MAP[slug] || null;
-    const motionEntityId = `binary_sensor.${slug}_motion`;
-    const motionState = BeastHaSocket.getState(motionEntityId);
+    const identity = cameraIdentity(entityId);
+    const slug = identity.slug;
+    const streamVariants = go2rtcVariantsForCamera(slug);
+    const streamName = streamVariants[0]?.streamName || null;
+    const detection = smartDetectionForCamera(slug);
+    const cameraToken = state.attributes.access_token || null;
     return {
       slug,
+      quality: identity.quality,
       entityId,
-      streamName,
-      entityPicture: state.attributes.entity_picture || null,
-      label: (state.attributes.friendly_name || slug).split(" - ")[0],
-      motion: Boolean(motionState && motionState.state === "on"),
-      motionChangedAt: motionState ? new Date(motionState.last_changed).getTime() : 0
+      streamName, streamVariants,
+      haStreamUrl: cameraToken ? `${BeastAuth.HA_PROXY_PATH}/api/camera_proxy_stream/${entityId}?token=${encodeURIComponent(cameraToken)}` : null,
+      // Some camera integrations expose a valid camera entity without an
+      // entity_picture attribute. HA's authenticated camera proxy still
+      // works and is the universal fallback for those installations.
+      entityPicture: state.attributes.entity_picture || `/api/camera_proxy/${entityId}`,
+      label: cleanCameraLabel(state.attributes.friendly_name, slug),
+      motion: Boolean(detection),
+      motionType: detection?.type || null,
+      motionLabel: detection?.label || null,
+      motionChangedAt: detection?.changedAt || 0
     };
   }
 
   function discoverCameras() {
     const states = BeastHaSocket.getAllStates();
-    const cameras = [];
+    const groups = new Map();
+    const configuredSlugs = configuredCameraIds ? new Set([...configuredCameraIds].map((id) => cameraIdentity(id).slug)) : null;
     states.forEach((state, entityId) => {
       // Any HA camera entity is eligible -- this used to require an entity
       // id ending in "_medium_resolution_channel" (an NVR sub-stream naming
@@ -67,17 +174,123 @@
       // field) is the real, user-controlled filter; when nothing is
       // configured yet, show everything so there's something to narrow.
       if (!entityId.startsWith("camera.")) return;
-      if (configuredCameraIds && !configuredCameraIds.has(entityId)) return;
+      const identity = cameraIdentity(entityId);
+      // Selecting one quality in Administration enables the physical camera;
+      // sibling quality entities are grouped automatically.
+      if (configuredSlugs && !configuredSlugs.has(identity.slug)) return;
       const info = cameraInfoFor(entityId);
-      if (info) cameras.push(info);
+      if (!info) return;
+      if (!groups.has(info.slug)) groups.set(info.slug, []);
+      groups.get(info.slug).push(info);
     });
+    const qualityByCamera = BeastConfig.get("pageLayouts.cameras.qualityByCamera") || {};
+    const rank = { high: 0, medium: 1, standard: 2, low: 3 };
+    const cameras = [...groups.values()].map((variants) => {
+      variants.sort((a, b) => (rank[a.quality] ?? 9) - (rank[b.quality] ?? 9));
+      const streamVariants = go2rtcVariantsForCamera(variants[0].slug);
+      const qualityOptions = streamVariants.length
+        ? streamVariants.map((variant, index) => ({
+            quality: streamVariants.filter((item) => item.quality === variant.quality).length > 1 ? `stream:${index}` : variant.quality,
+            label: variant.quality === "standard" && streamVariants.length > 1 ? variant.streamName : qualityLabel(variant.quality),
+            streamName: variant.streamName
+          }))
+        : variants.map((variant) => ({ quality: variant.quality, label: qualityLabel(variant.quality), entityId: variant.entityId }));
+      const preferred = qualityByCamera[variants[0].slug];
+      const selectedOption = qualityOptions.find((option) => option.quality === preferred)
+        || qualityOptions.find((option) => option.quality === "high") || qualityOptions[0];
+      const selected = selectedOption?.entityId ? (variants.find((variant) => variant.entityId === selectedOption.entityId) || variants[0]) : variants[0];
+      const selectedQuality = selectedOption?.quality || selected.quality;
+      const resolvedStreamName = selectedOption?.streamName || selected.streamName || null;
+      return { ...selected, variants, selectedQuality, qualityOptions, useSub: selectedQuality === "low", resolvedStreamName, streamName: resolvedStreamName || selected.streamName };
+    });
+    const savedOrder = BeastConfig.get("pageLayouts.cameras.cameraOrder") || [];
+    const orderIndex = new Map((Array.isArray(savedOrder) ? savedOrder : []).map((slug, index) => [slug, index]));
     cameras.sort((a, b) => {
-      if (a.motion !== b.motion) return a.motion ? -1 : 1;
-      if (a.motion && b.motion) return b.motionChangedAt - a.motionChangedAt;
+      const aIndex = orderIndex.has(a.slug) ? orderIndex.get(a.slug) : Number.MAX_SAFE_INTEGER;
+      const bIndex = orderIndex.has(b.slug) ? orderIndex.get(b.slug) : Number.MAX_SAFE_INTEGER;
+      if (aIndex !== bIndex) return aIndex - bIndex;
       return a.label.localeCompare(b.label, "da-DK");
     });
     return cameras;
   }
+
+  function openCameraOrder() {
+    document.getElementById("beastCameraOrderModal")?.remove();
+    const cameras = discoverCameras();
+    const cameraBySlug = new Map(cameras.map((camera) => [camera.slug, camera]));
+    const ordered = cameras.map((camera) => camera.slug);
+    const overlay = document.createElement("div");
+    overlay.id = "beastCameraOrderModal";
+    overlay.className = "beast-modal-overlay";
+    overlay.innerHTML = `<div class="beast-modal beast-camera-order-modal" role="dialog" aria-modal="true"><div class="beast-modal-header"><div><small>Kameravælger</small><h3>Rækkefølge på kameraer</h3></div><button type="button" class="beast-modal-close" data-close>×</button></div><div class="beast-modal-body"><p class="beast-page-editor-hint">Flyt de fysiske kameraer. Kameraets kvaliteter følger automatisk med.</p><div class="beast-camera-order-list"></div><button type="button" class="beast-btn beast-btn-primary" data-save-camera-order>Gem rækkefølge</button></div></div>`;
+    const renderRows = () => {
+      overlay.querySelector(".beast-camera-order-list").innerHTML = ordered.map((slug, index) => {
+        const camera = cameraBySlug.get(slug);
+        return `<article data-camera-order="${escapeHtml(slug)}"><b>${index + 1}</b><span><strong>${escapeHtml(camera?.label || slug)}</strong><small>${escapeHtml(camera?.entityId || "")}</small></span><div><button type="button" data-camera-up aria-label="Flyt op" ${index ? "" : "disabled"}>↑</button><button type="button" data-camera-down aria-label="Flyt ned" ${index < ordered.length - 1 ? "" : "disabled"}>↓</button></div></article>`;
+      }).join("");
+    };
+    renderRows();
+    document.body.appendChild(overlay);
+    overlay.addEventListener("click", async (event) => {
+      if (event.target === overlay || event.target.closest("[data-close]")) return overlay.remove();
+      const row = event.target.closest("[data-camera-order]");
+      if (row && (event.target.closest("[data-camera-up]") || event.target.closest("[data-camera-down]"))) {
+        const index = ordered.indexOf(row.dataset.cameraOrder);
+        const next = event.target.closest("[data-camera-up]") ? index - 1 : index + 1;
+        if (next >= 0 && next < ordered.length) [ordered[index], ordered[next]] = [ordered[next], ordered[index]];
+        renderRows();
+        return;
+      }
+      if (!event.target.closest("[data-save-camera-order]")) return;
+      await BeastConfig.set("pageLayouts.cameras.cameraOrder", ordered);
+      overlay.remove();
+      render();
+    });
+  }
+
+  function setCameraQuality(camera, quality) {
+    if (!camera?.qualityOptions?.some((option) => option.quality === quality)) return;
+    const current = BeastConfig.get("pageLayouts.cameras.qualityByCamera") || {};
+    BeastConfig.set("pageLayouts.cameras.qualityByCamera", { ...current, [camera.slug]: quality });
+    document.dispatchEvent(new CustomEvent("beast:camera-quality-changed", { detail: { slug: camera.slug, quality } }));
+  }
+
+  function qualityMenuMarkup(camera) {
+    if (!camera?.qualityOptions || camera.qualityOptions.length < 2) return "";
+    return `<div class="beast-camera-quality-menu" data-camera-quality-slug="${escapeHtml(camera.slug)}"><button type="button" class="beast-camera-quality-toggle" aria-label="Vælg kamerakvalitet" aria-expanded="false">⋮</button><div class="beast-camera-quality-popover" hidden><small>Livekvalitet</small>${camera.qualityOptions.map((option) => `<button type="button" data-camera-quality="${option.quality}" class="${option.quality === camera.selectedQuality ? "is-active" : ""}"><span>${escapeHtml(option.label)}</span>${option.quality === camera.selectedQuality ? BeastCore.icon("check", { size: 16 }) : ""}</button>`).join("")}</div></div>`;
+  }
+
+  function sharedCameraMarkup(camera, options = {}) {
+    const className = options.className || "";
+    // go2rtc is optional. Without an explicitly configured endpoint the
+    // authenticated Home Assistant camera image is the reliable fallback.
+    const streamName = GO2RTC_BASE_URL ? (camera.resolvedStreamName || camera.streamName) : null;
+    return `<div class="beast-shared-camera ${className}" data-shared-camera="${escapeHtml(camera.slug)}">
+      <div class="beast-shared-camera-frame">${streamName ? `<iframe class="beast-shared-camera-live" src="./camera-player.html?v=14&transport=mse&src=${encodeURIComponent(streamName)}${options.audio ? "&audio=1" : ""}" title="${escapeHtml(camera.label)} livekamera" frameborder="0" allow="autoplay"></iframe>` : camera.haStreamUrl ? `<img class="beast-shared-camera-live beast-shared-camera-ha-stream" src="${escapeHtml(camera.haStreamUrl)}" data-camera-fallback-picture="${escapeHtml(camera.entityPicture || "")}" alt="${escapeHtml(camera.label)} livekamera">` : `<img class="beast-shared-camera-snapshot" data-camera-picture="${escapeHtml(camera.entityPicture || "")}" alt="${escapeHtml(camera.label)}">`}</div>
+      ${qualityMenuMarkup(camera)}
+      ${options.motion !== false && camera.motion ? `<span class="beast-camera-motion-badge">${BeastCore.icon("bolt", { size: 11 })} ${escapeHtml(camera.motionLabel || "Hændelse")}</span>` : ""}
+      ${options.label === false ? "" : `<span class="beast-shared-camera-label">${escapeHtml(camera.label)}</span>`}
+    </div>`;
+  }
+
+  function wireSharedCameras(root, onQualityChanged) {
+    root?.querySelectorAll(".beast-shared-camera-snapshot[data-camera-picture]").forEach((img) => { if (img.dataset.cameraPicture) BeastAuth.setAuthedImageSrc(img, img.dataset.cameraPicture); });
+    root?.querySelectorAll(".beast-shared-camera-ha-stream[data-camera-fallback-picture]").forEach((img) => {
+      img.addEventListener("error", () => {
+        const picture = img.dataset.cameraFallbackPicture;
+        img.classList.remove("beast-shared-camera-ha-stream");
+        img.classList.add("beast-shared-camera-snapshot");
+        if (picture) BeastAuth.setAuthedImageSrc(img, picture);
+      }, { once: true });
+    });
+    root?.querySelectorAll("[data-camera-quality-slug]").forEach((menu) => {
+      const toggle = menu.querySelector(".beast-camera-quality-toggle"); const popover = menu.querySelector(".beast-camera-quality-popover");
+      toggle?.addEventListener("click", (event) => { event.preventDefault(); event.stopPropagation(); const open = toggle.getAttribute("aria-expanded") === "true"; toggle.setAttribute("aria-expanded", String(!open)); popover.hidden = open; });
+      popover?.addEventListener("click", (event) => { const button = event.target.closest("[data-camera-quality]"); if (!button) return; event.preventDefault(); event.stopPropagation(); const camera = discoverCameras().find((item) => item.slug === menu.dataset.cameraQualitySlug); setCameraQuality(camera, button.dataset.cameraQuality); onQualityChanged?.(); });
+    });
+  }
+
+  function hasGo2rtc() { return Boolean(GO2RTC_BASE_URL); }
 
   function snapshotUrl(streamName) {
     return `${GO2RTC_BASE_URL}/api/frame.jpeg?src=${encodeURIComponent(streamName)}&_ts=${Date.now()}`;
@@ -108,14 +321,14 @@
     if (!containerEl || !BeastCore.isPanelVisible(containerEl)) return;
     containerEl.querySelectorAll(".beast-camera-snapshot").forEach((img) => {
       const tile = img.closest(".beast-camera-tile");
-      const streamName = STREAM_NAME_MAP[tile?.dataset.slug];
+      const streamName = tile?.dataset.streamName || go2rtcVariantsForCamera(tile?.dataset.slug)[0]?.streamName;
       if (streamName) { swapSnapshot(img, snapshotUrl(streamName)); return; }
       const state = tile?.dataset.entityId && BeastHaSocket.getState(tile.dataset.entityId);
       if (state?.attributes?.entity_picture) BeastAuth.setAuthedImageSrc(img, state.attributes.entity_picture);
     });
     // The featured view only gets a plain <img> (no go2rtc mapping for
     // that camera) -- refresh it on the same cadence as the strip.
-    const featuredImg = document.getElementById("beastCameraFeaturedImage");
+    const featuredImg = containerEl.querySelector(".beast-camera-featured .beast-shared-camera-snapshot");
     if (featuredImg && featuredSlug) {
       const entityPicture = discoverCameras().find((c) => c.slug === featuredSlug)?.entityPicture;
       if (entityPicture) BeastAuth.setAuthedImageSrc(featuredImg, entityPicture);
@@ -149,6 +362,8 @@
   function render() {
     if (!containerEl) return;
     const cameras = discoverCameras();
+    const cameraLimit = Number(BeastNativePageEditor.option("cameras", "grid", "items", 8));
+    const featuredFit = BeastNativePageEditor.option("cameras", "featured", "fit", "cover");
     if (!cameras.length) {
       containerEl.innerHTML = `<p class="beast-music-empty">Ingen kameraer fundet endnu.</p>`;
       return;
@@ -158,34 +373,18 @@
       featuredSlug = cameras[0].slug;
     }
     const featured = cameras.find((c) => c.slug === featuredSlug);
-    const previousIframe = document.getElementById("beastCameraFeaturedIframe");
-    const alreadyShowingFeatured = previousIframe && previousIframe.dataset.slug === featured.slug && featured.streamName;
-
     containerEl.innerHTML = `
-      <div class="beast-camera-featured">
-        <div class="beast-camera-featured-frame" id="beastCameraFeaturedFrame"></div>
-        <span class="beast-camera-featured-label">${escapeHtml(featured.label)}</span>
+      <button type="button" class="beast-page-edit-trigger" id="beastCamerasLayoutEdit" aria-label="Rediger kameralayout">⋮</button>
+      <div class="beast-camera-featured" data-camera-fit="${featuredFit}">
+        ${sharedCameraMarkup(featured, { className: "beast-camera-featured-render", audio: true, label: true, motion: true })}
         ${featured.streamName ? `<button type="button" class="beast-camera-audio-toggle" id="beastCameraAudioToggle" aria-pressed="false">${BeastCore.icon("volume-mute", { size: 17 })}<span>Lyd fra</span></button>` : ""}
-        ${featured.motion ? `<span class="beast-camera-motion-badge">${BeastCore.icon("bolt", { size: 12 })} Bevægelse</span>` : ""}
       </div>
       <div class="beast-camera-strip" id="beastCameraStrip"></div>
     `;
-
-    const frame = document.getElementById("beastCameraFeaturedFrame");
-    if (featured.streamName) {
-      // go2rtc: low-latency live player.
-      let iframe = previousIframe;
-      if (alreadyShowingFeatured) {
-        frame.appendChild(previousIframe);
-      } else {
-        iframe = document.createElement("iframe");
-        iframe.id = "beastCameraFeaturedIframe";
-        iframe.dataset.slug = featured.slug;
-        iframe.src = `./camera-player.html?v=7&audio=1&src=${encodeURIComponent(featured.streamName)}`;
-        iframe.setAttribute("frameborder", "0");
-        iframe.setAttribute("allow", "autoplay");
-        frame.appendChild(iframe);
-      }
+    wireCameraLayout();
+    wireSharedCameras(containerEl, render);
+    const iframe = containerEl.querySelector(".beast-camera-featured .beast-shared-camera-live");
+    if (iframe) {
       iframe.contentWindow?.postMessage({ type: "camera-player-audio", muted: true }, window.location.origin);
 
       const audioButton = document.getElementById("beastCameraAudioToggle");
@@ -197,37 +396,48 @@
           : `${BeastCore.icon("volume", { size: 17 })}<span>Lyd til</span>`;
         iframe.contentWindow?.postMessage({ type: "camera-player-audio", muted }, window.location.origin);
       });
-    } else {
-      // No go2rtc mapping for this camera -- fall back to HA's own
-      // authenticated camera image, refreshed on the same timer as the
-      // strip thumbnails instead of a true low-latency stream.
-      const img = document.createElement("img");
-      img.id = "beastCameraFeaturedImage";
-      img.className = "beast-camera-featured-snapshot";
-      img.alt = "";
-      frame.appendChild(img);
-      if (featured.entityPicture) BeastAuth.setAuthedImageSrc(img, featured.entityPicture);
     }
 
     const strip = document.getElementById("beastCameraStrip");
-    cameras.forEach((camera) => {
+    cameras.slice(0, cameraLimit).forEach((camera) => {
       const tile = document.createElement("button");
       tile.type = "button";
       tile.className = `beast-camera-tile${camera.motion ? " has-motion" : ""}${camera.slug === featuredSlug ? " is-featured" : ""}`;
       tile.dataset.slug = camera.slug;
       tile.dataset.entityId = camera.entityId;
+      tile.dataset.streamName = GO2RTC_BASE_URL ? (camera.resolvedStreamName || camera.streamName || "") : "";
       tile.innerHTML = `
-        <img class="beast-camera-snapshot" ${camera.streamName ? `src="${snapshotUrl(camera.streamName)}"` : ""} alt="" loading="lazy">
+        <img class="beast-camera-snapshot" ${GO2RTC_BASE_URL && camera.streamName ? `src="${snapshotUrl(camera.resolvedStreamName || camera.streamName)}"` : ""} alt="" loading="lazy">
         ${camera.motion ? `<span class="beast-camera-motion-badge">${BeastCore.icon("bolt", { size: 10 })}</span>` : ""}
         <span class="beast-camera-label">${escapeHtml(camera.label)}</span>
       `;
-      if (!camera.streamName && camera.entityPicture) BeastAuth.setAuthedImageSrc(tile.querySelector("img"), camera.entityPicture);
+      if ((!GO2RTC_BASE_URL || !camera.streamName) && camera.entityPicture) BeastAuth.setAuthedImageSrc(tile.querySelector("img"), camera.entityPicture);
       tile.addEventListener("click", () => {
         featuredSlug = camera.slug;
         render();
       });
       strip.appendChild(tile);
     });
+  }
+
+  function wireCameraLayout() {
+    const layout = BeastConfig.get("pageLayouts.cameras.cameraLayout") || {};
+    const hidden = new Set(Array.isArray(layout.hidden) ? layout.hidden : []);
+    containerEl.querySelector(".beast-camera-featured")?.classList.toggle("is-layout-hidden", hidden.has("featured"));
+    containerEl.querySelector(".beast-camera-strip")?.classList.toggle("is-layout-hidden", hidden.has("grid"));
+    BeastNativePageEditor.mount({ section:"cameras", label:"Kameraer", root:()=>containerEl, host:()=>containerEl, trigger:"#beastCamerasLayoutEdit", onSave:()=>render(), onSettingsAction:(action)=>{ if(action === "cameraOrder") openCameraOrder(); }, fitCards:(cards)=>cards.map((card)=>card.id === "featured" ? {...card,desktop:{...card.desktop,h:10}} : card.id === "grid" ? {...card,desktop:{...card.desktop,h:2}} : card), cards:()=>[
+      { id:"featured", label:"Stort livekamera", selector:".beast-camera-featured", enabled:!hidden.has("featured"), desktop:{x:1,y:1,w:12,h:10}, options:{fit:"cover"}, controls:[{key:"fit",label:"Billedtilpasning",type:"select",default:"cover",choices:[{value:"cover",label:"Fyld kortet"},{value:"contain",label:"Vis hele billedet"}]}] },
+      { id:"grid", label:"Kameravælger", selector:".beast-camera-strip", enabled:!hidden.has("grid"), desktop:{x:1,y:11,w:12,h:2}, options:{items:8}, controls:[{key:"items",label:"Antal kameraer",min:1,max:16,step:1,default:8},{key:"cameraOrder",label:"Kamerarækkefølge",type:"action",icon:"grip"}] }
+    ] });
+  }
+
+  function openCameraLayout(layout) {
+    const hidden = new Set(Array.isArray(layout.hidden) ? layout.hidden : []);
+    const items = [["featured","Stort kamera"],["grid","Kameragrid"]];
+    const overlay = document.createElement("div"); overlay.className = "beast-modal-overlay";
+    overlay.innerHTML = `<div class="beast-modal"><div class="beast-modal-header"><h3>Rediger kameralayout</h3><button type="button" class="beast-modal-close" data-close>×</button></div><div class="beast-modal-body"><div class="beast-camera-layout-list">${items.map(([id,label]) => `<label><input type="checkbox" data-camera-section="${id}" ${hidden.has(id)?"":"checked"}><strong>${label}</strong></label>`).join("")}</div><button type="button" class="beast-btn beast-btn-primary" data-save-camera-layout>Gem layout</button></div></div>`;
+    document.body.appendChild(overlay);
+    overlay.addEventListener("click", (event) => { if(event.target===overlay||event.target.closest("[data-close]")) return overlay.remove(); if(!event.target.closest("[data-save-camera-layout]")) return; const nextHidden=items.filter(([id])=>!overlay.querySelector(`[data-camera-section="${id}"]`).checked).map(([id])=>id); BeastConfig.set("pageLayouts.cameras.cameraLayout", {...layout,hidden:nextHidden}); overlay.remove(); render(); });
   }
 
   function init(root) {
@@ -237,11 +447,15 @@
     containerEl = root;
     containerEl.classList.add("beast-cameras-panel");
     containerEl.innerHTML = `<p class="beast-music-empty">Henter kameraer…</p>`;
+    discoverGo2rtcStreams().then(() => reconcileSavedCameraQualities()).then(() => {
+      render();
+      document.dispatchEvent(new CustomEvent("beast:camera-streams-changed"));
+    });
     BeastHaSocket.onStatusChange((status) => {
       if (status === "connected") render();
     });
-    BeastHaSocket.subscribeDomain("binary_sensor", (entityId, newState) => {
-      if (entityId.endsWith("_motion")) updateMotionBadges();
+    BeastHaSocket.subscribeDomain("binary_sensor", (entityId) => {
+      if (isSmartDetectionEntity(entityId)) updateMotionBadges();
     });
 
     window.clearInterval(refreshTimerId);
@@ -257,7 +471,17 @@
     getAllCameras: () => discoverCameras(),
     getTopCameras: (n) => discoverCameras().slice(0, n),
     resolveCamera: (entityId) => cameraInfoFor(entityId),
+    resolveGroup: (entityIdOrSlug) => { const slug = cameraIdentity(entityIdOrSlug || "").slug; return discoverCameras().find((camera) => camera.slug === slug) || null; },
     snapshotUrl,
-    swapSnapshot
+    swapSnapshot,
+    setQuality: (slug, quality) => setCameraQuality(discoverCameras().find((camera) => camera.slug === slug), quality),
+    qualityLabel,
+    sharedCameraMarkup,
+    wireSharedCameras,
+    hasGo2rtc,
+    isSmartDetectionEntity,
+    refreshStreams: () => discoverGo2rtcStreams(true).then(() => reconcileSavedCameraQualities()).then(() => {
+      render(); document.dispatchEvent(new CustomEvent("beast:camera-streams-changed")); return discoverCameras();
+    })
   };
 })();

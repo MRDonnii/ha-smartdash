@@ -70,9 +70,10 @@
     PRINTER_BANNER_CAMERA_ID = bannerSettings.printerCameraOverride || null;
     UTILITY_VIEWS = {
       electric: { label: "El", current: energy.powerSensor, today: energy.totalEnergySensor, history: energy.powerSensor, mode: "average", unit: "W", todayUnit: "kWh" },
-      heat: { label: "Varme", current: energy.heatPowerSensor, today: energy.heatEnergySensor, history: energy.heatEnergySensor, mode: "delta", unit: "kW", todayUnit: "kWh" },
-      water: { label: "Vand", current: energy.waterUsageSensor, today: energy.waterFlowSensor, history: energy.waterUsageSensor, mode: "delta", unit: "m³", todayUnit: "L/h" }
+      ...(energy.showHeatOnOverview !== false ? { heat: { label: "Varme", current: energy.heatPowerSensor, today: energy.heatEnergySensor, history: energy.heatEnergySensor, mode: "delta", unit: "kW", todayUnit: "kWh" } } : {}),
+      ...(energy.showWaterOnOverview !== false ? { water: { label: "Vand", current: energy.waterUsageSensor, today: energy.waterFlowSensor, history: energy.waterUsageSensor, mode: "delta", unit: "m³", todayUnit: "L/h" } } : {})
     };
+    if (!UTILITY_VIEWS[utilityView]) utilityView = "electric";
   }
 
   let zoneEl = null;
@@ -85,6 +86,8 @@
   let pendingUnlockTimerId = null;
   let dailyForecast = [];
   let hourlyForecast = [];
+  let weatherForecastLoading = false;
+  let weatherForecastLoaded = false;
   let utilityView = "electric";
   let utilityHistory = [];
   let utilityHistoryLoading = false;
@@ -334,7 +337,7 @@
     // entity/label/icon lookup the top-level generic overview cards use
     // (genericWidgetDefinitions()) so both stay in sync automatically.
     const quickTileDefs = genericWidgetDefinitions();
-    const quickTileTypes = (Array.isArray(BeastConfig.get("overviewQuickTiles")) ? BeastConfig.get("overviewQuickTiles") : ["car", "pool"])
+    const quickTileTypes = (Array.isArray(BeastConfig.get("overviewQuickTiles")) ? BeastConfig.get("overviewQuickTiles") : [])
       .filter((type) => quickTileDefs[type])
       .slice(0, 2);
     const quickTileHtml = quickTileTypes.map((type) => {
@@ -882,8 +885,9 @@
     zoneEl.classList.toggle("is-editing", Boolean(overviewCardEditor?.isEditing()));
     zoneEl.querySelectorAll("[data-card]").forEach((card) => {
       if (dynamic) {
-        const configured = card.dataset.card === "clock" || card.dataset.card === "security" || card.dataset.card === "cameras"
-          || BeastConfig.isPanelConfigured(card.dataset.card);
+        const cardType = card.dataset.card === "generic" ? card.dataset.widget : card.dataset.card;
+        const configured = cardType === "clock" || cardType === "security" || cardType === "cameras"
+          || (cardType === "custom" ? Boolean(card.dataset.entity) : BeastConfig.isPanelConfigured(cardType === "heatpump" ? "heating" : cardType));
         card.hidden = !configured;
       } else card.hidden = false;
       card.querySelector(".beast-data-quality")?.remove();
@@ -902,11 +906,6 @@
         }
       }
       card.querySelector(".beast-ov-edit-label")?.remove();
-      if (!overviewCardEditor?.isEditing()) return;
-      const label = document.createElement("div");
-      label.className = "beast-ov-edit-label";
-      label.innerHTML = `${BeastCore.icon("grid", { size: 15 })}<span>Kan flyttes</span>`;
-      card.appendChild(label);
     });
   }
 
@@ -937,11 +936,9 @@
   function overviewCardEditorOnAfterRender(cards) {
     const anchor = zoneEl.querySelector("#beastOvClockMusic");
     zoneEl.querySelector(".beast-ov-camera-header")?.remove();
-    if (cards.some((card) => card.type === "cameras")) {
-      const menuWrap = document.createElement("div");
-      menuWrap.innerHTML = window.overviewCameraMenuMarkup(true);
-      zoneEl.insertBefore(menuWrap.firstElementChild, anchor);
-    }
+    const menuWrap = document.createElement("div");
+    menuWrap.innerHTML = window.overviewCameraMenuMarkup(cards.some((card) => card.type === "cameras"));
+    zoneEl.insertBefore(menuWrap.firstElementChild, anchor);
     renderAll();
     wireOverviewChrome();
   }
@@ -981,12 +978,21 @@
       document.getElementById("beastOvCameraMenuToggle")?.setAttribute("aria-expanded", "false");
     };
     document.querySelector(".beast-ov-camera-header")?.addEventListener("click", (event) => event.stopPropagation());
-    toggle?.addEventListener("click", (event) => {
-      event.stopPropagation();
-      const opening = menu?.hidden !== false;
-      if (menu) menu.hidden = !opening;
-      toggle.setAttribute("aria-expanded", String(opening));
-    });
+    // The overview is rebuilt during data and layout updates. Delegate the
+    // menu trigger once so a newly rendered three-dot button never keeps a
+    // stale or missing click handler.
+    if (!wireOverviewChrome._menuToggleWired) {
+      wireOverviewChrome._menuToggleWired = true;
+      document.addEventListener("click", (event) => {
+        const liveToggle = event.target.closest("#beastOvCameraMenuToggle");
+        if (!liveToggle) return;
+        event.preventDefault(); event.stopPropagation();
+        const liveMenu = document.getElementById("beastOvCameraMenu");
+        const opening = liveMenu?.hidden !== false;
+        if (liveMenu) liveMenu.hidden = !opening;
+        liveToggle.setAttribute("aria-expanded", String(opening));
+      }, true);
+    }
     menu?.addEventListener("click", (event) => {
       event.stopPropagation();
       if (event.target.closest("button")) closeMenu();
@@ -997,7 +1003,9 @@
     // listener only ever needs to exist once, not once per call.
     if (!wireOverviewChrome._closeMenuWired) {
       wireOverviewChrome._closeMenuWired = true;
-      document.addEventListener("click", closeMenu);
+      document.addEventListener("click", (event) => {
+        if (!event.target.closest(".beast-ov-camera-header")) closeMenu();
+      });
     }
     document.getElementById("beastOvEdit")?.addEventListener("click", (event) => { event.stopPropagation(); closeMenu(); overviewCardEditor.enter(); });
     // showAmbientMode() lives in app.js (a plain global function, not an
@@ -1016,38 +1024,25 @@
     }
   }
 
-  // Measures the actual rendered cameras card rather than assuming a fixed
-  // CSS position -- how much room (if any) exists to its right depends on
-  // the layout mode (legacy 5-slot grid, freeform, portrait breakpoint...)
-  // and where the card ends up in it, which isn't knowable from CSS alone.
-  // Sits just outside the card's right edge when there's room. In the
-  // common case (cameras spanning the full-height right column, flush
-  // against the edge of the screen, as in this app's default layout)
-  // there's no room outside it at all -- confirmed and accepted as the
-  // intended result, not a bug: it falls back to the card's own inside
-  // corner instead, as a small, mostly-transparent circular button rather
-  // than a solid overlay, so it reads as a control floating over the
-  // picture's corner rather than a chunk of the picture being covered.
+  // Keep the front-page menu in the same global position as the Robotter
+  // and 3D Printer edit menus: directly below the fixed connection dot.
+  // This function remains wired to rebuild/resize events so any stale
+  // inline position from an older cached build is actively cleared.
   function positionCameraMenu() {
     const header = document.querySelector(".beast-ov-camera-header");
-    const card = document.querySelector('[data-card="cameras"]');
-    if (!header || !card) return;
-    const cardRect = card.getBoundingClientRect();
-    const gap = 8;
-    const buttonSize = 40;
-    let left = cardRect.right + gap;
-    if (left + buttonSize + gap > window.innerWidth) left = cardRect.right - buttonSize - gap;
-    header.style.left = `${Math.round(left)}px`;
-    header.style.top = `${Math.round(cardRect.top + gap)}px`;
+    if (!header) return;
+    header.style.left = "auto";
+    header.style.right = "8px";
+    header.style.top = "30px";
   }
 
   function formatCompactDate(date) {
     const today = new Date();
-    if (date.toDateString() === today.toDateString()) return `i dag ${date.toLocaleTimeString("da-DK", { hour: "2-digit", minute: "2-digit" })}`;
+    if (date.toDateString() === today.toDateString()) return `${window.HASmartdashI18n?.language === "en" ? "today" : "i dag"} ${date.toLocaleTimeString(window.HASmartdashI18n?.locale || "da-DK", { hour: "2-digit", minute: "2-digit" })}`;
     const tomorrow = new Date(today);
     tomorrow.setDate(today.getDate() + 1);
-    if (date.toDateString() === tomorrow.toDateString()) return `i morgen ${date.toLocaleTimeString("da-DK", { hour: "2-digit", minute: "2-digit" })}`;
-    return date.toLocaleDateString("da-DK", { weekday: "short", day: "numeric" });
+    if (date.toDateString() === tomorrow.toDateString()) return `${window.HASmartdashI18n?.language === "en" ? "tomorrow" : "i morgen"} ${date.toLocaleTimeString(window.HASmartdashI18n?.locale || "da-DK", { hour: "2-digit", minute: "2-digit" })}`;
+    return date.toLocaleDateString(window.HASmartdashI18n?.locale || "da-DK", { weekday: "short", day: "numeric" });
   }
 
   function getWasteItems() {
@@ -1098,12 +1093,12 @@
             const date = new Date(entry.datetime);
             const rain = Number(entry.precipitation_probability);
             return `<div>
-              <span>${escapeHtml(date.toLocaleTimeString("da-DK", { hour: "2-digit", minute: "2-digit" }))}</span>
+              <span>${escapeHtml(date.toLocaleTimeString(window.HASmartdashI18n?.locale || "da-DK", { hour: "2-digit", minute: "2-digit" }))}</span>
               <span>${BeastCore.animatedWeatherIcon(entryMeta.mood, 25)}</span>
               <b>${Number.isFinite(Number(entry.temperature)) ? Math.round(Number(entry.temperature)) + "°" : "–"}</b>
               <small>${Number.isFinite(rain) ? Math.round(rain) + "%" : ""}</small>
             </div>`;
-          }).join("") || `<i>Henter timevejret…</i>`}
+          }).join("") || `<i>${weatherForecastLoading ? "Henter timevejret…" : "Timeprognosen er ikke tilgængelig"}</i>`}
         </div>
         <div class="beast-ov-week-title"><span>Næste 7 dage</span><small>${getSunSummary()}</small></div>
         <div class="beast-ov-week">
@@ -1112,39 +1107,48 @@
             const date = new Date(entry.datetime);
             const rain = Number(entry.precipitation_probability);
             return `<div class="beast-ov-week-day">
-              <span>${escapeHtml(date.toLocaleDateString("da-DK", { weekday: "short" }).replace(".", ""))}</span>
+              <span>${escapeHtml(date.toLocaleDateString(window.HASmartdashI18n?.locale || "da-DK", { weekday: "short" }).replace(".", ""))}</span>
               ${BeastCore.animatedWeatherIcon(entryMeta.mood, 36)}
               <small class="beast-ov-week-condition">${escapeHtml(entryMeta.label || entry.condition || "Ukendt")}</small>
               <div><b>${Number.isFinite(Number(entry.temperature)) ? Math.round(Number(entry.temperature)) + "°" : "–"}</b><small>${Number.isFinite(Number(entry.templow)) ? Math.round(Number(entry.templow)) + "°" : "–"}</small></div>
               <em>${Number.isFinite(rain) ? Math.round(rain) + "%" : "–"}</em>
             </div>`;
-          }).join("") || `<span class="beast-ov-week-empty">${dailyForecast.length ? "Ingen gyldige vejrdata" : "Henter ugeudsigten fra Home Assistant…"}</span>`}
+          }).join("") || `<span class="beast-ov-week-empty">${weatherForecastLoading || !weatherForecastLoaded ? "Henter ugeudsigten fra Home Assistant…" : "Ugeprognosen er ikke tilgængelig"}</span>`}
         </div>
       </div>
     `;
   }
 
   async function loadWeatherForecast() {
-    try {
-      const fetchForecast = (type) => BeastAuth.haFetch("/api/services/weather/get_forecasts?return_response", {
+    if (!WEATHER_ENTITY_ID || weatherForecastLoading) return;
+    weatherForecastLoading = true;
+    renderWeather();
+    const fetchForecast = async (type) => {
+      const result = await BeastAuth.haFetch("/api/services/weather/get_forecasts?return_response", {
         method: "POST", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ entity_id: WEATHER_ENTITY_ID, type })
       });
-      const [dailyResult, hourlyResult] = await Promise.all([fetchForecast("daily"), fetchForecast("hourly")]);
-      const extract = (result) => {
-        const response = result?.service_response || result;
-        const entityResult = response?.[WEATHER_ENTITY_ID] || response;
-        return Array.isArray(entityResult?.forecast) ? entityResult.forecast : [];
-      };
-      dailyForecast = extract(dailyResult);
-      hourlyForecast = extract(hourlyResult);
-      renderWeather();
-    } catch (error) {
+      const response = result?.service_response || result;
+      const entityResult = response?.[WEATHER_ENTITY_ID] || response;
+      return Array.isArray(entityResult?.forecast) ? entityResult.forecast : [];
+    };
+    const [hourlyResult, dailyResult] = await Promise.allSettled([
+      fetchForecast("hourly"),
+      fetchForecast("daily")
+    ]);
+    hourlyForecast = hourlyResult.status === "fulfilled" ? hourlyResult.value : [];
+    if (dailyResult.status === "fulfilled") {
+      dailyForecast = dailyResult.value;
+    } else {
       const fallback = BeastHaSocket.getState(WEATHER_ENTITY_ID)?.attributes?.forecast;
       dailyForecast = Array.isArray(fallback) ? fallback : [];
-      BeastCore.log(`Oversigt: kunne ikke hente ugevejr (${error.message}).`);
-      renderWeather();
     }
+    [hourlyResult, dailyResult].forEach((result, index) => {
+      if (result.status === "rejected") BeastCore.log(`Oversigt: kunne ikke hente ${index === 0 ? "timevejr" : "ugevejr"} (${result.reason?.message || "ukendt fejl"}).`);
+    });
+    weatherForecastLoading = false;
+    weatherForecastLoaded = true;
+    renderWeather();
   }
 
   function getSunSummary() {
@@ -1152,27 +1156,48 @@
     if (!sun) return "Dag / nat · regnchance";
     const rising = new Date(sun.attributes.next_rising);
     const setting = new Date(sun.attributes.next_setting);
-    const format = (date) => Number.isNaN(date.getTime()) ? "–" : date.toLocaleTimeString("da-DK", { hour: "2-digit", minute: "2-digit" });
+    const format = (date) => Number.isNaN(date.getTime()) ? "–" : date.toLocaleTimeString(window.HASmartdashI18n?.locale || "da-DK", { hour: "2-digit", minute: "2-digit" });
     return `Sol op ${format(rising)} · ned ${format(setting)}`;
   }
 
   function renderCameras() {
     const host = document.getElementById("beastOvCameras");
     if (!host || !window.BeastCameras) return;
-    const allCameras = window.BeastCameras.getAllCameras();
+    let allCameras = window.BeastCameras.getAllCameras();
+    const doorbellId = BeastConfig.get("appEntities.doorbellCamera");
+    const doorbellCamera = doorbellId ? window.BeastCameras.resolveCamera(doorbellId) : null;
+    if (doorbellCamera && !allCameras.some((camera) => camera.slug === doorbellCamera.slug)) allCameras = [doorbellCamera, ...allCameras];
     if (!allCameras.length) {
       host.innerHTML = `<p class="beast-music-empty">Ingen kameraer.</p>`;
       return;
     }
     const cameraBySlug = new Map(allCameras.map((camera) => [camera.slug, camera]));
-    let selectedSlugs = [];
-    try {
-      const stored = JSON.parse(localStorage.getItem(OVERVIEW_CAMERA_KEY) || "[]");
-      if (Array.isArray(stored)) selectedSlugs = stored.filter((slug) => cameraBySlug.has(slug)).slice(0, OVERVIEW_CAMERA_LIMIT);
-    } catch (error) {
-      selectedSlugs = [];
+    const centralSelection = BeastConfig.get("overviewCameraEntities");
+    const hasCentralSelection = Array.isArray(centralSelection) && centralSelection.length > 0;
+    let selectedSlugs = (Array.isArray(centralSelection) ? centralSelection : [])
+      .map((id) => window.BeastCameras.resolveGroup(id)?.slug || window.BeastCameras.resolveCamera(id)?.slug || id)
+      .filter((slug) => cameraBySlug.has(slug)).slice(0, OVERVIEW_CAMERA_LIMIT);
+    // One-time migration from the old per-browser selection. It is copied
+    // centrally only when no server-side choice exists.
+    if (!selectedSlugs.length) {
+      try {
+        const legacy = JSON.parse(localStorage.getItem(OVERVIEW_CAMERA_KEY) || "[]");
+        if (Array.isArray(legacy)) selectedSlugs = legacy.filter((slug) => cameraBySlug.has(slug)).slice(0, OVERVIEW_CAMERA_LIMIT);
+      } catch (_) { selectedSlugs = []; }
     }
-    if (!selectedSlugs.length) selectedSlugs = allCameras.slice(0, OVERVIEW_CAMERA_LIMIT).map((camera) => camera.slug);
+    // An explicit overview choice must win exactly as saved. The doorbell
+    // camera still opens full-screen for a ring event, but forcing it into
+    // this strip used to push the user's final selected camera out.
+    if (!selectedSlugs.length) {
+      const fallback = doorbellCamera
+        ? [doorbellCamera, ...allCameras.filter((camera) => camera.slug !== doorbellCamera.slug)]
+        : allCameras;
+      selectedSlugs = fallback.slice(0, OVERVIEW_CAMERA_LIMIT).map((camera) => camera.slug);
+    } else if (!hasCentralSelection) {
+      // Keep a legacy browser selection intact during its one-time migration;
+      // it becomes an explicit central selection the first time it is saved.
+      selectedSlugs = selectedSlugs.slice(0, OVERVIEW_CAMERA_LIMIT);
+    }
     let cameras = selectedSlugs.map((slug) => cameraBySlug.get(slug)).filter(Boolean);
     if (autoFocusEnabled() && motionFocusSlug && cameraBySlug.has(motionFocusSlug)) {
       cameras = [cameraBySlug.get(motionFocusSlug), ...cameras.filter((camera) => camera.slug !== motionFocusSlug)].slice(0, OVERVIEW_CAMERA_LIMIT);
@@ -1180,17 +1205,11 @@
     host.innerHTML = `
       <div class="beast-ov-camera-strip" data-count="${cameras.length}">${cameras.map((camera) => `
         <div class="beast-ov-camera-thumb${camera.motion ? " has-motion" : ""}" data-slug="${camera.slug}">
-          ${camera.streamName
-            ? `<iframe class="beast-ov-camera-live" src="./camera-player.html?v=11&transport=mse&sub=1&src=${encodeURIComponent(camera.streamName)}" title="${escapeHtml(camera.label)} livekamera" frameborder="0" allow="autoplay"></iframe>`
-            : `<img class="beast-ov-camera-snapshot" alt="${escapeHtml(camera.label)}">`}
-          ${camera.motion ? `<em>${BeastCore.icon("bolt", { size: 12 })} Bevægelse nu</em>` : ""}
+          ${window.BeastCameras.sharedCameraMarkup(camera, { className: "beast-overview-camera-render", label: true, motion: true })}
         </div>
       `).join("")}</div>
     `;
-    cameras.filter((camera) => !camera.streamName && camera.entityPicture).forEach((camera) => {
-      const img = host.querySelector(`.beast-ov-camera-thumb[data-slug="${camera.slug}"] img`);
-      if (img) BeastAuth.setAuthedImageSrc(img, camera.entityPicture);
-    });
+    window.BeastCameras.wireSharedCameras(host, renderCameras);
     const cameraPickerButton = document.getElementById("beastOvCameraPicker");
     if (cameraPickerButton) cameraPickerButton.onclick = (event) => {
       event.stopPropagation();
@@ -1224,20 +1243,27 @@
           <div class="beast-ov-camera-options">
             ${cameras.map((camera) => `
               <button type="button" class="beast-ov-camera-option${selected.includes(camera.slug) ? " is-selected" : ""}" data-camera-slug="${camera.slug}">
-                <img${camera.streamName ? ` src="${window.BeastCameras.snapshotUrl(camera.streamName)}"` : ""} data-camera-picture="${camera.streamName ? "" : escapeHtml(camera.entityPicture || "")}" alt="">
+                <img${camera.streamName ? ` src="${window.BeastCameras.snapshotUrl(camera.resolvedStreamName || camera.streamName)}"` : ""} data-camera-picture="${camera.streamName ? "" : escapeHtml(camera.entityPicture || "")}" alt="">
                 <span>${escapeHtml(camera.label)}</span>
                 <i>${BeastCore.icon("check", { size: 18 })}</i>
               </button>
             `).join("")}
           </div>
-          <button type="button" class="beast-btn beast-ov-camera-picker-done" data-close>Færdig</button>
+          <div class="beast-ov-camera-picker-actions">
+            <span class="beast-ov-camera-picker-save-state" role="status" aria-live="polite"></span>
+            <button type="button" class="beast-btn beast-ov-camera-picker-done" data-save-camera-selection>Gem kameravalg</button>
+          </div>
         </div>
       </div>
     `;
 
-    function saveAndRender() {
-      localStorage.setItem(OVERVIEW_CAMERA_KEY, JSON.stringify(selected));
+    async function saveAndRender() {
+      const entities = selected.map((slug) => cameras.find((camera) => camera.slug === slug)?.entityId).filter(Boolean);
+      const result = await BeastConfig.set("overviewCameraEntities", entities);
+      if (result?.success === false) return false;
+      localStorage.removeItem(OVERVIEW_CAMERA_KEY);
       renderCameras();
+      return true;
     }
 
     function renderSelectedOrder() {
@@ -1275,17 +1301,26 @@
         syncSelection();
       });
     });
-    overlay.querySelectorAll("[data-close]").forEach((button) => {
-      button.addEventListener("click", () => {
-        saveAndRender();
+    overlay.querySelectorAll("[data-close]").forEach((button) => button.addEventListener("click", () => overlay.remove()));
+    overlay.querySelector("[data-save-camera-selection]")?.addEventListener("click", async (event) => {
+      const button = event.currentTarget;
+      const status = overlay.querySelector(".beast-ov-camera-picker-save-state");
+      button.disabled = true;
+      button.classList.add("is-busy");
+      button.textContent = "Gemmer…";
+      if (status) status.textContent = "";
+      const saved = await saveAndRender();
+      if (saved) {
         overlay.remove();
-      });
+        return;
+      }
+      button.disabled = false;
+      button.classList.remove("is-busy");
+      button.textContent = "Prøv igen";
+      if (status) status.textContent = "Kunne ikke gemme kameravalget. Kontroller forbindelsen til serveren.";
     });
     overlay.addEventListener("click", (event) => {
-      if (event.target === overlay) {
-        saveAndRender();
-        overlay.remove();
-      }
+      if (event.target === overlay) overlay.remove();
     });
     renderSelectedOrder();
     document.body.appendChild(overlay);
@@ -1327,7 +1362,7 @@
       let badge = tile.querySelector("em");
       if (camera.motion && !badge) {
         badge = document.createElement("em");
-        badge.innerHTML = `${BeastCore.icon("bolt", { size: 12 })} Bevægelse nu`;
+        badge.innerHTML = `${BeastCore.icon("bolt", { size: 12 })} ${camera.motionLabel || "Hændelse"} nu`;
         tile.appendChild(badge);
       } else if (!camera.motion && badge) {
         badge.remove();
@@ -1867,7 +1902,8 @@
       car: { label:"Bil", entity:config.panels?.car?.battery, suffix:"%", icon:"car", detail:"Batteri" },
       pool: { label:"Pool", entity:config.panels?.pool?.waterTemp, suffix:"°", icon:"droplet", detail:"Vandtemperatur" },
       robots: { label:"Robotter", entity:[...(config.panels?.robots?.vacuums || []),...(config.panels?.robots?.mowers || [])][0], suffix:"", icon:"robot", detail:"Aktuel status" },
-      printer: { label:"3D-printer", entity:config.panels?.printer?.statusSensor, suffix:"", icon:"printer", detail:"Printstatus" }
+      printer: { label:"3D-printer", entity:config.panels?.printer?.statusSensor, suffix:"", icon:"printer", detail:"Printstatus" },
+      heatpump: { label:"Varmepumpe", entity:(config.panels?.heating?.heatPumps || [])[0], suffix:"", icon:"wind", detail:"Varme og temperatur" }
     };
   }
 
@@ -1876,10 +1912,79 @@
     document.querySelectorAll("[data-widget] .beastOvGeneric").forEach((host) => {
       const card = host.closest("[data-widget]"), type = card.dataset.widget;
       const definition = definitions[type] || { label:card.dataset.label || "Home Assistant", entity:card.dataset.entity, suffix:"", icon:"grid", detail:"Aktuel værdi" };
-      const state = BeastHaSocket.getState(definition.entity);
+      if (card.dataset.entity) definition.entity = card.dataset.entity;
+      let state = BeastHaSocket.getState(definition.entity);
+      // A saved overview card can point at an entity that was renamed or
+      // replaced later in Administration. Keep the explicit choice when it
+      // is valid, but recover to the first configured live heat pump instead
+      // of leaving the card permanently unavailable.
+      if (type === "heatpump" && !state) {
+        const configured = BeastConfig.get("panels.heating.heatPumps") || [];
+        const fallbackEntity = configured.find((entityId) => BeastHaSocket.getState(entityId));
+        if (fallbackEntity) {
+          definition.entity = fallbackEntity;
+          state = BeastHaSocket.getState(fallbackEntity);
+        }
+      }
       const unavailable = !state || ["unknown","unavailable"].includes(state.state);
       const label = card.dataset.label || definition.label;
-      host.innerHTML = `<div class="beast-ov-generic-content"><span>${BeastCore.icon(definition.icon,{size:31})}</span><small>${escapeHtml(label)}</small><strong>${escapeHtml(unavailable ? "Ikke tilgængelig" : `${state.state}${definition.suffix}`)}</strong><em>${escapeHtml(state?.attributes?.friendly_name || definition.detail)}</em></div>`;
+      const isHeatPump = type === "heatpump";
+      const current = Number(state?.attributes?.current_temperature);
+      const target = Number(state?.attributes?.temperature);
+      const value = isHeatPump && Number.isFinite(current) ? `${current.toFixed(1)}°` : (unavailable ? "Ikke tilgængelig" : `${state.state}${definition.suffix}`);
+      const detail = isHeatPump ? `${state?.attributes?.hvac_action || state?.state || "–"}${Number.isFinite(target) ? ` · Mål ${target.toFixed(1)}°` : ""}` : (state?.attributes?.friendly_name || definition.detail);
+      if (isHeatPump && state) {
+        const attributes = state.attributes || {};
+        const modes = Array.isArray(attributes.hvac_modes) ? attributes.hvac_modes : [];
+        const fanModes = Array.isArray(attributes.fan_modes) ? attributes.fan_modes : [];
+        const presetModes = Array.isArray(attributes.preset_modes) ? attributes.preset_modes : [];
+        const swingModes = Array.isArray(attributes.swing_modes) ? attributes.swing_modes : [];
+        const modeLabels = {
+          off:t("Slukket", "Off"), heat:t("Varme", "Heat"), heating:t("Varmer", "Heating"),
+          cool:t("Køl", "Cool"), cooling:t("Køler", "Cooling"), heat_cool:"Auto", auto:"Auto",
+          dry:t("Affugt", "Dry"), drying:t("Affugter", "Drying"), fan_only:t("Blæser", "Fan"),
+          fan:t("Blæser", "Fan"), idle:t("Klar", "Ready"), none:t("Ingen", "None"),
+          low:t("Lav", "Low"), medium_low:t("Mellem-lav", "Medium low"), medium:t("Mellem", "Medium"),
+          medium_high:t("Mellem-høj", "Medium high"), high:t("Høj", "High"), quiet:t("Stille", "Quiet"),
+          turbo:"Turbo", manual:t("Manuel", "Manual"), full_swing:t("Fuld bevægelse", "Full swing")
+        };
+        const modeLabel = (option) => {
+          const key = String(option || "").toLowerCase().replaceAll("-", "_").replaceAll(" ", "_");
+          return modeLabels[key] || String(option || "").replaceAll("_", " ").replaceAll("-", " ");
+        };
+        const action = String(attributes.hvac_action || state.state || "off").toLowerCase();
+        const activeMode = String(state.state || "off").toLowerCase();
+        const visualMode = action.includes("heat") ? "heating" : action.includes("cool") ? "cooling" : action.includes("fan") ? "fan" : action === "off" ? "off" : "idle";
+        const select = (kind, title, options, selected) => options.length ? `<label><span>${title}</span><select data-heatpump-select="${kind}">${options.map((option) => `<option value="${escapeHtml(option)}"${option === selected ? " selected" : ""}>${escapeHtml(modeLabel(option))}</option>`).join("")}</select></label>` : "";
+        host.innerHTML = `<div class="beast-ov-heatpump is-${visualMode}" data-heatpump-entity="${escapeHtml(definition.entity)}">
+          <div class="beast-ov-heatpump-head"><span>${BeastCore.icon(visualMode === "heating" ? "bolt" : visualMode === "cooling" ? "droplet" : "wind", { size:22 })}</span><div><small>${escapeHtml(label)}</small><strong>${escapeHtml(attributes.friendly_name || definition.label)}</strong></div><div class="beast-ov-heatpump-state"><i></i><b>${escapeHtml(modeLabel(action))}</b></div><button type="button" data-heatpump-power aria-label="${activeMode === "off" ? t("Tænd varmepumpe", "Turn on heat pump") : t("Sluk varmepumpe", "Turn off heat pump")}" class="${activeMode === "off" ? "" : "is-on"}">${BeastCore.icon("power", { size:18 })}</button></div>
+          <div class="beast-ov-heatpump-main"><div class="beast-ov-heatpump-reading"><span><small>${t("Rumtemperatur", "Room temperature")}</small><strong>${escapeHtml(value)}</strong></span><div class="beast-ov-heatpump-target"><button type="button" data-heatpump-temperature="down" aria-label="${t("Sænk måltemperatur", "Lower target temperature")}">${BeastCore.icon("minus", { size:19 })}</button><span><small>${t("Måltemperatur", "Target temperature")}</small><strong>${Number.isFinite(target) ? `${target.toFixed(1)}°` : "–"}</strong></span><button type="button" data-heatpump-temperature="up" aria-label="${t("Hæv måltemperatur", "Raise target temperature")}">${BeastCore.icon("plus", { size:19 })}</button></div></div><div class="beast-ov-heatpump-visual" aria-hidden="true"><span>${BeastCore.icon("fan", { size:34 })}</span><i></i><i></i><i></i></div></div>
+          ${modes.length ? `<div class="beast-ov-heatpump-modes">${modes.map((mode) => `<button type="button" data-heatpump-mode="${escapeHtml(mode)}" class="${activeMode === String(mode).toLowerCase() ? "is-active" : ""}">${escapeHtml(modeLabel(mode))}</button>`).join("")}</div>` : ""}
+          <div class="beast-ov-heatpump-options">${select("fan_mode", t("Blæser", "Fan"), fanModes, attributes.fan_mode)}${select("preset_mode", t("Program", "Preset"), presetModes, attributes.preset_mode)}${select("swing_mode", t("Retning", "Direction"), swingModes, attributes.swing_mode)}</div>
+        </div>`;
+        host.querySelectorAll("button,select").forEach((control) => control.addEventListener("click", (event) => event.stopPropagation()));
+        host.querySelector("[data-heatpump-power]")?.addEventListener("click", () => {
+          const nextMode = activeMode === "off" ? (modes.find((mode) => String(mode).toLowerCase() === "heat") || modes.find((mode) => String(mode).toLowerCase() !== "off")) : "off";
+          if (nextMode) callService("climate", "set_hvac_mode", definition.entity, { hvac_mode:nextMode });
+        });
+        host.querySelectorAll("[data-heatpump-temperature]").forEach((button) => button.addEventListener("click", () => {
+          if (!Number.isFinite(target)) return;
+          const step = Number(attributes.target_temp_step) || 0.5;
+          const min = Number.isFinite(Number(attributes.min_temp)) ? Number(attributes.min_temp) : -Infinity;
+          const max = Number.isFinite(Number(attributes.max_temp)) ? Number(attributes.max_temp) : Infinity;
+          const temperature = Math.min(max, Math.max(min, target + (button.dataset.heatpumpTemperature === "up" ? step : -step)));
+          callService("climate", "set_temperature", definition.entity, { temperature });
+        }));
+        host.querySelectorAll("[data-heatpump-mode]").forEach((button) => button.addEventListener("click", () => callService("climate", "set_hvac_mode", definition.entity, { hvac_mode:button.dataset.heatpumpMode })));
+        host.querySelectorAll("[data-heatpump-select]").forEach((selectEl) => selectEl.addEventListener("change", (event) => {
+          event.stopPropagation();
+          const field = selectEl.dataset.heatpumpSelect;
+          const service = { fan_mode:"set_fan_mode", preset_mode:"set_preset_mode", swing_mode:"set_swing_mode" }[field];
+          if (service) callService("climate", service, definition.entity, { [field]:selectEl.value });
+        }));
+      } else {
+        host.innerHTML = `<div class="beast-ov-generic-content"><span>${BeastCore.icon(definition.icon,{size:31})}</span><small>${escapeHtml(label)}</small><strong>${escapeHtml(value)}</strong><em>${escapeHtml(detail)}</em></div>`;
+      }
       card.classList.toggle("is-unavailable", unavailable);
     });
   }
@@ -1893,19 +1998,30 @@
       configPath: "overviewCards",
       cardTypes: [
         ["cameras","Kameraer"], ["clock","Ur, kalender og affald"], ["weather","Vejr"], ["security","Sikkerhed"], ["energy","Energi"],
-        ["car","Bil"], ["pool","Pool"], ["robots","Robotter"], ["printer","3D-printer"], ["custom","Valgfri HA-entity"]
+        ["car","Bil"], ["pool","Pool"], ["robots","Robotter"], ["printer","3D-printer"], ["heatpump","Varmepumpe"], ["custom","Valgfri HA-entity"]
       ],
       singleInstanceTypes: ["cameras", "clock", "weather", "security", "energy"],
       renderCardMarkup: (card) => window.overviewCardMarkup(card),
       seedCards: seedCardsFromOverviewSlots,
-      allEntities: BeastCardEditor.allEntities,
+      allEntities: (type) => {
+        const entities = BeastCardEditor.allEntities();
+        return type === "heatpump" ? entities.filter((entity) => entity.id.startsWith("climate.")) : entities;
+      },
+      entityPickerTypes: ["custom", "heatpump"],
       editLabel: "Redigerer forsiden",
       onAfterRender: overviewCardEditorOnAfterRender,
       renderEmptyState: overviewRenderEmptyState,
     });
     renderAll();
     wireOverviewChrome();
+    // Do not depend solely on a future socket status transition. On faster
+    // installations the HA socket is already connected before this panel is
+    // mounted, so no new "connected" event arrives and the front-page
+    // forecast/history loaders would otherwise never run.
+    loadWeatherForecast();
+    loadUtilityHistory();
     document.addEventListener("beast:overview-player-setting-changed", () => stableMusicRender());
+    document.addEventListener("beast:camera-streams-changed", () => renderAll());
 
     BeastHaSocket.onStatusChange((status) => {
       if (status !== "connected") return;
@@ -1956,7 +2072,7 @@
     BeastHaSocket.subscribeDomain("light", renderSecurity);
     BeastHaSocket.subscribeDomain("media_player", () => { stableMusicRender(); renderSecurity(); });
     BeastHaSocket.subscribeDomain("binary_sensor", (entityId) => {
-      if (entityId.endsWith("_motion")) updateOverviewCameraMotion();
+      if (window.BeastCameras?.isSmartDetectionEntity(entityId)) updateOverviewCameraMotion();
     });
   }
 

@@ -4,9 +4,29 @@
   const BAMBU_SNAPSHOT_REFRESH_MS = 6000;
 
   let containerEl = null;
+  let gridEl = null;
+  let pageEditor = null;
   let bambuSnapshotTimerId = null;
   let stopConfirmUntil = 0;
   let lastStructureSignature = "";
+
+  function defaultCards() {
+    const config = BeastConfig.get("panels.printer") || {};
+    return [
+      { id: "printer_cameras", type: "cameras", entity: config.liveCamera || null, secondaryEntity: config.cameraImage || null, desktop: { w: 5, h: 2 }, tablet: { w: 2, h: 2 }, portrait: { h: 2 } },
+      { id: "printer_control", type: "control", display: "full", desktop: { w: 7, h: 2 }, tablet: { w: 2, h: 2 }, portrait: { h: 2 } }
+    ];
+  }
+
+  function savedCards() {
+    const cards = BeastConfig.get("pageLayouts.printer.cards");
+    if (BeastConfig.get("pageLayouts.printer.cardsConfigured") === true && Array.isArray(cards)) return cards;
+    return Array.isArray(cards) && cards.length ? cards : defaultCards();
+  }
+
+  function cardSize(card) {
+    return `data-builder-card="${escapeHtml(card.id)}" style="--desktop-w:${Number(card.desktop?.w) || 4};--desktop-h:${Number(card.desktop?.h) || 1};--tablet-w:${Number(card.tablet?.w) || 1};--tablet-h:${Number(card.tablet?.h) || 1};--portrait-h:${Number(card.portrait?.h) || 1};"`;
+  }
 
   function applyConfig() {
     const config = BeastConfig.get("panels.printer") || {};
@@ -163,6 +183,7 @@
     }
     setText("beastPrinterTask", data.taskLabel);
     setText("beastPrinterStage", data.stageLabel);
+    setText("beastPrinterProgressStage", data.stageLabel);
     setText("beastPrinterPercent", String(Math.round(data.progress)));
     const progressBar = document.getElementById("beastPrinterProgressBar");
     if (progressBar) progressBar.style.width = `${Math.max(0, Math.min(100, data.progress))}%`;
@@ -188,14 +209,14 @@
     const active = String(activeTray).includes(String(index)) || String(activeTray).toLowerCase() === `tray ${index}`;
     return `
       <div class="beast-printer-tray${active ? " is-active" : ""}">
-        <span class="beast-printer-spool" style="${safeColor ? `--spool-color:${safeColor}` : ""}"></span>
-        <span><small>Plads ${index}${active ? " · aktiv" : ""}</small><strong>${escapeHtml(name)}</strong></span>
+        <span class="beast-printer-spool" style="${safeColor ? `--spool-color:${safeColor}` : ""}"><i></i></span>
+        <span><small>Plads ${index}</small><strong>${escapeHtml(name)}</strong></span>
+        ${active ? `<b>Aktiv</b>` : ""}
       </div>
     `;
   }
 
-  function render() {
-    if (!containerEl) return;
+  function printerData() {
     const status = BeastHaSocket.getState(IDS.status);
     const stage = BeastHaSocket.getState(IDS.stage);
     const progress = num(IDS.progress) ?? 0;
@@ -215,7 +236,7 @@
     const bedTarget = num(IDS.bedTarget);
     const activeTray = cleanState(BeastHaSocket.getState(IDS.activeTray), "");
     const stateLabel = printing ? "Printer nu" : statusKey === "finish" || statusKey === "finished" ? "Færdig" : "Klar";
-    const liveData = {
+    return {
       stateLabel,
       printing,
       taskLabel: printing ? taskLabel : "Ingen aktiv opgave",
@@ -237,96 +258,99 @@
       totalUsage: num(IDS.totalUsage),
       amsHumidityText: sensorText(IDS.amsHumidity, "–", 0),
       totalUsageText: sensorText(IDS.totalUsage, "–", 0).replace(/\bh\b/i, "t"),
-      printerLight
+      printerLight, printImages, activeTray
     };
-    const structureSignature = JSON.stringify([
-      printing,
-      liveData.taskLabel,
-      printerLight?.entity_id || "",
-      printImages.map((image) => image.path),
-      activeTray,
-      ...[IDS.tray1, IDS.tray2, IDS.tray3, IDS.tray4].map((id) => {
-        const tray = BeastHaSocket.getState(id);
-        return [tray?.state, tray?.attributes?.name, tray?.attributes?.type, tray?.attributes?.color, tray?.attributes?.rgba];
-      })
-    ]);
-    if (containerEl.querySelector(".beast-printer-dashboard") && structureSignature === lastStructureSignature) {
-      updateLiveValues(liveData);
-      return;
-    }
-    lastStructureSignature = structureSignature;
+  }
 
-    containerEl.innerHTML = `
-      <div class="beast-printer-dashboard">
-        <section class="beast-printer-visual">
-          <div class="beast-printer-cam beast-printer-cam--main">
-            <iframe class="beast-printer-live-frame" id="beastPrinterLiveFrame" src="./camera-player.html?v=7&src=${encodeURIComponent(PRINTER_LIVE_STREAM)}&transport=mse" title="3D-printer livekamera" frameborder="0" allow="autoplay"></iframe>
+  function printerCardMarkup(card) {
+    if (BeastStandardCards.isStandardType(card.type)) return BeastStandardCards.renderMarkup(card);
+    const data = printerData();
+    if (card.type === "cameras") {
+      const cameraDisplay = card.cameraDisplay || BeastConfig.get("panels.printer.cameraDisplay") || "both";
+      const showLiveCamera = cameraDisplay !== "printer";
+      const showPrinterCamera = cameraDisplay !== "live";
+      const liveEntity = card.entity || BeastConfig.get("panels.printer.liveCamera");
+      const resolved = liveEntity ? window.BeastCameras?.resolveCamera?.(liveEntity) : null;
+      const secondary = card.secondaryEntity || IDS.camera;
+      const fallbackState = liveEntity ? BeastHaSocket.getState(liveEntity) : null;
+      const liveCamera = resolved || (liveEntity ? { slug: liveEntity.replace(/^camera\./, ""), entityId: liveEntity, label: fallbackState?.attributes?.friendly_name || "3D Printer", entityPicture: fallbackState?.attributes?.entity_picture || null } : null);
+      return `<section class="beast-panel beast-ov-card beast-page-builder-card beast-printer-builder-card" ${cardSize(card)} data-printer-card="cameras" data-camera-display="${escapeHtml(cameraDisplay)}" data-secondary-camera="${escapeHtml(showPrinterCamera ? (secondary || "") : "")}">
+        <section class="beast-printer-visual${showLiveCamera && showPrinterCamera ? "" : " is-single"}">
+          ${showLiveCamera ? `<div class="beast-printer-cam beast-printer-cam--main">
+            ${liveCamera ? BeastCameras.sharedCameraMarkup(liveCamera, { className: "beast-printer-live-frame", label: false, motion: false }) : `<div class="beast-printer-camera-empty">Vælg et kamera</div>`}
             <span class="beast-printer-cam-label">3D Printer · Livekamera</span>
             <span class="beast-printer-live"><i></i> Live</span>
-          </div>
-          <div class="beast-printer-cam beast-printer-cam--secondary">
+          </div>` : ""}
+          ${showPrinterCamera ? `<div class="beast-printer-cam beast-printer-cam--secondary">
             <img class="beast-printer-cam-img" id="beastPrinterCamImg" alt="">
-            <span class="beast-printer-cam-label">Bambu Lab P1S · Statuskamera</span>
-          </div>
-        </section>
+            <span class="beast-printer-cam-label">Printerkamera</span>
+          </div>` : ""}
+        </section></section>`;
+    }
+    return `<section class="beast-panel beast-ov-card beast-page-builder-card beast-printer-builder-card" ${cardSize(card)} data-printer-card="control" data-card-display="${escapeHtml(card.display || "full")}">
         <section class="beast-printer-control">
           <div class="beast-printer-status-head">
             <div>
-              <span class="beast-printer-state${printing ? " is-printing" : ""}" id="beastPrinterState">${stateLabel}</span>
-              <h2 id="beastPrinterTask">${escapeHtml(liveData.taskLabel)}</h2>
-              <p id="beastPrinterStage">${escapeHtml(liveData.stageLabel)}</p>
+              <span class="beast-printer-state${data.printing ? " is-printing" : ""}" id="beastPrinterState">${data.stateLabel}</span>
+              <h2 id="beastPrinterTask">${escapeHtml(data.taskLabel)}</h2>
+              <p id="beastPrinterStage">${escapeHtml(data.stageLabel)}</p>
             </div>
-            <strong class="beast-printer-percent"><span id="beastPrinterPercent">${Math.round(progress)}</span><small>%</small></strong>
+          </div>
+          <div class="beast-printer-progress-panel${data.printImages.length && card.showImages !== false ? " has-model" : ""}">
+            ${data.printImages.length && card.showImages !== false ? `<button type="button" class="beast-printer-progress-model" data-print-image="0"><img alt="${escapeHtml(data.printImages[0].label)}"><span>${escapeHtml(data.printImages[0].label)}</span></button>` : ""}
+            <div class="beast-printer-progress-content">
+              <header><span><small>Printets fremdrift</small><strong id="beastPrinterProgressStage">${escapeHtml(data.stageLabel)}</strong></span><b><span id="beastPrinterPercent">${Math.round(data.progress)}</span><small>%</small></b></header>
+              <div class="beast-printer-progress"><i id="beastPrinterProgressBar" style="width:${Math.max(0, Math.min(100, data.progress))}%"></i></div>
+              <footer>
+                <span>${BeastCore.icon("clock", { size:18 })}<small>Resterende</small><strong id="beastPrinterRemaining">${data.remainingText}</strong></span>
+                <span>${BeastCore.icon("grid", { size:18 })}<small>Aktuelt lag</small><strong id="beastPrinterLayer">${data.layer ?? "–"} / ${data.totalLayers ?? "–"}</strong></span>
+              </footer>
+            </div>
           </div>
           <div class="beast-printer-quick-controls">
-            <button type="button" class="beast-printer-light${printerLight?.state === "on" ? " is-on" : ""}" id="beastPrinterLight" ${printerLight ? "" : "disabled"}>
+            <button type="button" class="beast-printer-light${data.printerLight?.state === "on" ? " is-on" : ""}" id="beastPrinterLight" ${data.printerLight ? "" : "disabled"}>
               <span class="beast-printer-light-icon">${BeastCore.icon("sun", { size: 23 })}</span>
-              <span><small>Lys i printeren</small><strong>${printerLight ? (printerLight.state === "on" ? "Tændt" : "Slukket") : "Ikke fundet"}</strong></span>
+              <span><small>Lys i printeren</small><strong>${data.printerLight ? (data.printerLight.state === "on" ? "Tændt" : "Slukket") : "Ikke fundet"}</strong></span>
               <i aria-hidden="true"></i>
             </button>
           </div>
-          <div class="beast-printer-progress"><i id="beastPrinterProgressBar" style="width:${Math.max(0, Math.min(100, progress))}%"></i></div>
-          ${printImages.length ? `
-            <div class="beast-printer-model-section">
-              <div class="beast-printer-model-head"><span><small>Printjob</small><strong>Billeder af emnet</strong></span><em>${printImages.length} ${printImages.length === 1 ? "billede" : "billeder"}</em></div>
-              <div class="beast-printer-model-gallery">
-                ${printImages.map((image, index) => `<button type="button" class="beast-printer-model-image" data-print-image="${index}"><img alt="${escapeHtml(image.label)}"><span>${escapeHtml(image.label)}</span></button>`).join("")}
-              </div>
-            </div>
-          ` : ""}
           <div class="beast-printer-metrics">
-            <div><small>Resterende</small><strong id="beastPrinterRemaining">${liveData.remainingText}</strong></div>
-            <div><small>Lag</small><strong id="beastPrinterLayer">${layer ?? "–"} / ${totalLayers ?? "–"}</strong></div>
-            <div><small>Dyse</small><strong id="beastPrinterNozzle">${liveData.nozzleText} / ${liveData.nozzleTargetText}</strong></div>
-            <div><small>Byggeplade</small><strong id="beastPrinterBed">${liveData.bedText} / ${liveData.bedTargetText}</strong></div>
+            <div class="is-nozzle"><span>${BeastCore.icon("thermometer", { size:22 })}</span><div><small>Dysetemperatur · nu / mål</small><strong id="beastPrinterNozzle">${data.nozzleText} / ${data.nozzleTargetText}</strong></div></div>
+            <div class="is-bed"><span>${BeastCore.icon("thermometer", { size:22 })}</span><div><small>Byggeplade · nu / mål</small><strong id="beastPrinterBed">${data.bedText} / ${data.bedTargetText}</strong></div></div>
           </div>
-          ${printing ? `
+          ${data.printing ? `
             <div class="beast-printer-actions">
               <button type="button" class="beast-security-action-btn" id="beastPrinterPause">Ⅱ&nbsp; Pause</button>
               <button type="button" class="beast-security-action-btn" id="beastPrinterResume">▶&nbsp; Fortsæt</button>
               <button type="button" class="beast-security-action-btn is-danger" id="beastPrinterStop">■&nbsp; Stop print</button>
             </div>
           ` : ""}
-          <div class="beast-printer-ams-head">
-            <div><small>AMS</small><strong>Filament</strong></div>
-            <span id="beastPrinterAmsMeta">${liveData.amsHumidityText} fugt · ${liveData.totalUsageText} drift</span>
+          <div class="beast-printer-ams-section">
+            <div class="beast-printer-ams-head">
+              <div><small>AMS</small><strong>Filament</strong></div>
+              <span id="beastPrinterAmsMeta">${data.amsHumidityText} fugt · ${data.totalUsageText} drift</span>
+            </div>
+            <div class="beast-printer-trays">
+              ${[IDS.tray1, IDS.tray2, IDS.tray3, IDS.tray4].map((id, index) => trayDetails(id, index + 1, data.activeTray)).join("")}
+            </div>
           </div>
-          <div class="beast-printer-trays">
-            ${[IDS.tray1, IDS.tray2, IDS.tray3, IDS.tray4].map((id, index) => trayDetails(id, index + 1, activeTray)).join("")}
-          </div>
-        </section>
-      </div>
-    `;
+        </section></section>`;
+  }
 
+  function wireCards() {
+    if (!gridEl) return;
+    const data = printerData();
+    BeastStandardCards.wire(gridEl);
+    BeastCameras?.wireSharedCameras?.(gridEl, render);
     refreshBambuSnapshot(true);
-    printImages.forEach((image, index) => {
+    data.printImages.forEach((image, index) => {
       const img = containerEl.querySelector(`[data-print-image="${index}"] img`);
       if (!img) return;
       if (/^https?:\/\//i.test(image.path)) img.src = image.path;
       else BeastAuth.setAuthedImageSrc(img, image.path);
     });
     document.getElementById("beastPrinterLight")?.addEventListener("click", () => {
-      if (printerLight) toggleLight(printerLight.entity_id);
+      if (data.printerLight) toggleLight(data.printerLight.entity_id);
     });
     document.getElementById("beastPrinterPause")?.addEventListener("click", () => pressButton(IDS.pauseBtn));
     document.getElementById("beastPrinterResume")?.addEventListener("click", () => pressButton(IDS.resumeBtn));
@@ -342,11 +366,45 @@
     });
   }
 
+  function render() {
+    if (!gridEl || pageEditor?.isEditing()) return;
+    const cards = savedCards();
+    const data = printerData();
+    const structureSignature = JSON.stringify([
+      cards,
+      data.printing,
+      data.taskLabel,
+      data.printerLight?.entity_id || "",
+      data.printImages.map((image) => image.path),
+      data.activeTray,
+      ...[IDS.tray1, IDS.tray2, IDS.tray3, IDS.tray4].map((id) => {
+        const tray = BeastHaSocket.getState(id);
+        return [tray?.state, tray?.attributes?.name, tray?.attributes?.type, tray?.attributes?.color, tray?.attributes?.rgba];
+      })
+    ]);
+    if (gridEl.querySelector("[data-printer-card]") && structureSignature === lastStructureSignature) {
+      updateLiveValues(data);
+      return;
+    }
+    lastStructureSignature = structureSignature;
+    gridEl.innerHTML = `${cards.map(printerCardMarkup).join("")}<div data-card-editor-anchor></div>`;
+    wireCards();
+  }
+
   async function refreshBambuSnapshot(force = false) {
+    const liveImg = containerEl?.querySelector(".beast-printer-cam--main .beast-shared-camera-snapshot[data-camera-picture]");
+    if (liveImg && (force || BeastCore.isPanelVisible(containerEl))) BeastAuth.setAuthedImageSrc(liveImg, liveImg.dataset.cameraPicture);
     const img = document.getElementById("beastPrinterCamImg");
     if (!img || (!force && !BeastCore.isPanelVisible(containerEl))) return;
+    const selectedCamera = img.closest("[data-secondary-camera]")?.dataset.secondaryCamera || IDS.camera;
+    if (!selectedCamera) return;
     try {
-      const blob = await BeastAuth.haFetchBlob(`/api/image_proxy/${IDS.camera}`);
+      const selectedState = BeastHaSocket.getState(selectedCamera);
+      const picturePath = selectedCamera.startsWith("camera.")
+        ? selectedState?.attributes?.entity_picture
+        : `/api/image_proxy/${selectedCamera}`;
+      if (!picturePath) return;
+      const blob = await BeastAuth.haFetchBlob(picturePath);
       const objectUrl = URL.createObjectURL(blob);
       const preload = new Image();
       preload.src = objectUrl;
@@ -363,11 +421,61 @@
     }
   }
 
+  function cameraEntities(includeImages = false) {
+    return Array.from(BeastHaSocket.getAllStates().values())
+      .filter((state) => state?.entity_id?.startsWith("camera.") || (includeImages && state?.entity_id?.startsWith("image.")))
+      .map((state) => ({ id: state.entity_id, name: state.attributes?.friendly_name || state.entity_id }))
+      .sort((a, b) => a.name.localeCompare(b.name, "da"));
+  }
+
+  function optionsMarkup(entities, selected) {
+    return `<option value="">Ikke valgt</option>${entities.map((entity) => `<option value="${escapeHtml(entity.id)}"${entity.id === selected ? " selected" : ""}>${escapeHtml(entity.name)}</option>`).join("")}`;
+  }
+
+  function configurePrinterCard(card, commit) {
+    document.getElementById("beastPrinterCardSettings")?.remove();
+    const overlay = document.createElement("div");
+    overlay.id = "beastPrinterCardSettings";
+    overlay.className = "beast-modal-overlay";
+    const cameraFields = card.type === "cameras" ? `<label>Livekamera<select data-live-camera>${optionsMarkup(cameraEntities(false), card.entity)}</select></label><label>Statuskamera<select data-secondary-camera>${optionsMarkup(cameraEntities(true), card.secondaryEntity)}</select></label>` : `<label>Visning<select data-display><option value="full">Alt indhold</option><option value="compact">Kompakt status og styring</option><option value="status">Kun status og målinger</option></select></label><label><input type="checkbox" data-show-images ${card.showImages === false ? "" : "checked"}> Vis billeder af emnet</label><label>Maks. billeder<input type="number" min="1" max="6" data-image-limit value="${Number(card.imageLimit || 3)}"></label>`;
+    overlay.innerHTML = `<div class="beast-modal beast-page-card-settings" role="dialog" aria-modal="true"><div class="beast-modal-header"><div><small>3D Printer</small><h3>Indstil kort</h3></div><button type="button" class="beast-modal-close" data-close>${BeastCore.icon("close", { size: 22 })}</button></div><div class="beast-modal-body">${cameraFields}<p>Størrelsen ændres direkte med håndtaget i kortets nederste højre hjørne.</p></div><div class="beast-modal-actions"><button type="button" data-close>Annullér</button><button type="button" class="beast-btn beast-btn-primary" data-save>Gem kort</button></div></div>`;
+    document.body.appendChild(overlay);
+    if (overlay.querySelector("[data-display]")) overlay.querySelector("[data-display]").value = card.display || "full";
+    overlay.addEventListener("click", (event) => {
+      if (event.target === overlay || event.target.closest("[data-close]")) return overlay.remove();
+      if (!event.target.closest("[data-save]")) return;
+      const updated = { ...card };
+      if (card.type === "cameras") {
+        updated.entity = overlay.querySelector("[data-live-camera]").value || null;
+        updated.secondaryEntity = overlay.querySelector("[data-secondary-camera]").value || null;
+      } else { updated.display = overlay.querySelector("[data-display]").value; updated.showImages = overlay.querySelector("[data-show-images]").checked; updated.imageLimit = Number(overlay.querySelector("[data-image-limit]").value) || 3; }
+      commit(updated);
+      overlay.remove();
+    });
+  }
+
   function init(root) {
     applyConfig();
     containerEl = root;
     containerEl.classList.add("beast-printer-panel");
-    containerEl.innerHTML = `<p class="beast-music-empty">Henter…</p>`;
+    containerEl.innerHTML = `<button type="button" class="beast-page-edit-trigger" id="beastPrinterEdit" aria-label="Rediger 3D Printer" title="Rediger siden">⋮</button><div class="beast-overview-grid beast-page-builder-grid beast-printer-dashboard is-freeform" id="beastPrinterGrid"></div>`;
+    gridEl = document.getElementById("beastPrinterGrid");
+    pageEditor = BeastCardEditor.attach({
+      zoneEl: gridEl,
+      configPath: "pageLayouts.printer.cards",
+      cardTypes: [["cameras", "Printerkameraer"], ["control", "Printstatus og styring"], ...BeastStandardCards.types],
+      singleInstanceTypes: ["cameras", "control"],
+      renderCardMarkup: printerCardMarkup,
+      seedCards: defaultCards,
+      defaultCardSize: { desktop: { w: 4, h: 1 }, tablet: { w: 1, h: 1 }, portrait: { h: 1 } },
+      allEntities: BeastCardEditor.allEntities,
+      entityPickerTypes: BeastStandardCards.entityPickerTypes,
+      editLabel: "Redigerer 3D Printer",
+      configureCard: configurePrinterCard,
+      onAfterRender: () => wireCards()
+    });
+    document.getElementById("beastPrinterEdit")?.addEventListener("click", () => pageEditor.enter());
+    render();
 
     BeastHaSocket.onStatusChange((status) => { if (status === "connected") render(); });
     const debouncedRender = BeastCore.stableUpdater(containerEl, render, 500);

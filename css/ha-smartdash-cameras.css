@@ -11,6 +11,13 @@
   background: #000;
   border: 1px solid var(--border);
 }
+.beast-shared-camera { position: relative; width: 100%; height: 100%; min-width: 0; min-height: 0; overflow: hidden; background: #000; }
+.beast-shared-camera-frame { position: absolute; inset: 0; }
+.beast-shared-camera-live, .beast-shared-camera-snapshot { width: 100%; height: 100%; display: block; border: 0; background: #000; object-fit: contain; object-position: center; }
+.beast-shared-camera-label { position: absolute; z-index: 3; left: 0; right: 0; bottom: 0; min-height: 48px; display: flex; align-items: flex-end; padding: 18px 14px 10px; background: linear-gradient(to top, rgba(0,0,0,.86), transparent); color: #fff; font-size: var(--text-sm); font-weight: 800; text-shadow: 0 1px 5px rgba(0,0,0,.7); pointer-events: none; }
+.beast-camera-featured-render { position: absolute; inset: 0; }
+.beast-shared-camera > .beast-camera-motion-badge { top: 12px; left: 12px; right: auto; z-index: 4; }
+.beast-camera-featured .beast-shared-camera > .beast-camera-motion-badge { left: 118px; }
 
 .beast-camera-featured-frame {
   position: absolute;
@@ -67,6 +74,14 @@
 .beast-camera-audio-toggle[aria-pressed="true"] {
   background: rgba(24, 145, 225, 0.88);
 }
+.beast-camera-quality-menu { position: absolute; top: var(--space-3); right: var(--space-3); z-index: 5; }
+.beast-camera-quality-toggle { width: 46px; height: 46px; display: grid; place-items: center; padding: 0 0 8px; border: 0; border-radius: 50%; background: rgba(5,8,12,.78); color: #fff; font-size: 28px; line-height: 1; backdrop-filter: blur(12px); touch-action: manipulation; }
+.beast-camera-quality-popover { position: absolute; top: 52px; right: 0; width: 210px; padding: 8px; border: 1px solid rgba(255,255,255,.16); border-radius: 14px; background: rgba(6,9,14,.94); box-shadow: 0 18px 48px rgba(0,0,0,.48); backdrop-filter: blur(16px); }
+.beast-camera-quality-popover[hidden] { display: none; }
+.beast-camera-quality-popover small { display: block; padding: 7px 10px; color: rgba(255,255,255,.58); font-weight: 750; }
+.beast-camera-quality-popover button { width: 100%; min-height: 48px; display: flex; align-items: center; justify-content: space-between; padding: 0 12px; border: 0; border-radius: 10px; background: transparent; color: #fff; font: inherit; font-weight: 750; text-align: left; touch-action: manipulation; }
+.beast-camera-quality-popover button.is-active { background: rgba(51,153,255,.2); color: #7ec5ff; }
+.beast-camera-featured > .beast-camera-motion-badge { top: 68px; right: var(--space-3); }
 
 .beast-camera-strip {
   flex-shrink: 0;
@@ -77,6 +92,37 @@
   gap: var(--space-3);
   overflow-x: auto;
   padding-bottom: var(--space-1);
+}
+
+.beast-camera-order-modal { width:min(760px,calc(100vw - 28px)); max-width:760px; }
+.beast-camera-order-list { display:grid; gap:9px; }
+.beast-camera-order-list article { min-width:0; min-height:72px; display:grid; grid-template-columns:42px minmax(0,1fr) auto; align-items:center; gap:12px; padding:10px 12px; border:1px solid var(--border); border-radius:13px; background:var(--surface-2); }
+.beast-camera-order-list article > b { width:38px; height:38px; display:grid; place-items:center; border-radius:11px; background:var(--accent-soft); color:var(--accent); }
+.beast-camera-order-list article > span { min-width:0; }
+.beast-camera-order-list article strong,.beast-camera-order-list article small { display:block; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.beast-camera-order-list article small { margin-top:4px; color:var(--ink-muted); font-size:11px; }
+.beast-camera-order-list article > div { display:flex; gap:7px; }
+.beast-camera-order-list article button { width:48px; height:48px; display:grid; place-items:center; border:1px solid var(--border-strong); border-radius:11px; background:var(--surface-solid); color:var(--ink); font-size:22px; font-weight:900; touch-action:manipulation; }
+.beast-camera-order-list article button:disabled { opacity:.25; }
+
+@media (max-width:560px) {
+  .beast-camera-order-list article { grid-template-columns:38px minmax(0,1fr); }
+  .beast-camera-order-list article > div { grid-column:2; }
+}
+.beast-cameras-panel.beast-native-layout-grid .beast-camera-strip {
+  height: 100%;
+  min-height: 0;
+  margin-top: 0;
+  padding-bottom: 0;
+  align-items: stretch;
+  grid-auto-columns: minmax(0, 1fr);
+  overflow-x: hidden;
+}
+.beast-cameras-panel.beast-native-layout-grid .beast-camera-tile {
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  aspect-ratio: auto;
 }
 
 .beast-camera-tile {
@@ -146,3 +192,7 @@
   border-radius: var(--radius-full);
   z-index: 1;
 }
+.beast-cameras-panel .is-layout-hidden { display: none !important; }
+.beast-camera-layout-list { display: grid; gap: 10px; margin-bottom: 18px; }
+.beast-camera-layout-list label { display: flex; align-items: center; gap: 12px; min-height: 56px; padding: 10px 14px; border: 1px solid var(--border); border-radius: var(--radius-md); background: var(--surface-2); }
+.beast-camera-layout-list input { width: 24px; height: 24px; accent-color: var(--accent); }

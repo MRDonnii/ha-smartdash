@@ -56,10 +56,11 @@
   }
 
   function hourlyMarkup() {
-    return `<section class="beast-weather-hourly"><header><strong>Næste 12 timer</strong><small>Temperatur · nedbør · vind</small></header><div>
-      ${hourly.slice(0, 12).map((item) => {
+    const hours = Number(BeastNativePageEditor.option("weather", "summary", "hours", 12));
+    return `<section class="beast-weather-hourly"><header><strong>Næste ${hours} timer</strong><small>Temperatur · nedbør · vind</small></header><div>
+      ${hourly.slice(0, hours).map((item) => {
         const date = new Date(item.datetime);
-        return `<article><time>${date.toLocaleTimeString("da-DK", { hour: "2-digit", minute: "2-digit" })}</time>${icon(item.condition)}
+        return `<article><time>${date.toLocaleTimeString(window.HASmartdashI18n?.locale || "da-DK", { hour: "2-digit", minute: "2-digit" })}</time>${icon(item.condition)}
           <strong>${number(item.temperature, "°")}</strong><span>${BeastCore.icon("droplet", { size: 13 })}${number(item.precipitation_probability, "%")}</span>
           <small>${number(item.wind_speed, " km/t")}</small></article>`;
       }).join("") || "<p>Henter timeudsigt…</p>"}
@@ -67,10 +68,11 @@
   }
 
   function dailyMarkup() {
-    return `<section class="beast-weather-week"><header><strong>De næste 7 dage</strong><small>Dag / nat og risiko for regn</small></header><div>
-      ${daily.slice(0, 7).map((item, index) => {
+    const days = Number(BeastNativePageEditor.option("weather", "week", "days", 7));
+    return `<section class="beast-weather-week"><header><strong>De næste ${days} dage</strong><small>Dag / nat og risiko for regn</small></header><div>
+      ${daily.slice(0, days).map((item, index) => {
         const date = new Date(item.datetime);
-        const day = index === 0 ? "I dag" : date.toLocaleDateString("da-DK", { weekday: "long" });
+        const day = index === 0 ? "I dag" : date.toLocaleDateString(window.HASmartdashI18n?.locale || "da-DK", { weekday: "long" });
         return `<article><time>${day}</time>${icon(item.condition, 34)}<span>${BeastCore.weatherMeta(item.condition).label}</span>
           <div><strong>${number(item.temperature, "°")}</strong><small>${number(item.templow, "°")}</small></div>
           <b>${BeastCore.icon("droplet", { size: 14 })}${number(item.precipitation_probability, "%")}</b></article>`;
@@ -98,7 +100,7 @@
   function render() {
     if (!rootEl) return;
     if (!rootEl.querySelector(".beast-weather-dashboard")) {
-      rootEl.innerHTML = `<div class="beast-weather-dashboard"><div class="beast-weather-left">${currentMarkup()}${hourlyMarkup()}</div>${radarMarkup()}${dailyMarkup()}</div>`;
+      rootEl.innerHTML = `<button type="button" class="beast-page-edit-trigger" id="beastWeatherLayoutEdit" aria-label="Rediger vejrlayout">⋮</button><div class="beast-weather-dashboard"><div class="beast-weather-left">${currentMarkup()}${hourlyMarkup()}</div>${radarMarkup()}${dailyMarkup()}</div>`;
       rootEl.querySelectorAll("[data-layer]").forEach((btn) => {
         btn.addEventListener("click", () => {
           if (btn.dataset.layer === radarLayer) return;
@@ -108,11 +110,35 @@
         });
       });
       drawRadar();
+      wireWeatherLayout();
       return;
     }
     rootEl.querySelector(".beast-weather-current").outerHTML = currentMarkup();
     rootEl.querySelector(".beast-weather-hourly").outerHTML = hourlyMarkup();
     rootEl.querySelector(".beast-weather-week").outerHTML = dailyMarkup();
+    wireWeatherLayout();
+  }
+
+  function wireWeatherLayout() {
+    const layout = BeastConfig.get("pageLayouts.weather.weatherLayout") || {};
+    const hidden = new Set(Array.isArray(layout.hidden) ? layout.hidden : []);
+    const selectors = { current: ".beast-weather-current", hourly: ".beast-weather-hourly", week: ".beast-weather-week", radar: ".beast-weather-radar" };
+    Object.entries(selectors).forEach(([id, selector]) => rootEl.querySelector(selector)?.classList.toggle("is-layout-hidden", hidden.has(id)));
+    const button = rootEl.querySelector("#beastWeatherLayoutEdit");
+    if (button) BeastNativePageEditor.mount({ section:"weather", label:"Vejr", root:()=>rootEl, host:()=>rootEl.querySelector(".beast-weather-dashboard"), trigger:"#beastWeatherLayoutEdit", onSave:()=>render(), cards:()=>[
+      { id:"summary", label:"Aktuelt vejr og timeudsigt", selector:".beast-weather-left", enabled:!hidden.has("current") || !hidden.has("hourly"), desktop:{x:1,y:1,w:5,h:9}, options:{hours:12}, controls:[{key:"hours",label:"Timer i udsigten",min:3,max:24,step:1,default:12}] },
+      { id:"radar", label:"Vejrradar", selector:".beast-weather-radar", titleSelector:"header strong", enabled:!hidden.has("radar"), desktop:{x:6,y:1,w:7,h:9} },
+      { id:"week", label:"Ugeudsigt", selector:".beast-weather-week", titleSelector:"header strong", enabled:!hidden.has("week"), desktop:{x:1,y:10,w:12,h:3}, options:{days:7}, controls:[{key:"days",label:"Dage i udsigten",min:1,max:10,step:1,default:7}] }
+    ] });
+  }
+
+  function openWeatherLayout(layout) {
+    const hidden = new Set(Array.isArray(layout.hidden) ? layout.hidden : []);
+    const items = [["current","Aktuelt vejr"],["hourly","Timeudsigt"],["week","Ugeudsigt"],["radar","Radar"]];
+    const overlay = document.createElement("div"); overlay.className = "beast-modal-overlay";
+    overlay.innerHTML = `<div class="beast-modal"><div class="beast-modal-header"><h3>Rediger vejrlayout</h3><button type="button" class="beast-modal-close" data-close>×</button></div><div class="beast-modal-body"><div class="beast-weather-layout-list">${items.map(([id,label]) => `<label><input type="checkbox" data-weather-section="${id}" ${hidden.has(id)?"":"checked"}><strong>${label}</strong></label>`).join("")}</div><button type="button" class="beast-btn beast-btn-primary" data-save-weather-layout>Gem layout</button></div></div>`;
+    document.body.appendChild(overlay);
+    overlay.addEventListener("click", (event) => { if (event.target===overlay || event.target.closest("[data-close]")) return overlay.remove(); if (!event.target.closest("[data-save-weather-layout]")) return; const nextHidden=items.filter(([id])=>!overlay.querySelector(`[data-weather-section="${id}"]`).checked).map(([id])=>id); BeastConfig.set("pageLayouts.weather.weatherLayout", {...layout,hidden:nextHidden}); overlay.remove(); wireWeatherLayout(); });
   }
 
   function updateRadarTabs() {

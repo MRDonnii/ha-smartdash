@@ -43,12 +43,21 @@ function releaseTag($htmlPath) {
 // dashboard's idle auto-updater won't silently reinstall it the next time
 // GitHub still reports it as latest. See update.php for the full rationale.
 function recordSkippedIfDowngrade($dataDir, $fromBuildId, $toBuildId) {
-  if (!$fromBuildId || !$toBuildId || $toBuildId >= $fromBuildId) return;
+  if (!$fromBuildId || !$toBuildId || compareBuildIds($toBuildId, $fromBuildId) >= 0) return;
   @file_put_contents($dataDir . "/update-skip.json", json_encode(["skippedBuildId" => $fromBuildId, "skippedAt" => time()]));
 }
 
 function isSafeVersion($version) {
   return is_string($version) && preg_match('/^[A-Za-z0-9._-]{1,64}$/', $version);
+}
+
+function compareBuildIds($a, $b) {
+  if (preg_match('/^(\d{8})-(\d+)$/', (string) $a, $left) && preg_match('/^(\d{8})-(\d+)$/', (string) $b, $right)) {
+    $dateCompare = strcmp($left[1], $right[1]);
+    if ($dateCompare !== 0) return $dateCompare;
+    return ((int) $left[2]) <=> ((int) $right[2]);
+  }
+  return version_compare((string) $a, (string) $b);
 }
 
 function copyRecursive($src, $dst) {
@@ -93,6 +102,31 @@ function snapshotVersion($root, $snapshotsDir, $versionedPaths, $version) {
   return true;
 }
 
+function removeSnapshotTree($path) {
+  if (!file_exists($path)) return;
+  if (is_dir($path) && !is_link($path)) {
+    foreach (scandir($path) as $item) {
+      if ($item === "." || $item === "..") continue;
+      removeSnapshotTree($path . "/" . $item);
+    }
+    @rmdir($path);
+  } else {
+    @unlink($path);
+  }
+}
+
+function pruneSnapshots($snapshotsDir, $keepCount, $protectedVersions = []) {
+  $entries = [];
+  foreach (scandir($snapshotsDir) as $name) {
+    if ($name === "." || $name === ".." || !isSafeVersion($name) || !is_dir($snapshotsDir . "/" . $name)) continue;
+    $entries[] = $name;
+  }
+  usort($entries, function ($a, $b) { return compareBuildIds($b, $a); });
+  $keep = array_fill_keys(array_slice($entries, 0, max(1, (int) $keepCount)), true);
+  foreach ($protectedVersions as $version) if (isSafeVersion($version)) $keep[$version] = true;
+  foreach ($entries as $name) if (!isset($keep[$name])) removeSnapshotTree($snapshotsDir . "/" . $name);
+}
+
 function listSnapshots($snapshotsDir, $changelog) {
   $changelogByVersion = [];
   foreach ($changelog as $entry) {
@@ -113,7 +147,7 @@ function listSnapshots($snapshotsDir, $changelog) {
       "snapshottedAt" => gmdate("c", filemtime($path) ?: time())
     ];
   }
-  usort($versions, function ($a, $b) { return strcmp($b["version"], $a["version"]); });
+  usort($versions, function ($a, $b) { return compareBuildIds($b["version"], $a["version"]); });
   return $versions;
 }
 
@@ -121,6 +155,7 @@ $current = currentBuildId($root);
 $method = $_SERVER["REQUEST_METHOD"];
 
 if ($method === "GET") {
+  pruneSnapshots($snapshotsDir, 25, [$current]);
   echo json_encode([
     "currentVersion" => $current,
     "currentTag" => releaseTag($root . "/beast.html"),
@@ -138,6 +173,7 @@ $action = $body["action"] ?? "";
 
 if ($action === "snapshot") {
   $ok = snapshotVersion($root, $snapshotsDir, $versionedPaths, $current);
+  pruneSnapshots($snapshotsDir, 25, [$current]);
   echo json_encode(["success" => $ok, "version" => $current]);
   exit;
 }
