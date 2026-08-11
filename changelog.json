@@ -1,5 +1,14 @@
 [
   {
+    "version": "20260811-156",
+    "tag": "v0.7.78",
+    "date": "2026-08-11",
+    "changes": [
+      { "da": "Når kun printerens eget kamera vises, bevarer kamerabilledet nu sit korrekte format uden kraftig beskæring eller forvrængning.", "en": "When only the printer's own camera is shown, the camera image now keeps its correct aspect ratio without excessive cropping or distortion." },
+      { "da": "Hele printerbilledet tilpasses inden for kamerafeltet med centrerede kanter, mens visningen med begge kameraer bevarer sit kompakte layout.", "en": "The complete printer image now fits within the camera area with centered borders, while the dual-camera view keeps its compact layout." }
+    ]
+  },
+  {
     "version": "20260811-155",
     "tag": "v0.7.77",
     "date": "2026-08-11",

@@ -2092,6 +2092,9 @@
   object-fit: cover;
   object-position: center;
 }
+.beast-printer-visual.is-single .beast-printer-cam--secondary .beast-printer-cam-img {
+  object-fit: contain;
+}
 
 .beast-printer-cam-label {
   position: absolute;
