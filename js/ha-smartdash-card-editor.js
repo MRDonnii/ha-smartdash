@@ -145,6 +145,10 @@ window.BeastCardEditor = (function () {
       if (editing) {
         renderAddCardTile(anchor);
         applyEditModeChrome();
+        // Some page renderers finish their own DOM work in the same frame as
+        // onAfterRender. Re-assert the editor chrome after that frame so the
+        // move/resize/tools overlay cannot disappear behind a late repaint.
+        window.requestAnimationFrame(() => { if (editing) applyEditModeChrome(); });
       }
     }
 
