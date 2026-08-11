@@ -406,31 +406,35 @@
                     <button type="button" class="beast-transport-btn beast-play-btn" id="beastPlayBtn" aria-label="${playing ? "Pause" : "Afspil"}">${BeastCore.icon(playing ? "pause" : "play", { size: 27 })}</button>
                     <button type="button" class="beast-transport-btn" id="beastNextBtn" aria-label="Næste">${BeastCore.icon("skip-forward", { size: 22 })}</button>
                   </div>
-                  <div class="beast-volume-row">
-                    <button type="button" class="beast-mute-btn" id="beastMuteBtn" aria-label="Slå lyd fra">${BeastCore.icon(attrs.is_volume_muted ? "volume-mute" : "volume", { size: 21 })}</button>
-                    <div class="beast-volume-buttons">
-                      <button type="button" data-volume-step="-5" aria-label="Skru ned">−</button>
-                      <output id="beastVolumeOutput">${Math.round((Number(attrs.volume_level) || 0) * 100)}%</output>
-                      <button type="button" data-volume-step="5" aria-label="Skru op">+</button>
-                    </div>
-                  </div>
                   <div class="beast-player-destinations">
+                    <button type="button" class="beast-player-destination" id="beastPlayerVolumeBtn" aria-label="${english ? "Volume" : "Lydstyrke"}" title="${english ? "Volume" : "Lydstyrke"}">
+                      ${BeastCore.icon(attrs.is_volume_muted ? "volume-mute" : "volume", { size: 21 })}
+                    </button>
                     <button type="button" class="beast-player-destination" id="beastPlayerGroupBtn" aria-label="${playerCountLabel}" title="${playerCountLabel}">
-                      ${BeastCore.icon("volume", { size: 20 })}<small>${visibleGroupCount}</small>
+                      ${BeastCore.icon("users", { size: 20 })}<small>${visibleGroupCount}</small>
                     </button>
                     <button type="button" class="beast-player-destination" id="beastPlayerOutputBtn" aria-label="${english ? "Select player" : "Vælg afspiller"}" title="${english ? "Select player" : "Vælg afspiller"}">
                       ${BeastCore.icon("music", { size: 20 })}
                     </button>
                   </div>
                 </div>
+                <div class="beast-player-popover beast-volume-popover" id="beastVolumePopover" hidden>
+                  <header><strong>${english ? "Volume" : "Lydstyrke"}</strong><button type="button" data-close-player-popover aria-label="${english ? "Close" : "Luk"}">×</button></header>
+                  <button type="button" class="beast-volume-popover-mute" id="beastMuteBtn">${BeastCore.icon(attrs.is_volume_muted ? "volume-mute" : "volume", { size: 24 })}<span>${attrs.is_volume_muted ? (english ? "Unmute" : "Slå lyd til") : (english ? "Mute" : "Slå lyd fra")}</span></button>
+                  <div class="beast-volume-buttons beast-volume-popover-buttons">
+                    <button type="button" data-volume-step="-5" aria-label="${english ? "Volume down" : "Skru ned"}">−</button>
+                    <output id="beastVolumeOutput">${Math.round((Number(attrs.volume_level) || 0) * 100)}%</output>
+                    <button type="button" data-volume-step="5" aria-label="${english ? "Volume up" : "Skru op"}">+</button>
+                  </div>
+                </div>
                 <div class="beast-player-popover" id="beastGroupPopover" hidden>
-                  <header><strong>${english ? "Devices in group" : "Enheder i gruppen"}</strong><button type="button" data-close-player-popover aria-label="${english ? "Close" : "Luk"}">Ã—</button></header>
+                  <header><strong>${english ? "Devices in group" : "Enheder i gruppen"}</strong><button type="button" data-close-player-popover aria-label="${english ? "Close" : "Luk"}">×</button></header>
                   <div class="beast-player-popover-list">${groupRows}</div>
                   <p class="beast-player-popover-feedback" id="beastPlayerPopoverFeedback" hidden></p>
                 </div>
                 <div class="beast-player-popover" id="beastPlayerPopover" hidden>
-                  <header><strong>${english ? "Players" : "Afspillere"}</strong><button type="button" data-close-player-popover aria-label="${english ? "Close" : "Luk"}">Ã—</button></header>
-                  <label class="beast-player-popover-search">${BeastCore.icon("search", { size: 17 })}<input type="search" id="beastPlayerPopoverSearch" placeholder="${english ? "Search players" : "SÃ¸g efter afspillere"}"></label>
+                  <header><strong>${english ? "Players" : "Afspillere"}</strong><button type="button" data-close-player-popover aria-label="${english ? "Close" : "Luk"}">×</button></header>
+                  <label class="beast-player-popover-search">${BeastCore.icon("search", { size: 17 })}<input type="search" id="beastPlayerPopoverSearch" placeholder="${english ? "Search players" : "Søg efter afspillere"}"></label>
                   <div class="beast-player-popover-list" id="beastPlayerPopoverList">${playerRows}</div>
                 </div>
                 <div class="beast-progress-row">
@@ -817,15 +821,19 @@
   }
 
   function wirePlayerPopovers(players, activePlayer) {
+    const volumeButton = document.getElementById("beastPlayerVolumeBtn");
     const groupButton = document.getElementById("beastPlayerGroupBtn");
     const outputButton = document.getElementById("beastPlayerOutputBtn");
+    const volumePopover = document.getElementById("beastVolumePopover");
     const groupPopover = document.getElementById("beastGroupPopover");
     const playerPopover = document.getElementById("beastPlayerPopover");
-    if (!groupButton || !outputButton || !groupPopover || !playerPopover) return;
+    if (!volumeButton || !groupButton || !outputButton || !volumePopover || !groupPopover || !playerPopover) return;
 
     const closeAll = () => {
+      volumePopover.hidden = true;
       groupPopover.hidden = true;
       playerPopover.hidden = true;
+      volumeButton.classList.remove("is-active");
       groupButton.classList.remove("is-active");
       outputButton.classList.remove("is-active");
     };
@@ -837,6 +845,7 @@
       if (open && popover === playerPopover) document.getElementById("beastPlayerPopoverSearch")?.focus();
     };
 
+    volumeButton.addEventListener("click", (event) => { event.stopPropagation(); togglePopover(volumePopover, volumeButton); });
     groupButton.addEventListener("click", (event) => { event.stopPropagation(); togglePopover(groupPopover, groupButton); });
     outputButton.addEventListener("click", (event) => { event.stopPropagation(); togglePopover(playerPopover, outputButton); });
     containerEl.querySelectorAll("[data-close-player-popover]").forEach((button) => button.addEventListener("click", closeAll));
