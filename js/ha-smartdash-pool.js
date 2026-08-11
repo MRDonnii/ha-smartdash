@@ -1,6 +1,7 @@
 (function () {
   let IDS = {};
   let POOL_CAMERA_STREAM = "";
+  let POOL_CAMERA = null;
 
   function applyConfig() {
     const config = BeastConfig.get("panels.pool") || {};
@@ -8,7 +9,8 @@
       temperature: config.waterTemp, pump: config.pumpSwitch, status: config.pumpStatus,
       runtime: config.runtime, person: config.personInWater, automation: config.automationToggle
     };
-    POOL_CAMERA_STREAM = config.cameraStream || "";
+    POOL_CAMERA = config.cameraEntity ? window.BeastCameras?.resolveCamera?.(config.cameraEntity) : null;
+    POOL_CAMERA_STREAM = POOL_CAMERA?.streamName || config.cameraStream || "";
   }
 
   let containerEl = null;
@@ -94,6 +96,12 @@
     const priceAverage = Number(status?.attributes?.elpris_gennemsnit_i_dag);
     const runtimePct = Number.isFinite(Number(runtimeH)) && Number.isFinite(goalH) && goalH > 0 ? Math.min(100, (Number(runtimeH) / goalH) * 100) : 0;
     const comfort = tempNumber === null ? "Ingen temperaturdata" : tempNumber >= 27 ? "Perfekt badevand" : tempNumber >= 24 ? "Behageligt" : tempNumber >= 20 ? "Friskt" : "Køligt";
+    const cameraLabel = POOL_CAMERA?.label || "Pool & terrasse";
+    const cameraMarkup = POOL_CAMERA
+      ? window.BeastCameras.sharedCameraMarkup(POOL_CAMERA, { className: "beast-pool-shared-camera", label: false, motion: false })
+      : POOL_CAMERA_STREAM
+        ? `<iframe src="./camera-player.html?v=14&transport=mse&src=${encodeURIComponent(POOL_CAMERA_STREAM)}" title="Pool livekamera" frameborder="0" allow="autoplay"></iframe>`
+        : `<div class="beast-pool-camera-empty">Vælg et kamera under Administration → Pool</div>`;
 
     if (containerEl.querySelector(".beast-pool-dashboard")) {
       document.getElementById("beastPoolHeaderStatus").textContent = escapeHtml(status?.state || "Ukendt status");
@@ -143,9 +151,9 @@
           </div>
         </section>
         <section class="beast-pool-live">
-          <header><div><small>Livekamera</small><strong>Pool & terrasse</strong></div><span><i></i> LIVE</span></header>
-          <div class="beast-pool-live-frame"><iframe src="./camera-player.html?v=14&src=${encodeURIComponent(POOL_CAMERA_STREAM)}" title="Pool livekamera" frameborder="0" allow="autoplay"></iframe></div>
-          <footer><span>${BeastCore.icon("camera", { size: 16 })} Terrasse Syd</span><em>Forvarmet livevisning</em></footer>
+          <header><div><small>Livekamera</small><strong>${escapeHtml(cameraLabel)}</strong></div><span><i></i> LIVE</span></header>
+          <div class="beast-pool-live-frame">${cameraMarkup}</div>
+          <footer><span>${BeastCore.icon("camera", { size: 16 })} ${escapeHtml(cameraLabel)}</span><em>Livevisning</em></footer>
         </section>
         <section class="beast-pool-insights">
           <div class="beast-pool-temperature-chart-card" id="beastPoolTemperatureHistory"><p class="beast-music-empty">Henter temperaturhistorik…</p></div>
@@ -156,6 +164,7 @@
       </div>
     `;
     wirePoolLayout();
+    window.BeastCameras?.wireSharedCameras?.(containerEl);
     renderTemperatureHistory();
 
     document.getElementById("beastPoolPumpBtn")?.addEventListener("click", () => {

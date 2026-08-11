@@ -266,22 +266,25 @@
     if (BeastStandardCards.isStandardType(card.type)) return BeastStandardCards.renderMarkup(card);
     const data = printerData();
     if (card.type === "cameras") {
+      const cameraDisplay = card.cameraDisplay || BeastConfig.get("panels.printer.cameraDisplay") || "both";
+      const showLiveCamera = cameraDisplay !== "printer";
+      const showPrinterCamera = cameraDisplay !== "live";
       const liveEntity = card.entity || BeastConfig.get("panels.printer.liveCamera");
       const resolved = liveEntity ? window.BeastCameras?.resolveCamera?.(liveEntity) : null;
       const secondary = card.secondaryEntity || IDS.camera;
       const fallbackState = liveEntity ? BeastHaSocket.getState(liveEntity) : null;
       const liveCamera = resolved || (liveEntity ? { slug: liveEntity.replace(/^camera\./, ""), entityId: liveEntity, label: fallbackState?.attributes?.friendly_name || "3D Printer", entityPicture: fallbackState?.attributes?.entity_picture || null } : null);
-      return `<section class="beast-panel beast-ov-card beast-page-builder-card beast-printer-builder-card" ${cardSize(card)} data-printer-card="cameras" data-secondary-camera="${escapeHtml(secondary || "")}">
-        <section class="beast-printer-visual">
-          <div class="beast-printer-cam beast-printer-cam--main">
+      return `<section class="beast-panel beast-ov-card beast-page-builder-card beast-printer-builder-card" ${cardSize(card)} data-printer-card="cameras" data-camera-display="${escapeHtml(cameraDisplay)}" data-secondary-camera="${escapeHtml(showPrinterCamera ? (secondary || "") : "")}">
+        <section class="beast-printer-visual${showLiveCamera && showPrinterCamera ? "" : " is-single"}">
+          ${showLiveCamera ? `<div class="beast-printer-cam beast-printer-cam--main">
             ${liveCamera ? BeastCameras.sharedCameraMarkup(liveCamera, { className: "beast-printer-live-frame", label: false, motion: false }) : `<div class="beast-printer-camera-empty">Vælg et kamera</div>`}
             <span class="beast-printer-cam-label">3D Printer · Livekamera</span>
             <span class="beast-printer-live"><i></i> Live</span>
-          </div>
-          <div class="beast-printer-cam beast-printer-cam--secondary">
+          </div>` : ""}
+          ${showPrinterCamera ? `<div class="beast-printer-cam beast-printer-cam--secondary">
             <img class="beast-printer-cam-img" id="beastPrinterCamImg" alt="">
-            <span class="beast-printer-cam-label">Bambu Lab P1S · Statuskamera</span>
-          </div>
+            <span class="beast-printer-cam-label">Printerkamera</span>
+          </div>` : ""}
         </section></section>`;
     }
     return `<section class="beast-panel beast-ov-card beast-page-builder-card beast-printer-builder-card" ${cardSize(card)} data-printer-card="control" data-card-display="${escapeHtml(card.display || "full")}">

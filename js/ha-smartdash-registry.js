@@ -8,6 +8,7 @@ const BeastRegistry = (() => {
   let deviceEntities = new Map();
   let loadPromise = null;
   let loaded = false;
+  let backgroundRefreshStarted = false;
 
   function buildFromRegistries(entities, devices, areas) {
     const deviceAreaById = new Map();
@@ -108,6 +109,7 @@ const BeastRegistry = (() => {
     buildFromRegistries(entities || [], devices || [], areas || []);
     saveCache();
     BeastCore.log(`Registry: hentede ${entityAreaById.size} entities fordelt på ${areasById.size} områder.`);
+    document.dispatchEvent(new CustomEvent("beast:registry-updated"));
   }
 
   function ensureLoaded() {
@@ -115,6 +117,15 @@ const BeastRegistry = (() => {
     const cacheFresh = loadFromCache();
     if (cacheFresh) {
       loadPromise = Promise.resolve();
+      // Render immediately from cache, then refresh once in the background.
+      // Area assignments can change in HA without any entity state changing,
+      // so a state-only WebSocket subscription can never discover that move.
+      if (!backgroundRefreshStarted) {
+        backgroundRefreshStarted = true;
+        window.setTimeout(() => {
+          fetchFromHa().catch((error) => BeastCore.log(`Registry: baggrundsopdatering fejlede (${error.message}).`));
+        }, 0);
+      }
       return loadPromise;
     }
     loadPromise = fetchFromHa().catch((error) => {
@@ -133,6 +144,7 @@ const BeastRegistry = (() => {
       throw error;
     });
     await loadPromise;
+    backgroundRefreshStarted = true;
   }
 
   function getArea(areaId) {

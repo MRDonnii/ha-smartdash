@@ -146,6 +146,8 @@ go2rtc, Music Assistant, MQTT, kiosk display entities and individual device inte
 
 ## Installation
 
+For the full step-by-step setup, including Docker/Unraid, Home Assistant proxy trust, token login and recovery, see the [complete Danish installation guide](docs/INSTALLATION.da.md).
+
 1. Download or clone the repository into your web root and ensure PHP 8+ can write to `data/`.
 2. Run `sh deploy/setup-smartdash.sh`. First-run setup asks for the HA URL, web root and active Nginx server file. It creates a backup, generates the proxy, validates and reloads Nginx, and tests the login route.
 3. Open `/admin/`, authenticate and select the entities needed by each enabled page.

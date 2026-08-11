@@ -793,6 +793,14 @@ a.beast-rail-btn:visited {
 .beast-login-form input { width:100%; min-height:48px; padding:0 13px; border:1px solid var(--border-strong); border-radius:11px; outline:none; background:var(--surface-solid); color:var(--ink); }
 .beast-login-form input:focus { border-color:var(--accent-b); box-shadow:0 0 0 3px color-mix(in srgb,var(--accent-b) 16%,transparent); }
 .beast-login-form button { width:100%; min-height:48px; }
+.beast-login-details { margin-top:14px; border:1px solid var(--border); border-radius:12px; background:var(--surface-solid); text-align:left; }
+.beast-login-details summary { padding:13px 15px; cursor:pointer; color:var(--ink); font-weight:800; }
+.beast-login-details form { padding:0 14px 14px; }
+.beast-login-details textarea { width:100%; min-height:92px; padding:11px 13px; resize:vertical; border:1px solid var(--border-strong); border-radius:11px; background:var(--surface-2); color:var(--ink); font:12px/1.45 ui-monospace,monospace; -webkit-text-security:disc; }
+.beast-login-details small { color:var(--ink-muted); font-size:11px; line-height:1.45; }
+.beast-login-diagnostics pre { max-height:220px; margin:0 14px 10px; padding:12px; overflow:auto; border-radius:9px; background:var(--bg); color:var(--ink-muted); font:11px/1.45 ui-monospace,monospace; white-space:pre-wrap; overflow-wrap:anywhere; }
+.beast-login-diagnostics > div { display:flex; gap:8px; padding:0 14px 14px; }
+.beast-login-diagnostics > div button { min-height:38px; padding:0 12px; font-size:12px; }
 .beast-section-quality { position:absolute; z-index:30; top:8px; right:8px; padding:5px 8px; border:1px solid rgba(47,224,168,.28); border-radius:999px; background:rgba(5,9,12,.76); color:var(--success); font-size:9px; font-weight:800; backdrop-filter:blur(8px); pointer-events:none; }
 .beast-section-quality[data-quality="stale"] { color:var(--warning); border-color:rgba(255,200,87,.35); }
 .beast-section-quality[data-quality="unavailable"] { color:var(--danger); border-color:rgba(255,72,105,.35); }

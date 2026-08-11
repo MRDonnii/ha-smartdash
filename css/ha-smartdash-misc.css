@@ -1427,6 +1427,9 @@
 .beast-pool-live > header > span i { width: 8px; height: 8px; border-radius: 50%; background: var(--success); box-shadow: 0 0 10px var(--success); }
 .beast-pool-live-frame { min-height: 0; overflow: hidden; border-radius: var(--radius-md); background: #020406; border: 1px solid var(--border); }
 .beast-pool-live-frame iframe { width: 100%; height: 100%; display: block; border: 0; }
+.beast-pool-live-frame .beast-pool-shared-camera,.beast-pool-live-frame .beast-shared-camera-frame,.beast-pool-live-frame .beast-shared-camera-live,.beast-pool-live-frame .beast-shared-camera-snapshot { width:100%; height:100%; display:block; }
+.beast-pool-live-frame .beast-shared-camera-live,.beast-pool-live-frame .beast-shared-camera-snapshot { object-fit:contain; background:#020406; }
+.beast-pool-camera-empty { width:100%; height:100%; min-height:180px; display:grid; place-items:center; padding:24px; color:var(--ink-muted); text-align:center; }
 .beast-pool-live > footer { color: var(--ink-muted); font-size: var(--text-xs); }
 .beast-pool-live > footer span { display: flex; align-items: center; gap: 6px; }
 .beast-pool-live > footer em { font-style: normal; }
@@ -2052,6 +2055,7 @@
   grid-template-rows: repeat(2, minmax(0, 1fr));
   gap: var(--space-3);
 }
+.beast-printer-visual.is-single { grid-template-rows:minmax(0,1fr); }
 
 .beast-printer-cam {
   width: 100%;
