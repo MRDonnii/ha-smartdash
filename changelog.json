@@ -1,5 +1,14 @@
 [
   {
+    "version": "20260811-160",
+    "tag": "v0.7.82",
+    "date": "2026-08-11",
+    "changes": [
+      { "da": "Administration → Musik har nu et valg af præcis hvilke Music Assistant-afspillere der må vises i musikvinduet og den flydende afspiller.", "en": "Administration → Music now lets users choose exactly which Music Assistant players may appear in the Music view and floating player." },
+      { "da": "Eksisterende installationer viser fortsat alle afspillere som standard, indtil et udvalg gemmes.", "en": "Existing installations continue to show all players by default until a selection is saved." }
+    ]
+  },
+  {
     "version": "20260811-159",
     "tag": "v0.7.81",
     "date": "2026-08-11",

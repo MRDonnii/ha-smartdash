@@ -70,8 +70,10 @@
   }
 
   function getPlayers() {
+    const visiblePlayers = BeastConfig.get("panels.music.visiblePlayers");
+    const allowed = Array.isArray(visiblePlayers) ? new Set(visiblePlayers) : null;
     return Array.from(BeastHaSocket.getAllStates().values())
-      .filter(isMusicAssistantPlayer)
+      .filter((state) => isMusicAssistantPlayer(state) && (!allowed || allowed.has(state.entity_id)))
       .sort((a, b) => String(a.attributes.friendly_name || "").localeCompare(String(b.attributes.friendly_name || ""), "da-DK"));
   }
 
@@ -324,7 +326,11 @@
     const players = getPlayers();
     if (!players.length) {
       stopProgressTicker();
-      containerEl.innerHTML = `<p class="beast-panel-title">Musik</p><p class="beast-music-empty">Ingen Music Assistant-afspillere fundet endnu.</p>`;
+      const configured = BeastConfig.get("panels.music.visiblePlayers");
+      const emptyText = Array.isArray(configured) && configured.length === 0
+        ? "Ingen afspillere er valgt under Administration → Musik."
+        : "Ingen Music Assistant-afspillere fundet endnu.";
+      containerEl.innerHTML = `<p class="beast-panel-title">Musik</p><p class="beast-music-empty">${emptyText}</p>`;
       return;
     }
 

@@ -301,6 +301,7 @@
     "Sikkerhedssystem": "Security system", "Døren er lukket · låst": "Door is closed · locked", "Døren er åben · låst": "Door is open · locked",
     "Døren er lukket · ulåst": "Door is closed · unlocked", "Døren er åben · ulåst": "Door is open · unlocked",
     "Afspil på": "Play on", "i gruppen": "in group", "Lydstyrke": "Volume", "Dit musikbibliotek": "Your music library",
+    "Ingen afspillere er valgt under Administration → Musik.": "No players are selected under Administration → Music.",
     "Søg efter musik, album eller radio…": "Search for music, albums, or radio…", "Henter playlister…": "Loading playlists…",
     "Docket": "Docked", "Beholder klar": "Bin ready", "Send i dock": "Send to dock", "Tøm beholder": "Empty bin",
     "Flyt knapper": "Move buttons", "Ryd valg": "Clear selection", "Hele huset": "Whole house", "Start rengøring": "Start cleaning", "rum valgt": "rooms selected",
