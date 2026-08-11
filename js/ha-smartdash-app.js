@@ -758,7 +758,8 @@ function overviewSlotMarkup(slot, position, size) {
     clock:["overview","beastOvClock","Tid, kalender og affald"], weather:["weather","beastOvWeather","Vejr"], security:["security","beastOvSecurity","Sikkerhed"], energy:["energy","beastOvEnergy","Energi"]
   };
   if (builtins[slot.type]) { const [nav,id,label] = builtins[slot.type]; return `<section class="beast-panel beast-ov-card ${position}"${size} data-nav="${nav}" data-card="${slot.type}" aria-label="${overviewEscape(slot.label || label)}"><div id="${id}"></div></section>`; }
-  return `<section class="beast-panel beast-ov-card ${position} beast-ov-card--generic"${size} data-nav="${slot.type === "custom" ? "overview" : slot.type}" data-card="generic" data-widget="${overviewEscape(slot.type)}" data-entity="${overviewEscape(slot.entity)}" data-label="${overviewEscape(slot.label)}"><div class="beastOvGeneric"></div></section>`;
+  const genericNav = slot.type === "custom" ? "overview" : slot.type === "heatpump" ? "heating" : slot.type;
+  return `<section class="beast-panel beast-ov-card ${position} beast-ov-card--generic"${size} data-nav="${genericNav}" data-card="generic" data-widget="${overviewEscape(slot.type)}" data-entity="${overviewEscape(slot.entity)}" data-label="${overviewEscape(slot.label)}"><div class="beastOvGeneric"></div></section>`;
 }
 
 // A freeform card (overviewCards entry) always computes its own position

@@ -882,8 +882,9 @@
     zoneEl.classList.toggle("is-editing", Boolean(overviewCardEditor?.isEditing()));
     zoneEl.querySelectorAll("[data-card]").forEach((card) => {
       if (dynamic) {
-        const configured = card.dataset.card === "clock" || card.dataset.card === "security" || card.dataset.card === "cameras"
-          || BeastConfig.isPanelConfigured(card.dataset.card);
+        const cardType = card.dataset.card === "generic" ? card.dataset.widget : card.dataset.card;
+        const configured = cardType === "clock" || cardType === "security" || cardType === "cameras"
+          || (cardType === "custom" ? Boolean(card.dataset.entity) : BeastConfig.isPanelConfigured(cardType === "heatpump" ? "heating" : cardType));
         card.hidden = !configured;
       } else card.hidden = false;
       card.querySelector(".beast-data-quality")?.remove();
@@ -1891,7 +1892,8 @@
       car: { label:"Bil", entity:config.panels?.car?.battery, suffix:"%", icon:"car", detail:"Batteri" },
       pool: { label:"Pool", entity:config.panels?.pool?.waterTemp, suffix:"°", icon:"droplet", detail:"Vandtemperatur" },
       robots: { label:"Robotter", entity:[...(config.panels?.robots?.vacuums || []),...(config.panels?.robots?.mowers || [])][0], suffix:"", icon:"robot", detail:"Aktuel status" },
-      printer: { label:"3D-printer", entity:config.panels?.printer?.statusSensor, suffix:"", icon:"printer", detail:"Printstatus" }
+      printer: { label:"3D-printer", entity:config.panels?.printer?.statusSensor, suffix:"", icon:"printer", detail:"Printstatus" },
+      heatpump: { label:"Varmepumpe", entity:(config.panels?.heating?.heatPumps || [])[0], suffix:"", icon:"wind", detail:"Varme og temperatur" }
     };
   }
 
@@ -1900,10 +1902,16 @@
     document.querySelectorAll("[data-widget] .beastOvGeneric").forEach((host) => {
       const card = host.closest("[data-widget]"), type = card.dataset.widget;
       const definition = definitions[type] || { label:card.dataset.label || "Home Assistant", entity:card.dataset.entity, suffix:"", icon:"grid", detail:"Aktuel værdi" };
+      if (card.dataset.entity) definition.entity = card.dataset.entity;
       const state = BeastHaSocket.getState(definition.entity);
       const unavailable = !state || ["unknown","unavailable"].includes(state.state);
       const label = card.dataset.label || definition.label;
-      host.innerHTML = `<div class="beast-ov-generic-content"><span>${BeastCore.icon(definition.icon,{size:31})}</span><small>${escapeHtml(label)}</small><strong>${escapeHtml(unavailable ? "Ikke tilgængelig" : `${state.state}${definition.suffix}`)}</strong><em>${escapeHtml(state?.attributes?.friendly_name || definition.detail)}</em></div>`;
+      const isHeatPump = type === "heatpump";
+      const current = Number(state?.attributes?.current_temperature);
+      const target = Number(state?.attributes?.temperature);
+      const value = isHeatPump && Number.isFinite(current) ? `${current.toFixed(1)}°` : (unavailable ? "Ikke tilgængelig" : `${state.state}${definition.suffix}`);
+      const detail = isHeatPump ? `${state?.attributes?.hvac_action || state?.state || "–"}${Number.isFinite(target) ? ` · Mål ${target.toFixed(1)}°` : ""}` : (state?.attributes?.friendly_name || definition.detail);
+      host.innerHTML = `<div class="beast-ov-generic-content"><span>${BeastCore.icon(definition.icon,{size:31})}</span><small>${escapeHtml(label)}</small><strong>${escapeHtml(value)}</strong><em>${escapeHtml(detail)}</em></div>`;
       card.classList.toggle("is-unavailable", unavailable);
     });
   }
@@ -1917,12 +1925,16 @@
       configPath: "overviewCards",
       cardTypes: [
         ["cameras","Kameraer"], ["clock","Ur, kalender og affald"], ["weather","Vejr"], ["security","Sikkerhed"], ["energy","Energi"],
-        ["car","Bil"], ["pool","Pool"], ["robots","Robotter"], ["printer","3D-printer"], ["custom","Valgfri HA-entity"]
+        ["car","Bil"], ["pool","Pool"], ["robots","Robotter"], ["printer","3D-printer"], ["heatpump","Varmepumpe"], ["custom","Valgfri HA-entity"]
       ],
       singleInstanceTypes: ["cameras", "clock", "weather", "security", "energy"],
       renderCardMarkup: (card) => window.overviewCardMarkup(card),
       seedCards: seedCardsFromOverviewSlots,
-      allEntities: BeastCardEditor.allEntities,
+      allEntities: (type) => {
+        const entities = BeastCardEditor.allEntities();
+        return type === "heatpump" ? entities.filter((entity) => entity.id.startsWith("climate.")) : entities;
+      },
+      entityPickerTypes: ["custom", "heatpump"],
       editLabel: "Redigerer forsiden",
       onAfterRender: overviewCardEditorOnAfterRender,
       renderEmptyState: overviewRenderEmptyState,
@@ -1930,6 +1942,7 @@
     renderAll();
     wireOverviewChrome();
     document.addEventListener("beast:overview-player-setting-changed", () => stableMusicRender());
+    document.addEventListener("beast:camera-streams-changed", () => renderAll());
 
     BeastHaSocket.onStatusChange((status) => {
       if (status !== "connected") return;

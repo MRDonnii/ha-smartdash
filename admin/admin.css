@@ -238,6 +238,11 @@ button { cursor: pointer; }
 .admin-changelog-entry header,.admin-version-row > div > strong { display: flex; align-items: baseline; gap: 10px; font-size: 14px; }
 .admin-changelog-entry header span,.admin-version-row > div > span { color: var(--ink-muted); font-size: 12px; font-weight: 400; }
 .admin-changelog-entry ul,.admin-version-row ul { margin: 8px 0 0; padding-left: 18px; color: var(--ink-muted); font-size: 12.5px; line-height: 1.6; }
+.admin-changelog-details { margin-top: 16px; border: 1px solid var(--border); border-radius: 13px; background: var(--surface-solid); overflow: hidden; }
+.admin-changelog-details > summary,.admin-install-latest-details > summary { padding: 13px 16px; color: var(--ink); font-size: 13px; font-weight: 800; cursor: pointer; user-select: none; }
+.admin-changelog-details > summary:hover,.admin-install-latest-details > summary:hover { color: var(--accent-b); }
+.admin-changelog-details[open] > summary { border-bottom: 1px solid var(--border); }
+.admin-changelog-details > .admin-changelog-list { margin-top: 0; padding: 12px; }
 .admin-version-row { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; }
 .admin-version-row > div { min-width: 0; display: grid; gap: 4px; }
 .admin-version-row > button { flex: 0 0 auto; min-height: 36px; padding: 0 14px; border: 1px solid var(--border-strong); border-radius: 9px; background: var(--surface-2); color: var(--ink); font-weight: 700; }
@@ -247,13 +252,17 @@ button { cursor: pointer; }
 .admin-progress-track { margin-top: 14px; height: 8px; border-radius: 999px; background: var(--surface-solid); border: 1px solid var(--border); overflow: hidden; }
 .admin-progress-fill { height: 100%; width: 0%; border-radius: 999px; background: var(--accent-gradient); transition: width .35s ease, background .25s ease; }
 .admin-progress-track[data-state="success"] .admin-progress-fill { background: var(--success); box-shadow: 0 0 10px var(--success); }
-.admin-install-latest { display: flex; align-items: center; justify-content: space-between; gap: 18px; padding: 16px 18px; border: 1px solid color-mix(in srgb, var(--accent-b) 40%, var(--border)); border-radius: 14px; background: color-mix(in srgb, var(--accent-b) 8%, var(--surface-solid)); }
+.admin-install-latest-slot { margin-top: 14px; }
+.admin-install-latest { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 12px 18px; padding: 16px 18px; border: 1px solid color-mix(in srgb, var(--accent-b) 40%, var(--border)); border-radius: 14px; background: color-mix(in srgb, var(--accent-b) 8%, var(--surface-solid)); }
 .admin-install-latest > div { min-width: 0; display: grid; gap: 4px; }
 .admin-install-latest strong { font-size: 14px; }
 .admin-install-latest span { color: var(--accent-b); font-size: 13px; font-weight: 700; }
 .admin-install-latest ul { margin: 6px 0 0; padding-left: 18px; color: var(--ink-muted); font-size: 12.5px; line-height: 1.6; }
 .admin-install-latest-notes { margin: 6px 0 0; color: var(--ink-muted); font-size: 12.5px; line-height: 1.6; white-space: pre-wrap; }
 .admin-install-latest > button { flex: 0 0 auto; }
+.admin-install-latest-details { grid-column: 1 / -1; border-top: 1px solid var(--border); }
+.admin-install-latest-details > summary { padding: 11px 0 0; }
+.admin-install-latest-details[open] > summary { padding-bottom: 4px; }
 .admin-old-versions { margin-top: 16px; }
 .admin-field-label { display: block; margin-bottom: 8px; color: var(--ink-muted); font-size: 12px; font-weight: 800; }
 .admin-old-versions-row { display: flex; gap: 10px; }
@@ -458,6 +467,11 @@ button { cursor: pointer; }
   .admin-project-heading,.admin-project-grid { grid-template-columns:1fr; }
   .admin-project-heading svg { max-width:260px; }
   .admin-backup-list article { align-items: flex-start; flex-direction: column; }
+  .admin-install-latest { grid-template-columns: 1fr; }
+  .admin-install-latest > button { width: 100%; }
+  .admin-install-latest-details { grid-column: 1; }
+  .admin-old-versions-row { align-items: stretch; flex-direction: column; }
+  .admin-old-versions-row button { width: 100%; }
   .admin-security-recovery, .admin-security-toggle { align-items: flex-start; flex-direction: column; }
   .admin-security-alarm-rule { grid-template-columns: 1fr; }
   .admin-view[data-admin-view="security-settings"] .beast-stat-grid { grid-template-columns: 1fr; }
