@@ -231,11 +231,13 @@
           <div class="beast-heating-edit-actions"><button type="button" class="beast-heating-display-btn" id="beastHeatingDisplayEdit" aria-label="Rediger kortvisning" title="Kortvisning">${BeastCore.icon("grid", { size: 19 })}</button><button type="button" class="beast-page-edit-trigger beast-heating-layout-btn" id="beastHeatingLayoutEdit" aria-label="Flyt og tilpas varmesiden" title="Flyt og tilpas">⋮</button></div>
         </div>
         <div class="beast-heating-room-grid">${ROOMS.map(buildRoomCard).join("")}</div>
-        ${analyticsMarkup()}
       </div>
       <aside class="beast-heating-sidebar">
         <div class="beast-heating-pumps-head"><span>Varmepumper</span><small>Komplet styring</small></div>
         <div class="beast-heatpump-grid">${HEAT_PUMPS.map(buildHeatPumpCard).join("")}</div>
+      </aside>
+      <aside class="beast-heating-insights">
+        ${analyticsMarkup()}
         ${HAS_VENTILATION ? `<section class="beast-heating-side-card beast-dantherm-card${ventilationActive ? " is-running" : ""}">
           <div class="beast-heating-side-head"><span>Dantherm ventilation</span><small>${escapeHtml(BeastHaSocket.getState(DANTHERM.mode)?.state || "–")}</small></div>
           <div class="beast-dantherm-air">
@@ -305,8 +307,9 @@
     const selectors = { analytics: ".beast-heating-analytics", rooms: ".beast-heating-room-grid", pumps: ".beast-heating-pumps-head, .beast-heatpump-grid", dantherm: ".beast-dantherm-card", district: ".beast-district-compact" };
     Object.entries(selectors).forEach(([id, selector]) => containerEl.querySelectorAll(selector).forEach((el) => el.classList.toggle("is-layout-hidden", hidden.has(id))));
     BeastNativePageEditor.mount({ section:"heating", label:"Varme", root:()=>containerEl, host:()=>containerEl, trigger:"#beastHeatingLayoutEdit", cards:()=>[
-      { id:"main", label:"Forbrug og termostater", selector:".beast-heating-main", titleSelector:".beast-heating-hero h2", enabled:!hidden.has("analytics") || !hidden.has("rooms"), desktop:{x:1,y:1,w:8,h:12} },
-      { id:"sidebar", label:"Varmepumper og Dantherm", selector:".beast-heating-sidebar", enabled:!hidden.has("pumps") || !hidden.has("dantherm") || !hidden.has("district"), desktop:{x:9,y:1,w:4,h:12} }
+      { id:"main", label:"Termostater", selector:".beast-heating-main", titleSelector:".beast-heating-hero h2", enabled:!hidden.has("rooms"), desktop:{x:1,y:1,w:4,h:12} },
+      { id:"sidebar", label:"Varmepumper", selector:".beast-heating-sidebar", enabled:!hidden.has("pumps"), desktop:{x:5,y:1,w:4,h:12} },
+      { id:"insights", label:"Statistik og teknik", selector:".beast-heating-insights", enabled:!hidden.has("analytics") || !hidden.has("dantherm") || !hidden.has("district"), desktop:{x:9,y:1,w:4,h:12} }
     ] });
     document.getElementById("beastHeatingDisplayEdit")?.addEventListener("click", () => openHeatingLayout(layout));
   }
