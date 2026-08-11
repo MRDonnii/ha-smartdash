@@ -1,5 +1,14 @@
 [
   {
+    "version": "20260811-167",
+    "tag": "v0.7.89",
+    "date": "2026-08-11",
+    "changes": [
+      { "da": "Musikafspillerens forrige-, afspil/pause- og næste-knapper står nu samlet til venstre, mens lydstyrke, gruppe og afspillervalg står samlet til højre.", "en": "The Music player's previous, play/pause, and next controls are now grouped on the left, while volume, grouping, and player selection are grouped on the right." },
+      { "da": "De resterende fejlbehæftede danske tegn i gruppe- og afspillermenuerne er rettet.", "en": "The remaining malformed Danish characters in the group and player menus have been fixed." }
+    ]
+  },
+  {
     "version": "20260811-166",
     "tag": "v0.7.88",
     "date": "2026-08-11",

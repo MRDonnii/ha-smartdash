@@ -360,13 +360,13 @@
       const grouped = isLeader || nativeMemberIds.has(player.entity_id) || linkedMemberIds.has(player.entity_id);
       return `<label class="beast-player-popover-row${isLeader ? " is-leader" : ""}">
         <input type="checkbox" data-group-player="${escapeHtml(player.entity_id)}" ${grouped ? "checked" : ""} ${isLeader ? "disabled" : ""}>
-        <span><strong>${escapeHtml(player.attributes.friendly_name || player.entity_id)}</strong><small>${isLeader ? (english ? "Group leader" : "Gruppeleder") : (grouped ? (english ? "In group" : "I gruppen") : (english ? "Available" : "TilgÃ¦ngelig"))}</small></span>
+        <span><strong>${escapeHtml(player.attributes.friendly_name || player.entity_id)}</strong><small>${isLeader ? (english ? "Group leader" : "Gruppeleder") : (grouped ? (english ? "In group" : "I gruppen") : (english ? "Available" : "Tilgængelig"))}</small></span>
       </label>`;
     }).join("");
     const playerRows = players.map((player) => {
       const selected = player.entity_id === activePlayer.entity_id;
       const volume = Number.isFinite(Number(player.attributes.volume_level)) ? `${Math.round(Number(player.attributes.volume_level) * 100)}%` : "--";
-      const status = player.state === "playing" ? (english ? "Playing" : "Afspiller") : player.state === "paused" ? (english ? "Paused" : "PÃ¥ pause") : (english ? "Ready" : "Klar");
+      const status = player.state === "playing" ? (english ? "Playing" : "Afspiller") : player.state === "paused" ? (english ? "Paused" : "På pause") : (english ? "Ready" : "Klar");
       return `<button type="button" class="beast-player-popover-card${selected ? " is-selected" : ""}" data-select-player="${escapeHtml(player.entity_id)}">
         <span class="beast-player-popover-icon">${BeastCore.icon("music", { size: 19 })}</span>
         <span><strong>${escapeHtml(player.attributes.friendly_name || player.entity_id)}</strong><small>${status}</small></span>
