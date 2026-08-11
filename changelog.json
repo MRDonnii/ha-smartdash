@@ -1,5 +1,14 @@
 [
   {
+    "version": "20260811-155",
+    "tag": "v0.7.77",
+    "date": "2026-08-11",
+    "changes": [
+      { "da": "3D-printervisningen viser nu kun kamerafelter for kamera-entities, der faktisk er valgt; et ikke-konfigureret kamera giver ikke længere et tomt sort felt.", "en": "The 3D Printer view now shows camera areas only for camera entities that are actually selected; an unconfigured camera no longer creates an empty black area." },
+      { "da": "Når ét kamera er valgt, fylder det hele kamerakortet. Hvis ingen kameraer er valgt, skjules kamerakortet, og printerstyringen overtager den ledige bredde.", "en": "When one camera is selected, it fills the entire camera card. If no cameras are selected, the camera card is hidden and the printer controls take over the available width." }
+    ]
+  },
+  {
     "version": "20260811-154",
     "tag": "v0.7.76",
     "date": "2026-08-11",
