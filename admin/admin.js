@@ -1223,29 +1223,28 @@
       if (changelogEl) changelogEl.innerHTML = renderChangelogEntries(Array.isArray(changelog) ? changelog : []);
 
       const versions = versionsPayload.versions || [];
-      const localLatest = versions.length ? versions.map((item) => item.version).sort(compareBuildIds).at(-1) : null;
-      // GitHub is the real source of truth for "is a newer release out
-      // there" -- unlike the local snapshot list, it's meaningful even on
-      // an install that has never received a hand-pushed update (e.g. a
-      // fresh clone) and so has no snapshot history of its own at all.
-      const githubIsNewer = Boolean(github?.remoteVersion) && (!localLatest || compareBuildIds(github.remoteVersion, localLatest) > 0);
-      const latestVersion = githubIsNewer ? github.remoteVersion : localLatest;
-      const latestEntry = versions.find((item) => item.version === latestVersion);
+      // GitHub (for the currently selected channel) is the ONLY source for
+      // "is there a new version" -- it used to be compared against the local
+      // snapshot list too, but that list has no concept of channel at all
+      // (a snapshot is just whatever this exact server has run before, e.g.
+      // an earlier local test build). Letting it win when it was numerically
+      // ahead of GitHub's channel-aware answer meant Stable could get
+      // offered while on the Beta channel, or a stale local build could
+      // shadow a real, newer release. Local snapshots are now used purely
+      // for rollback (going backward to something older than "current"),
+      // never for deciding what's new.
+      const updateAvailable = Boolean(github?.updateAvailable && github?.remoteVersion);
+      const latestVersion = updateAvailable ? github.remoteVersion : current;
 
       if (installLatestEl) {
-        if (latestVersion && latestVersion !== current) {
-          const changesContent = githubIsNewer
-            ? (github.releaseNotes ? `<p class="admin-install-latest-notes">${escapeHtml(String(github.releaseNotes)).slice(0, 600)}</p>` : "")
-            : (latestEntry?.changes?.length ? `<ul>${latestEntry.changes.slice(0, 4).map((change) => `<li>${escapeHtml(changelogLineText(change))}</li>`).join("")}</ul>` : "");
+        if (updateAvailable) {
+          const changesContent = github.releaseNotes ? `<p class="admin-install-latest-notes">${escapeHtml(String(github.releaseNotes)).slice(0, 600)}</p>` : "";
           const changesHtml = changesContent
             ? `<details class="admin-install-latest-details"><summary>${t("Vis ændringer", "Show changes")}</summary>${changesContent}</details>`
             : "";
-          const installSource = githubIsNewer ? "github" : "local";
-          const installTag = githubIsNewer ? escapeHtml(github.tag || "") : "";
-          const latestTag = githubIsNewer ? github.tag : latestEntry?.tag;
-          const latestLabel = latestTag ? `HA Smartdash ${latestTag}` : formatVersionLabel(latestVersion);
-          const betaBadge = githubIsNewer && github?.prerelease ? ` · Beta` : "";
-          installLatestEl.innerHTML = `<div class="admin-install-latest"><div><strong>${t("Ny version klar", "New version ready")}${betaBadge}</strong><span>${escapeHtml(latestLabel)}</span></div><button type="button" class="beast-btn beast-btn-primary" data-rollback-version="${escapeHtml(latestVersion)}" data-is-newer="true" data-is-latest="true" data-install-source="${installSource}" data-install-tag="${installTag}">${t("Installer ny version", "Install new version")}</button>${changesHtml}</div>`;
+          const latestLabel = github.tag ? `HA Smartdash ${github.tag}` : formatVersionLabel(latestVersion);
+          const betaBadge = github?.prerelease ? ` · Beta` : "";
+          installLatestEl.innerHTML = `<div class="admin-install-latest"><div><strong>${t("Ny version klar", "New version ready")}${betaBadge}</strong><span>${escapeHtml(latestLabel)}</span></div><button type="button" class="beast-btn beast-btn-primary" data-rollback-version="${escapeHtml(latestVersion)}" data-is-newer="true" data-is-latest="true" data-install-source="github" data-install-tag="${escapeHtml(github.tag || "")}">${t("Installer ny version", "Install new version")}</button>${changesHtml}</div>`;
         } else {
           installLatestEl.innerHTML = `<p class="admin-empty">${t("Du kører den nyeste version.", "You're on the latest version.")}</p>`;
         }
@@ -1276,9 +1275,9 @@
         await fetch("/api/versions.php", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "snapshot" }) });
       }
       const checkedAt = new Date().toLocaleTimeString();
-      if (latestVersion && compareBuildIds(latestVersion, current) > 0) {
-        const latestStatusLabel = (githubIsNewer ? github.tag : latestEntry?.tag) || latestVersion;
-        const betaSuffix = githubIsNewer && github?.prerelease ? " (beta)" : "";
+      if (updateAvailable) {
+        const latestStatusLabel = github.tag || latestVersion;
+        const betaSuffix = github?.prerelease ? " (beta)" : "";
         setUpdateStatus("outdated", t(`Ny version tilgængelig: ${latestStatusLabel}${betaSuffix} · tjekket ${checkedAt}`, `New version available: ${latestStatusLabel}${betaSuffix} · checked ${checkedAt}`));
       } else if (!github) {
         setUpdateStatus("current", t(`Du kører den nyeste version (kunne ikke tjekke GitHub) · tjekket ${checkedAt}`, `You're on the latest version (couldn't reach GitHub) · checked ${checkedAt}`));

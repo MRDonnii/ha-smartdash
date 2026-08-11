@@ -5,7 +5,8 @@
     "date": "2026-08-11",
     "changes": [
       { "da": "Ændringsloggen følger nu dashboardets sprogvalg i stedet for altid at vise én fast sprogversion -- både i Admin og i selve dashboardets \"ny version klar\"-boks. Ældre poster (skrevet før dette fandtes) vises stadig på deres oprindelige sprog.", "en": "The changelog now follows the dashboard's language setting instead of always showing one fixed language -- both in Admin and in the dashboard's own \"new version ready\" banner. Older entries (written before this existed) still show in whatever language they were originally written." },
-      { "da": "Fremover udgives løbende arbejde som udgangspunkt på Beta-kanalen; Stable opdateres kun når en version bevidst er markeret klar til alle.", "en": "Going forward, ongoing work is published to the Beta channel by default; Stable is only updated once a version has been deliberately marked ready for everyone." }
+      { "da": "Fremover udgives løbende arbejde som udgangspunkt på Beta-kanalen; Stable opdateres kun når en version bevidst er markeret klar til alle.", "en": "Going forward, ongoing work is published to the Beta channel by default; Stable is only updated once a version has been deliberately marked ready for everyone." },
+      { "da": "Rettet at Admin i sjældne tilfælde kunne foreslå en ældre, lokalt gemt version i stedet for den nyeste version på den valgte kanal -- \"Ny version klar\" bygger nu udelukkende på hvad GitHub rapporterer for den aktuelt valgte kanal, aldrig på lokale gendannelsespunkter.", "en": "Fixed Admin occasionally suggesting an older, locally saved version instead of the newest version on the selected channel -- \"New version ready\" is now based solely on what GitHub reports for the currently selected channel, never on local restore points." }
     ]
   },
   {
