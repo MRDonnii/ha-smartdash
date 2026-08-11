@@ -101,6 +101,18 @@ function snapshotCurrent($root, $snapshotsDir, $snapshotPaths, $version) {
   return true;
 }
 
+function pruneSnapshots($snapshotsDir, $keepCount, $protectedVersions = []) {
+  $entries = [];
+  foreach (scandir($snapshotsDir) as $name) {
+    if ($name === "." || $name === ".." || !isSafeVersion($name) || !is_dir($snapshotsDir . "/" . $name)) continue;
+    $entries[] = $name;
+  }
+  usort($entries, function ($a, $b) { return compareBuildIds($b, $a); });
+  $keep = array_fill_keys(array_slice($entries, 0, max(1, (int) $keepCount)), true);
+  foreach ($protectedVersions as $version) if (isSafeVersion($version)) $keep[$version] = true;
+  foreach ($entries as $name) if (!isset($keep[$name])) recursiveRemove($snapshotsDir . "/" . $name);
+}
+
 function httpGet($url, &$error = null) {
   $ch = curl_init($url);
   curl_setopt_array($ch, [
@@ -394,6 +406,7 @@ if ($action === "install") {
 
     $installedVersion = currentBuildId($root);
     snapshotCurrent($root, $snapshotsDir, $snapshotPaths, $installedVersion);
+    pruneSnapshots($snapshotsDir, 25, [$installedVersion]);
     recordSkippedIfDowngrade($dataDir, $current, $installedVersion);
 
     echo json_encode(["success" => true, "installedVersion" => $installedVersion, "tag" => $tag]);

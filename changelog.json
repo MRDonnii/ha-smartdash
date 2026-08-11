@@ -1,5 +1,13 @@
 [
   {
+    "version": "20260811-132",
+    "tag": "v0.7.54",
+    "date": "2026-08-11",
+    "changes": [
+      "Rollback history is now automatically limited to the 25 newest snapshots, with the active version always protected, preventing storage from growing indefinitely."
+    ]
+  },
+  {
     "version": "20260811-131",
     "tag": "v0.7.53",
     "date": "2026-08-11",
