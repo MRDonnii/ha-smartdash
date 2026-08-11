@@ -1913,7 +1913,19 @@
       const card = host.closest("[data-widget]"), type = card.dataset.widget;
       const definition = definitions[type] || { label:card.dataset.label || "Home Assistant", entity:card.dataset.entity, suffix:"", icon:"grid", detail:"Aktuel værdi" };
       if (card.dataset.entity) definition.entity = card.dataset.entity;
-      const state = BeastHaSocket.getState(definition.entity);
+      let state = BeastHaSocket.getState(definition.entity);
+      // A saved overview card can point at an entity that was renamed or
+      // replaced later in Administration. Keep the explicit choice when it
+      // is valid, but recover to the first configured live heat pump instead
+      // of leaving the card permanently unavailable.
+      if (type === "heatpump" && !state) {
+        const configured = BeastConfig.get("panels.heating.heatPumps") || [];
+        const fallbackEntity = configured.find((entityId) => BeastHaSocket.getState(entityId));
+        if (fallbackEntity) {
+          definition.entity = fallbackEntity;
+          state = BeastHaSocket.getState(fallbackEntity);
+        }
+      }
       const unavailable = !state || ["unknown","unavailable"].includes(state.state);
       const label = card.dataset.label || definition.label;
       const isHeatPump = type === "heatpump";
@@ -2002,6 +2014,12 @@
     });
     renderAll();
     wireOverviewChrome();
+    // Do not depend solely on a future socket status transition. On faster
+    // installations the HA socket is already connected before this panel is
+    // mounted, so no new "connected" event arrives and the front-page
+    // forecast/history loaders would otherwise never run.
+    loadWeatherForecast();
+    loadUtilityHistory();
     document.addEventListener("beast:overview-player-setting-changed", () => stableMusicRender());
     document.addEventListener("beast:camera-streams-changed", () => renderAll());
 
