@@ -17,16 +17,18 @@ $githubRepo = "MRDonnii/ha-smartdash";
 if (!is_dir($dataDir)) mkdir($dataDir, 0775, true);
 if (!is_dir($snapshotsDir)) mkdir($snapshotsDir, 0775, true);
 
-// Everything that ships the app, copied wholesale from the downloaded
-// release -- an allowlist would need editing every time a release adds a
-// file. data/ (config, backups, snapshots) is the only thing that must
-// never be touched; the rest is repository housekeeping that has no
-// business on a live deployment.
+// Repository items that are not part of a live deployment. Installation
+// still copies every other item from the clean GitHub archive, but rollback
+// snapshots deliberately use the same compact application-code list as
+// api/versions.php. A deployed folder can contain old backup-before-* dirs
+// and other local files; snapshotting the whole root recursively made every
+// update inherit those files and inflated snapshots from ~1.4 MB to ~138 MB.
 $excludeTopLevel = [
   "data", ".git", ".github", ".gitignore", ".gitattributes", ".DS_Store",
   "README.md", "README.da.md", "LICENSE", "CONTRIBUTING.md", "SECURITY.md",
   "THIRD_PARTY_NOTICES.md", "demo", "deploy", "docs", "scripts"
 ];
+$snapshotPaths = ["js", "css", "beast.html", "index.html", "admin/admin.js", "admin/admin.css", "admin/index.html"];
 
 function currentBuildId($root) {
   $html = @file_get_contents($root . "/beast.html");
@@ -85,14 +87,14 @@ function copyRecursive($src, $dst) {
   }
 }
 
-function snapshotCurrent($root, $snapshotsDir, $excludeTopLevel, $version) {
+function snapshotCurrent($root, $snapshotsDir, $snapshotPaths, $version) {
   if (!isSafeVersion($version)) return false;
   $dest = $snapshotsDir . "/" . $version;
   if (is_dir($dest)) return true;
   $tmp = $dest . ".tmp-" . uniqid();
-  foreach (scandir($root) as $item) {
-    if ($item === "." || $item === ".." || in_array($item, $excludeTopLevel, true)) continue;
-    copyRecursive("$root/$item", "$tmp/$item");
+  foreach ($snapshotPaths as $relPath) {
+    $src = $root . "/" . $relPath;
+    if (file_exists($src)) copyRecursive($src, $tmp . "/" . $relPath);
   }
   if (!is_dir($tmp)) return false;
   rename($tmp, $dest);
@@ -369,7 +371,7 @@ if ($action === "install") {
     // Safety net: snapshot what's live right now before overwriting it, so
     // if the copy below fails partway, or the new version turns out to be
     // broken, the existing local rollback (api/versions.php) can undo this.
-    snapshotCurrent($root, $snapshotsDir, $excludeTopLevel, $current);
+    snapshotCurrent($root, $snapshotsDir, $snapshotPaths, $current);
 
     try {
       foreach (scandir($extractedRoot) as $item) {
@@ -391,7 +393,7 @@ if ($action === "install") {
     }
 
     $installedVersion = currentBuildId($root);
-    snapshotCurrent($root, $snapshotsDir, $excludeTopLevel, $installedVersion);
+    snapshotCurrent($root, $snapshotsDir, $snapshotPaths, $installedVersion);
     recordSkippedIfDowngrade($dataDir, $current, $installedVersion);
 
     echo json_encode(["success" => true, "installedVersion" => $installedVersion, "tag" => $tag]);
