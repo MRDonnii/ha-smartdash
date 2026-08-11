@@ -1,5 +1,15 @@
 [
   {
+    "version": "20260811-178",
+    "tag": "v0.7.100",
+    "date": "2026-08-11",
+    "changes": [
+      { "da": "Rettet at album-covers på Musik-siden altid krævede mindst 288px højde, uanset hvor meget plads spilleren faktisk havde -- kunne gøre pladeomslags-området unødigt stort og tomt på smallere skærme.", "en": "Fixed album covers on the Music page always requiring at least 288px of height, regardless of how much space the player actually had -- could make the cover-art area unnecessarily large and empty on narrower screens." },
+      { "da": "Rettet at rumkortene under Varme altid tvang præcis 4 lige brede kolonner, selv når der ikke var plads til det, hvilket klippede tekst af -- de tilpasser sig nu det faktiske plads.", "en": "Fixed the room cards under Heating always forcing exactly 4 equal-width columns even when there wasn't room for that, clipping text -- they now adapt to the actual available space." },
+      { "da": "Rettet at pris- og forbrugsgraferne på Energi-siden kunne kræve mere plads end kortet havde og derved flyde ned over kortet nedenunder.", "en": "Fixed the price and usage charts on the Energy page potentially requiring more space than the card had, causing them to overflow into the card below." }
+    ]
+  },
+  {
     "version": "20260811-177",
     "tag": "v0.7.99",
     "date": "2026-08-11",

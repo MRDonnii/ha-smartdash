@@ -707,7 +707,7 @@
   padding: 20px;
   display: grid;
   grid-template-columns: minmax(0, 1fr);
-  grid-template-rows: minmax(288px, 1fr) auto;
+  grid-template-rows: minmax(130px, 1fr) auto;
   align-items: stretch;
   gap: 18px;
   border-radius: var(--radius-lg);
@@ -717,7 +717,7 @@
 .beast-now-playing-cover {
   width: 100%;
   height: 100%;
-  min-height: 288px;
+  min-height: 130px;
   aspect-ratio: auto;
   position: relative;
   display: grid;
