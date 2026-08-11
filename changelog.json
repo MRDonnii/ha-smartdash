@@ -1,5 +1,14 @@
 [
   {
+    "version": "20260811-146",
+    "tag": "v0.7.68",
+    "date": "2026-08-11",
+    "changes": [
+      { "da": "Affaldsafhentninger står nu altid lodret i én kolonne med ét felt pr. række: felt 1, felt 2, felt 3 og så videre.", "en": "Waste collections now always use one vertical column with one item per row: item 1, item 2, item 3, and so on." },
+      { "da": "Hvis der vises flere afhentninger, end kortets højde kan rumme, ruller kun affaldslisten lodret uden at ændre resten af kalenderlayoutet.", "en": "If more collections are shown than the card height can fit, only the waste list scrolls vertically without changing the rest of the Calendar layout." }
+    ]
+  },
+  {
     "version": "20260811-145",
     "tag": "v0.7.67",
     "date": "2026-08-11",
