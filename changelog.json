@@ -1,5 +1,14 @@
 [
   {
+    "version": "20260811-157",
+    "tag": "v0.7.79",
+    "date": "2026-08-11",
+    "changes": [
+      { "da": "Rettet at Pris i dag og Forbrug i dag kunne blive vist for lavt, fordi dagsensorens første værdi fejlagtigt blev trukket fra endnu en gang.", "en": "Fixed Today's cost and Today's usage being shown too low because the daily sensor's first value was incorrectly subtracted a second time." },
+      { "da": "Energi-siden bruger nu den aktuelle værdi direkte fra de konfigurerede dagsensorer, som felterne i Administration angiver.", "en": "The Energy page now uses the current value directly from the configured daily sensors, matching the fields defined in Administration." }
+    ]
+  },
+  {
     "version": "20260811-156",
     "tag": "v0.7.78",
     "date": "2026-08-11",

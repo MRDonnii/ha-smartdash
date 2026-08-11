@@ -715,10 +715,12 @@
   function refreshTodayTotals() {
     const energyId = TOTAL_ENERGY_ID();
     const costId = TOTAL_COST_ID();
-    if (energyId) loadTodayDelta(energyId).then((value) => { todayEnergyKwh = value ?? directTodayValue(energyId, "energy"); render(); });
-    else todayEnergyKwh = null;
-    if (costId) loadTodayDelta(costId).then((value) => { todayCostKr = value ?? directTodayValue(costId, "cost"); render(); });
-    else todayCostKr = null;
+    // These configuration fields explicitly represent today's utility-meter
+    // values. Daily sensors already reset themselves; subtracting their first
+    // state of the day a second time under-reports both usage and cost.
+    todayEnergyKwh = energyId ? directTodayValue(energyId, "energy") : null;
+    todayCostKr = costId ? directTodayValue(costId, "cost") : null;
+    render();
   }
 
   function init(root) {
