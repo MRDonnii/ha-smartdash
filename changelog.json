@@ -1,5 +1,19 @@
 [
   {
+    "version": "20260811-109",
+    "tag": "v0.7.31",
+    "date": "2026-08-11",
+    "changes": [
+      "Login now verifies the same-origin /ha/ Home Assistant proxy before starting OAuth, preventing a broken Nginx route from failing only after the user returns from Home Assistant.",
+      "Proxy failures now distinguish a missing route or HTTP 405, an HTML/static fallback response, an unreachable Home Assistant upstream and a general network error with direct corrective guidance.",
+      "Home Assistant HTTP 400 responses are now identified as a likely trusted_proxies rejection, with the required use_x_forwarded_for and minimum-scope proxy trust configuration documented in both languages.",
+      "A new first-run setup script can generate, back up, validate, reload and test a dedicated Nginx configuration interactively or from Docker/Unraid environment variables.",
+      "The Nginx example includes the exact /ha redirect and proxy locations, a clearly required HOME_ASSISTANT_HOST replacement and buffering/WebSocket settings aligned with the working production setup.",
+      "A new deploy/check-install.sh preflight command validates that /ha/auth/providers returns real Home Assistant JSON before first login.",
+      "English and Danish installation instructions now lead with the automated first-run flow and retain precise manual guidance for shared or custom Nginx configurations."
+    ]
+  },
+  {
     "version": "20260811-108",
     "tag": "v0.7.30",
     "date": "2026-08-11",

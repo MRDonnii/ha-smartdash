@@ -146,12 +146,26 @@ go2rtc, Music Assistant, MQTT, kiosk display entities and individual device inte
 
 ## Installation
 
-1. Download or clone the repository into your web root.
-2. Copy `deploy/nginx.conf.example` into your Nginx configuration and adjust the marked paths and Home Assistant address. An equivalent Apache or Caddy setup is also fine.
-3. Ensure PHP can write to `data/`.
-4. Open `/admin/`, enter your Home Assistant address and authenticate.
-5. Configure connections and select the entities needed by each enabled page.
-6. Organize pages and cards, then open `/` for the dashboard.
+1. Download or clone the repository into your web root and ensure PHP 8+ can write to `data/`.
+2. Run `sh deploy/setup-smartdash.sh`. First-run setup asks for the HA URL, web root and active Nginx server file. It creates a backup, generates the proxy, validates and reloads Nginx, and tests the login route.
+3. Open `/admin/`, authenticate and select the entities needed by each enabled page.
+4. Organize pages and cards, then open `/` for the dashboard.
+
+Docker and Unraid can run the same script unattended by setting `SMARTDASH_HA_URL`, `SMARTDASH_WEB_ROOT`, `SMARTDASH_NGINX_CONF` and `SMARTDASH_PUBLIC_URL`. The manual `nginx.conf.example` and `check-install.sh` remain available for shared or custom Nginx configurations.
+
+The proxy check requests `/ha/auth/providers`. A correct installation returns HTTP 200 with JSON containing `providers`. HTTP 405 or an HTML response means the request is still handled by the static `location /`; HTTP 502/503/504 means Nginx loaded the proxy but cannot reach the configured Home Assistant host or port.
+
+Home Assistant must trust the **immediate** Nginx proxy. Check the Home Assistant log after a rejected request; it reports the exact proxy address that must be trusted. Add that single address, or the smallest correct Docker network, to `configuration.yaml` and restart Home Assistant:
+
+```yaml
+http:
+  use_x_forwarded_for: true
+  trusted_proxies:
+    - 192.168.1.50      # Example: LAN address of the Nginx host
+    # - 172.18.0.0/16   # Example only: use the actual Docker network address
+```
+
+Use the network address when specifying a subnet, not an individual host address with a subnet suffix. Avoid trusting the whole LAN unless that is deliberately required. HTTP 400 from the installation check normally means this trust is missing or does not match the immediate proxy address.
 
 `data/config.json` is created on first save and is ignored by Git. Never commit this file: it can reveal entity IDs and details about your home.
 

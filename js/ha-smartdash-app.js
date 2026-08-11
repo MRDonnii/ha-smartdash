@@ -694,12 +694,18 @@ function renderLoginScreen(root, message) {
   const loginButton = BeastCore.el("button", "beast-btn beast-btn-primary", "Log ind");
   loginButton.type = "submit";
   form.append(label, loginButton);
-  form.addEventListener("submit", (event) => {
+  form.addEventListener("submit", async (event) => {
     event.preventDefault();
     const address = addressInput.value.trim();
     if (!addressInput.reportValidity()) return;
     BeastAuth.setHaBaseUrl(address);
-    BeastAuth.startLogin();
+    loginButton.disabled = true;
+    loginButton.textContent = "Kontrollerer forbindelse…";
+    try {
+      await BeastAuth.prepareLogin();
+    } catch (error) {
+      renderLoginScreen(root, error.userMessage || "Kunne ikke kontrollere Home Assistant-forbindelsen.");
+    }
   });
   card.appendChild(form);
   screen.appendChild(card);

@@ -2188,10 +2188,17 @@
 
   function renderLogin(message) {
     root.innerHTML = `<div class="admin-login"><div class="admin-login-card"><div class="admin-login-logo">${brandLogoMarkup("login")}</div><small>Administration</small><h1>Forbind Home Assistant</h1><p>${escapeHtml(message || "Admin bruger din Home Assistant-login til at hente områder og entities. Login-oplysninger gemmes kun i browseren.")}</p><form id="adminLoginForm"><input type="url" id="adminHaUrl" value="${escapeHtml(BeastAuth.getHaBaseUrl() || `${window.location.origin}/ha`)}" placeholder="Home Assistant-adresse" required><button type="submit">Log ind med Home Assistant</button></form></div></div>`;
-    document.getElementById("adminLoginForm").addEventListener("submit", (event) => {
+    document.getElementById("adminLoginForm").addEventListener("submit", async (event) => {
       event.preventDefault();
       BeastAuth.setHaBaseUrl(document.getElementById("adminHaUrl").value);
-      BeastAuth.startLogin();
+      const button = event.currentTarget.querySelector("button[type=submit]");
+      button.disabled = true;
+      button.textContent = "Kontrollerer forbindelse…";
+      try {
+        await BeastAuth.prepareLogin();
+      } catch (error) {
+        renderLogin(error.userMessage || "Kunne ikke kontrollere Home Assistant-forbindelsen.");
+      }
     });
   }
 
