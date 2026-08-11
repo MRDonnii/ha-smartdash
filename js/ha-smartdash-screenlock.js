@@ -7,6 +7,8 @@ const BeastScreenLock = (() => {
   const LEGACY_PIN_HASH_KEY = "beast_panel_screen_pin_hash_v1";
   const LEGACY_AUTOLOCK_KEY = "beast_panel_screen_autolock_v1";
   const PIN_LENGTH = 4;
+  const ADMIN_VERIFICATION_KEY = "beast_admin_pin_verified_v1";
+  const ADMIN_VERIFICATION_TTL_MS = 30 * 1000;
 
   let overlayEl = null;
   let mode = null; // 'locked' | 'set-first' | 'set-confirm' | 'verify'
@@ -18,6 +20,7 @@ const BeastScreenLock = (() => {
   let alarmSubscribed = false;
   let promptTitle = "";
   let promptSubtitle = "";
+  let lockedByAlarm = false;
 
   // crypto.subtle needs a secure context (HTTPS or localhost); this panel is
   // served over plain HTTP on the LAN, so it's unavailable. This lock is a
@@ -44,6 +47,18 @@ const BeastScreenLock = (() => {
     BeastConfig.set("screenLock.autoLockEnabled", Boolean(enabled));
   }
 
+  function isAlarmScreenOffEnabled() {
+    return BeastConfig.get("screenLock.alarmScreenOffEnabled") === true;
+  }
+
+  function setAlarmScreenOffEnabled(enabled) {
+    BeastConfig.set("screenLock.alarmScreenOffEnabled", Boolean(enabled));
+  }
+
+  function alarmUnlockMode() {
+    return BeastConfig.get("screenLock.alarmUnlockMode") === "disarm" ? "disarm" : "pin";
+  }
+
   // Runs once, after BeastConfig has loaded from the backend (see init()).
   // If this browser has an old, local-only PIN and the shared config has
   // none yet, carry it forward so the person who set it up doesn't have to
@@ -53,7 +68,10 @@ const BeastScreenLock = (() => {
     if (!legacyHash || BeastConfig.get("screenLock.pinHash")) return;
     BeastConfig.set("screenLock", {
       pinHash: legacyHash,
-      autoLockEnabled: localStorage.getItem(LEGACY_AUTOLOCK_KEY) === "1"
+      autoLockEnabled: localStorage.getItem(LEGACY_AUTOLOCK_KEY) === "1",
+      alarmScreenOffEnabled: false,
+      alarmEntity: null,
+      alarmUnlockMode: "pin"
     });
     localStorage.removeItem(LEGACY_PIN_HASH_KEY);
     localStorage.removeItem(LEGACY_AUTOLOCK_KEY);
@@ -215,7 +233,7 @@ const BeastScreenLock = (() => {
       if (action === "change" || action === "set") {
         beginSetFlow(cb);
       } else if (action === "remove") {
-        BeastConfig.set("screenLock", { pinHash: null, autoLockEnabled: false });
+        BeastConfig.set("screenLock", { ...(BeastConfig.get("screenLock") || {}), pinHash: null, autoLockEnabled: false, alarmScreenOffEnabled: false });
         resetFlow();
         if (cb) cb(true);
       } else {
@@ -256,6 +274,7 @@ const BeastScreenLock = (() => {
     pendingVerifiedAction = null;
     promptTitle = "";
     promptSubtitle = "";
+    lockedByAlarm = false;
     render();
   }
 
@@ -267,12 +286,35 @@ const BeastScreenLock = (() => {
     render();
   }
 
-  function lockNow() {
+  function lockNow(source = "manual") {
     if (!hasPin()) return;
+    lockedByAlarm = source === "alarm";
     mode = "locked";
     digits = "";
     onDoneCallback = null;
     render();
+  }
+
+  function lockForArmedAlarm() {
+    if (!isAutoLockEnabled() || !hasPin()) return;
+    lockNow("alarm");
+    if (isAlarmScreenOffEnabled()) {
+      // Let the lock overlay paint before the physical kiosk display is
+      // switched off. The app keeps the locked state; the first touch wakes
+      // the screen and reveals the PIN keypad, never the dashboard beneath.
+      window.setTimeout(() => document.dispatchEvent(new CustomEvent("beast:alarm-screen-off")), 350);
+    }
+  }
+
+  function isFullyArmed(state) {
+    return ["armed_away", "armed_vacation"].includes(String(state || ""));
+  }
+
+  function unlockAfterAlarmDisarm() {
+    if (!lockedByAlarm || alarmUnlockMode() !== "disarm") return;
+    // Remove only the alarm-created lock. Screen power remains untouched so
+    // the normal presence/idle rules decide when the kiosk should wake again.
+    resetFlow();
   }
 
   function requestCode(options, onDone) {
@@ -337,21 +379,42 @@ const BeastScreenLock = (() => {
     render();
   }
 
+  // The dashboard verifies the PIN before navigating to Administration. Pass
+  // that result across the same-tab navigation as a short-lived, one-use
+  // grant so Admin does not immediately ask for the same PIN a second time.
+  // Direct visits to /admin/ do not have this grant and remain protected.
+  function grantAdminVerification() {
+    try { sessionStorage.setItem(ADMIN_VERIFICATION_KEY, String(Date.now())); } catch (_) {}
+  }
+
+  function consumeAdminVerification() {
+    let verifiedAt = 0;
+    try {
+      verifiedAt = Number(sessionStorage.getItem(ADMIN_VERIFICATION_KEY) || 0);
+      sessionStorage.removeItem(ADMIN_VERIFICATION_KEY);
+    } catch (_) {}
+    return verifiedAt > 0 && Date.now() - verifiedAt <= ADMIN_VERIFICATION_TTL_MS;
+  }
+
   function init() {
     if (alarmSubscribed || !window.BeastHaSocket) return;
     alarmSubscribed = true;
     migrateLegacyPinIfNeeded();
     const security = window.BeastConfig?.get("panels.security") || {};
-    const alarmIds = Array.isArray(security.alarmPanels) ? security.alarmPanels.filter(Boolean) : [];
+    const selectedAlarm = window.BeastConfig?.get("screenLock.alarmEntity") || security.primaryAlarm;
+    const alarmIds = selectedAlarm ? [selectedAlarm] : (Array.isArray(security.alarmPanels) ? security.alarmPanels.filter(Boolean).slice(0, 1) : []);
     BeastHaSocket.onStatusChange((status) => {
-      if (status !== "connected" || !hasPin()) return;
-      if (alarmIds.some((id) => BeastHaSocket.getState(id)?.state === "armed_away")) lockNow();
+      if (status !== "connected") return;
+      const currentState = alarmIds.map((id) => BeastHaSocket.getState(id)?.state).find(Boolean);
+      if (isFullyArmed(currentState)) lockForArmedAlarm();
+      else if (currentState === "disarmed") unlockAfterAlarmDisarm();
     });
     alarmIds.forEach((alarmId) => BeastHaSocket.subscribeEntity(alarmId, (entityId, newState, oldState) => {
       if (!newState) return;
-      const wasArmed = oldState && String(oldState.state || "").startsWith("armed");
-      const isArmed = String(newState.state || "").startsWith("armed");
-      if (!wasArmed && isArmed && isAutoLockEnabled() && hasPin()) lockNow();
+      const wasFullyArmed = oldState && isFullyArmed(oldState.state);
+      const fullyArmed = isFullyArmed(newState.state);
+      if (!wasFullyArmed && fullyArmed) lockForArmedAlarm();
+      if (wasFullyArmed && newState.state === "disarmed") unlockAfterAlarmDisarm();
     }));
   }
 
@@ -359,6 +422,8 @@ const BeastScreenLock = (() => {
     hasPin,
     isAutoLockEnabled,
     setAutoLockEnabled,
+    isAlarmScreenOffEnabled,
+    setAlarmScreenOffEnabled,
     isLocked,
     lockNow,
     requestCode,
@@ -367,6 +432,8 @@ const BeastScreenLock = (() => {
     startRemovePin,
     resetPinAfterTrustedLogin,
     requestPinVerification,
+    grantAdminVerification,
+    consumeAdminVerification,
     init
   };
 })();

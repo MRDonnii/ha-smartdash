@@ -41,6 +41,7 @@
     }
   },
   "overviewCards": [],
+  "overviewCameraEntities": [],
   "hiddenSections": [],
   "appEntities": {
     "kioskScreenLight": null,

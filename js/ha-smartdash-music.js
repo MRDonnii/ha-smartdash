@@ -337,7 +337,7 @@
     const visibleGroupCount = stereoGroupInfo(activePlayer.entity_id)?.speakers || new Set([...nativeGroupIds, ...linkedPlayerIds(groupLeaderId)]).size;
 
     containerEl.innerHTML = `
-      <div class="beast-music-dashboard">
+      <button type="button" class="beast-page-edit-trigger" id="beastMusicLayoutEdit" aria-label="Rediger musiklayout">⋮</button><div class="beast-music-dashboard">
         <aside class="beast-music-control">
           <header class="beast-music-section-head">
             <button type="button" class="beast-speaker-toggle" id="beastSpeakerToggle" aria-expanded="${speakerPanelOpen}">
@@ -358,20 +358,20 @@
           <div class="beast-now-playing">
             <div class="beast-now-playing-cover"><img class="beast-now-playing-art" id="beastNowPlayingArt" alt=""><span>${BeastCore.icon("music", { size: 52 })}</span></div>
             <div class="beast-now-playing-body">
-              <small class="beast-now-playing-kicker">Afspiller nu</small>
-              <div class="beast-now-playing-title" id="beastNowPlayingTitle">${attrs.media_title ? escapeHtml(attrs.media_title) : "Ingen afspilning"}</div>
-              <div class="beast-now-playing-artist" id="beastNowPlayingArtist">${escapeHtml(attrs.media_artist || "Vælg musik fra biblioteket")}</div>
-              <div class="beast-now-playing-album" id="beastNowPlayingAlbum">${attrs.media_album_name ? `<strong>${escapeHtml(attrs.media_album_name)}</strong><span>Album · ${escapeHtml(attrs.media_artist || "Ukendt kunstner")}</span>` : `<strong>Musikbibliotek</strong><span>Vælg et album, en playliste eller en radiostation</span>`}</div>
-              <div class="beast-progress-row">
-                <span id="beastProgressElapsed">--:--</span>
-                <div class="beast-progress-track"><div class="beast-progress-fill" id="beastProgressFill"></div></div>
-                <span id="beastProgressDuration">--:--</span>
-              </div>
-              <div class="beast-transport-row">
-                <button type="button" class="beast-transport-btn" id="beastPrevBtn" aria-label="Forrige">${BeastCore.icon("skip-back", { size: 22 })}</button>
-                <button type="button" class="beast-transport-btn beast-play-btn" id="beastPlayBtn" aria-label="${playing ? "Pause" : "Afspil"}">${BeastCore.icon(playing ? "pause" : "play", { size: 27 })}</button>
-                <button type="button" class="beast-transport-btn" id="beastNextBtn" aria-label="Næste">${BeastCore.icon("skip-forward", { size: 22 })}</button>
-              </div>
+                <small class="beast-now-playing-kicker">Afspiller nu</small>
+                <div class="beast-now-playing-title" id="beastNowPlayingTitle">${attrs.media_title ? escapeHtml(attrs.media_title) : "Ingen afspilning"}</div>
+                <div class="beast-now-playing-artist" id="beastNowPlayingArtist">${escapeHtml(attrs.media_artist || "Vælg musik fra biblioteket")}</div>
+                <div class="beast-now-playing-album" id="beastNowPlayingAlbum">${attrs.media_album_name ? `<strong>${escapeHtml(attrs.media_album_name)}</strong><span>Album · ${escapeHtml(attrs.media_artist || "Ukendt kunstner")}</span>` : `<strong>Musikbibliotek</strong><span>Vælg et album, en playliste eller en radiostation</span>`}</div>
+                <div class="beast-progress-row">
+                  <span id="beastProgressElapsed">--:--</span>
+                  <div class="beast-progress-track"><div class="beast-progress-fill" id="beastProgressFill"></div></div>
+                  <span id="beastProgressDuration">--:--</span>
+                </div>
+                <div class="beast-transport-row">
+                  <button type="button" class="beast-transport-btn" id="beastPrevBtn" aria-label="Forrige">${BeastCore.icon("skip-back", { size: 22 })}</button>
+                  <button type="button" class="beast-transport-btn beast-play-btn" id="beastPlayBtn" aria-label="${playing ? "Pause" : "Afspil"}">${BeastCore.icon(playing ? "pause" : "play", { size: 27 })}</button>
+                  <button type="button" class="beast-transport-btn" id="beastNextBtn" aria-label="Næste">${BeastCore.icon("skip-forward", { size: 22 })}</button>
+                </div>
               <div class="beast-volume-row">
                 <button type="button" class="beast-mute-btn" id="beastMuteBtn" aria-label="Slå lyd fra">${BeastCore.icon(attrs.is_volume_muted ? "volume-mute" : "volume", { size: 21 })}</button>
                 <span class="beast-volume-label">Lydstyrke</span>
@@ -397,6 +397,7 @@
         </main>
       </div>
     `;
+    wireMusicLayout();
 
     renderPlayerChips(players, activePlayer);
     renderGroupVolume(players, activePlayer);
@@ -413,6 +414,32 @@
     } else {
       loadTabsAndGrid(activePlayer);
     }
+  }
+
+  function wireMusicLayout() {
+    const layout = BeastConfig.get("pageLayouts.music.musicLayout") || {};
+    const hidden = new Set(Array.isArray(layout.hidden) ? layout.hidden : []);
+    containerEl.querySelector(".beast-music-control")?.classList.toggle("is-layout-hidden", hidden.has("player"));
+    containerEl.querySelector(".beast-music-library")?.classList.toggle("is-layout-hidden", hidden.has("library"));
+    BeastNativePageEditor.mount({ section:"music", label:"Musik", root:()=>containerEl, host:()=>containerEl.querySelector(".beast-music-dashboard"), trigger:"#beastMusicLayoutEdit", onSave:()=>render(), cards:()=>[
+      { id:"player", label:"Afspiller og højttalere", selector:".beast-music-control", enabled:!hidden.has("player"), desktop:{x:1,y:1,w:4,h:12}, options:{speakers:true}, controls:[{key:"speakers",label:"Vis højttalervælger",type:"checkbox",default:true}] },
+      { id:"library", label:"Bibliotek, søgning og album", selector:".beast-music-library", titleSelector:".beast-music-library-head strong", enabled:!hidden.has("library"), desktop:{x:5,y:1,w:8,h:12}, options:{items:18}, controls:[{key:"items",label:"Elementer ad gangen",min:6,max:48,step:6,default:18}] }
+    ] });
+    containerEl.querySelector(".beast-music-control")?.classList.toggle("hide-speaker-picker", !BeastNativePageEditor.option("music", "player", "speakers", true));
+  }
+
+  function openMusicLayout(layout) {
+    const hidden = new Set(Array.isArray(layout.hidden) ? layout.hidden : []);
+    const items = [["player", "Afspiller og højttalere"], ["library", "Bibliotek, søgning og album"]];
+    const overlay = document.createElement("div"); overlay.className = "beast-modal-overlay";
+    overlay.innerHTML = `<div class="beast-modal beast-music-layout-modal"><div class="beast-modal-header"><h3>Rediger musiklayout</h3><button type="button" class="beast-modal-close" data-close>×</button></div><div class="beast-modal-body"><div class="beast-music-layout-list">${items.map(([id,label]) => `<label><input type="checkbox" data-music-section="${id}" ${hidden.has(id) ? "" : "checked"}><strong>${label}</strong></label>`).join("")}</div><button type="button" class="beast-btn beast-btn-primary" data-save-music-layout>Gem layout</button></div></div>`;
+    document.body.appendChild(overlay);
+    overlay.addEventListener("click", (event) => {
+      if (event.target === overlay || event.target.closest("[data-close]")) return overlay.remove();
+      if (!event.target.closest("[data-save-music-layout]")) return;
+      const nextHidden = items.filter(([id]) => !overlay.querySelector(`[data-music-section="${id}"]`).checked).map(([id]) => id);
+      BeastConfig.set("pageLayouts.music.musicLayout", { ...layout, hidden: nextHidden }); overlay.remove(); render();
+    });
   }
 
   function wireSearchInput(activePlayer) {
@@ -891,6 +918,7 @@
       grid.innerHTML = `<p class="beast-music-empty">Ingenting fundet.</p>`;
       return;
     }
+    libraryVisibleCount = Math.max(libraryVisibleCount, Number(BeastNativePageEditor.option("music", "library", "items", 18)));
     grid.innerHTML = "";
     const fragment = document.createDocumentFragment();
     items.slice(0, libraryVisibleCount).forEach((item) => {

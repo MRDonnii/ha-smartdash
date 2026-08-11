@@ -132,8 +132,40 @@ body::after {
   gap: var(--space-2);
   padding: var(--space-4) var(--space-2);
   border-right: 1px solid var(--border);
-  overflow-y: auto;
+  overflow: hidden;
 }
+
+.beast-rail-pages {
+  min-height: 0;
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  gap: var(--space-2);
+  overflow-x: hidden;
+  overflow-y: auto;
+  scrollbar-width: none;
+}
+.beast-rail-pages::-webkit-scrollbar { display: none; }
+.beast-rail-tools {
+  flex: 0 0 auto;
+  display: grid;
+  gap: 5px;
+  margin: 0 -2px -2px;
+  padding: 8px 5px 5px;
+  border: 1px solid color-mix(in srgb, var(--accent-a) 18%, var(--border));
+  border-radius: 16px;
+  background: linear-gradient(160deg, color-mix(in srgb, var(--accent-a) 8%, var(--panel)), color-mix(in srgb, var(--panel) 96%, transparent));
+  box-shadow: 0 -10px 26px rgba(0,0,0,.06);
+}
+.beast-rail-tools::before { content: "Værktøjer"; display:block; padding:0 2px 2px; color:var(--ink-faint); font-size:8px; font-weight:850; letter-spacing:.1em; text-align:center; text-transform:uppercase; }
+.beast-rail-tools .beast-rail-page-edit { margin-bottom: 0; }
+.beast-rail-tools .beast-rail-page-edit { width:100%; margin-inline:0; }
+.beast-rail-tools .beast-rail-page-edit,
+.beast-rail-tools .beast-rail-admin { border:1px solid var(--border-strong) !important; background:var(--surface-solid) !important; color:var(--ink-muted) !important; box-shadow:none; }
+.beast-rail-tools .beast-rail-page-edit-icon { color:var(--ink-muted); background:transparent; box-shadow:none; }
+.beast-rail-admin { min-height:52px !important; }
+.beast-rail-tools .beast-rail-page-edit:hover,
+.beast-rail-admin:hover { border-color:color-mix(in srgb,var(--accent-b) 45%,var(--border)) !important; color:var(--ink) !important; }
 
 .beast-rail-brand {
   flex-shrink: 0;
@@ -148,6 +180,32 @@ body::after {
   color: var(--ink);
   word-break: break-word;
 }
+
+.beast-rail-page-edit {
+  flex: 0 0 auto;
+  width: calc(100% - 10px);
+  min-height: 58px;
+  display: grid;
+  grid-template-columns: 1fr;
+  grid-template-rows: 30px auto;
+  align-items: center;
+  gap: 3px;
+  margin: 2px 5px 7px;
+  padding: 5px 4px;
+  border: 1px solid color-mix(in srgb, var(--accent-a) 30%, var(--border));
+  border-radius: 14px;
+  background: color-mix(in srgb, var(--accent-a) 11%, var(--panel));
+  color: var(--ink);
+  font: 800 9px/1 var(--font-sans);
+  cursor: pointer;
+  touch-action: manipulation;
+  box-shadow: 0 8px 20px color-mix(in srgb, var(--accent-a) 9%, transparent);
+  transition: transform .16s ease, border-color .16s ease, background .16s ease;
+}
+.beast-rail-page-edit:hover { border-color: color-mix(in srgb, var(--accent-a) 58%, var(--border)); background: color-mix(in srgb, var(--accent-a) 16%, var(--panel)); }
+.beast-rail-page-edit:active { transform: scale(.97); }
+.beast-rail-page-edit-icon { width: 30px; height: 30px; display: grid; place-items: center; justify-self: center; border-radius: 9px; color: #fff; background: linear-gradient(135deg, var(--accent-a), var(--accent-b)); box-shadow: 0 5px 13px color-mix(in srgb, var(--accent-a) 28%, transparent); }
+.beast-rail-page-edit-label { width: 100%; min-width: 0; overflow: hidden; white-space: nowrap; text-align: center; }
 
 .beast-rail-btn,
 a.beast-rail-btn,
@@ -334,7 +392,7 @@ a.beast-rail-btn:visited {
 }
 .beast-overview-grid.is-freeform > .beast-ov-card {
   grid-column: span min(var(--desktop-w), 12) !important;
-  grid-row: span min(var(--desktop-h), 2) !important;
+  grid-row: span min(var(--desktop-h), 6) !important;
   align-self: stretch;
   height: auto;
   min-width: 0;
@@ -407,7 +465,8 @@ a.beast-rail-btn:visited {
 .beast-is-ambient .beast-app { visibility:hidden; }
 
 .beast-doorbell-view { position:fixed; inset:0; z-index:4000; overflow:hidden; background:#020408; }
-.beast-doorbell-view iframe { position:absolute; inset:0; width:100%; height:100%; border:0; background:#020408; }
+.beast-doorbell-view iframe,
+.beast-doorbell-view .beast-doorbell-ha-camera { position:absolute; inset:0; width:100%; height:100%; border:0; background:#020408; object-fit:cover; }
 .beast-event-focus { position:fixed; z-index:3900; top:18px; left:50%; width:min(620px,calc(100vw - 32px)); min-height:72px; display:grid; grid-template-columns:48px minmax(0,1fr) auto; align-items:center; gap:12px; padding:11px 14px; transform:translateX(-50%); border:1px solid var(--accent-border); border-radius:16px; background:color-mix(in srgb,var(--surface-solid) 94%,transparent); color:var(--ink); box-shadow:0 18px 55px rgba(0,0,0,.48),var(--accent-glow); backdrop-filter:blur(18px); text-align:left; animation:beast-event-focus-in .28s ease both; }
 .beast-event-focus > span { width:46px; height:46px; display:grid; place-items:center; border-radius:13px; color:var(--accent-b); background:var(--accent-soft); }.beast-event-focus strong,.beast-event-focus small { display:block; }.beast-event-focus small { margin-top:3px; color:var(--ink-muted); }.beast-event-focus > b { padding:8px 11px; border-radius:999px; color:var(--accent-b); background:var(--accent-soft); }.beast-event-focus[data-priority="critical"] { border-color:rgba(255,72,105,.65); }.beast-event-focus[data-priority="critical"] > span { color:var(--danger); background:var(--danger-soft); }
 @keyframes beast-event-focus-in { from { opacity:0; transform:translate(-50%,-18px); } }
@@ -433,13 +492,15 @@ a.beast-rail-btn:visited {
   align-items: center;
   justify-content: center;
   z-index: 100;
-  padding: var(--space-6);
+  padding: clamp(10px, 2vw, var(--space-6));
+  overflow: hidden;
 }
 
 .beast-modal {
-  width: 100%;
-  max-width: 640px;
-  max-height: 88vh;
+  box-sizing: border-box;
+  width: min(680px, calc(100vw - 20px));
+  max-width: 680px;
+  max-height: calc(100dvh - 20px);
   background: var(--surface-2-solid, #161923);
   border: 1px solid var(--border-strong);
   border-radius: var(--radius-lg);
@@ -458,6 +519,9 @@ a.beast-rail-btn:visited {
   border-bottom: 1px solid var(--border);
   flex-shrink: 0;
 }
+
+.beast-modal-header > :not(.beast-modal-close) { min-width: 0; }
+.beast-modal-header :is(h2,h3,p,small) { overflow-wrap: anywhere; }
 
 .beast-modal-header h3 {
   margin: 0;
@@ -486,11 +550,40 @@ a.beast-rail-btn:visited {
 }
 
 .beast-modal-body {
+  min-width: 0;
+  min-height: 0;
   padding: var(--space-5);
   overflow-y: auto;
+  overflow-x: hidden;
   display: flex;
   flex-direction: column;
   gap: var(--space-5);
+  overscroll-behavior: contain;
+}
+
+.beast-modal-body > * { min-width: 0; max-width: 100%; }
+.beast-modal :is(input,select,textarea,button) { max-width: 100%; box-sizing: border-box; }
+
+.beast-modal-actions {
+  flex: 0 0 auto;
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--space-3);
+  padding: var(--space-4) var(--space-5);
+  border-top: 1px solid var(--border);
+  background: var(--surface-2-solid, #161923);
+  flex-wrap: wrap;
+}
+
+.beast-modal-actions button {
+  min-width: 132px;
+  min-height: var(--touch-min);
+  padding: 0 var(--space-5);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm);
+  background: var(--surface-solid);
+  color: var(--ink);
+  font: 800 var(--text-sm) var(--font-sans);
 }
 
 .beast-modal-section-title {
@@ -503,6 +596,15 @@ a.beast-rail-btn:visited {
   display: flex;
   align-items: center;
   justify-content: space-between;
+}
+
+@media (max-width: 680px) {
+  .beast-modal-overlay { padding: 8px; align-items: stretch; }
+  .beast-modal { width: 100%; max-width: none; max-height: calc(100dvh - 16px); margin: auto 0; border-radius: 16px; }
+  .beast-modal-header { padding: 16px; }
+  .beast-modal-body { padding: 16px; gap: 14px; }
+  .beast-modal-actions { padding: 12px 16px; }
+  .beast-modal-actions button { flex: 1 1 150px; min-width: 0; }
 }
 
 .beast-placeholder-panel {
@@ -691,6 +793,14 @@ a.beast-rail-btn:visited {
 .beast-login-form input { width:100%; min-height:48px; padding:0 13px; border:1px solid var(--border-strong); border-radius:11px; outline:none; background:var(--surface-solid); color:var(--ink); }
 .beast-login-form input:focus { border-color:var(--accent-b); box-shadow:0 0 0 3px color-mix(in srgb,var(--accent-b) 16%,transparent); }
 .beast-login-form button { width:100%; min-height:48px; }
+.beast-login-details { margin-top:14px; border:1px solid var(--border); border-radius:12px; background:var(--surface-solid); text-align:left; }
+.beast-login-details summary { padding:13px 15px; cursor:pointer; color:var(--ink); font-weight:800; }
+.beast-login-details form { padding:0 14px 14px; }
+.beast-login-details textarea { width:100%; min-height:92px; padding:11px 13px; resize:vertical; border:1px solid var(--border-strong); border-radius:11px; background:var(--surface-2); color:var(--ink); font:12px/1.45 ui-monospace,monospace; -webkit-text-security:disc; }
+.beast-login-details small { color:var(--ink-muted); font-size:11px; line-height:1.45; }
+.beast-login-diagnostics pre { max-height:220px; margin:0 14px 10px; padding:12px; overflow:auto; border-radius:9px; background:var(--bg); color:var(--ink-muted); font:11px/1.45 ui-monospace,monospace; white-space:pre-wrap; overflow-wrap:anywhere; }
+.beast-login-diagnostics > div { display:flex; gap:8px; padding:0 14px 14px; }
+.beast-login-diagnostics > div button { min-height:38px; padding:0 12px; font-size:12px; }
 .beast-section-quality { position:absolute; z-index:30; top:8px; right:8px; padding:5px 8px; border:1px solid rgba(47,224,168,.28); border-radius:999px; background:rgba(5,9,12,.76); color:var(--success); font-size:9px; font-weight:800; backdrop-filter:blur(8px); pointer-events:none; }
 .beast-section-quality[data-quality="stale"] { color:var(--warning); border-color:rgba(255,200,87,.35); }
 .beast-section-quality[data-quality="unavailable"] { color:var(--danger); border-color:rgba(255,72,105,.35); }

@@ -108,11 +108,18 @@
    deliberately explicit Gem/Annullér rather than autosave, since this is a
    shared household touchscreen where an accidental drag must never
    silently persist. */
-.beast-ov-edit-bar { position:fixed; left:50%; bottom:20px; z-index:60; display:flex; align-items:center; gap:16px; padding:12px 14px 12px 20px; transform:translateX(-50%); border:1px solid var(--border-strong); border-radius:999px; background:color-mix(in srgb,var(--surface-2-solid) 96%,transparent); color:var(--ink); font-weight:750; box-shadow:0 18px 46px rgba(0,0,0,.5); backdrop-filter:blur(16px); }
+.beast-ov-edit-bar { position:fixed; left:50%; bottom:20px; z-index:60; max-width:calc(100vw - 28px); display:flex; align-items:center; gap:16px; padding:12px 14px 12px 20px; transform:translateX(-50%); border:1px solid var(--border-strong); border-radius:999px; background:color-mix(in srgb,var(--surface-2-solid) 96%,transparent); color:var(--ink); font-weight:750; box-shadow:0 18px 46px rgba(0,0,0,.5); backdrop-filter:blur(16px); }
 .beast-ov-edit-bar span { display:flex; align-items:center; gap:8px; }
-.beast-ov-edit-bar-actions { display:flex; gap:10px; }
+.beast-ov-edit-bar-actions { display:flex; gap:10px; min-width:max-content; overflow-x:auto; scrollbar-width:none; }
+.beast-ov-edit-bar-actions::-webkit-scrollbar { display:none; }
 .beast-ov-edit-bar-actions button { min-height:40px; padding:0 18px; border-radius:999px; font-weight:750; }
 .beast-ov-edit-bar-actions button[data-ov-edit-cancel] { border:1px solid var(--border-strong); background:transparent; color:var(--ink-muted); }
+.beast-ov-edit-bar-actions button[data-ov-edit-clear] { border:1px solid rgba(255,91,122,.32); background:rgba(255,91,122,.08); color:#ff7b95; }
+@media (max-width: 900px) {
+  .beast-ov-edit-bar { left:12px; right:12px; bottom:12px; max-width:none; transform:none; border-radius:18px; padding:10px 12px; overflow-x:auto; }
+  .beast-ov-edit-bar > span { flex:0 0 auto; }
+  .beast-ov-edit-bar-actions button { min-height:48px; padding-inline:14px; white-space:nowrap; }
+}
 
 .beast-ov-toolbar { position:absolute; top:12px; right:12px; z-index:24; display:flex; gap:8px; }
 .beast-ov-toolbar button { position:relative; width:46px; height:46px; display:grid; place-items:center; border:1px solid var(--border-strong); border-radius:50%; background:color-mix(in srgb,var(--surface-2-solid) 92%,transparent); color:var(--ink-muted); box-shadow:0 10px 28px rgba(0,0,0,.28); backdrop-filter:blur(14px); }
@@ -120,24 +127,54 @@
 .beast-ov-toolbar b[hidden] { display:none; }
 .beast-overview-grid[data-columns="compact-wide-camera"] .beast-ov-camera-picker-btn,
 .beast-overview-grid[data-columns="wide-compact-camera"] .beast-ov-camera-picker-btn { right:112px; }
-.beast-ov-edit-label { position:absolute; z-index:18; left:50%; top:50%; min-height:48px; display:flex; align-items:center; gap:8px; padding:10px 16px; transform:translate(-50%,-50%); border:1px solid var(--accent-border); border-radius:999px; background:var(--accent-gradient); color:#fff; font-weight:800; box-shadow:0 12px 32px rgba(0,0,0,.46); pointer-events:none; }
-.beast-ov-edit-label.is-fixed { background:rgba(9,12,18,.9); color:var(--ink-muted); }
-.beast-overview-grid.is-editing .beast-ov-card:not(.beast-ov-card-add)::after { content:""; position:absolute; inset:0; z-index:15; border-radius:inherit; background:rgba(3,5,9,.38); pointer-events:none; }
+.beast-ov-edit-label { display:none !important; }
+.beast-overview-grid.is-editing .beast-ov-card:not(.beast-ov-card-add) {
+  overflow:visible !important;
+  outline:2px dashed color-mix(in srgb,var(--accent-a) 78%,transparent);
+  outline-offset:-3px;
+  touch-action:none;
+}
 /* Only the new drag/resize/remove handles stay clickable while editing --
    pointer-events:none on everything else is the belt-and-suspenders
    guarantee (on top of the JS-level beastOverviewEditing check in
    ha-smartdash-app.js) that nothing inside a card can be tapped by
    accident, including buttons/links this stylesheet doesn't know about. */
-.beast-overview-grid.is-editing .beast-ov-card:not(.beast-ov-card-add) > *:not(.beast-ov-card-drag):not(.beast-ov-card-resize):not(.beast-ov-card-remove) { pointer-events: none; }
-.beast-ov-card-drag, .beast-ov-card-resize, .beast-ov-card-remove { position: absolute; z-index: 20; display: grid; place-items: center; touch-action: none; pointer-events: auto; }
-.beast-ov-card-drag { top: 8px; left: 8px; width: 32px; height: 32px; border-radius: 50%; background: rgba(9,12,18,.72); color: #fff; cursor: grab; }
+.beast-overview-grid.is-editing .beast-ov-card:not(.beast-ov-card-add) > *:not(.beast-ov-card-drag):not(.beast-ov-card-resize):not(.beast-ov-card-tools) { pointer-events:none; }
+.beast-ov-card-drag, .beast-ov-card-resize { position:absolute; z-index:22; display:grid; place-items:center; touch-action:none; pointer-events:auto; }
+.beast-ov-card-drag { top:10px; left:10px; width:50px; height:50px; border:2px solid color-mix(in srgb,var(--accent-a) 72%,#fff); border-radius:14px; background:var(--accent-gradient); color:#fff; box-shadow:0 9px 26px rgba(0,0,0,.42),var(--accent-glow); cursor:grab; }
+.beast-ov-card-drag:active { cursor:grabbing; transform:scale(.97); }
 .beast-ov-card.is-dragging { opacity: .7; box-shadow: 0 22px 60px rgba(0,0,0,.5); z-index: 50; cursor: grabbing; }
-.beast-ov-card-remove { top: 8px; right: 8px; width: 30px; height: 30px; border: 0; border-radius: 50%; background: var(--danger); color: #fff; }
-.beast-ov-card-resize { bottom: 6px; right: 6px; width: 30px; height: 30px; border-radius: 8px; background: rgba(9,12,18,.72); cursor: nwse-resize; }
-.beast-ov-card-resize::before { content: ""; width: 10px; height: 10px; border-right: 2px solid rgba(255,255,255,.7); border-bottom: 2px solid rgba(255,255,255,.7); }
+.beast-ov-card-tools { position:absolute; z-index:23; top:10px; right:10px; display:flex; gap:6px; max-width:calc(100% - 76px); overflow-x:auto; padding:0; pointer-events:auto; scrollbar-width:none; }
+.beast-ov-card-tools::-webkit-scrollbar { display:none; }
+.beast-ov-card-tools > button { position:static; flex:0 0 46px; width:46px; height:46px; display:grid; place-items:center; padding:0; border:2px solid color-mix(in srgb,var(--accent-a) 35%,#fff); border-radius:13px; background:color-mix(in srgb,#090d16 92%,var(--accent-a)); color:#fff; box-shadow:0 9px 26px rgba(0,0,0,.42); pointer-events:auto; touch-action:manipulation; }
+.beast-ov-card-tools > button:hover,.beast-ov-card-tools > button:focus-visible { border-color:var(--accent-a); background:color-mix(in srgb,#090d16 78%,var(--accent-a)); }
+.beast-ov-card-tools > .beast-ov-card-remove { border-color:color-mix(in srgb,var(--danger) 70%,#fff); background:color-mix(in srgb,#24070d 72%,var(--danger)); color:#fff; }
+.beast-ov-card-resize { right:0; bottom:0; width:58px; height:58px; border-radius:20px 0 0 0; background:linear-gradient(135deg,transparent 39%,color-mix(in srgb,var(--accent-a) 28%,#07101d) 40%); filter:drop-shadow(-3px -3px 5px rgba(0,0,0,.34)); cursor:nwse-resize; }
+.beast-ov-card-resize::before { content:""; width:15px; height:15px; margin:14px 0 0 14px; border-right:3px solid var(--accent-a); border-bottom:3px solid var(--accent-a); }
+:root[data-color-mode="light"] .beast-ov-card-tools > button { border-color:color-mix(in srgb,var(--accent-a) 38%,#29415d); background:rgba(255,255,255,.96); color:#17263a; box-shadow:0 8px 24px rgba(24,43,67,.28); }
+:root[data-color-mode="light"] .beast-ov-card-tools > .beast-ov-card-remove { border-color:color-mix(in srgb,var(--danger) 68%,#7f1629); background:#fff1f3; color:#a8122f; }
 .beast-ov-card.is-resizing { z-index: 50; }
-.beast-ov-card-add { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; border: 2px dashed var(--border-strong); background: transparent; color: var(--ink-muted); font-weight: 750; font-size: 13px; cursor: pointer; }
+.beast-ov-card-add { display:none !important; }
 .beast-ov-card-add:hover, .beast-ov-card-add:focus-visible { border-color: var(--accent-a); color: var(--ink); }
+
+/* The fixed editor dock must never cover the last card. The add action is
+   already present in that dock, so the old full grid tile is intentionally
+   hidden and the grid gets a scrollable safety area instead. */
+.beast-overview-grid.is-freeform.is-editing {
+  position:relative;
+  padding-bottom:0 !important;
+  scroll-padding-bottom:132px;
+  overflow-y:auto !important;
+}
+.beast-overview-grid.is-freeform.is-editing::after {
+  content:"";
+  position:absolute;
+  top:100%;
+  left:0;
+  width:1px;
+  height:132px;
+  pointer-events:none;
+}
 .beast-ov-add-card-types { display: flex; flex-wrap: wrap; gap: 8px; }
 .beast-ov-add-card-types button { min-height: 40px; padding: 0 14px; border: 1px solid var(--border-strong); border-radius: 999px; background: var(--surface-2); color: var(--ink); font-weight: 700; }
 .beast-ov-add-card-types button:hover { border-color: var(--accent-a); color: var(--accent-a); }
@@ -145,6 +182,50 @@
 .beast-ov-add-card-entity[hidden] { display: none; }
 .beast-ov-add-card-search { min-height: 44px; padding: 0 12px; border: 1px solid var(--border-strong); border-radius: 10px; background: var(--surface-2); color: var(--ink); }
 .beast-ov-add-card-select { padding: 6px; border: 1px solid var(--border-strong); border-radius: 10px; background: var(--surface-2); color: var(--ink); }
+.beast-template-gallery-modal { width:min(1420px,calc(100vw - 36px)); max-width:none; height:min(920px,calc(100dvh - 32px)); max-height:none; }
+.beast-template-gallery-modal .beast-modal-header { padding:20px 24px 16px; }
+.beast-template-gallery-modal .beast-modal-header > div { min-width:0; }
+.beast-template-gallery-modal .beast-modal-header small { display:block; color:var(--accent); font-size:11px; font-weight:800; letter-spacing:.08em; text-transform:uppercase; }
+.beast-template-gallery-modal .beast-modal-header h3 { margin-top:3px; font-size:clamp(1.3rem,1.6vw,1.8rem); }
+.beast-template-gallery-modal .beast-modal-header p { margin:5px 0 0; color:var(--ink-muted); font-size:var(--text-xs); }
+.beast-template-gallery-modal .beast-modal-body { min-height:0; padding:18px 22px 22px; overflow:hidden; gap:12px; }
+.beast-template-search { width:100%; min-height:54px; flex:0 0 54px; padding:0 16px; border:1px solid var(--border-strong); border-radius:var(--radius-md); background:var(--surface-solid); color:var(--ink); font:inherit; }
+.beast-template-categories { min-height:50px; flex:0 0 50px; display:flex; align-items:center; gap:8px; padding:2px 0; overflow-x:auto; scrollbar-width:none; }
+.beast-template-categories::-webkit-scrollbar { display: none; }
+.beast-template-search[hidden],.beast-template-categories[hidden],.beast-template-gallery[hidden] { display:none !important; }
+.beast-template-categories button { flex: 0 0 auto; min-height: 46px; padding: 0 14px; display:flex; align-items:center; gap:9px; border: 1px solid var(--border-strong); border-radius: 12px; background: var(--surface-2); color: var(--ink-muted); font-weight: 750; }
+.beast-template-categories button small { min-width:22px; height:22px; display:grid; place-items:center; padding:0 6px; border-radius:999px; background:var(--surface-solid); color:var(--ink-faint); font-size:10px; }
+.beast-template-categories button.is-active { border-color: var(--accent-border); background: var(--accent-soft); color: var(--ink); }
+.beast-template-gallery { min-height:0; flex:1 1 auto; display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); grid-auto-rows:minmax(190px,auto); align-content:start; gap:12px; padding:2px 5px 18px 2px; overflow-y:auto; overscroll-behavior:contain; scrollbar-gutter:stable; }
+.beast-template-card { position:relative; min-width:0; min-height:190px; display:grid; grid-template-columns:56px minmax(0,1fr); grid-template-rows:minmax(0,1fr) auto; align-items:start; gap:12px 14px; padding:17px 17px 14px; overflow:hidden; border:1px solid var(--border); border-radius:17px; background:linear-gradient(145deg,color-mix(in srgb,var(--surface-2-solid) 94%,var(--accent-soft)),var(--surface-2-solid)),var(--surface-2); color:var(--ink); font:inherit; text-align:left; cursor:pointer; touch-action:manipulation; transition:border-color .18s ease,background .18s ease,transform .18s ease,box-shadow .18s ease; }
+.beast-template-card:hover, .beast-template-card:focus-visible { border-color: var(--accent-border); background: color-mix(in srgb, var(--surface-2-solid) 82%, var(--accent-soft)); transform: translateY(-1px); }
+.beast-template-card[hidden] { display: none; }
+.beast-template-card-icon { width:56px; height:56px; display:grid; place-items:center; flex:0 0 56px; border-radius:16px; background:var(--accent-soft); color:var(--accent); }
+.beast-template-card-copy { min-width:0; display:flex; flex-direction:column; gap:7px; }
+.beast-template-card-title { min-width:0; display:flex; align-items:flex-start; justify-content:space-between; gap:8px; }
+.beast-template-card-title strong { min-width:0; overflow:hidden; font-size:var(--text-md); line-height:1.18; text-overflow:ellipsis; }
+.beast-template-card-title b { flex:0 0 auto; max-width:42%; overflow:hidden; padding:4px 7px; border-radius:999px; background:var(--accent-soft); color:var(--accent); font-size:9px; text-overflow:ellipsis; white-space:nowrap; }
+.beast-template-card-copy > small { min-height:36px; overflow:hidden; color:var(--ink-muted); font-size:12px; line-height:1.45; display:-webkit-box; -webkit-box-orient:vertical; -webkit-line-clamp:2; }
+.beast-template-card-fields { display:flex; flex-wrap:wrap; gap:5px; min-width:0; }
+.beast-template-card-fields > span { max-width:100%; overflow:hidden; padding:4px 7px; border:1px solid var(--border); border-radius:8px; background:var(--surface-solid); color:var(--ink-muted); font-size:9px; font-weight:700; text-overflow:ellipsis; white-space:nowrap; }
+.beast-template-card-copy > em { min-width:0; display:flex; align-items:center; justify-content:space-between; gap:7px; margin-top:auto; color:var(--ink-faint); font-size:10px; font-style:normal; font-weight:750; }
+.beast-template-card-copy > em span,.beast-template-card-copy > em i { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.beast-template-card-copy > em i { padding:0; background:transparent; color:var(--ink-faint); font-size:10px; }
+.beast-template-card-action { grid-column:1/-1; min-height:38px; display:flex; align-items:center; justify-content:center; gap:6px; border-top:1px solid var(--border); color:var(--accent); font-size:11px; font-weight:850; }
+.beast-template-selected { display: flex; align-items: center; gap: 14px; padding: 14px; border: 1px solid var(--accent-border); border-radius: var(--radius-md); background: var(--accent-soft); }
+.beast-template-selected > span:last-child { display: grid; gap: 3px; }
+.beast-template-selected small, .beast-template-selected em { color: var(--ink-muted); font-style: normal; }
+.beast-template-back { justify-self:start; min-height:48px; padding:0 16px; border:1px solid var(--border-strong); border-radius:12px; background:var(--surface-2); color:var(--ink); font-weight:750; }
+.beast-template-gallery-modal .beast-ov-add-card-entity { min-height:0; height:100%; grid-template-columns:minmax(280px,.72fr) minmax(420px,1.28fr); grid-template-rows:auto auto minmax(0,1fr); gap:12px 18px; margin:0; }
+.beast-template-gallery-modal .beast-template-back,.beast-template-gallery-modal .beast-template-selected { grid-column:1/-1; }
+.beast-template-entity-controls { grid-column:1; grid-row:3; min-width:0; min-height:0; display:flex; flex-direction:column; align-self:stretch; gap:14px; padding:4px 0; }
+.beast-template-gallery-modal .beast-ov-add-card-search { width:100%; min-height:56px; flex:0 0 56px; font:inherit; }
+.beast-template-gallery-modal .beast-template-all-entities { min-height:52px; display:flex; align-items:center; gap:10px; padding:10px 12px; border:1px solid var(--border); border-radius:12px; background:var(--surface-2); }
+.beast-template-gallery-modal .beast-ov-add-card-select { grid-column:2; grid-row:3; min-width:0; min-height:0; height:100%; padding:8px; font:inherit; }
+.beast-template-gallery-modal .beast-ov-add-card-select option { padding:11px 10px; }
+.beast-template-confirm { min-height:58px; margin-top:auto; display:flex; align-items:center; justify-content:center; gap:8px; }
+@media (max-width:1100px) { .beast-template-gallery { grid-template-columns:repeat(2,minmax(0,1fr)); } }
+@media (max-width:760px) { .beast-template-gallery-modal { width:calc(100vw - 16px); height:calc(100dvh - 16px); } .beast-template-gallery { grid-template-columns:minmax(0,1fr); } .beast-template-gallery-modal .beast-ov-add-card-entity { grid-template-columns:minmax(0,1fr); grid-template-rows:auto auto auto minmax(240px,1fr); overflow-y:auto; } .beast-template-gallery-modal .beast-template-back,.beast-template-gallery-modal .beast-template-selected,.beast-template-entity-controls,.beast-template-gallery-modal .beast-ov-add-card-select { grid-column:1; grid-row:auto; } }
 
 .beast-ov-mail-modal { max-width:640px; }
 .beast-ov-mail-modal .beast-modal-body { padding:var(--space-5); gap:var(--space-4); }
@@ -160,7 +241,7 @@
 .beast-ov-printer-modal-meta { margin:8px 0 0; color:var(--ink-muted); font-size:13px; font-weight:700; }
 .beast-ov-doors-modal-list { margin:0; padding:0; list-style:none; display:flex; flex-direction:column; gap:8px; }
 .beast-ov-doors-modal-list li { padding:11px 14px; border:1px solid var(--border); border-radius:var(--radius-md); background:var(--surface-solid); color:var(--ink); font-weight:700; font-size:13px; }
-.beast-ov-editor-modal { max-width:820px; overflow-y:auto; }
+.beast-ov-editor-modal { width:min(900px,calc(100vw - 28px)); max-width:900px; overflow-y:auto; }
 .beast-ov-editor-preview { display:grid; grid-template-columns:repeat(3,1fr); gap:12px; margin:8px 0 20px; }
 .beast-ov-editor-preview > * { min-height:82px; display:flex; flex-direction:column; align-items:flex-start; justify-content:center; gap:5px; padding:14px; border:1px solid var(--border-strong); border-radius:var(--radius-md); background:var(--surface-solid); color:var(--ink); text-align:left; }
 .beast-ov-editor-preview .is-fixed { color:var(--ink-muted); }
@@ -449,8 +530,8 @@
    paint before that JS has run once. */
 .beast-ov-camera-header {
   position: fixed;
-  top: 12px;
-  right: 12px;
+  top: 30px;
+  right: 8px;
   z-index: 35;
 }
 
@@ -460,23 +541,23 @@
 
 .beast-ov-camera-menu-toggle {
   appearance: none;
-  width: 40px;
-  height: 40px;
+  width: 44px;
+  height: 44px;
   display: grid;
   place-items: center;
-  border: 1px solid var(--border-strong);
-  border-radius: 50%;
-  background: color-mix(in srgb, var(--surface-2-solid) 92%, transparent);
-  box-shadow: 0 10px 28px rgba(0, 0, 0, .28);
-  backdrop-filter: blur(14px);
+  padding: 0 0 8px;
+  border: 0;
+  border-radius: 14px;
+  background: transparent;
+  box-shadow: none;
   color: var(--ink-muted);
-  font: 800 22px/1 var(--font-sans);
+  font: 800 30px/1 var(--font-sans);
   cursor: pointer;
+  touch-action: manipulation;
 }
 
 .beast-ov-camera-menu-toggle[aria-expanded="true"] {
   color: var(--accent-b);
-  border-color: var(--accent-a);
 }
 
 .beast-ov-camera-menu-popover {
@@ -606,6 +687,8 @@
   font-size: var(--text-xs);
 }
 
+.beast-ov-camera-picker-modal { width:min(920px,calc(100vw - 28px)); max-width:920px; }
+
 .beast-ov-camera-order {
   display: grid;
   gap: 8px;
@@ -670,6 +753,8 @@
   gap: var(--space-3);
 }
 
+@media (min-width: 900px) { .beast-ov-camera-options { grid-template-columns:repeat(3,minmax(0,1fr)); } }
+
 .beast-ov-camera-option {
   appearance: none;
   position: relative;
@@ -723,11 +808,18 @@
 .beast-ov-camera-option.is-selected > i { display: flex; }
 
 .beast-ov-camera-picker-done {
-  align-self: flex-end;
   min-width: 140px;
   min-height: 48px;
   background: var(--accent-gradient);
   border-color: transparent;
+}
+.beast-ov-camera-picker-actions { min-width:0; display:flex; align-items:center; justify-content:flex-end; gap:12px; }
+.beast-ov-camera-picker-save-state { min-width:0; flex:1; color:var(--danger); font-size:var(--text-xs); font-weight:750; text-align:right; }
+.beast-ov-camera-picker-done.is-busy { opacity:.7; cursor:wait; }
+@media (max-width:620px) {
+  .beast-ov-camera-picker-actions { align-items:stretch; flex-direction:column; }
+  .beast-ov-camera-picker-save-state { text-align:left; }
+  .beast-ov-camera-picker-done { width:100%; }
 }
 
 .beast-ov-camera-thumb {
@@ -741,6 +833,11 @@
   overflow: hidden;
   background: #000;
 }
+.beast-ov-camera-thumb .beast-overview-camera-render { position: absolute; inset: 0; }
+.beast-ov-camera-thumb .beast-shared-camera-label { font-size: 12px; min-height: 40px; padding: 14px 10px 7px; }
+.beast-ov-camera-thumb .beast-camera-quality-menu { top: 8px; right: 8px; }
+.beast-ov-camera-thumb .beast-camera-quality-toggle { width: 40px; height: 40px; font-size: 25px; }
+.beast-ov-camera-thumb .beast-camera-quality-popover { top: 44px; width: 178px; }
 
 .beast-ov-camera-thumb.has-motion {
   box-shadow: 0 0 0 2px var(--accent-security);
@@ -1095,7 +1192,7 @@
 .beast-ov-calendar-item {
   min-width: 0;
   display: grid;
-  grid-template-columns: 76px minmax(0, 1fr);
+  grid-template-columns: max-content minmax(0, 1fr);
   align-items: center;
   gap: 7px;
   min-height: 24px;
@@ -1105,8 +1202,8 @@
 
 .beast-ov-calendar-item:first-child { border-top: 0; padding-top: 0; }
 .beast-ov-calendar-item[hidden] { display: none; }
-.beast-ov-calendar-item span { color: var(--accent-b); font-size: 11px; white-space: nowrap; }
-.beast-ov-calendar-item b { overflow: hidden; font-size: 12px; white-space: nowrap; text-overflow: ellipsis; }
+.beast-ov-calendar-item span { min-width:0; overflow:hidden; color: var(--accent-b); font-size: 11px; font-variant-numeric:tabular-nums; white-space: nowrap; text-overflow:ellipsis; }
+.beast-ov-calendar-item b { min-width:0; overflow: hidden; font-size: 12px; text-align:right; white-space: nowrap; text-overflow: ellipsis; }
 .beast-ov-planner-empty { color: var(--ink-faint); font-size: 12px; }
 
 .beast-ov-waste-next {
@@ -1129,7 +1226,7 @@
 .beast-ov-car-compact {
   appearance: none;
   width: 100%;
-  min-height: 58px;
+  min-height: 56px;
   display: grid;
   grid-template-columns: 38px minmax(0, 1fr) auto;
   align-items: center;
@@ -1369,7 +1466,7 @@
   display: flex;
   flex-direction: column;
   padding-top: 0;
-  gap: 5px;
+  gap: 3px;
   overflow: hidden;
 }
 
@@ -1392,6 +1489,7 @@
   font-size: 12px;
   text-transform: uppercase;
   letter-spacing: 0.08em;
+  line-height: 1.1;
 }
 
 .beast-ov-energy-head strong {
@@ -1400,6 +1498,7 @@
   color: var(--accent-energy);
   font-size: 1.55rem;
   font-variant-numeric: tabular-nums;
+  line-height: 1.05;
 }
 
 .beast-ov-energy-head small {
@@ -1407,28 +1506,29 @@
   margin-top: 1px;
   color: var(--ink-muted);
   font-size: 11px;
+  line-height: 1.15;
 }
 
 .beast-ov-utility-toggle {
   display: inline-flex;
-  gap: 4px;
-  padding: 4px;
+  gap: 3px;
+  padding: 3px;
   border: 1px solid var(--border);
-  border-radius: 14px;
+  border-radius: 12px;
   background: rgba(0, 0, 0, 0.2);
 }
 
 .beast-ov-utility-toggle button {
   appearance: none;
-  min-width: 44px;
-  min-height: 44px;
-  padding: 5px 10px;
+  min-width: 40px;
+  min-height: 38px;
+  padding: 4px 8px;
   border: 1px solid transparent;
-  border-radius: 10px;
+  border-radius: 9px;
   background: transparent;
   color: var(--ink-muted);
   font-family: var(--font-sans);
-  font-size: 12px;
+  font-size: 11px;
   font-weight: 750;
   cursor: pointer;
 }
@@ -1440,9 +1540,9 @@
 }
 
 .beast-ov-utility-chart {
-  flex: 1 1 96px;
-  min-height: 76px;
-  max-height: 108px;
+  flex: 1 1 76px;
+  min-height: 56px;
+  max-height: 96px;
   display: flex;
   align-items: flex-end;
   gap: 3px;
@@ -1461,25 +1561,26 @@
 }
 
 .beast-ov-price-head > div:first-child { min-width: 0; }
-.beast-ov-price-head small { display: block; margin-top: 3px; color: var(--ink-faint); font-size: 11px; }
+.beast-ov-price-head small { display: block; margin-top: 3px; color: var(--ink-faint); font-size: 11px; line-height: 1.15; }
+.beast-ov-price-head .beast-ov-energy-price { line-height: 1.15; }
 
 .beast-ov-price-toggle {
   flex-shrink: 0;
   display: inline-flex;
-  gap: 4px;
-  padding: 4px;
+  gap: 3px;
+  padding: 3px;
   border: 1px solid var(--border);
-  border-radius: 14px;
+  border-radius: 12px;
   background: rgba(0, 0, 0, 0.2);
 }
 
 .beast-ov-price-toggle button {
   appearance: none;
-  min-width: 44px;
-  min-height: 44px;
-  padding: 4px 8px;
+  min-width: 40px;
+  min-height: 38px;
+  padding: 3px 7px;
   border: 1px solid transparent;
-  border-radius: 10px;
+  border-radius: 9px;
   background: transparent;
   color: var(--ink-muted);
   font-family: var(--font-sans);
@@ -1495,9 +1596,9 @@
 }
 
 .beast-ov-price-chart {
-  flex: 1 1 108px;
-  min-height: 84px;
-  max-height: 120px;
+  flex: 1 1 78px;
+  min-height: 58px;
+  max-height: 100px;
   display: flex;
   align-items: flex-end;
   gap: 2px;
@@ -1602,19 +1703,28 @@
 
 .beast-ov-energy-details {
   appearance: none;
-  min-height: 44px;
+  min-height: 38px;
   display: inline-flex;
   align-items: center;
   gap: 4px;
-  padding: 4px 9px;
+  padding: 3px 8px;
   border: 1px solid var(--border);
-  border-radius: var(--radius-full);
+  border-radius: 10px;
   background: transparent;
   color: var(--ink-muted);
   font-family: var(--font-sans);
-  font-size: 12px;
+  font-size: 11px;
   font-weight: 750;
   cursor: pointer;
+}
+
+/* A wall kiosk has materially more vertical room than an ordinary browser
+   window. Let both charts absorb that room instead of stopping at their
+   compact desktop caps; the short-window layout above remains unchanged. */
+@media (min-width: 1400px) and (min-height: 950px) {
+  .beast-ov-energy-shell { gap: 5px; }
+  .beast-ov-utility-chart { flex-basis: 122px; min-height: 82px; max-height: 145px; }
+  .beast-ov-price-chart { flex-basis: 132px; min-height: 88px; max-height: 155px; }
 }
 
 .beast-ov-security-center {
@@ -1875,6 +1985,45 @@
 .beast-ov-generic-content strong { font-size: clamp(1.1rem, min(11cqi, 22cqb), 3.5rem); line-height: 1.15; overflow-wrap: break-word; word-break: break-word; hyphens: auto; max-width: 100%; }
 .beast-ov-generic-content em { color:var(--ink-faint); font-size: clamp(0.6rem, 6cqb, var(--text-xs)); font-style:normal; }
 .beast-ov-card--generic.is-unavailable .beast-ov-generic-content > span { color:var(--danger); background:var(--danger-soft); }
+.beast-ov-card--heatpump .beastOvGeneric { place-items:stretch; }
+.beast-ov-heatpump { --pump-color:var(--accent-b); width:100%; height:100%; min-height:0; display:grid; grid-template-rows:auto minmax(88px,1fr) auto auto; gap:clamp(7px,1.6cqb,12px); padding:clamp(12px,2.5cqb,20px); overflow:auto; container-type:size; background:radial-gradient(circle at 72% 42%,color-mix(in srgb,var(--pump-color) 9%,transparent),transparent 32%); }
+.beast-ov-heatpump.is-heating { --pump-color:#ff9b54; }.beast-ov-heatpump.is-cooling { --pump-color:#42c8ff; }.beast-ov-heatpump.is-fan { --pump-color:#34dfb2; }.beast-ov-heatpump.is-off { --pump-color:var(--ink-faint); }
+.beast-ov-heatpump-head { display:grid; grid-template-columns:auto minmax(0,1fr) auto auto; align-items:center; gap:10px; }
+.beast-ov-heatpump-head > span { width:42px; height:42px; display:grid; place-items:center; border-radius:13px; color:var(--pump-color); background:color-mix(in srgb,var(--pump-color) 13%,var(--surface-solid)); box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--pump-color) 15%,transparent); }
+.beast-ov-heatpump-head div { min-width:0; }
+.beast-ov-heatpump-head small,.beast-ov-heatpump-head strong { display:block; overflow:hidden; white-space:nowrap; text-overflow:ellipsis; }
+.beast-ov-heatpump-head small { color:var(--ink-muted); font-size:10px; }
+.beast-ov-heatpump-head strong { font-size:clamp(13px,4cqi,18px); }
+.beast-ov-heatpump-state { display:flex; align-items:center; gap:6px; color:var(--pump-color); font-size:10px; }
+.beast-ov-heatpump-state i { width:7px; height:7px; border-radius:50%; background:currentColor; box-shadow:0 0 10px currentColor; animation:beast-pump-status 1.8s ease-in-out infinite; }
+.beast-ov-heatpump-state b { white-space:nowrap; }
+.beast-ov-heatpump-head button,.beast-ov-heatpump-target button,.beast-ov-heatpump-modes button { appearance:none; border:1px solid var(--border-strong); background:var(--surface-solid); color:var(--ink-muted); }
+.beast-ov-heatpump-head button { width:40px; height:40px; display:grid; place-items:center; border-radius:11px; }
+.beast-ov-heatpump-head button.is-on { color:var(--pump-color); border-color:color-mix(in srgb,var(--pump-color) 48%,var(--border)); background:color-mix(in srgb,var(--pump-color) 12%,var(--surface-solid)); box-shadow:0 0 18px color-mix(in srgb,var(--pump-color) 20%,transparent); }
+.beast-ov-heatpump-main { min-height:0; display:grid; grid-template-columns:minmax(300px,1.5fr) minmax(86px,.5fr); align-items:center; gap:clamp(10px,3cqi,24px); }
+.beast-ov-heatpump-reading { display:grid; grid-template-columns:minmax(112px,.85fr) minmax(190px,1.15fr); align-items:center; gap:12px; }
+.beast-ov-heatpump-reading > span small,.beast-ov-heatpump-target small { display:block; color:var(--ink-faint); font-size:10px; text-transform:uppercase; letter-spacing:.05em; }
+.beast-ov-heatpump-reading > span strong { display:block; margin-top:3px; font-size:clamp(36px,11cqi,58px); line-height:.94; }
+.beast-ov-heatpump-target { display:grid; grid-template-columns:44px minmax(82px,1fr) 44px; align-items:center; gap:8px; text-align:center; }
+.beast-ov-heatpump-target button { width:44px; height:44px; display:grid; place-items:center; border-radius:11px; }
+.beast-ov-heatpump-target strong { display:block; margin-top:3px; font-size:clamp(25px,6.5cqi,34px); line-height:1; }
+.beast-ov-heatpump-visual { position:relative; width:clamp(74px,24cqi,126px); aspect-ratio:1; place-self:center; display:grid; place-items:center; border:1px solid color-mix(in srgb,var(--pump-color) 32%,var(--border)); border-radius:50%; color:var(--pump-color); background:radial-gradient(circle,color-mix(in srgb,var(--pump-color) 16%,var(--surface-solid)),var(--surface-solid) 68%); box-shadow:0 0 34px color-mix(in srgb,var(--pump-color) 16%,transparent),inset 0 0 24px color-mix(in srgb,var(--pump-color) 8%,transparent); }
+.beast-ov-heatpump-visual > span { position:relative; z-index:2; display:grid; place-items:center; animation:beast-pump-fan 3.2s linear infinite; }
+.beast-ov-heatpump-visual > i { position:absolute; inset:8%; border:1px solid currentColor; border-radius:50%; opacity:0; animation:beast-pump-air 2.4s ease-out infinite; }.beast-ov-heatpump-visual > i:nth-of-type(2) { animation-delay:.8s; }.beast-ov-heatpump-visual > i:nth-of-type(3) { animation-delay:1.6s; }
+.beast-ov-heatpump.is-off .beast-ov-heatpump-visual > span,.beast-ov-heatpump.is-idle .beast-ov-heatpump-visual > span { animation-play-state:paused; }.beast-ov-heatpump.is-off .beast-ov-heatpump-visual > i,.beast-ov-heatpump.is-idle .beast-ov-heatpump-visual > i { display:none; }
+.beast-ov-heatpump-modes { display:flex; gap:5px; overflow-x:auto; scrollbar-width:none; }
+.beast-ov-heatpump-modes button { min-height:34px; flex:1 0 auto; padding:0 10px; border-radius:9px; font-size:11px; font-weight:750; }
+.beast-ov-heatpump-modes button.is-active { color:#071016; border-color:transparent; background:var(--pump-color); box-shadow:0 5px 16px color-mix(in srgb,var(--pump-color) 22%,transparent); }
+.beast-ov-heatpump-options { min-height:0; display:grid; grid-template-columns:repeat(auto-fit,minmax(105px,1fr)); align-items:end; gap:7px; }
+.beast-ov-heatpump-options:empty { display:none; }
+.beast-ov-heatpump-options label { min-width:0; display:grid; gap:4px; color:var(--ink-faint); font-size:9px; text-transform:uppercase; letter-spacing:.04em; }
+.beast-ov-heatpump-options select { width:100%; min-height:34px; padding:0 8px; border:1px solid var(--border-strong); border-radius:9px; background:var(--surface-solid); color:var(--ink); font-size:11px; }
+@keyframes beast-pump-fan { to { transform:rotate(360deg); } }
+@keyframes beast-pump-air { 0% { transform:scale(.55); opacity:.5; } 75%,100% { transform:scale(1.18); opacity:0; } }
+@keyframes beast-pump-status { 50% { opacity:.35; box-shadow:0 0 3px currentColor; } }
+@container (max-width:470px) { .beast-ov-heatpump-main { grid-template-columns:1fr; }.beast-ov-heatpump-visual { display:none; }.beast-ov-heatpump-reading { grid-template-columns:minmax(110px,.8fr) minmax(190px,1.2fr); } }
+@container (max-width:360px) { .beast-ov-heatpump-head { grid-template-columns:minmax(0,1fr) auto; }.beast-ov-heatpump-head > span,.beast-ov-heatpump-state { display:none; }.beast-ov-heatpump-main { grid-template-columns:1fr; }.beast-ov-heatpump-visual { display:none; }.beast-ov-heatpump-reading { grid-template-columns:1fr auto; }.beast-ov-heatpump-options { grid-template-columns:1fr; } }
+@media (prefers-reduced-motion:reduce) { .beast-ov-heatpump-visual > span,.beast-ov-heatpump-visual > i,.beast-ov-heatpump-state i { animation:none !important; } }
 @supports not (container-type: size) {
   .beast-ov-generic-content strong { font-size: clamp(1.4rem, 2.4vw, 2.6rem); }
   .beast-ov-clock-time { font-size: clamp(3.6rem, 7vw, 5.2rem); }
