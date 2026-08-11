@@ -3,7 +3,7 @@
   height: 100%;
   min-height: 0;
   display: grid;
-  grid-template-columns: minmax(430px, .78fr) minmax(650px, 1.22fr);
+  grid-template-columns: minmax(min(430px, 32vw), .78fr) minmax(min(650px, 40vw), 1.22fr);
   grid-template-rows: minmax(0, 1fr) 245px;
   gap: var(--space-4);
 }
@@ -95,3 +95,7 @@
 .beast-weather-week article > div small { color: var(--ink-faint); }
 .beast-weather-week article > b { grid-column: 1 / -1; display: inline-flex; align-items: center; gap: 4px; color: #55c8ff; font-size: var(--text-xs); }
 :root[data-floating-cards="true"] :is(.beast-weather-current,.beast-weather-hourly,.beast-weather-radar,.beast-weather-week) { background: transparent; border-color: transparent; box-shadow: none; }
+.beast-weather-panel .is-layout-hidden { display: none !important; }
+.beast-weather-layout-list { display: grid; gap: 10px; margin-bottom: 18px; }
+.beast-weather-layout-list label { display: flex; align-items: center; gap: 12px; min-height: 56px; padding: 10px 14px; border: 1px solid var(--border); border-radius: var(--radius-md); background: var(--surface-2); }
+.beast-weather-layout-list input { width: 24px; height: 24px; accent-color: var(--accent); }

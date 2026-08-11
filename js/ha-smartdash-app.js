@@ -96,12 +96,25 @@ function setKioskScreenPower(on) {
   });
 }
 
+document.addEventListener("beast:alarm-screen-off", () => {
+  hideAmbientMode();
+  window.clearTimeout(ambientModeTimerId);
+  window.clearTimeout(screenOffTimerId);
+  setKioskScreenPower(false);
+});
+
 function doorbellCameraStream() {
   const cameras = window.BeastCameras?.getAllCameras?.() || [];
   const configuredCameraId = BeastConfig.get("appEntities.doorbellCamera");
-  let camera = configuredCameraId ? cameras.find((item) => item.entityId === configuredCameraId) : null;
+  // Resolve the explicitly selected entity outside the Cameras page's
+  // allowlist. Doorbell and camera-page selections are independent.
+  let camera = configuredCameraId ? window.BeastCameras?.resolveCamera?.(configuredCameraId) : null;
   if (!camera) camera = cameras.find((item) => /fordør|fordor|hoveddør|hoveddor/i.test(`${item.slug} ${item.label} ${item.streamName}`));
-  return camera?.streamName || "Fordor";
+  if (!camera) {
+    const state = Array.from(BeastHaSocket.getAllStates().values()).find((item) => item?.entity_id?.startsWith("camera.") && /fordør|fordor|hoveddør|hoveddor|front.?door|doorbell/i.test(`${item.entity_id} ${item.attributes?.friendly_name || ""}`));
+    if (state) camera = window.BeastCameras?.resolveCamera?.(state.entity_id);
+  }
+  return camera || null;
 }
 
 function closeDoorbellView() {
@@ -187,7 +200,10 @@ function setupDataQuality() {
 }
 
 function showDoorbellView() {
-  if (!featureEnabled("eventFocus")) return;
+  // Doorbell camera focus is configured independently under Kiosk &
+  // doorbell. It must not be disabled by the generic eventFocus switch,
+  // which only controls the smaller alarm/pool/car/printer event banners.
+  if (!DOORBELL_BINARY_ID() && !DOORBELL_EVENT_ID()) return;
   const now = Date.now();
   if (now - lastDoorbellAt < 5000) return;
   lastDoorbellAt = now;
@@ -199,9 +215,18 @@ function showDoorbellView() {
   const overlay = document.createElement("div");
   overlay.id = "beastDoorbellView";
   overlay.className = "beast-doorbell-view";
-  const stream = doorbellCameraStream();
-  overlay.innerHTML = `<iframe src="./camera-player.html?v=7&src=${encodeURIComponent(stream)}" title="Fordør livekamera" frameborder="0" allow="autoplay"></iframe><div class="beast-doorbell-head"><span>${BeastCore.icon("bell", { size: 25 })}</span><div><strong>Det ringer på</strong><small>Fordør · livekamera</small></div></div><button type="button" class="beast-doorbell-close" aria-label="Luk dørkamera">${BeastCore.icon("close", { size: 24 })}<span>Luk</span></button><div class="beast-doorbell-live"><i></i> Live</div>`;
+  const camera = doorbellCameraStream();
+  const useStream = camera && window.BeastCameras?.hasGo2rtc?.() && (camera.resolvedStreamName || camera.streamName);
+  const cameraMarkup = useStream
+    ? `<iframe src="./camera-player.html?v=14&src=${encodeURIComponent(camera.resolvedStreamName || camera.streamName)}" title="Fordør livekamera" frameborder="0" allow="autoplay"></iframe>`
+    : camera?.haStreamUrl
+      ? `<img class="beast-doorbell-ha-camera" src="${camera.haStreamUrl}" data-doorbell-picture="${camera.entityPicture || ""}" alt="Fordør livekamera">`
+      : `<img class="beast-doorbell-ha-camera" data-doorbell-picture="${camera?.entityPicture || ""}" alt="Fordør kamera">`;
+  overlay.innerHTML = `${cameraMarkup}<div class="beast-doorbell-head"><span>${BeastCore.icon("bell", { size: 25 })}</span><div><strong>Det ringer på</strong><small>Fordør · kamera</small></div></div><button type="button" class="beast-doorbell-close" aria-label="Luk dørkamera">${BeastCore.icon("close", { size: 24 })}<span>Luk</span></button><div class="beast-doorbell-live"><i></i> Live</div>`;
   document.body.appendChild(overlay);
+  const fallbackImage = overlay.querySelector("[data-doorbell-picture]");
+  if (fallbackImage?.dataset.doorbellPicture && !fallbackImage.getAttribute("src")) BeastAuth.setAuthedImageSrc(fallbackImage, fallbackImage.dataset.doorbellPicture);
+  fallbackImage?.addEventListener("error", () => BeastAuth.setAuthedImageSrc(fallbackImage, fallbackImage.dataset.doorbellPicture), { once:true });
   document.body.classList.add("beast-doorbell-active");
   overlay.querySelector(".beast-doorbell-close")?.addEventListener("click", (event) => { event.stopPropagation(); closeDoorbellView(); });
   doorbellTimerId = window.setTimeout(closeDoorbellView, DOORBELL_VIEW_MS);
@@ -308,9 +333,12 @@ function ambientCameraMarkup(config) {
   const tiles = ids.map((id) => {
     const camera = window.BeastCameras?.resolveCamera?.(id);
     if (!camera) return "";
-    if (camera.streamName) {
-      const src = `./camera-player.html?v=11&transport=mse&sub=1&src=${encodeURIComponent(camera.streamName)}`;
+    if (window.BeastCameras?.hasGo2rtc?.() && camera.streamName) {
+      const src = `./camera-player.html?v=12&transport=mse&src=${encodeURIComponent(camera.resolvedStreamName || camera.streamName)}`;
       return `<div class="beast-ambient-camera-tile"><iframe class="beast-ambient-camera-tile-frame" src="${src}" allow="autoplay"></iframe></div>`;
+    }
+    if (camera.haStreamUrl) {
+      return `<div class="beast-ambient-camera-tile"><img class="beast-ambient-camera-tile-frame" src="${camera.haStreamUrl}" data-ambient-camera-picture="${camera.entityPicture || ""}" alt=""></div>`;
     }
     if (camera.entityPicture) {
       return `<div class="beast-ambient-camera-tile"><img class="beast-ambient-camera-tile-frame" data-ambient-camera-picture="${camera.entityPicture}" alt=""></div>`;
@@ -482,6 +510,19 @@ function dismissUpdateBanner() {
 let pendingUpdateTag = null;
 let updateInstallInFlight = false;
 
+// Same {da, en}-per-line pattern and t(da, en) fallback as admin.js -- the
+// update banner shows up directly on the kiosk, so it needs to follow the
+// dashboard's own language setting too, not just Admin's.
+function updateBannerT(da, en) {
+  return BeastLocalSettings.get("language", "en") === "da" ? da : en;
+}
+function updateChangelogLineText(change) {
+  if (typeof change === "string") return change;
+  if (!change || typeof change !== "object") return "";
+  const lang = BeastLocalSettings.get("language", "en");
+  return change[lang] || change.en || change.da || "";
+}
+
 function renderUpdateBanner() {
   if (updateBannerEl || !pendingUpdateVersion) return;
   const changes = pendingUpdateChangelog.flatMap((entry) => Array.isArray(entry.changes) ? entry.changes : []);
@@ -490,13 +531,13 @@ function renderUpdateBanner() {
   el.innerHTML = `
     <div class="beast-update-banner-head">
       <span>${BeastCore.icon("sparkles", { size: 20 })}</span>
-      <div><strong>Ny version er klar</strong><small>Hent og installer den nyeste version fra GitHub</small></div>
+      <div><strong>${updateBannerT("Ny version er klar", "New version ready")}</strong><small>${updateBannerT("Hent og installer den nyeste version fra GitHub", "Download and install the latest version from GitHub")}</small></div>
     </div>
-    ${changes.length ? `<ul class="beast-update-banner-list">${changes.slice(0, 8).map((change) => `<li>${overviewEscape(change)}</li>`).join("")}</ul>` : ""}
+    ${changes.length ? `<ul class="beast-update-banner-list">${changes.slice(0, 8).map((change) => `<li>${overviewEscape(updateChangelogLineText(change))}</li>`).join("")}</ul>` : ""}
     <div class="beast-update-banner-status" hidden></div>
     <div class="beast-update-banner-actions">
-      <button type="button" class="beast-update-skip">Spring over</button>
-      <button type="button" class="beast-update-apply">Opdater nu</button>
+      <button type="button" class="beast-update-skip">${updateBannerT("Spring over", "Skip")}</button>
+      <button type="button" class="beast-update-apply">${updateBannerT("Opdater nu", "Update now")}</button>
     </div>
   `;
   document.body.appendChild(el);
@@ -517,20 +558,20 @@ async function installPendingUpdate(el) {
   const skipBtn = el.querySelector(".beast-update-skip");
   applyBtn.disabled = true;
   skipBtn.disabled = true;
-  applyBtn.textContent = "Installerer…";
-  if (statusEl) { statusEl.hidden = false; statusEl.textContent = "Henter den nyeste version fra GitHub…"; }
+  applyBtn.textContent = updateBannerT("Installerer…", "Installing…");
+  if (statusEl) { statusEl.hidden = false; statusEl.textContent = updateBannerT("Henter den nyeste version fra GitHub…", "Downloading the latest version from GitHub…"); }
   try {
-    const response = await fetch("/api/update.php", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "install", tag: pendingUpdateTag || undefined }) });
+    const response = await fetch("/api/update.php", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "install", tag: pendingUpdateTag || undefined, channel: BeastConfig.get("updateChannel") === "beta" ? "beta" : "stable" }) });
     const payload = await response.json().catch(() => null);
     if (!response.ok || !payload?.success) throw new Error(payload?.message || payload?.error || `HTTP ${response.status}`);
-    if (statusEl) statusEl.textContent = "✓ Installeret — genindlæser…";
+    if (statusEl) statusEl.textContent = updateBannerT("✓ Installeret — genindlæser…", "✓ Installed — reloading…");
     window.setTimeout(() => window.location.reload(), 900);
   } catch (error) {
     updateInstallInFlight = false;
     applyBtn.disabled = false;
     skipBtn.disabled = false;
-    applyBtn.textContent = "Opdater nu";
-    if (statusEl) statusEl.textContent = `Kunne ikke installere: ${error.message}`;
+    applyBtn.textContent = updateBannerT("Opdater nu", "Update now");
+    if (statusEl) statusEl.textContent = updateBannerT(`Kunne ikke installere: ${error.message}`, `Could not install: ${error.message}`);
     BeastCore.log(`Opdateringsinstallation: ${error.message}`);
   }
 }
@@ -543,7 +584,7 @@ async function installPendingUpdate(el) {
 // check Administration's Update panel uses.
 async function checkForDashboardUpdate() {
   try {
-    const response = await fetch("/api/update.php", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "check" }), cache: "no-store" });
+    const response = await fetch("/api/update.php", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "check", channel: BeastConfig.get("updateChannel") === "beta" ? "beta" : "stable" }), cache: "no-store" });
     if (!response.ok) return;
     const data = await response.json();
     if (!data.updateAvailable || !data.remoteVersion) return;
@@ -595,7 +636,13 @@ function runCameraHealthCheck() {
       const lastFullRecovery = Number(sessionStorage.getItem("beast_last_camera_full_recovery") || 0);
       if (reloads >= 3 && now - lastUserActivityAt > 60000 && now - lastFullRecovery > FULL_RECOVERY_COOLDOWN_MS) {
         sessionStorage.setItem("beast_last_camera_full_recovery", String(now));
-        window.location.reload();
+        // Never reload the whole dashboard for a camera failure: that loses
+        // the active view, scroll position and in-progress touch work. The
+        // affected frame has already been restarted above; refresh HA and
+        // ask every visible player to reconnect as the broader recovery.
+        BeastHaSocket.connect?.(true);
+        reconnectVisibleCameraPlayers();
+        BeastCore.log("Kamera-watchdog: bred lokal reconnect uden sidegenindlæsning.");
       }
     } else if (silentFor > CAMERA_RECONNECT_AFTER_MS && now - health.lastReconnectAt > CAMERA_RECONNECT_AFTER_MS) {
       health.lastReconnectAt = now;
@@ -663,14 +710,51 @@ function renderLoginScreen(root, message) {
   const loginButton = BeastCore.el("button", "beast-btn beast-btn-primary", "Log ind");
   loginButton.type = "submit";
   form.append(label, loginButton);
-  form.addEventListener("submit", (event) => {
+  form.addEventListener("submit", async (event) => {
     event.preventDefault();
     const address = addressInput.value.trim();
     if (!addressInput.reportValidity()) return;
     BeastAuth.setHaBaseUrl(address);
-    BeastAuth.startLogin();
+    loginButton.disabled = true;
+    loginButton.textContent = "Kontrollerer forbindelse…";
+    try {
+      await BeastAuth.prepareLogin();
+    } catch (error) {
+      renderLoginScreen(root, error.userMessage || "Kunne ikke kontrollere Home Assistant-forbindelsen.");
+    }
   });
   card.appendChild(form);
+  const tokenDetails = BeastCore.el("details", "beast-login-details");
+  tokenDetails.innerHTML = `<summary>Log ind med token</summary><form class="beast-login-form beast-token-login-form"><label>Long-Lived Access Token<textarea rows="4" autocomplete="off" spellcheck="false" placeholder="Indsæt token fra din Home Assistant-profil" required></textarea></label><small>Tokenet gemmes kun i denne browser og medtages aldrig i fejlloggen.</small><button type="submit" class="beast-btn beast-btn-primary">Kontrollér token og log ind</button></form>`;
+  tokenDetails.querySelector("form").addEventListener("submit", async (event) => {
+    event.preventDefault();
+    if (!addressInput.reportValidity()) return;
+    BeastAuth.setHaBaseUrl(addressInput.value.trim());
+    const button = event.currentTarget.querySelector("button");
+    button.disabled = true;
+    button.textContent = "Kontrollerer token…";
+    try {
+      await BeastAuth.loginWithToken(event.currentTarget.querySelector("textarea").value);
+      window.location.reload();
+    } catch (error) {
+      renderLoginScreen(root, error.userMessage || "Token-login mislykkedes.");
+    }
+  });
+  card.appendChild(tokenDetails);
+  const diagnostics = BeastAuth.getDiagnostics();
+  const diagnosticDetails = BeastCore.el("details", "beast-login-details beast-login-diagnostics");
+  if (diagnostics.length) diagnosticDetails.open = true;
+  diagnosticDetails.innerHTML = `<summary>Fejllog og forbindelsesdetaljer</summary><pre>${overviewEscape(diagnostics.length ? JSON.stringify(diagnostics, null, 2) : "Ingen loginfejl registreret i denne browserfane.")}</pre><div><button type="button" class="beast-btn" data-copy-login-log>Kopiér fejllog</button><button type="button" class="beast-btn" data-clear-login-log>Ryd log</button></div>`;
+  diagnosticDetails.querySelector("[data-copy-login-log]").addEventListener("click", async () => {
+    const text = diagnosticDetails.querySelector("pre").textContent;
+    if (navigator.clipboard?.writeText) await navigator.clipboard.writeText(text);
+    else window.prompt("Kopiér fejlloggen:", text);
+  });
+  diagnosticDetails.querySelector("[data-clear-login-log]").addEventListener("click", () => {
+    BeastAuth.clearDiagnostics();
+    renderLoginScreen(root, message);
+  });
+  card.appendChild(diagnosticDetails);
   screen.appendChild(card);
   root.appendChild(screen);
 }
@@ -690,7 +774,8 @@ function overviewSlotMarkup(slot, position, size) {
     clock:["overview","beastOvClock","Tid, kalender og affald"], weather:["weather","beastOvWeather","Vejr"], security:["security","beastOvSecurity","Sikkerhed"], energy:["energy","beastOvEnergy","Energi"]
   };
   if (builtins[slot.type]) { const [nav,id,label] = builtins[slot.type]; return `<section class="beast-panel beast-ov-card ${position}"${size} data-nav="${nav}" data-card="${slot.type}" aria-label="${overviewEscape(slot.label || label)}"><div id="${id}"></div></section>`; }
-  return `<section class="beast-panel beast-ov-card ${position} beast-ov-card--generic"${size} data-nav="${slot.type === "custom" ? "overview" : slot.type}" data-card="generic" data-widget="${overviewEscape(slot.type)}" data-entity="${overviewEscape(slot.entity)}" data-label="${overviewEscape(slot.label)}"><div class="beastOvGeneric"></div></section>`;
+  const genericNav = slot.type === "custom" ? "overview" : slot.type === "heatpump" ? "heating" : slot.type;
+  return `<section class="beast-panel beast-ov-card ${position} beast-ov-card--generic"${size} data-nav="${genericNav}" data-card="generic" data-widget="${overviewEscape(slot.type)}" data-entity="${overviewEscape(slot.entity)}" data-label="${overviewEscape(slot.label)}"><div class="beastOvGeneric"></div></section>`;
 }
 
 // A freeform card (overviewCards entry) always computes its own position
@@ -735,21 +820,16 @@ function renderOverviewSection() {
 // in the same screen corner regardless of where the cameras card is placed
 // or resized, and the picture underneath can use the card's full space.
 function overviewCameraMenuMarkup(hasCameras) {
-  if (!hasCameras) return "";
-  return `<div class="beast-ov-camera-header">
-      <div class="beast-ov-camera-menu">
-        <button type="button" class="beast-ov-camera-menu-toggle" id="beastOvCameraMenuToggle" aria-label="Åbn kameramenu" aria-expanded="false">⋮</button>
-        <div class="beast-ov-camera-menu-popover" id="beastOvCameraMenu" hidden>
-          <button type="button" id="beastOvCameraPicker">${BeastCore.icon("camera", { size: 17 })}<span>Vælg kameraer</span></button>
-          <button type="button" id="beastOvEdit">${BeastCore.icon("settings", { size: 17 })}<span>Rediger forsiden</span></button>
-          <button type="button" id="beastOvStartScreensaver">${BeastCore.icon("moon", { size: 17 })}<span>Start pauseskærm</span></button>
-        </div>
-      </div>
+  return `<div class="beast-ov-camera-actions" hidden>
+      ${hasCameras ? `<button type="button" id="beastOvCameraPicker">Vælg kameraer</button>` : ""}
+      <button type="button" id="beastOvEdit">Rediger forsiden</button>
+      <button type="button" id="beastOvStartScreensaver">Start pauseskærm</button>
     </div>`;
 }
 
 function renderSectionMarkup(item) {
   if (item.id === "overview") return renderOverviewSection();
+  if (item.id.startsWith("custom_")) return `<div class="beast-panel beast-panel-fill beast-custom-page-zone" id="beastCustomZone_${item.id}"></div>`;
   const zoneId = MOUNTED_SECTION_ZONES[item.id];
   if (zoneId) return `<div class="beast-panel beast-panel-fill" id="${zoneId}"></div>`;
   return `
@@ -760,32 +840,27 @@ function renderSectionMarkup(item) {
 }
 
 function renderAppShell(root) {
-  const dashboardTitle = BeastConfig.get("dashboardTitle") || "HA Smartdash";
-  const titleEl = document.createElement("div");
-  titleEl.textContent = dashboardTitle;
-  const brandHtml = `<div class="beast-rail-brand">${titleEl.innerHTML}</div>`;
+  const brandHtml = `<button type="button" class="beast-rail-page-edit" id="beastRailPageEdit" aria-label="Rediger den aktuelle side" title="Rediger den aktuelle side"><span class="beast-rail-page-edit-icon">${BeastCore.icon("grid", { size: 19 })}</span><span class="beast-rail-page-edit-label">Rediger</span></button>`;
 
+  const pageRailItems = window.BeastPageManager?.buildRailItems(RAIL_ITEMS) || RAIL_ITEMS;
   const favoriteSections = featureEnabled("localFavorites") ? BeastLocalSettings.get("favoriteSections", []) : [];
-  const orderedRailItems = favoriteSections.length ? [...RAIL_ITEMS].sort((a, b) => {
+  const orderedRailItems = favoriteSections.length ? [...pageRailItems].sort((a, b) => {
     if (["overview", "settings"].includes(a.id) || ["overview", "settings"].includes(b.id)) return a.id === "overview" ? -1 : b.id === "overview" ? 1 : a.id === "settings" ? 1 : b.id === "settings" ? -1 : 0;
     const ai = favoriteSections.indexOf(a.id), bi = favoriteSections.indexOf(b.id);
     return (ai < 0 ? 999 : ai) - (bi < 0 ? 999 : bi);
-  }) : RAIL_ITEMS;
+  }) : pageRailItems;
   const hiddenSections = BeastLocalSettings.get("hiddenSections", []);
   const visibleRailItems = orderedRailItems
     .filter((item) => ["overview", "settings"].includes(item.id) || !hiddenSections.includes(item.id))
     .filter((item) => item.id !== "settings" || BeastConfig.get("showAdminButton") !== false);
-  const railButtonsHtml = visibleRailItems.map((item) => item.id === "settings" ? `
-    <a href="/admin/" class="beast-rail-btn">
-      ${BeastCore.icon(item.icon, { size: 24 })}
-      <span>${item.label}</span>
-    </a>
-  ` : `
+  const railButtonsHtml = visibleRailItems.filter((item) => item.id !== "settings").map((item) => `
     <button type="button" class="beast-rail-btn" data-section="${item.id}">
       ${BeastCore.icon(item.icon, { size: 24 })}
       <span>${item.label}</span>
     </button>
   `).join("");
+  const adminItem = visibleRailItems.find((item) => item.id === "settings");
+  const adminRailHtml = adminItem ? `<a href="/admin/" class="beast-rail-btn beast-rail-admin">${BeastCore.icon(adminItem.icon, { size: 24 })}<span>${adminItem.label}</span></a>` : "";
 
   const sectionsHtml = visibleRailItems.filter((item) => item.id !== "settings").map((item) => `
     <div class="beast-section" data-section="${item.id}">
@@ -797,7 +872,7 @@ function renderAppShell(root) {
     <div class="beast-app">
       <span class="beast-status-dot-fixed" id="beastStatusDot" data-state="connecting" title="Forbinder…"></span>
       <div class="beast-body">
-        <nav class="beast-rail" id="beastRail">${brandHtml}${railButtonsHtml}</nav>
+        <nav class="beast-rail" id="beastRail"><div class="beast-rail-pages">${railButtonsHtml}</div><div class="beast-rail-tools">${brandHtml}${adminRailHtml}</div></nav>
         <main class="beast-content" id="beastContent">${sectionsHtml}</main>
       </div>
     </div>
@@ -826,6 +901,11 @@ function renderAppShell(root) {
   setupQuickScenarios();
   setupDataQuality();
   BeastCore.mountPanels();
+  // Attach the shared entity-card editor after page panels have rendered.
+  // A short delay also lets panels that start in a loading state finish their
+  // first markup pass before the editor adds its persistent host.
+  window.setTimeout(() => window.BeastPageEditor?.mountAll(), 80);
+  document.addEventListener("beast:navigate", () => window.setTimeout(() => window.BeastPageEditor?.mountAll(), 80));
   BeastHaSocket.connect();
   setupEventFocus();
   window.BeastScreenLock?.init();
@@ -885,7 +965,9 @@ function setupNavigation() {
     if (!window.BeastScreenLock?.hasPin()) return;
     event.preventDefault();
     window.BeastScreenLock.requestPinVerification((ok) => {
-      if (ok) window.location.href = "/admin/";
+      if (!ok) return;
+      window.BeastScreenLock.grantAdminVerification();
+      window.location.href = "/admin/";
     });
   });
 
@@ -941,6 +1023,43 @@ function reconnectVisibleCameraPlayers() {
   });
 }
 
+function mountPageActionMenus() {
+  if (document.documentElement.dataset.pageActionMenus === "true") return;
+  document.documentElement.dataset.pageActionMenus = "true";
+  const close = () => document.getElementById("beastPageActionMenu")?.remove();
+  document.addEventListener("click", (event) => {
+    const trigger = event.target.closest(".beast-page-edit-trigger, #beastRailPageEdit");
+    if (!trigger) { if (!event.target.closest("#beastPageActionMenu")) close(); return; }
+    if (trigger.dataset.menuBypass === "true") { delete trigger.dataset.menuBypass; return; }
+    event.preventDefault(); event.stopPropagation(); event.stopImmediatePropagation(); close();
+    const section = trigger.id === "beastRailPageEdit"
+      ? document.querySelector(".beast-section.is-active[data-section]")
+      : trigger.closest(".beast-section[data-section]");
+    if (!section) return;
+    const pageTrigger = trigger.id === "beastRailPageEdit"
+      ? (section.dataset.section === "overview" ? section.querySelector("#beastOvEdit") : section.querySelector(".beast-page-edit-trigger"))
+      : trigger;
+    const menu = document.createElement("div"); menu.id = "beastPageActionMenu"; menu.className = "beast-page-action-menu";
+    const isOverview = section.dataset.section === "overview";
+    menu.innerHTML = `<button type="button" data-page-action="edit"><i>${BeastCore.icon("settings",{size:21})}</i><span><strong>Rediger side</strong><small>Flyt, ændr og tilføj kort</small></span></button><button type="button" data-page-action="fit"><i>${BeastCore.icon("grid",{size:21})}</i><span><strong>Tilpas side</strong><small>Fordel kortene til denne skærm</small></span></button>${isOverview ? `<button type="button" data-page-action="cameras"><i>${BeastCore.icon("camera",{size:21})}</i><span><strong>Vælg kameraer</strong><small>Vælg hvilke kameraer der vises på forsiden</small></span></button><button type="button" data-page-action="screensaver"><i>${BeastCore.icon("moon",{size:21})}</i><span><strong>Start pauseskærm</strong><small>Vis nattens pauseskærm med det samme</small></span></button>` : ""}`;
+    document.body.appendChild(menu);
+    const triggerRect = trigger.getBoundingClientRect();
+    const menuRect = menu.getBoundingClientRect();
+    const edge = 10;
+    const railIsBottom = triggerRect.top > window.innerHeight * .65;
+    const left = Math.max(edge, Math.min(window.innerWidth - menuRect.width - edge, triggerRect.right + edge));
+    const top = railIsBottom
+      ? Math.max(edge, triggerRect.top - menuRect.height - edge)
+      : Math.max(edge, Math.min(window.innerHeight - menuRect.height - edge, triggerRect.top));
+    menu.style.left = `${Math.round(left)}px`; menu.style.top = `${Math.round(top)}px`;
+    menu.querySelector('[data-page-action="edit"]').disabled = !pageTrigger;
+    menu.querySelector('[data-page-action="edit"]').addEventListener("click", () => { if (!pageTrigger) return; close(); pageTrigger.dataset.menuBypass = "true"; pageTrigger.click(); });
+    menu.querySelector('[data-page-action="fit"]').addEventListener("click", async (actionEvent) => { const button=actionEvent.currentTarget; button.disabled=true; button.classList.add("is-busy"); await window.BeastPageEditor?.fit?.(section.dataset.section); close(); });
+    menu.querySelector('[data-page-action="cameras"]')?.addEventListener("click", () => { close(); document.getElementById("beastOvCameraPicker")?.click(); });
+    menu.querySelector('[data-page-action="screensaver"]')?.addEventListener("click", () => { close(); document.getElementById("beastOvStartScreensaver")?.click(); });
+  }, true);
+}
+
 window.addEventListener("online", () => window.setTimeout(reconnectVisibleCameraPlayers, 500));
 window.addEventListener("pageshow", () => window.setTimeout(syncCameraPlayers, 500));
 document.addEventListener("beast:sectionchange", () => window.setTimeout(syncCameraPlayers, 150));
@@ -961,6 +1080,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       applyDashboardBranding();
     });
     renderAppShell(root);
+    mountPageActionMenus();
     startKioskWatchdogs();
   } else {
     renderLoginScreen(root);

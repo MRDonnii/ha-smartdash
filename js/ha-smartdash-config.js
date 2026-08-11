@@ -27,12 +27,13 @@ const BeastConfig = (() => {
       powerSensor: null, priceSensor: null, priceForecastSensor: null, tomorrowAvailableSensor: null,
       totalEnergySensor: null, totalCostSensor: null, nowMeasuredSensor: null, nowUnmeasuredSensor: null,
       heatPowerSensor: null, heatEnergySensor: null, waterUsageSensor: null, waterFlowSensor: null,
+      showHeatOnOverview: true, showWaterOnOverview: true,
       nowGroups: []
     },
     rooms: { areaIds: [], climateSensors: {}, entityOverrides: {} },
     pool: {
       waterTemp: null, pumpSwitch: null, pumpStatus: null, runtime: null,
-      personInWater: null, automationToggle: null, cameraStream: null
+      personInWater: null, automationToggle: null, cameraEntity: null, cameraStream: null
     },
     car: {
       sourceDevice: null, battery: null, range: null, shiftState: null, chargerPower: null,
@@ -50,14 +51,14 @@ const BeastConfig = (() => {
       sourceDevice: null, statusSensor: null, stageSensor: null, progressSensor: null, remainingSensor: null,
       nozzleTemp: null, nozzleTarget: null, bedTemp: null, bedTarget: null, currentLayer: null, totalLayers: null,
       taskName: null, cameraImage: null, pauseButton: null, resumeButton: null, stopButton: null,
-      activeTray: null, traySensors: [], amsHumidity: null, totalUsage: null, liveStream: null, liveCamera: null
+      activeTray: null, traySensors: [], amsHumidity: null, totalUsage: null, cameraDisplay: "both", liveStream: null, liveCamera: null
     },
     robots: {
       vacuums: [], mowers: [], roomSelectors: [], leonoraImage: null, poulImage: null
     },
     waste: { sensors: [], calendars: [], showCalendarCard: true, showWasteCard: true },
     heating: {
-      rooms: [], heatPumps: [], heatPumpUnits: {}, automation: null, districtSensors: [], ventilationSensors: []
+      rooms: [], heatPumps: [], heatPumpUnits: {}, automation: null, districtSensors: [], ventilationSensors: [], districtPlacement: "sidebar"
     },
     music: { configEntryId: null, stereoGroups: {} }
   };
@@ -67,6 +68,12 @@ const BeastConfig = (() => {
     haBaseUrl: null,
     faviconUrl: "./favicon.svg",
     showAdminButton: true,
+    // "stable" (GitHub's /releases/latest, which already excludes anything
+    // marked pre-release) or "beta" (opts into pre-release builds too) --
+    // see api/update.php's fetchLatestReleaseForChannel(). A property of
+    // this installation, not the browser, so it lives here rather than in
+    // localStorage.
+    updateChannel: "stable",
     features: {
       eventFocus: false,
       dynamicOverview: false,
@@ -94,11 +101,23 @@ const BeastConfig = (() => {
       wideBottom: { type: "energy", entity: null, label: "" }
     },
     overviewCards: [],
+    // Centrally stored, ordered camera entities for the overview. An empty
+    // array means "use the camera panel selection", not "restore defaults".
+    overviewCameraEntities: [],
+    pageLayouts: {
+      robots: { cards: [] },
+      printer: { cards: [] },
+      rooms: { cards: [] }, cameras: { cards: [] }, security: { cards: [] }, music: { cards: [] },
+      energy: { cards: [] }, heating: { cards: [] }, car: { cards: [] }, pool: { cards: [] },
+      waste: { cards: [] }, weather: { cards: [] }
+    },
     // The two small tiles under the clock/calendar card -- each is one of
     // "car"/"pool"/"robots"/"printer" (same set as the top-level generic
     // overview card types) or omitted entirely to turn that tile off.
-    overviewQuickTiles: ["car", "pool"],
+    // Optional means optional. Updates must never re-enable Pool.
+    overviewQuickTiles: [],
     hiddenSections: [],
+    pages: { order: [], removed: [], custom: [], overrides: {} },
     appEntities: { kioskScreenLight: null, kioskEntities: {}, doorbellBinarySensor: null, doorbellEvent: null, doorbellCamera: null, mailPresent: null, mailCount: null, mailDescription: null, mailImage: null, mailImageCarport: null, mailImageForhaven: null, quickScenes: [] },
     // Behavior tuning for the overview banners -- most entities each banner
     // watches are reused from panels.printer/panels.security (already
@@ -128,12 +147,13 @@ const BeastConfig = (() => {
       cameraEntities: [],
       brightnessEnabled: false, brightnessPercent: 80
     },
-    screenLock: { pinHash: null, autoLockEnabled: false },
+    screenLock: { pinHash: null, autoLockEnabled: false, alarmScreenOffEnabled: false, alarmEntity: null, alarmUnlockMode: "pin" },
     panels: DEFAULT_PANELS
   };
 
   let cache = null;
   let readyPromise = null;
+  let saveQueue = Promise.resolve();
 
   function isPlainObject(value) {
     return value !== null && typeof value === "object" && !Array.isArray(value);
@@ -185,6 +205,27 @@ const BeastConfig = (() => {
     return config;
   }
 
+  // Layouts are user data, so keep malformed/old entries from breaking a
+  // whole page. This also gives future card migrations one stable place to
+  // evolve from instead of scattering compatibility checks across views.
+  function normalizePageLayouts(config) {
+    if (!isPlainObject(config.pageLayouts)) config.pageLayouts = {};
+    Object.keys(DEFAULTS.pageLayouts).forEach((pageId) => {
+      const layout = config.pageLayouts[pageId];
+      if (!isPlainObject(layout)) config.pageLayouts[pageId] = { cards: [] };
+      if (!Array.isArray(config.pageLayouts[pageId].cards)) config.pageLayouts[pageId].cards = [];
+      config.pageLayouts[pageId].cards = config.pageLayouts[pageId].cards
+        .filter((card) => isPlainObject(card) && typeof card.id === "string" && card.id)
+        .map((card) => ({
+          ...card,
+          type: typeof card.type === "string" ? card.type : "custom",
+          entity: typeof card.entity === "string" ? card.entity : null,
+          label: typeof card.label === "string" ? card.label : ""
+        }));
+    });
+    return config;
+  }
+
   // Called once at boot, before any panel mounts, so every later get() call
   // is a plain synchronous object read — panels never need to know config
   // is backed by a network request.
@@ -197,7 +238,7 @@ const BeastConfig = (() => {
         return readLocalFallback();
       })
       .then((remote) => {
-        cache = deepMerge(DEFAULTS, remote || {});
+        cache = normalizePageLayouts(deepMerge(DEFAULTS, remote || {}));
         writeLocalFallback(cache);
         return cache;
       });
@@ -208,24 +249,26 @@ const BeastConfig = (() => {
   // init() resolves — shouldn't happen since the boot sequence awaits it,
   // but a stale local cache beats throwing.
   function ensureLoaded() {
-    if (!cache) cache = deepMerge(DEFAULTS, readLocalFallback());
+    if (!cache) cache = normalizePageLayouts(deepMerge(DEFAULTS, readLocalFallback()));
     return cache;
   }
 
   function save(next) {
     cache = next;
     writeLocalFallback(next);
-    const request = fetch(API_URL, {
+    const payload = JSON.stringify(next);
+    const request = saveQueue.catch(() => null).then(() => fetch(API_URL, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(next)
+      body: payload
     }).then((response) => {
       if (!response.ok) throw new Error(`HTTP ${response.status}`);
       return response.json();
-    }).catch((error) => {
+    })).catch((error) => {
       console.error("[BeastConfig] kunne ikke gemme til backend", error);
       return { success: false };
     });
+    saveQueue = request.then(() => null, () => null);
     document.dispatchEvent(new CustomEvent("beast:config-changed"));
     return request;
   }
