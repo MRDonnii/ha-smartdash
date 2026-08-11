@@ -188,26 +188,40 @@ window.BeastNativePageEditor = (() => {
       drag.type = "button"; drag.className = "beast-native-card-drag"; drag.setAttribute("aria-label", `Flyt ${card.label}`); drag.innerHTML = BeastCore.icon("grip", { size: 19 });
       const resize = document.createElement("span"); resize.className = "beast-native-card-resize"; resize.setAttribute("aria-hidden", "true");
       element.append(drag, resize);
-      let dragging = null, lastTarget = "";
-      drag.addEventListener("pointerdown", (event) => { event.preventDefault(); event.stopPropagation(); dragging = event.pointerId; lastTarget = ""; drag.setPointerCapture?.(event.pointerId); element.classList.add("is-dragging"); });
+      let dragging = null;
+      const gridMetrics = () => {
+        const layoutHost = host();
+        const bounds = layoutHost.getBoundingClientRect();
+        const styles = getComputedStyle(layoutHost);
+        const gap = parseFloat(styles.gap) || 0;
+        const rows = Math.max(1, Number(styles.getPropertyValue("--native-total-rows")) || 12);
+        return {
+          colStep: (bounds.width - gap * 11) / 12 + gap,
+          rowStep: (bounds.height - gap * Math.max(0, rows - 1)) / rows + gap
+        };
+      };
+      drag.addEventListener("pointerdown", (event) => {
+        event.preventDefault(); event.stopPropagation();
+        const metrics = gridMetrics();
+        dragging = { id:event.pointerId, startX:event.clientX, startY:event.clientY, x:Number(card.desktop.x)||1, y:Number(card.desktop.y)||1, ...metrics };
+        drag.setPointerCapture?.(event.pointerId); element.classList.add("is-dragging");
+      });
       drag.addEventListener("pointermove", (event) => {
-        if (event.pointerId !== dragging) return;
-        const target = document.elementFromPoint(event.clientX, event.clientY)?.closest(".beast-native-layout-card");
-        if (!target || target === element || target.dataset.beastNativeCard === lastTarget) return;
-        const other = state.draft.find((item) => item.id === target.dataset.beastNativeCard); if (!other) return;
-        lastTarget = other.id;
-        const own = { x: card.desktop.x, y: card.desktop.y };
-        card.desktop = { ...card.desktop, x: other.desktop.x, y: other.desktop.y };
-        other.desktop = { ...other.desktop, ...own };
+        if (!dragging || event.pointerId !== dragging.id) return;
+        const width = clamp(card.desktop?.w,1,12);
+        const nextX = clamp(Math.round(dragging.x + (event.clientX - dragging.startX) / dragging.colStep), 1, 13 - width);
+        const nextY = clamp(Math.round(dragging.y + (event.clientY - dragging.startY) / dragging.rowStep), 1, 40);
+        if (nextX === card.desktop.x && nextY === card.desktop.y) return;
+        card.desktop = { ...card.desktop, x:nextX, y:nextY };
         apply(state.draft);
       });
-      const endDrag = (event) => { if (event.pointerId !== dragging) return; drag.releasePointerCapture?.(event.pointerId); dragging = null; lastTarget = ""; element.classList.remove("is-dragging"); };
+      const endDrag = (event) => { if (!dragging || event.pointerId !== dragging.id) return; drag.releasePointerCapture?.(event.pointerId); dragging = null; element.classList.remove("is-dragging"); };
       drag.addEventListener("pointerup", endDrag); drag.addEventListener("pointercancel", endDrag);
       let sizing = null;
       resize.addEventListener("pointerdown", (event) => {
         event.preventDefault(); event.stopPropagation();
-        const layoutHost = host().getBoundingClientRect();
-        sizing = { id: event.pointerId, x: event.clientX, y: event.clientY, w: card.desktop.w, h: card.desktop.h, col: layoutHost.width / 12, row: 72 };
+        const metrics = gridMetrics();
+        sizing = { id: event.pointerId, x: event.clientX, y: event.clientY, w: card.desktop.w, h: card.desktop.h, col: metrics.colStep, row: metrics.rowStep };
         resize.setPointerCapture?.(event.pointerId); element.classList.add("is-resizing");
       });
       resize.addEventListener("pointermove", (event) => {
@@ -230,7 +244,7 @@ window.BeastNativePageEditor = (() => {
         if (control.type === "checkbox") return `<label class="beast-native-option-check"><input type="checkbox" data-native-option="${escape(control.key)}" ${value ? "checked" : ""}><span>${escape(control.label)}</span></label>`;
         return `<label>${escape(control.label)}<input type="number" data-native-option="${escape(control.key)}" min="${Number(control.min)||1}" max="${Number(control.max)||50}" step="${Number(control.step)||1}" value="${escape(value)}"></label>`;
       };
-      overlay.innerHTML = `<div class="beast-modal beast-native-settings-modal"><div class="beast-modal-header"><div><small>Indbyggede kort · ${profileLabel()}</small><h3>Rediger ${escape(state.label)}</h3></div><button type="button" class="beast-modal-close" data-close>×</button></div><div class="beast-modal-body"><p class="beast-responsive-profile-note">Ændringer gemmes kun til profilen <strong>${profileLabel()}</strong>. De andre skærmstørrelser beholder deres eget layout.</p><div class="beast-native-settings-list">${list.map((card) => `<article data-native-settings-card="${escape(card.id)}"><header><label><input type="checkbox" data-native-enabled ${card.enabled === false ? "" : "checked"}><strong>${escape(card.label)}</strong></label></header><div><label>Navn<input data-native-label value="${escape(card.label)}"></label><label>Venstre<select data-native-x>${Array.from({length:12},(_,i)=>`<option value="${i+1}" ${Number(card.desktop.x)===i+1?"selected":""}>${i+1}</option>`).join("")}</select></label><label>Top<select data-native-y>${Array.from({length:24},(_,i)=>`<option value="${i+1}" ${Number(card.desktop.y)===i+1?"selected":""}>${i+1}</option>`).join("")}</select></label><label>Bredde<select data-native-w>${Array.from({length:12},(_,i)=>`<option value="${i+1}" ${Number(card.desktop.w)===i+1?"selected":""}>${i+1}/12</option>`).join("")}</select></label><label>Højde<select data-native-h>${Array.from({length:16},(_,i)=>`<option value="${i+1}" ${Number(card.desktop.h)===i+1?"selected":""}>${i+1}</option>`).join("")}</select></label>${(card.controls || []).map((control)=>controlMarkup(card, control)).join("")}</div></article>`).join("")}</div><button type="button" class="beast-btn beast-btn-primary" data-native-settings-save>Anvend</button></div></div>`;
+      overlay.innerHTML = `<div class="beast-modal beast-native-settings-modal"><div class="beast-modal-header"><div><small>Indbyggede kort · ${profileLabel()}</small><h3>Rediger ${escape(state.label)}</h3></div><button type="button" class="beast-modal-close" data-close>×</button></div><div class="beast-modal-body"><p class="beast-responsive-profile-note">Ændringer gemmes kun til profilen <strong>${profileLabel()}</strong>. De andre skærmstørrelser beholder deres eget layout.</p><div class="beast-native-settings-list">${list.map((card) => `<article data-native-settings-card="${escape(card.id)}"><header><label><input type="checkbox" data-native-enabled ${card.enabled === false ? "" : "checked"}><strong>${escape(card.label)}</strong></label></header><div><label>Navn<input data-native-label value="${escape(card.label)}"></label><label>Venstre<select data-native-x>${Array.from({length:12},(_,i)=>`<option value="${i+1}" ${Number(card.desktop.x)===i+1?"selected":""}>${i+1}</option>`).join("")}</select></label><label>Top<select data-native-y>${Array.from({length:40},(_,i)=>`<option value="${i+1}" ${Number(card.desktop.y)===i+1?"selected":""}>${i+1}</option>`).join("")}</select></label><label>Bredde<select data-native-w>${Array.from({length:12},(_,i)=>`<option value="${i+1}" ${Number(card.desktop.w)===i+1?"selected":""}>${i+1}/12</option>`).join("")}</select></label><label>Højde<select data-native-h>${Array.from({length:24},(_,i)=>`<option value="${i+1}" ${Number(card.desktop.h)===i+1?"selected":""}>${i+1}</option>`).join("")}</select></label>${(card.controls || []).map((control)=>controlMarkup(card, control)).join("")}</div></article>`).join("")}</div><button type="button" class="beast-btn beast-btn-primary" data-native-settings-save>Anvend</button></div></div>`;
       document.body.appendChild(overlay);
       overlay.addEventListener("click", (event) => {
         if (event.target === overlay || event.target.closest("[data-close]")) return overlay.remove();
