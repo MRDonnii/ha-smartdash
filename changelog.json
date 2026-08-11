@@ -1,5 +1,14 @@
 [
   {
+    "version": "20260811-139",
+    "tag": "v0.7.61",
+    "date": "2026-08-11",
+    "changes": [
+      { "da": "Skoleskemaet viser nu en hel uge ad gangen (mandag-fredag) i stedet for én dag, med hver time farvekodet efter fag, og uge-frem/tilbage-navigation.", "en": "The school schedule now shows a full week at once (Monday-Friday) instead of a single day, with each lesson color-coded by subject, and week-by-week navigation." },
+      { "da": "Rettet at installationer der allerede havde et gemt kalenderlayout kunne ende med at Affald-kortet lå oveni det nye skoleskema i stedet for at flytte ned til sin egen plads.", "en": "Fixed installations that already had a saved calendar layout potentially ending up with the Affald card overlapping the new school schedule instead of moving down to its own spot." }
+    ]
+  },
+  {
     "version": "20260811-138",
     "tag": "v0.7.60",
     "date": "2026-08-11",
