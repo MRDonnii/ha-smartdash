@@ -1,5 +1,14 @@
 [
   {
+    "version": "20260811-147",
+    "tag": "v0.7.69",
+    "date": "2026-08-11",
+    "changes": [
+      { "da": "Affaldsfelterne fordeler nu hele den tilgængelige højde ligeligt, så kortet fyldes pænt uden tom plads under den sidste afhentning.", "en": "Waste collection rows now share all available height evenly, filling the card cleanly without empty space below the last collection." },
+      { "da": "Tre viste afhentninger giver tre lige høje felter, fire giver fire felter og så videre; listen ruller kun, når felternes læsbare minimumshøjde ikke kan bevares.", "en": "Three visible collections create three equal rows, four create four rows, and so on; the list scrolls only when the readable minimum row height cannot be preserved." }
+    ]
+  },
+  {
     "version": "20260811-146",
     "tag": "v0.7.68",
     "date": "2026-08-11",
