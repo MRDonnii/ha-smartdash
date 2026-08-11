@@ -1774,7 +1774,11 @@
       }
       if (stateEl) stateEl.textContent = raw && !tag ? t("Kunne ikke genkende et versionsnummer i det du indsatte.", "Couldn't recognize a version number in what you pasted.") : "";
     });
-    document.getElementById("adminVersionSection")?.addEventListener("click", async (event) => {
+    // The latest-version action lives in the top "Denne installation" card,
+    // while rollback/manual actions live in "Versionshistorik" below. Bind
+    // their shared handler to the complete Updates view so moving a button
+    // between those cards cannot silently disconnect it again.
+    document.querySelector('[data-admin-view="updates"]')?.addEventListener("click", async (event) => {
       const button = event.target.closest("[data-rollback-version]");
       if (!button) return;
       const version = button.dataset.rollbackVersion;
