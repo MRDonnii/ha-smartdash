@@ -35,6 +35,9 @@ Every release must update all of these values in the same commit:
 2. `beast.html`: `beast-build` and `beast-release-tag`.
 3. The first entry in `changelog.json`: `version`, `tag`, `date`, and
    `changes`.
+4. Every changed browser-loaded CSS or JavaScript file must receive a new
+   query-string cache ID in both HTML entry points that load it. Prefer the
+   release build ID, for example `?v=20260811-148`.
 
 `beast-release-tag` and `changelog.json.tag` must equal the Git tag exactly.
 The two HTML files must contain identical release tags and build IDs.
@@ -105,14 +108,15 @@ release title identify the channel.
 
 1. Choose the next unused semantic version and build ID.
 2. Update both HTML files and prepend the bilingual changelog entry.
-3. Run `scripts/check-release.sh` and fix every failure.
-4. Commit with an English message and push the intended commit.
-5. Create the Git tag from that exact commit.
-6. Create the GitHub release using the canonical title and English notes.
-7. Set the GitHub pre-release flag according to the selected channel.
-8. Verify the published tag, title, pre-release flag, target commit, and
+3. Update cache IDs for every changed browser-loaded CSS and JavaScript asset.
+4. Run `scripts/check-release.sh` and fix every failure.
+5. Commit with an English message and push the intended commit.
+6. Create the Git tag from that exact commit.
+7. Create the GitHub release using the canonical title and English notes.
+8. Set the GitHub pre-release flag according to the selected channel.
+9. Verify the published tag, title, pre-release flag, target commit, and
    release notes.
-9. Verify that Stable discovery returns the newest non-pre-release and Beta
+10. Verify that Stable discovery returns the newest non-pre-release and Beta
    discovery returns the newest release including pre-releases.
 
 Example commands:

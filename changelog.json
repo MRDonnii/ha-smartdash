@@ -1,5 +1,14 @@
 [
   {
+    "version": "20260811-148",
+    "tag": "v0.7.70",
+    "date": "2026-08-11",
+    "changes": [
+      { "da": "Rettet at browseren fortsatte med at bruge en ældre cachet kalender-CSS, så de nye lodrette og højdefyldende affaldsfelter ikke blev vist efter opdateringen.", "en": "Fixed the browser continuing to use an older cached Calendar stylesheet, preventing the new vertical, height-filling waste rows from appearing after an update." },
+      { "da": "Kalenderens CSS har nu et nyt build-baseret cache-id, så rettelsen indlæses automatisk uden manuel rydning af browserens cache.", "en": "The Calendar stylesheet now has a new build-based cache ID, so the fix loads automatically without manually clearing the browser cache." }
+    ]
+  },
+  {
     "version": "20260811-147",
     "tag": "v0.7.69",
     "date": "2026-08-11",
