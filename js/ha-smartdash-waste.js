@@ -451,7 +451,7 @@
         const id = `schedule-${scheduleCardSlug(entityId)}`;
         return { id, label: `${t("Skema", "Schedule")} · ${scheduleCardLabel(entityId)}`, selector: `[data-calendar-section="${id}"]`, titleSelector: "h2", enabled: !hidden.has(id), desktop: { x: 1, y: 1 + index * 12, w: 8, h: 12 } };
       }),
-      { id:"waste", label:t("Affald og afhentning", "Waste and collections"), selector:'[data-calendar-section="waste"]', titleSelector:"h2", enabled:!hidden.has("waste"), desktop:{x:9,y:13,w:4,h:3}, options:{rows:cardRows("waste",3)}, controls:[{key:"rows",label:t("Antal viste rækker", "Visible rows"),min:1,max:30,default:3}] },
+      { id:"waste", label:t("Affald og afhentning", "Waste and collections"), selector:'[data-calendar-section="waste"]', titleSelector:"h2", enabled:!hidden.has("waste"), desktop:{x:9,y:13,w:4,h:6}, options:{rows:cardRows("waste",3)}, controls:[{key:"rows",label:t("Antal viste rækker", "Visible rows"),min:1,max:30,default:3}] },
       { id:"events", label:t("Kommende kalenderaftaler", "Upcoming calendar events"), selector:'[data-calendar-section="events"]', titleSelector:"h2", enabled:!hidden.has("events"), desktop:{x:9,y:1,w:4,h:12}, options:{rows:cardRows("events",12)}, controls:[{key:"rows",label:t("Antal viste rækker", "Visible rows"),min:1,max:30,default:12}] }
     ], onSave:()=>render() });
   }
@@ -541,6 +541,21 @@
     if (changed) BeastConfig.set(path, saved);
   }
 
+  // v0.7.64 reduced the waste card to three layout rows. With two school
+  // schedules that left less usable height than its header and collection
+  // rows require, so the content appeared as clipped strips. Expand only
+  // that exact default; user-resized waste cards remain untouched.
+  function migrateCalendarLayoutToReadableWaste() {
+    const path = window.BeastNativePageEditor?.storagePath?.("waste") || "pageLayouts.waste.nativeCards";
+    const saved = BeastConfig.get(path);
+    if (!Array.isArray(saved) || !saved.length) return;
+    const waste = saved.find((card) => card.id === "waste");
+    const d = waste?.desktop || {};
+    if (d.x !== 9 || d.y !== 13 || d.w !== 4 || d.h !== 3) return;
+    waste.desktop = { x: 9, y: 13, w: 4, h: 6 };
+    BeastConfig.set(path, saved);
+  }
+
   function init(root) {
     containerEl = root;
     containerEl.classList.add("beast-waste-panel");
@@ -552,6 +567,7 @@
     migrateWasteLayoutForSchedule();
     migrateCalendarLayoutToScheduleFirst();
     migrateCalendarLayoutToFullSchedule();
+    migrateCalendarLayoutToReadableWaste();
     containerEl.innerHTML = `<p class="beast-music-empty">${t("Henter…", "Loading…")}</p>`;
     const stableRender = BeastCore.stableUpdater(containerEl, render, 500);
 
