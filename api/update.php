@@ -75,15 +75,15 @@ function isSafeTag($tag) {
 
 function copyRecursive($src, $dst) {
   if (is_dir($src)) {
-    if (!is_dir($dst)) mkdir($dst, 0775, true);
+    if (!is_dir($dst) && !mkdir($dst, 0775, true) && !is_dir($dst)) throw new RuntimeException("Could not create directory: $dst");
     foreach (scandir($src) as $item) {
       if ($item === "." || $item === "..") continue;
       copyRecursive("$src/$item", "$dst/$item");
     }
   } elseif (is_file($src)) {
     $dstDir = dirname($dst);
-    if (!is_dir($dstDir)) mkdir($dstDir, 0775, true);
-    copy($src, $dst);
+    if (!is_dir($dstDir) && !mkdir($dstDir, 0775, true) && !is_dir($dstDir)) throw new RuntimeException("Could not create directory: $dstDir");
+    if (!copy($src, $dst)) throw new RuntimeException("Could not replace file: $dst");
   }
 }
 
@@ -415,6 +415,10 @@ if ($action === "install") {
       foreach (scandir($extractedRoot) as $item) {
         if ($item === "." || $item === ".." || in_array($item, $excludeTopLevel, true)) continue;
         copyRecursive("$extractedRoot/$item", "$root/$item");
+      }
+      $copiedVersion = currentBuildId($root);
+      if ($copiedVersion !== $newVersion) {
+        throw new RuntimeException("Installed build verification failed: expected $newVersion, found $copiedVersion");
       }
     } catch (Throwable $copyError) {
       // Best-effort rollback: restore the pre-install snapshot we just took.

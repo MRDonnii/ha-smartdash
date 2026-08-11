@@ -564,8 +564,15 @@ async function installPendingUpdate(el) {
     const response = await fetch("/api/update.php", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "install", tag: pendingUpdateTag || undefined, channel: BeastConfig.get("updateChannel") === "beta" ? "beta" : "stable" }) });
     const payload = await response.json().catch(() => null);
     if (!response.ok || !payload?.success) throw new Error(payload?.message || payload?.error || `HTTP ${response.status}`);
+    if (pendingUpdateVersion && payload.installedVersion !== pendingUpdateVersion) {
+      throw new Error(updateBannerT(`Serveren beholdt build ${payload.installedVersion || "ukendt"}`, `The server kept build ${payload.installedVersion || "unknown"}`));
+    }
     if (statusEl) statusEl.textContent = updateBannerT("✓ Installeret — genindlæser…", "✓ Installed — reloading…");
-    window.setTimeout(() => window.location.reload(), 900);
+    window.setTimeout(() => {
+      const nextUrl = new URL(window.location.href);
+      nextUrl.searchParams.set("dashboardUpdate", payload.installedVersion || String(Date.now()));
+      window.location.replace(nextUrl.href);
+    }, 900);
   } catch (error) {
     updateInstallInFlight = false;
     applyBtn.disabled = false;
