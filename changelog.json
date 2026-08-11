@@ -1,5 +1,16 @@
 [
   {
+    "version": "20260811-141",
+    "tag": "v0.7.63",
+    "date": "2026-08-11",
+    "changes": [
+      { "da": "Kalender-siden prioriterer nu skoleskemaet: hvert skema får dobbelt bredde og mere højde, kommende aftaler ligger i en kompakt sidekolonne, og affald er reduceret til et lille sekundært kort.", "en": "The Calendar page now prioritizes school schedules: each schedule gets twice the width and more height, upcoming events use a compact side column, and waste is reduced to a small secondary card." },
+      { "da": "Eksisterende urørte standardlayouts flyttes automatisk til den nye opbygning, mens layouts brugeren selv har flyttet eller ændret bevares.", "en": "Existing untouched default layouts migrate automatically to the new composition, while layouts that users moved or resized themselves are preserved." },
+      { "da": "Kalender, skoleskema, affald og Stable/Beta-opdateringsfladen følger nu dashboardets valgte sprog på både dansk og engelsk.", "en": "Calendar, school schedule, waste, and the Stable/Beta update interface now follow the dashboard's selected language in both Danish and English." },
+      { "da": "Rettet at kun det sidst indlæste skoleskema blev vist, når flere skemakalendere var valgt samtidig.", "en": "Fixed only the last loaded school schedule being shown when multiple schedule calendars were selected at the same time." }
+    ]
+  },
+  {
     "version": "20260811-139",
     "tag": "v0.7.61",
     "date": "2026-08-11",
