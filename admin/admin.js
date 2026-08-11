@@ -43,7 +43,7 @@
   ];
   const OVERVIEW_SLOT_OPTIONS = [
     ["empty","Tom plads"],["cameras","Kameraer"],["clock","Ur, kalender og affald"],["weather","Vejr"],["security","Sikkerhed"],["energy","Energi"],
-    ["car","Bil"],["pool","Pool"],["robots","Robotter"],["printer","3D-printer"],["custom","Valgfri HA-entity"]
+    ["car","Bil"],["pool","Pool"],["robots","Robotter"],["printer","3D-printer"],["heatpump","Varmepumpe"],["custom","Valgfri HA-entity"]
   ];
   // Order matters here beyond just labeling: when overviewCards is still
   // empty and this list gets synthesized into freeform cards below, dense
@@ -81,7 +81,11 @@
       { key: "rooms", label: "Rumtermostater", type: "multi", domain: "climate" },
       { key: "heatPumps", label: "Varmepumper", type: "multi", domain: "climate" },
       { key: "automation", label: "Automatisk varmestyring", type: "single", domain: "input_boolean", hints: ["varme", "heat", "calefa"], filterHints: true },
+      { key: "heatPowerSensor", label: "Aktuel varmeeffekt", type: "single", domain: "sensor", hints: ["varme", "heat", "power", "effekt", "kamstrup"], filterHints: true },
+      { key: "heatEnergyTodaySensor", label: "Varmeforbrug i dag", type: "single", domain: "sensor", hints: ["varme", "heat", "energy", "energi", "today", "dag"], filterHints: true },
+      { key: "heatEnergyMonthSensor", label: "Varmeforbrug denne måned", type: "single", domain: "sensor", hints: ["varme", "heat", "energy", "energi", "month", "måned"], filterHints: true },
       { key: "districtSensors", label: "Fjernvarme-sensorer", type: "multi", domain: "sensor", hints: ["kamstrup", "multical"], filterHints: true },
+      { key: "districtPlacement", label: "Placering af fjernvarme", type: "select", choices: [["sidebar", "Højre side"], ["pumps", "Ved varmepumper"]] },
       { key: "ventilationSensors", label: "Dantherm-sensorer", type: "multi", domain: "sensor", hints: ["dantherm", "hch5"], filterHints: true }
     ]},
     { id: "car", title: "Bil", description: "Energitte: batteri, opladning, lås, lokation, temperatur og dæktryk.", fields: [
@@ -102,7 +106,8 @@
       { key: "waterTemp", label: "Vandtemperatur", type: "single", domain: "sensor", hints: ["pool", "bassin"], filterHints: true }, { key: "pumpSwitch", label: "Poolpumpe", type: "single", domain: "switch", hints: ["pool", "pumpe"], filterHints: true },
       { key: "pumpStatus", label: "Pumpens driftstatus", type: "single", domain: "sensor", hints: ["pool", "pumpe"], filterHints: true }, { key: "runtime", label: "Køretid i dag", type: "single", domain: "sensor", hints: ["pool", "pumpe"], filterHints: true },
       { key: "personInWater", label: "Person i vandet", type: "single", domain: "binary_sensor", hints: ["pool", "bassin"], filterHints: true }, { key: "automationToggle", label: "Poolautomatik", type: "single", domain: "input_boolean", hints: ["pool", "bassin"], filterHints: true },
-      { key: "cameraStream", label: "go2rtc streamnavn", type: "text", placeholder: "Terrasse_syd" }
+      { key: "cameraEntity", label: "Poolkamera", type: "single", domain: "camera", hints: ["pool", "terrasse", "have"] },
+      { key: "cameraStream", label: "go2rtc streamnavn (kun fallback)", type: "text", placeholder: "Terrasse_syd" }
     ]},
     { id: "robots", title: "Robotter", description: "Vælg blot robot-entities. HA Smartdash finder automatisk batteri, kort, knapper, sensorer og indstillinger, som den valgte robots HA-device eksponerer. Listen kan være tom eller indeholde vilkårligt mange robotter og modeller.", fields: [
       { key: "vacuums", label: "Robotstøvsugere", type: "multi", domain: "vacuum" },
@@ -123,6 +128,7 @@
       { key: "stopButton", label: "Stopknap", type: "single", domain: "button" }, { key: "traySensors", label: "AMS-bakker", type: "multi", domain: "sensor", hints: ["bambu", "tray"] },
       { key: "activeTray", label: "Aktiv AMS-bakke", type: "single", domain: "sensor" }, { key: "amsHumidity", label: "AMS-fugtighed", type: "single", domain: "sensor" },
       { key: "totalUsage", label: "Samlet driftstid", type: "single", domain: "sensor" },
+      { key: "cameraDisplay", label: "Kameravisning", type: "select", choices: [["printer", "Kun printerens eget kamera"], ["live", "Kun ekstra livekamera"], ["both", "Begge kameraer"]] },
       { key: "liveCamera", label: "Livekamera (vælg fra kameraer)", type: "single", domain: "camera" },
       { key: "liveStream", label: "go2rtc streamnavn (kun hvis kameraet ikke kan vælges ovenfor)", type: "text", placeholder: "3dprinter" }
     ]},
@@ -137,8 +143,10 @@
       { key: "nowUnmeasuredSensor", label: "\"Nu\" · umålt forbrug (valgfri)", type: "single", domain: "sensor", hints: ["umalt", "unmeasured"] },
       { key: "heatPowerSensor", label: "Varmeeffekt til forsiden (valgfri)", type: "single", domain: "sensor" },
       { key: "heatEnergySensor", label: "Varmeenergi i dag (valgfri)", type: "single", domain: "sensor" },
+      { key: "showHeatOnOverview", label: "Vis Varme-graf på forsiden", type: "boolean" },
       { key: "waterUsageSensor", label: "Vandforbrug i dag (valgfri)", type: "single", domain: "sensor" },
       { key: "waterFlowSensor", label: "Vandflow nu (valgfri)", type: "single", domain: "sensor" },
+      { key: "showWaterOnOverview", label: "Vis Vand-graf på forsiden", type: "boolean" },
       { key: "nowGroups", label: "\"Nu\"-visning · grupper pr. el-kreds", type: "groups" }
     ]}
   ];
@@ -173,7 +181,8 @@
 
   const root = document.getElementById("beastAdminRoot");
   let connected = false;
-  let activeView = "overview";
+  const requestedView = window.location.hash.replace(/^#/, "");
+  let activeView = requestedView || "overview";
   let currentConnState = "connecting";
   let currentMqttState = "connecting";
   let mqttWatchdogTimerId = null;
@@ -307,7 +316,8 @@
     checkListSources.set(id, items);
     if (!checkListSelections.has(id)) checkListSelections.set(id, new Set(selectedIds));
     return `
-      <input class="admin-filter" type="search" placeholder="Søg…" data-filter-list="${id}">
+      <div class="admin-picker-meta" data-picker-meta="${id}"><span>${items.length} muligheder</span><strong>${selectedIds.length} valgt</strong></div>
+      <input class="admin-filter" type="search" placeholder="Søg på navn, entity-id eller enhed…" data-filter-list="${id}">
       <div class="admin-check-list" id="${id}">
         ${renderCheckListRows(id)}
       </div>`;
@@ -317,13 +327,18 @@
     const items = checkListSources.get(id) || [];
     const selected = checkListSelections.get(id) || new Set();
     const normalizedQuery = query.trim().toLowerCase();
+    const searchText = (item) => {
+      const meta = BeastRegistry.getEntityMeta(item.id);
+      const device = meta?.deviceId ? BeastRegistry.getDevice(meta.deviceId) : null;
+      return `${item.name} ${item.id} ${device?.name || ""} ${meta?.platform || ""}`.toLowerCase();
+    };
     const matches = normalizedQuery
-      ? items.filter((item) => `${item.name} ${item.id}`.toLowerCase().includes(normalizedQuery))
+      ? items.filter((item) => searchText(item).includes(normalizedQuery))
       : items;
     const visible = [];
     const added = new Set();
     items.filter((item) => selected.has(item.id)).forEach((item) => {
-      if (!normalizedQuery || `${item.name} ${item.id}`.toLowerCase().includes(normalizedQuery)) {
+      if (!normalizedQuery || searchText(item).includes(normalizedQuery)) {
         visible.push(item);
         added.add(item.id);
       }
@@ -336,11 +351,16 @@
       return visible.length >= CHECK_LIST_RENDER_LIMIT;
     });
     if (!visible.length) return `<div class="admin-empty">Ingen matchende enheder fundet.</div>`;
-    const rows = visible.map((item) => `
-      <label class="admin-check" data-search="${escapeHtml(`${item.name} ${item.id}`.toLowerCase())}">
+    const rows = visible.map((item) => {
+      const meta = BeastRegistry.getEntityMeta(item.id);
+      const device = meta?.deviceId ? BeastRegistry.getDevice(meta.deviceId) : null;
+      const context = [device?.name, meta?.platform].filter(Boolean).join(" · ");
+      return `
+      <label class="admin-check" data-search="${escapeHtml(searchText(item))}">
         <input type="checkbox" value="${escapeHtml(item.id)}"${selected.has(item.id) ? " checked" : ""}>
-        <span><strong>${escapeHtml(item.name)}</strong><small>${escapeHtml(item.id)}</small></span>
-      </label>`).join("");
+        <span><strong>${escapeHtml(item.name)}</strong><small>${escapeHtml(context ? `${context} · ${item.id}` : item.id)}</small></span>
+      </label>`;
+    }).join("");
     const remaining = Math.max(0, matches.length - visible.length);
     return `${rows}${remaining ? `<div class="admin-list-hint">Skriv i søgefeltet for at finde de øvrige ${remaining} entities.</div>` : ""}`;
   }
@@ -348,17 +368,25 @@
   function renderSelectOptions(id, selected, query = "") {
     const items = selectSources.get(id) || [];
     const normalizedQuery = query.trim().toLowerCase();
+    const itemText = (item) => {
+      const meta = BeastRegistry.getEntityMeta(item.id);
+      const device = meta?.deviceId ? BeastRegistry.getDevice(meta.deviceId) : null;
+      return `${item.name} ${item.id} ${device?.name || ""} ${meta?.platform || ""}`.toLowerCase();
+    };
     const matches = normalizedQuery
-      ? items.filter((item) => `${item.name} ${item.id}`.toLowerCase().includes(normalizedQuery))
+      ? items.filter((item) => itemText(item).includes(normalizedQuery))
       : items;
     const visible = matches.slice(0, CHECK_LIST_RENDER_LIMIT);
     if (selected && !visible.some((item) => item.id === selected)) {
       const selectedItem = items.find((item) => item.id === selected);
       if (selectedItem) visible.unshift(selectedItem);
     }
-    return `<option value=""${selected ? "" : " selected"}>— Ikke valgt —</option>${visible.map((item) =>
-      `<option value="${escapeHtml(item.id)}"${item.id === selected ? " selected" : ""}>${escapeHtml(item.name)} — ${escapeHtml(item.id)}</option>`
-    ).join("")}`;
+    return `<option value=""${selected ? "" : " selected"}>— Ikke valgt —</option>${visible.map((item) => {
+      const meta = BeastRegistry.getEntityMeta(item.id);
+      const device = meta?.deviceId ? BeastRegistry.getDevice(meta.deviceId) : null;
+      const context = device?.name ? ` · ${device.name}` : "";
+      return `<option value="${escapeHtml(item.id)}"${item.id === selected ? " selected" : ""}>${escapeHtml(item.name)}${escapeHtml(context)} — ${escapeHtml(item.id)}</option>`;
+    }).join("")}`;
   }
 
   function entityPreviewHtml(id, entityId) {
@@ -414,6 +442,9 @@
       const checked = selected !== false;
       return `<select id="${fieldId(panel.id, field.key)}"><option value="1"${checked ? " selected" : ""}>Til</option><option value="0"${checked ? "" : " selected"}>Fra</option></select>`;
     }
+    if (field.type === "select") {
+      return `<select id="${fieldId(panel.id, field.key)}">${(field.choices || []).map(([value, label]) => `<option value="${escapeHtml(value)}"${selected === value ? " selected" : ""}>${escapeHtml(label)}</option>`).join("")}</select>`;
+    }
     if (field.type === "areas") {
       const ids = Array.isArray(selected) ? selected : [];
       const areas = BeastRegistry.getAllAreas().map((area) => ({ id: area.area_id, name: area.name || area.area_id }));
@@ -447,12 +478,73 @@
     entityFieldBaseSources.set(id, base);
     const scopedItems = scope?.selectedDeviceId ? scopedEntityItems(id, scope.selectedDeviceId) : items;
     selectSources.set(id, scopedItems);
+    const selectedName = selected ? BeastEntityPicker.friendlyName(selected) : "Ikke valgt";
     return `
       ${renderEntityDeviceScope(id, scope)}
-      <input class="admin-filter" type="search" placeholder="Søg i ${escapeHtml(field.label.toLowerCase())}…" data-filter-select="${id}">
-      <select id="${id}" size="8">
+      <div class="admin-picker-meta" data-picker-meta="${id}"><span>${scopedItems.length} ${escapeHtml(field.domain || "")} entities</span><strong>${escapeHtml(selectedName)}</strong></div>
+      <input class="admin-filter" type="search" placeholder="Søg på navn, entity-id eller enhed…" data-filter-select="${id}">
+      <select id="${id}" size="6">
         ${renderSelectOptions(id, selected)}
       </select>${entityPreviewHtml(id, selected)}`;
+  }
+
+  const ROOM_EXTRA_DOMAINS = new Set(["light", "climate", "sensor", "binary_sensor", "cover", "lock", "switch", "fan", "media_player", "input_boolean", "input_select", "automation", "valve", "vacuum"]);
+
+  function roomMappingId(areaId, suffix) {
+    return `admin_rooms_map_${String(areaId).replace(/[^a-z0-9_-]/gi, "_")}_${suffix}`;
+  }
+
+  function roomSensorItems(areaId, deviceClass, selected) {
+    const items = Array.from(BeastHaSocket.getAllStates().entries())
+      .filter(([entityId, state]) => entityId.startsWith("sensor.") && Number.isFinite(Number(state?.state)))
+      .map(([entityId, state]) => {
+        const meta = BeastRegistry.getEntityMeta(entityId);
+        let score = state?.attributes?.device_class === deviceClass ? 20 : 0;
+        if (meta?.areaId === areaId) score += 10;
+        if (entityId === selected) score += 100;
+        return { id: entityId, name: BeastEntityPicker.friendlyName(entityId), score };
+      })
+      .sort((a, b) => b.score - a.score || a.name.localeCompare(b.name, "da"));
+    if (selected && !items.some((item) => item.id === selected)) items.unshift({ id: selected, name: BeastEntityPicker.friendlyName(selected), score: 100 });
+    return items;
+  }
+
+  function roomExtraEntityItems(areaId, selectedIds) {
+    const selected = new Set(selectedIds || []);
+    return Array.from(BeastHaSocket.getAllStates().keys())
+      .filter((entityId) => ROOM_EXTRA_DOMAINS.has(entityId.split(".")[0]))
+      .map((entityId) => ({
+        id: entityId,
+        name: BeastEntityPicker.friendlyName(entityId),
+        score: selected.has(entityId) ? 100 : BeastRegistry.getEntityMeta(entityId)?.areaId === areaId ? 20 : 0
+      }))
+      .sort((a, b) => b.score - a.score || a.name.localeCompare(b.name, "da"));
+  }
+
+  function roomSinglePicker(id, items, selected, label) {
+    selectSources.set(id, items);
+    return `<div class="admin-room-map-field"><span>${escapeHtml(label)}</span><div class="admin-picker-meta" data-picker-meta="${id}"><span>${items.length} sensors</span><strong>${escapeHtml(selected ? BeastEntityPicker.friendlyName(selected) : "Automatisk")}</strong></div><input class="admin-filter" type="search" placeholder="Søg på navn, entity-id eller enhed…" data-filter-select="${id}"><select id="${id}" size="5">${renderSelectOptions(id, selected)}</select></div>`;
+  }
+
+  function renderRoomsEntityMappings(current) {
+    const areaIds = Array.isArray(current.areaIds) ? current.areaIds : [];
+    if (!areaIds.length) return `<div class="admin-room-mappings"><div class="admin-card-head"><div><h2>Entities pr. rum</h2><p>Vælg og gem først mindst ét synligt HA-område.</p></div></div></div>`;
+    const rows = areaIds.map((areaId) => {
+      const area = BeastRegistry.getArea(areaId);
+      if (!area) return "";
+      const climate = Array.isArray(current.climateSensors?.[areaId]) ? current.climateSensors[areaId] : [];
+      const extras = Array.isArray(current.entityOverrides?.[areaId]) ? current.entityOverrides[areaId] : [];
+      const tempId = roomMappingId(areaId, "temperature");
+      const humidityId = roomMappingId(areaId, "humidity");
+      const extrasId = roomMappingId(areaId, "extras");
+      const extraItems = roomExtraEntityItems(areaId, extras);
+      checkListSources.set(extrasId, extraItems);
+      checkListSelections.set(extrasId, new Set(extras));
+      const assignedCount = BeastRegistry.getAreaEntityIds(areaId).length;
+      const extrasPicker = `<div class="admin-picker-meta" data-picker-meta="${extrasId}"><span>${extraItems.length} muligheder</span><strong>${extras.length} valgt</strong></div><input class="admin-filter" type="search" placeholder="Søg på navn, entity-id eller enhed…" data-filter-list="${extrasId}"><div class="admin-check-list" id="${extrasId}">${renderCheckListRows(extrasId)}</div>`;
+      return `<article class="admin-room-mapping" data-room-mapping="${escapeHtml(areaId)}" data-temp-picker="${tempId}" data-humidity-picker="${humidityId}" data-extras-picker="${extrasId}"><header><div><h3>${escapeHtml(area.name || areaId)}</h3><p>${assignedCount} entities er allerede tilknyttet området i Home Assistant.</p></div><span>${extras.length} ekstra</span></header><div class="admin-room-map-sensors">${roomSinglePicker(tempId, roomSensorItems(areaId, "temperature", climate[0]), climate[0], "Temperatursensor")}${roomSinglePicker(humidityId, roomSensorItems(areaId, "humidity", climate[1]), climate[1], "Fugtighedssensor")}</div><div class="admin-room-map-extras"><span>Ekstra entities uden for HA-rummet</span><p>Disse lægges oven i de entities, som allerede er placeret i rummet i Home Assistant.</p>${extrasPicker}</div></article>`;
+    }).join("");
+    return `<div class="admin-room-mappings"><div class="admin-card-head"><div><h2>Entities pr. rum</h2><p>Automatiske HA-entities og valg herunder bruges sammen. Temperatur og fugtighed kan tilsidesættes særskilt.</p></div><button type="button" class="beast-btn" data-refresh-rooms>Genindlæs rum fra Home Assistant</button></div><div class="admin-room-mapping-grid">${rows}</div><span class="admin-save-state" data-refresh-rooms-state></span></div>`;
   }
 
   function getMqttConfig() {
@@ -582,43 +674,11 @@
     `;
   }
 
-  function renderThemePanel() {
-    const theme = window.BeastTheme?.getSettings() || { mode: "auto", palette: "aurora", resolved: "dark" };
-    const modes = [
-      ["auto", "settings", "Auto", "Følger skærmen"],
-      ["light", "sun", "Lys", "Lyst og tydeligt"],
-      ["dark", "moon", "Mørk", "Behageligt om aftenen"]
-    ];
-    const palettes = [
-      ["aurora", "Aurora", "Violet · cyan"],
-      ["ocean", "Ocean", "Blå · turkis"],
-      ["ember", "Ember", "Orange · pink"],
-      ["sage", "Salvie", "Rolig grøn · hav"],
-      ["sand", "Sand", "Varm beige · kobber"],
-      ["slate", "Skifer", "Neutral blågrå"]
-    ];
+  function renderThemeView() {
     return `
-      <section class="beast-theme-settings" aria-label="Udseende">
-        <div class="beast-settings-section-head">
-          <div><p class="beast-panel-title">Udseende</p><span>Tilpas skærmen uden genindlæsning</span></div>
-          <span class="beast-theme-current">${theme.mode === "auto" ? `Auto · ${theme.resolved === "light" ? "lys" : "mørk"}` : theme.mode === "light" ? "Lys" : "Mørk"}</span>
-        </div>
-        <div class="beast-theme-mode-grid">
-          ${modes.map(([id, icon, title, subtitle]) => `<button type="button" data-theme-mode="${id}" class="${theme.mode === id ? "is-active" : ""}" aria-pressed="${theme.mode === id}">
-            ${BeastCore.icon(icon, { size: 22 })}<span><strong>${title}</strong><small>${subtitle}</small></span>
-          </button>`).join("")}
-        </div>
-        <div class="beast-theme-palette-grid">
-          ${palettes.map(([id, title, subtitle]) => `<button type="button" data-theme-palette="${id}" class="${theme.palette === id ? "is-active" : ""}" aria-pressed="${theme.palette === id}">
-            <i class="beast-theme-swatch is-${id}"></i><span><strong>${title}</strong><small>${subtitle}</small></span>${theme.palette === id ? BeastCore.icon("check", { size: 18 }) : ""}
-          </button>`).join("")}
-        </div>
-        <label class="beast-theme-opacity">
-          <span class="beast-theme-opacity-icon">${BeastCore.icon("grid", { size: 21 })}</span>
-          <span><strong>Store kortområder</strong><small>0 % fjerner rammerne, mens knapper og styring bevares</small></span>
-          <input type="range" id="beastThemeOpacity" min="0" max="100" step="1" value="${theme.cardOpacity ?? 92}">
-          <output id="beastThemeOpacityValue">${theme.cardOpacity ?? 92}%</output>
-        </label>
+      <section class="admin-view${activeView === "theme" ? " is-active" : ""}" data-admin-view="theme">
+        <div class="admin-settings-intro"><div><h2>Tema og design</h2><p>Farve, stil og lystilstand for hele dashboardet. Ændringer virker med det samme og gemmes kun i denne browser.</p></div></div>
+        <div class="admin-card admin-settings-group admin-settings-theme">${window.BeastTheme?.renderPanel() || ""}</div>
       </section>
     `;
   }
@@ -679,15 +739,43 @@
     const current = BeastConfig.get(`panels.${panel.id}`) || {};
     return `
       <section class="admin-view${activeView === panel.id ? " is-active" : ""}" data-admin-view="${panel.id}">
+        <button type="button" class="admin-section-back" data-view="devices">${BeastCore.icon("chevron-right", { size: 17 })}<span>Alle enheder</span></button>
         <div class="admin-card">
           <div class="admin-card-head"><div><h2>${escapeHtml(panel.title)}</h2><p>${escapeHtml(panel.description)}</p></div></div>
           ${panel.fields.some((field) => field.type === "device") ? `<div class="admin-scope-banner">Vælg først den konkrete enhed og gem. Derefter viser felterne kun entities, som HA har knyttet til den valgte enhed.</div>` : ""}
           <div class="admin-grid">
-            ${panel.fields.map((field) => `<div class="admin-field"><span>${escapeHtml(field.label)}</span>${renderField(panel, field, current)}</div>`).join("")}
+            ${panel.fields.map((field) => `<div class="admin-field"><span class="admin-field-heading"><b>${escapeHtml(field.label)}</b>${field.domain ? `<em>${escapeHtml(field.domain)}</em>` : ""}</span>${renderField(panel, field, current)}</div>`).join("")}
           </div>
+          ${panel.id === "rooms" ? renderRoomsEntityMappings(current) : ""}
           <div class="admin-actions"><button class="admin-save" type="button" data-save-panel="${panel.id}">Gem ${escapeHtml(panel.title)}</button><span class="admin-save-state" data-save-state="${panel.id}"></span></div>
         </div>
       </section>`;
+  }
+
+  function renderDevicesView() {
+    const groups = [
+      ["Klima og forbrug", ["weather", "energy", "heating", "pool"]],
+      ["Hus og sikkerhed", ["rooms", "security", "cameras", "waste"]],
+      ["Udstyr og medier", ["music", "car", "robots", "printer"]]
+    ];
+    const icons = { weather:"cloud", energy:"bolt", heating:"thermometer", pool:"droplet", rooms:"grid", security:"shield", cameras:"camera", waste:"calendar", music:"music", car:"car", robots:"robot", printer:"printer" };
+    return `<section class="admin-view${activeView === "devices" ? " is-active" : ""}" data-admin-view="devices">
+      <div class="admin-settings-intro"><span>${BeastCore.icon("grid", { size: 29 })}</span><div><h2>Enheder og datakilder</h2><p>Vælg hvilke Home Assistant-enheder der leverer data. Kort, størrelse og placering redigeres direkte på den enkelte dashboard-side.</p></div></div>
+      ${groups.map(([title, ids]) => `<div class="admin-card admin-device-group"><div class="admin-card-head"><div><h2>${title}</h2><p>Åbn kun den del, du vil forbinde eller ændre.</p></div></div><div class="admin-device-hub">${ids.map((id) => { const panel=PANELS.find((item)=>item.id===id); const configured=BeastConfig.isPanelConfigured(id); return `<button type="button" data-view="${id}"><i>${BeastCore.icon(icons[id] || "grid", { size: 24 })}</i><span><strong>${escapeHtml(panel.title)}</strong><small>${escapeHtml(panel.description)}</small></span><em class="${configured ? "is-ready" : ""}">${configured ? "Konfigureret" : "Mangler opsætning"}</em>${BeastCore.icon("chevron-right", { size: 18 })}</button>`; }).join("")}</div></div>`).join("")}
+    </section>`;
+  }
+
+  function renderPagesView() {
+    const manifest = BeastConfig.get("pages") || {};
+    const removed = new Set(manifest.removed || []);
+    const standard = window.BeastPageManager?.standardPages?.() || [];
+    const custom = Array.isArray(manifest.custom) ? manifest.custom : [];
+    const activeCount = standard.filter((page) => !removed.has(page.id)).length + custom.filter((page) => !removed.has(page.id)).length;
+    return `<section class="admin-view${activeView === "pages" ? " is-active" : ""}" data-admin-view="pages">
+      <div class="admin-settings-intro"><span>${BeastCore.icon("grid", { size: 29 })}</span><div><h2>Sider og navigation</h2><p>Opret sider, gendan standardsider, omdøb dem og bestem rækkefølgen i dashboardets navigation.</p></div></div>
+      <div class="admin-summary"><div><strong>${activeCount}</strong><span>aktive sider</span></div><div><strong>${custom.length}</strong><span>egne sider</span></div><div><strong>${removed.size}</strong><span>skjulte eller fjernede</span></div></div>
+      <div class="admin-card admin-pages-card"><div class="admin-card-head"><div><h2>Administrer sider</h2><p>Tilføjelse, fjernelse og rækkefølge styres kun her. Layoutet på den aktuelle side åbnes med Rediger-knappen i dashboardets navigation.</p></div></div><button type="button" class="admin-primary-action" data-open-page-manager>${BeastCore.icon("plus", { size: 22 })}<span><strong>Tilføj eller administrer sider</strong><small>Opret, fjern, gendan, omdøb og flyt rækkefølge</small></span>${BeastCore.icon("chevron-right", { size: 20 })}</button></div>
+    </section>`;
   }
 
   function renderOverview() {
@@ -724,7 +812,6 @@
 
 
   function renderSetupOverview() {
-    const hidden = BeastLocalSettings.get("hiddenSections", BeastConfig.get("hiddenSections") || []);
     return `
       <section class="admin-view${activeView === "setup" ? " is-active" : ""}" data-admin-view="setup">
         <div class="admin-card">
@@ -737,11 +824,6 @@
             <div class="admin-favicon-preview"><img id="adminFaviconPreview" src="${escapeHtml(BeastConfig.get("faviconUrl") || "/favicon.svg")}" alt="Forhåndsvisning"><span>Forhåndsvisning</span></div>
           </div>
           <div class="admin-actions"><button class="admin-save" type="button" data-save-title>Gem browserfane</button><span class="admin-save-state" data-save-state="title"></span></div>
-        </div>
-        <div class="admin-card">
-          <div class="admin-card-head"><div><h2>Synlige sider</h2><p>Gemmes lokalt på denne maskine, så hver skærm kan have sin egen navigation.</p></div></div>
-          <div class="admin-page-grid">${PAGES.map(([id, label]) => `<label class="admin-page-toggle"><input type="checkbox" data-page="${id}"${hidden.includes(id) ? "" : " checked"}><span>${escapeHtml(label)}</span></label>`).join("")}</div>
-          <div class="admin-actions"><button class="admin-save" type="button" data-save-pages>Gem synlige sider</button><span class="admin-save-state" data-save-state="pages"></span></div>
         </div>
         ${renderFeaturePanel()}
         <div class="admin-card">
@@ -790,9 +872,12 @@
     const row = (card,index) => {
         const key = card.id || `card_${index}`;
         const entitySelectId = `admin_overview_card_${key}_entity`;
-        selectSources.set(entitySelectId, allEntities);
-        entityFieldBaseSources.set(entitySelectId, allEntities);
-        return `<div class="admin-overview-slot admin-overview-card-row" draggable="true" data-overview-card="${escapeHtml(key)}"><div class="admin-overview-row-head"><span class="admin-overview-drag-handle" data-overview-drag-handle aria-label="Træk for at flytte kort" title="Træk for at flytte">${BeastCore.icon("grip", { size: 18 })}</span><strong>Kort ${index+1}</strong><div class="admin-icon-actions"><button class="admin-icon-action" type="button" data-overview-move="up" aria-label="Flyt kort op" title="Flyt op">${BeastCore.icon("chevron-up", { size: 18 })}</button><button class="admin-icon-action" type="button" data-overview-move="down" aria-label="Flyt kort ned" title="Flyt ned">${BeastCore.icon("chevron-down", { size: 18 })}</button><button class="admin-icon-action is-danger" type="button" data-overview-remove aria-label="Fjern kort" title="Fjern kort">${BeastCore.icon("close", { size: 18 })}</button></div></div><label>Indhold<select data-overview-type>${OVERVIEW_SLOT_OPTIONS.filter(([value])=>value!=="empty").map(([value,name]) => `<option value="${value}"${card.type === value ? " selected" : ""}>${name}</option>`).join("")}</select></label><label>Titel<input type="text" data-overview-label value="${escapeHtml(card.label || "")}" placeholder="Valgfri titel"></label><div class="admin-overview-custom"${card.type === "custom" ? "" : " hidden"}><input class="admin-filter" type="search" placeholder="Søg efter entity…" data-filter-select="${entitySelectId}"><select id="${entitySelectId}" data-overview-entity size="5">${renderSelectOptions(entitySelectId, card.entity)}</select></div><div class="admin-overview-sizes"><fieldset><legend>Stor skærm · 12 kolonner</legend><label>Bredde<select data-size="desktop.w">${sizeOptions(card.desktop?.w || 4,12)}</select></label><label>Højde<select data-size="desktop.h">${sizeOptions(Math.min(card.desktop?.h || 1,2),2)}</select></label></fieldset><fieldset><legend>Smal/tablet · 2 kolonner</legend><label>Bredde<select data-size="tablet.w">${sizeOptions(card.tablet?.w || 1,2)}</select></label><label>Højde<select data-size="tablet.h">${sizeOptions(card.tablet?.h || 1,3)}</select></label></fieldset><fieldset><legend>Lodret/mobil · 1 kolonne</legend><label>Højde<select data-size="portrait.h">${sizeOptions(card.portrait?.h || 1,3)}</select></label></fieldset></div></div>`;
+        const entitySource = card.type === "heatpump" ? allEntities.filter((entity) => entity.id.startsWith("climate.")) : allEntities;
+        selectSources.set(entitySelectId, entitySource);
+        entityFieldBaseSources.set(entitySelectId, entitySource);
+        const needsEntity = card.type === "custom" || card.type === "heatpump";
+        const entityLabel = card.type === "heatpump" ? "Vælg varmepumpe" : "Vælg entity";
+        return `<div class="admin-overview-slot admin-overview-card-row" draggable="true" data-overview-card="${escapeHtml(key)}"><div class="admin-overview-row-head"><span class="admin-overview-drag-handle" data-overview-drag-handle aria-label="Træk for at flytte kort" title="Træk for at flytte">${BeastCore.icon("grip", { size: 18 })}</span><strong>Kort ${index+1}</strong><div class="admin-icon-actions"><button class="admin-icon-action" type="button" data-overview-move="up" aria-label="Flyt kort op" title="Flyt op">${BeastCore.icon("chevron-up", { size: 18 })}</button><button class="admin-icon-action" type="button" data-overview-move="down" aria-label="Flyt kort ned" title="Flyt ned">${BeastCore.icon("chevron-down", { size: 18 })}</button><button class="admin-icon-action is-danger" type="button" data-overview-remove aria-label="Fjern kort" title="Fjern kort">${BeastCore.icon("close", { size: 18 })}</button></div></div><label>Indhold<select data-overview-type>${OVERVIEW_SLOT_OPTIONS.filter(([value])=>value!=="empty").map(([value,name]) => `<option value="${value}"${card.type === value ? " selected" : ""}>${name}</option>`).join("")}</select></label><label>Titel<input type="text" data-overview-label value="${escapeHtml(card.label || "")}" placeholder="Valgfri titel"></label><div class="admin-overview-custom"${needsEntity ? "" : " hidden"}><strong data-overview-entity-label>${entityLabel}</strong><input class="admin-filter" type="search" placeholder="Søg efter entity…" data-filter-select="${entitySelectId}"><select id="${entitySelectId}" data-overview-entity size="5">${renderSelectOptions(entitySelectId, card.entity)}</select></div><div class="admin-overview-sizes"><fieldset><legend>Stor skærm · 12 kolonner</legend><label>Bredde<select data-size="desktop.w">${sizeOptions(card.desktop?.w || 4,12)}</select></label><label>Højde<select data-size="desktop.h">${sizeOptions(Math.min(card.desktop?.h || 1,2),2)}</select></label></fieldset><fieldset><legend>Smal/tablet · 2 kolonner</legend><label>Bredde<select data-size="tablet.w">${sizeOptions(card.tablet?.w || 1,2)}</select></label><label>Højde<select data-size="tablet.h">${sizeOptions(card.tablet?.h || 1,3)}</select></label></fieldset><fieldset><legend>Lodret/mobil · 1 kolonne</legend><label>Højde<select data-size="portrait.h">${sizeOptions(card.portrait?.h || 1,3)}</select></label></fieldset></div></div>`;
       };
     return `<div class="admin-card"><div class="admin-card-head"><div><h2>Visuel forsidebygger</h2><p>Træk kortene for at flytte dem rundt. Skift indhold, titel og størrelse nedenfor — forhåndsvisningerne opdateres med det samme.</p></div></div><div class="admin-overview-visual-preview" id="adminOverviewVisualPreview"></div><div class="admin-overview-preview" id="adminOverviewPreview"></div><div class="admin-overview-builder" data-overview-card-list>${cards.map(row).join("")}</div><div class="admin-actions"><button type="button" class="beast-btn" data-add-overview-card>+ Tilføj kort</button><button class="admin-save" type="button" data-save-overview-cards>Gem og anvend forside</button><span class="admin-save-state" data-save-state="overviewCards"></span></div></div>`;
   }
@@ -806,7 +891,7 @@
   // keeping the former all in one place (Forside) is what makes it findable.
   function renderQuickTileSettings() {
     const tiles = BeastConfig.get("overviewQuickTiles");
-    const [tile1 = "", tile2 = ""] = Array.isArray(tiles) ? tiles : ["car", "pool"];
+    const [tile1 = "", tile2 = ""] = Array.isArray(tiles) ? tiles : [];
     const waste = BeastConfig.get("panels.waste") || {};
     const select = (id, selected) => `<select id="${id}">${QUICK_TILE_OPTIONS.map(([value, label]) => `<option value="${value}"${value === selected ? " selected" : ""}>${label}</option>`).join("")}</select>`;
     const toggle = (id, checked) => `<select id="${id}"><option value="1"${checked ? " selected" : ""}>${t("Til", "On")}</option><option value="0"${checked ? "" : " selected"}>${t("Fra", "Off")}</option></select>`;
@@ -868,8 +953,8 @@
     refreshVisualOverviewPreview(cards);
   }
 
-  const OVERVIEW_CARD_ICONS = { cameras: "camera", clock: "calendar", weather: "cloud", security: "shield", energy: "bolt", custom: "grid" };
-  const OVERVIEW_CARD_LABELS = { cameras: "Live kameraer", clock: "Tid, kalender og affald", weather: "Vejr", security: "Sikkerhed", energy: "Energi" };
+  const OVERVIEW_CARD_ICONS = { cameras: "camera", clock: "calendar", weather: "cloud", security: "shield", energy: "bolt", heatpump: "wind", custom: "grid" };
+  const OVERVIEW_CARD_LABELS = { cameras: "Live kameraer", clock: "Tid, kalender og affald", weather: "Vejr", security: "Sikkerhed", energy: "Energi", heatpump: "Varmepumpe" };
   const WEATHER_ICON_MAP = { sunny: "sun", "clear-night": "moon", partlycloudy: "cloud", cloudy: "cloud", rainy: "cloud-rain", pouring: "cloud-rain", snowy: "cloud", fog: "cloud", windy: "wind", "windy-variant": "wind", lightning: "cloud-rain", "lightning-rainy": "cloud-rain" };
 
   function overviewCardVisualMarkup(card) {
@@ -885,7 +970,7 @@
       const camera = (window.BeastCameras?.getAllCameras?.() || [])[0];
       let media = "";
       if (camera?.streamName) {
-        const src = `/camera-player.html?v=11&transport=mse&sub=1&src=${encodeURIComponent(camera.streamName)}`;
+        const src = `/camera-player.html?v=14&transport=mse&sub=1&src=${encodeURIComponent(camera.streamName)}`;
         media = `<iframe class="admin-ov-preview-camera-img" src="${src}" allow="autoplay"></iframe>`;
       } else if (camera?.entityPicture) {
         media = `<img class="admin-ov-preview-camera-img" data-preview-camera-picture="${escapeHtml(camera.entityPicture)}" alt="">`;
@@ -910,6 +995,14 @@
       const watts = Number(powerState?.state);
       const label = Number.isFinite(watts) ? `${(watts / 1000).toFixed(1)} kW` : t("Ingen data endnu", "No data yet");
       body = `<div class="admin-ov-preview-hero">${BeastCore.icon("bolt", { size: 34 })}<div><strong>${escapeHtml(label)}</strong><span>${t("Forbrug nu", "Usage now")}</span></div></div>`;
+    } else if (card.type === "heatpump") {
+      const pumpId = card.entity || (BeastConfig.get("panels.heating.heatPumps") || [])[0];
+      const pump = BeastHaSocket.getState(pumpId);
+      const current = Number(pump?.attributes?.current_temperature);
+      const target = Number(pump?.attributes?.temperature);
+      const value = Number.isFinite(current) ? `${current.toFixed(1)}°` : t("Ingen data endnu", "No data yet");
+      const detail = Number.isFinite(target) ? `${t("Mål", "Target")} ${target.toFixed(1)}°` : (pump?.state || "");
+      body = `<div class="admin-ov-preview-hero">${BeastCore.icon("wind", { size: 34 })}<div><strong>${escapeHtml(value)}</strong><span>${escapeHtml(detail)}</span></div></div>`;
     } else if (card.type === "custom" && card.entity) {
       const state = BeastHaSocket.getState(card.entity);
       body = `<div class="admin-ov-preview-hero">${BeastCore.icon("grid", { size: 34 })}<div><strong>${escapeHtml(state?.state ?? "–")}</strong><span>${escapeHtml(state?.attributes?.friendly_name || card.entity)}</span></div></div>`;
@@ -1018,16 +1111,21 @@
   }
 
   function renderUpdatesView() {
+    const currentUpdateChannel = BeastConfig.get("updateChannel") === "beta" ? "beta" : "stable";
     return `<section class="admin-view${activeView === "updates" ? " is-active" : ""}" data-admin-view="updates">
-      <div class="admin-card"><div class="admin-card-head"><div><h2>Denne installation</h2><p>Versionen der kører lige nu, og hvad der senest er ændret.</p></div><button type="button" class="beast-btn" data-check-updates>Tjek for opdateringer</button></div>
+      <div class="admin-card"><div class="admin-card-head"><div><h2>Denne installation</h2><p>Versionen der kører lige nu, og hvad der senest er ændret.</p></div><div style="display:flex; align-items:center; gap:10px;"><div class="admin-channel-switch" role="group" aria-label="Opdateringskanal"><button type="button" class="admin-channel-btn${currentUpdateChannel === "stable" ? " is-active" : ""}" data-update-channel="stable">Stable</button><button type="button" class="admin-channel-btn${currentUpdateChannel === "beta" ? " is-active" : ""}" data-update-channel="beta">Beta</button></div><button type="button" class="beast-btn" data-check-updates>Tjek for opdateringer</button></div></div>
         <div class="beast-stat-grid">${BeastCore.statTile({ icon: "sparkles", label: "Nuværende version", value: "Henter…", meta: "…", id: "adminCurrentVersionTile" })}</div>
         <div class="admin-update-status" id="adminUpdateStatus" data-state="checking"><span class="admin-update-status-dot"></span><span id="adminUpdateStatusText">Tjekker…</span></div>
+        ${currentUpdateChannel === "beta" ? `<p class="admin-field-hint" style="margin:8px 0 0;">${t("Du følger Beta-kanalen — kan indeholde ændringer der endnu ikke er færdigtestede.", "You're following the Beta channel -- may include changes that haven't finished testing yet.")}</p>` : ""}
+        <div id="adminInstallLatest" class="admin-install-latest-slot"><p class="admin-empty">Henter…</p></div>
         <div id="adminUpdateSkipNote"></div>
-        <div class="admin-changelog-list" id="adminChangelogList"><p class="admin-empty">Henter ændringslog…</p></div>
+        <details class="admin-changelog-details">
+          <summary>${t("Vis ændringer og release notes", "Show changes and release notes")}</summary>
+          <div class="admin-changelog-list" id="adminChangelogList"><p class="admin-empty">Henter ændringslog…</p></div>
+        </details>
       </div>
       <div class="admin-card"><div class="admin-card-head"><div><h2>Versionshistorik</h2><p>Du kan altid installere den nyeste version, eller vælge en ældre at gendanne. Den nuværende version gemmes altid først, så det kan fortrydes.</p></div><button type="button" class="beast-btn" data-reload-versions>Opdatér liste</button></div>
         <div id="adminVersionSection">
-          <div id="adminInstallLatest"><p class="admin-empty">Henter…</p></div>
           <div class="admin-old-versions">
             <span class="admin-field-label">Tidligere versioner</span>
             <div class="admin-old-versions-row">
@@ -1058,12 +1156,25 @@
     return `${year}-${month}-${day} · build ${Number(build)}`;
   }
 
+  // Changelog entries from before this existed are plain strings (rendered
+  // as-is regardless of language -- no practical way to retranslate years
+  // of history). Newer entries store {da, en} per line so the changelog
+  // actually follows the dashboard's language setting like everything else
+  // in Admin, instead of always showing whatever language it happened to
+  // be written in.
+  function changelogLineText(change) {
+    if (typeof change === "string") return change;
+    if (!change || typeof change !== "object") return "";
+    const lang = BeastLocalSettings.get("language", "en");
+    return change[lang] || change.en || change.da || "";
+  }
+
   function renderChangelogEntries(entries) {
-    if (!entries.length) return `<p class="admin-empty">Ingen ændringslog fundet.</p>`;
+    if (!entries.length) return `<p class="admin-empty">${t("Ingen ændringslog fundet.", "No changelog found.")}</p>`;
     return entries.map((entry) => `
       <article class="admin-changelog-entry">
         <header><strong>${escapeHtml(entry.tag || entry.version)}</strong><span>${escapeHtml(entry.date || "")}</span></header>
-        ${Array.isArray(entry.changes) && entry.changes.length ? `<ul>${entry.changes.map((change) => `<li>${escapeHtml(change)}</li>`).join("")}</ul>` : ""}
+        ${Array.isArray(entry.changes) && entry.changes.length ? `<ul>${entry.changes.map((change) => `<li>${escapeHtml(changelogLineText(change))}</li>`).join("")}</ul>` : ""}
       </article>
     `).join("");
   }
@@ -1075,7 +1186,17 @@
     if (textEl) textEl.textContent = text;
   }
 
-  async function loadUpdatesSettings() {
+  function compareBuildIds(left, right) {
+    const a = String(left || "").match(/^(\d{8})-(\d+)$/);
+    const b = String(right || "").match(/^(\d{8})-(\d+)$/);
+    if (a && b) {
+      const dateCompare = a[1].localeCompare(b[1]);
+      return dateCompare || (Number(a[2]) - Number(b[2]));
+    }
+    return String(left || "").localeCompare(String(right || ""), undefined, { numeric: true });
+  }
+
+  async function loadUpdatesSettings(forceGithubRefresh = false) {
     const tile = document.getElementById("adminCurrentVersionTile");
     const changelogEl = document.getElementById("adminChangelogList");
     const installLatestEl = document.getElementById("adminInstallLatest");
@@ -1087,7 +1208,7 @@
       const [versionsRes, changelogRes, githubRes] = await Promise.all([
         fetch("/api/versions.php", { cache: "no-store" }),
         fetch(`/changelog.json?_=${Date.now()}`, { cache: "no-store" }),
-        fetch("/api/update.php", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "check" }) }).catch(() => null)
+        fetch("/api/update.php", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "check", force: Boolean(forceGithubRefresh), channel: BeastConfig.get("updateChannel") === "beta" ? "beta" : "stable" }) }).catch(() => null)
       ]);
       if (!versionsRes.ok) throw new Error(`HTTP ${versionsRes.status}`);
       const versionsPayload = await versionsRes.json();
@@ -1102,25 +1223,29 @@
       if (changelogEl) changelogEl.innerHTML = renderChangelogEntries(Array.isArray(changelog) ? changelog : []);
 
       const versions = versionsPayload.versions || [];
-      const localLatest = versions.length ? versions.map((item) => item.version).sort().at(-1) : null;
+      const localLatest = versions.length ? versions.map((item) => item.version).sort(compareBuildIds).at(-1) : null;
       // GitHub is the real source of truth for "is a newer release out
       // there" -- unlike the local snapshot list, it's meaningful even on
       // an install that has never received a hand-pushed update (e.g. a
       // fresh clone) and so has no snapshot history of its own at all.
-      const githubIsNewer = Boolean(github?.remoteVersion) && (!localLatest || github.remoteVersion > localLatest);
+      const githubIsNewer = Boolean(github?.remoteVersion) && (!localLatest || compareBuildIds(github.remoteVersion, localLatest) > 0);
       const latestVersion = githubIsNewer ? github.remoteVersion : localLatest;
       const latestEntry = versions.find((item) => item.version === latestVersion);
 
       if (installLatestEl) {
         if (latestVersion && latestVersion !== current) {
-          const changesHtml = githubIsNewer
+          const changesContent = githubIsNewer
             ? (github.releaseNotes ? `<p class="admin-install-latest-notes">${escapeHtml(String(github.releaseNotes)).slice(0, 600)}</p>` : "")
-            : (latestEntry?.changes?.length ? `<ul>${latestEntry.changes.slice(0, 4).map((change) => `<li>${escapeHtml(change)}</li>`).join("")}</ul>` : "");
+            : (latestEntry?.changes?.length ? `<ul>${latestEntry.changes.slice(0, 4).map((change) => `<li>${escapeHtml(changelogLineText(change))}</li>`).join("")}</ul>` : "");
+          const changesHtml = changesContent
+            ? `<details class="admin-install-latest-details"><summary>${t("Vis ændringer", "Show changes")}</summary>${changesContent}</details>`
+            : "";
           const installSource = githubIsNewer ? "github" : "local";
           const installTag = githubIsNewer ? escapeHtml(github.tag || "") : "";
           const latestTag = githubIsNewer ? github.tag : latestEntry?.tag;
           const latestLabel = latestTag ? `HA Smartdash ${latestTag}` : formatVersionLabel(latestVersion);
-          installLatestEl.innerHTML = `<div class="admin-install-latest"><div><strong>${t("Ny version klar", "New version ready")}</strong><span>${escapeHtml(latestLabel)}</span>${changesHtml}</div><button type="button" class="beast-btn beast-btn-primary" data-rollback-version="${escapeHtml(latestVersion)}" data-is-newer="true" data-is-latest="true" data-install-source="${installSource}" data-install-tag="${installTag}">${t("Installer ny version", "Install new version")}</button></div>`;
+          const betaBadge = githubIsNewer && github?.prerelease ? ` · Beta` : "";
+          installLatestEl.innerHTML = `<div class="admin-install-latest"><div><strong>${t("Ny version klar", "New version ready")}${betaBadge}</strong><span>${escapeHtml(latestLabel)}</span></div><button type="button" class="beast-btn beast-btn-primary" data-rollback-version="${escapeHtml(latestVersion)}" data-is-newer="true" data-is-latest="true" data-install-source="${installSource}" data-install-tag="${installTag}">${t("Installer ny version", "Install new version")}</button>${changesHtml}</div>`;
         } else {
           installLatestEl.innerHTML = `<p class="admin-empty">${t("Du kører den nyeste version.", "You're on the latest version.")}</p>`;
         }
@@ -1151,9 +1276,10 @@
         await fetch("/api/versions.php", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "snapshot" }) });
       }
       const checkedAt = new Date().toLocaleTimeString();
-      if (latestVersion && latestVersion > current) {
+      if (latestVersion && compareBuildIds(latestVersion, current) > 0) {
         const latestStatusLabel = (githubIsNewer ? github.tag : latestEntry?.tag) || latestVersion;
-        setUpdateStatus("outdated", t(`Ny version tilgængelig: ${latestStatusLabel} · tjekket ${checkedAt}`, `New version available: ${latestStatusLabel} · checked ${checkedAt}`));
+        const betaSuffix = githubIsNewer && github?.prerelease ? " (beta)" : "";
+        setUpdateStatus("outdated", t(`Ny version tilgængelig: ${latestStatusLabel}${betaSuffix} · tjekket ${checkedAt}`, `New version available: ${latestStatusLabel}${betaSuffix} · checked ${checkedAt}`));
       } else if (!github) {
         setUpdateStatus("current", t(`Du kører den nyeste version (kunne ikke tjekke GitHub) · tjekket ${checkedAt}`, `You're on the latest version (couldn't reach GitHub) · checked ${checkedAt}`));
       } else {
@@ -1223,8 +1349,7 @@
     const floatingPlayerOn = isFloatingPlayerEnabled();
     return `
       <section class="admin-view${activeView === "settings" ? " is-active" : ""}" data-admin-view="settings">
-        <div class="admin-settings-intro"><div><h2>Udseende & denne enhed</h2><p>Visuelle valg og maskinspecifik adfærd er opdelt nedenfor. De fleste valg gemmes kun i denne browser.</p></div></div>
-        <div class="admin-card admin-settings-group admin-settings-theme">${renderThemePanel()}</div>
+        <div class="admin-settings-intro"><div><h2>Denne enhed</h2><p>Maskinspecifik adfærd for netop denne kiosk eller browser. Visuelle valg (tema, farver, stil) findes under Tema og design.</p></div></div>
         <div class="admin-card admin-settings-group"><div class="admin-card-head"><div><h2>Dashboard på denne skærm</h2><p>Forbindelsesstatus og elementer, som kun påvirker den aktuelle kiosk eller browser.</p></div></div><div class="beast-stat-grid">
           ${BeastCore.statTile({ icon: "check", label: "HA-forbindelse", value: CONN_STATUS_LABELS[currentConnState] || currentConnState, id: "adminConnTile" })}
           ${BeastCore.statTile({ icon: "grid", label: "Entities i cache", value: String(BeastHaSocket.getAllStates().size), id: "adminCountTile" })}
@@ -1292,7 +1417,7 @@
       const camera = window.BeastCameras?.resolveCamera?.(id);
       if (!camera) return "";
       if (camera.streamName) {
-        const src = `/camera-player.html?v=11&transport=mse&sub=1&src=${encodeURIComponent(camera.streamName)}`;
+        const src = `/camera-player.html?v=14&transport=mse&sub=1&src=${encodeURIComponent(camera.streamName)}`;
         return `<div class="beast-ambient-camera-tile"><iframe class="beast-ambient-camera-tile-frame" src="${src}" allow="autoplay"></iframe></div>`;
       }
       if (camera.entityPicture) {
@@ -1474,25 +1599,32 @@
   function renderSecurityView() {
     const hasPin = window.BeastScreenLock?.hasPin();
     const autoLockOn = window.BeastScreenLock?.isAutoLockEnabled();
+    const alarmScreenOffOn = window.BeastScreenLock?.isAlarmScreenOffEnabled();
+    const selectedLockAlarm = BeastConfig.get("screenLock.alarmEntity") || BeastConfig.get("panels.security.primaryAlarm");
+    const alarmUnlockMode = BeastConfig.get("screenLock.alarmUnlockMode") === "disarm" ? "disarm" : "pin";
     const showAdminButton = BeastConfig.get("showAdminButton") !== false;
     return `<section class="admin-view${activeView === "security-settings" ? " is-active" : ""}" data-admin-view="security-settings">
-      <div class="admin-security-hero"><span>${BeastCore.icon("shield", { size: 30 })}</span><div><h2>Sikkerhed og adgang</h2><p>Administrér skærmlås, gendannelse og adgangen til adminpanelet samlet ét sted.</p></div></div>
-      <div class="admin-card admin-settings-group"><div class="admin-card-head"><div><h2>Pinkode og skærmlås</h2><p>Pinkoden gemmes kun på denne maskine og følger ikke med centrale backups.</p></div></div><div class="beast-stat-grid">
-        ${BeastCore.statTile({ icon:"lock", label:"Pinkode", value:hasPin ? "Aktiveret" : "Ikke oprettet", id:"adminPinTile", extra:`<div class="beast-stat-tile-actions"><button type="button" class="beast-security-action-btn" id="adminPinSet">${hasPin ? "Skift pinkode" : "Opret pinkode"}</button>${hasPin ? `<button type="button" class="beast-security-action-btn is-disarm" id="adminPinRemove">Fjern</button>` : ""}</div>` })}
-        ${BeastCore.statTile({ icon:"shield", label:"Automatisk lås", value:autoLockOn ? "Til ved aktiveret alarm" : "Fra", id:"adminAutoLockTile", extra:`<div class="beast-stat-tile-actions"><button type="button" class="beast-security-action-btn${autoLockOn ? " is-disarm" : ""}" id="adminAutoLockBtn" ${hasPin ? "" : "disabled"}>${autoLockOn ? "Slå fra" : "Slå til"}</button></div>` })}
-        ${BeastCore.statTile({ icon:"lock", label:"Lås denne skærm", value:hasPin ? "Klar" : "Kræver pinkode", id:"adminLockNowTile", extra:`<div class="beast-stat-tile-actions"><button type="button" class="beast-security-action-btn" id="adminLockNowBtn" ${hasPin ? "" : "disabled"}>Lås nu</button></div>` })}
-      </div>${hasPin ? `<div class="admin-security-recovery"><div><strong>Glemt pinkode?</strong><p>Bekræft din identitet med en ny Home Assistant-login og opret derefter en ny kode.</p></div><button type="button" class="beast-security-action-btn" id="adminPinRecover">Nulstil med HA-login</button></div>` : ""}</div>
-      <div class="admin-card admin-settings-group"><div class="admin-card-head"><div><h2>Adgang til administration</h2><p>Bestem om genvejen vises i dashboardet. Adminpanelet er altid tilgængeligt på <code>/admin/</code>.</p></div></div>
-        <label class="admin-security-toggle"><span><strong>Vis Administration-knappen</strong><small>Skjul genvejen på kiosker, hvor almindelige brugere ikke skal se den.</small></span><input type="checkbox" id="adminShowAdminButton"${showAdminButton ? " checked" : ""}></label>
-        <div class="admin-security-warning"${showAdminButton ? " hidden" : ""} id="adminHiddenAccessNote">Knappen er skjult. Åbn admin manuelt ved at skrive <strong>/admin/</strong> efter dashboardets adresse.</div>
-        <div class="admin-actions"><button class="admin-save" type="button" data-save-admin-access>Gem adgangsindstilling</button><span class="admin-save-state" data-save-state="adminAccess"></span></div>
+      <div class="admin-security-hero"><span>${BeastCore.icon("shield", { size: 30 })}</span><div><h2>${t("Sikkerhed og adgang", "Security and access")}</h2><p>${t("Administrér skærmlås, gendannelse og adgangen til adminpanelet samlet ét sted.", "Manage screen locking, recovery and Admin access in one place.")}</p></div></div>
+      <div class="admin-card admin-settings-group"><div class="admin-card-head"><div><h2>${t("Pinkode og skærmlås", "PIN and screen lock")}</h2><p>${t("Pinkoden gemmes i serverkonfigurationen og gælder på alle skærme.", "The PIN is stored in the server configuration and applies to every screen.")}</p></div></div><div class="beast-stat-grid">
+        ${BeastCore.statTile({ icon:"lock", label:t("Pinkode", "PIN"), value:hasPin ? t("Aktiveret", "Enabled") : t("Ikke oprettet", "Not configured"), id:"adminPinTile", extra:`<div class="beast-stat-tile-actions"><button type="button" class="beast-security-action-btn" id="adminPinSet">${hasPin ? t("Skift pinkode", "Change PIN") : t("Opret pinkode", "Create PIN")}</button>${hasPin ? `<button type="button" class="beast-security-action-btn is-disarm" id="adminPinRemove">${t("Fjern", "Remove")}</button>` : ""}</div>` })}
+        ${BeastCore.statTile({ icon:"shield", label:t("Automatisk lås", "Automatic lock"), value:autoLockOn ? t("Til ved fuld sikring", "On when fully armed") : t("Fra", "Off"), id:"adminAutoLockTile", extra:`<div class="beast-stat-tile-actions"><button type="button" class="beast-security-action-btn${autoLockOn ? " is-disarm" : ""}" id="adminAutoLockBtn" ${hasPin ? "" : "disabled"}>${autoLockOn ? t("Slå fra", "Turn off") : t("Slå til", "Turn on")}</button></div>` })}
+        ${BeastCore.statTile({ icon:"moon", label:t("Skærm ved alarm", "Display after alarm"), value:alarmScreenOffOn ? t("Sluk efter lås", "Switch off after lock") : t("Forbliv tændt", "Stay on"), id:"adminAlarmScreenOffTile", extra:`<div class="beast-stat-tile-actions"><button type="button" class="beast-security-action-btn${alarmScreenOffOn ? " is-disarm" : ""}" id="adminAlarmScreenOffBtn" ${hasPin ? "" : "disabled"}>${alarmScreenOffOn ? t("Behold skærmen tændt", "Keep display on") : t("Sluk skærmen", "Switch display off")}</button></div>` })}
+        ${BeastCore.statTile({ icon:"lock", label:t("Lås denne skærm", "Lock this screen"), value:hasPin ? t("Klar", "Ready") : t("Kræver pinkode", "PIN required"), id:"adminLockNowTile", extra:`<div class="beast-stat-tile-actions"><button type="button" class="beast-security-action-btn" id="adminLockNowBtn" ${hasPin ? "" : "disabled"}>${t("Lås nu", "Lock now")}</button></div>` })}
+      </div><div class="admin-security-alarm-rule"><label class="admin-field"><span>${t("Alarm der låser kiosken", "Alarm that locks the kiosk")}</span>${BeastEntityPicker.selectHtml({ id:"adminLockAlarmEntity", domain:"alarm_control_panel", selected:selectedLockAlarm })}<small>${t("Listen viser udelukkende alarm-enheder fra Home Assistant.", "Only Home Assistant alarm entities are shown.")}</small></label><label class="admin-field"><span>${t("Når alarmen frakobles", "When the alarm is disarmed")}</span><select id="adminAlarmUnlockMode"><option value="pin"${alarmUnlockMode === "pin" ? " selected" : ""}>${t("Behold låsen · kræv PIN ved første brug", "Keep lock · require PIN on first use")}</option><option value="disarm"${alarmUnlockMode === "disarm" ? " selected" : ""}>${t("Fjern låsen · følg normal presence-styring", "Remove lock · resume presence control")}</option></select></label><div><strong>${t("Ved fuld sikring", "When fully armed")}</strong><small>${t("Dashboardet låses, og den valgte kioskskærm kan slukkes bagefter.", "The dashboard locks and the selected kiosk display can switch off afterwards.")}</small><button type="button" class="beast-security-action-btn" id="adminSaveAlarmLockRule">${t("Gem alarmregel", "Save alarm rule")}</button></div></div>${hasPin ? `<div class="admin-security-recovery"><div><strong>${t("Glemt din pinkode?", "Forgot your PIN?")}</strong><p>${t("Bekræft din identitet med et nyt Home Assistant-login, og opret derefter en ny kode.", "Confirm your identity with a new Home Assistant login, then set a new code.")}</p></div><button type="button" class="beast-security-action-btn" id="adminPinRecover">${t("Nulstil med HA-login", "Reset with HA login")}</button></div>` : ""}</div>
+      <div class="admin-card admin-settings-group"><div class="admin-card-head"><div><h2>${t("Adgang til administration", "Access to Administration")}</h2><p>${t("Bestem om genvejen vises i dashboardet. Adminpanelet er altid tilgængeligt på", "Choose whether the shortcut appears in the dashboard. The Admin panel is always available at")} <code>/admin/</code>.</p></div></div>
+        <label class="admin-security-toggle"><span><strong>${t("Vis Administration-knappen", "Show the Administration button")}</strong><small>${t("Skjul genvejen på kiosker, hvor almindelige brugere ikke skal se den.", "Hide the shortcut on kiosks where regular users should not see it.")}</small></span><input type="checkbox" id="adminShowAdminButton"${showAdminButton ? " checked" : ""}></label>
+        <div class="admin-security-warning"${showAdminButton ? " hidden" : ""} id="adminHiddenAccessNote">${t("Knappen er skjult. Åbn Admin manuelt ved at skrive", "The button is hidden. Open Admin manually by entering")} <strong>/admin/</strong> ${t("efter dashboardets adresse.", "after the dashboard address.")}</div>
+        <div class="admin-actions"><button class="admin-save" type="button" data-save-admin-access>${t("Gem adgangsindstilling", "Save access setting")}</button><span class="admin-save-state" data-save-state="adminAccess"></span></div>
       </div></section>`;
   }
 
   function renderActiveView() {
     if (activeView === "overview") return renderOverview();
+    if (activeView === "pages") return renderPagesView();
+    if (activeView === "devices") return renderDevicesView();
     if (activeView === "setup") return renderSetupOverview();
     if (activeView === "forside") return renderForsideView();
+    if (activeView === "theme") return renderThemeView();
     if (activeView === "settings") return renderSettingsView();
     if (activeView === "security-settings") return renderSecurityView();
     if (activeView === "screensaver") return renderScreensaverView();
@@ -1501,6 +1633,17 @@
     if (activeView === "updates") return renderUpdatesView();
     const panel = PANELS.find((item) => item.id === activeView);
     return panel ? renderPanel(panel) : renderOverview();
+  }
+
+  function adminViewTitle() {
+    const panel = PANELS.find((item) => item.id === activeView);
+    if (panel) return panel.title;
+    return ({ overview:"Overblik", pages:"Sider og navigation", devices:"Enheder og datakilder", setup:"Forbindelser & kiosk", theme:"Tema og design", settings:"Denne enhed", "security-settings":"Sikkerhed", screensaver:t("Pauseskærm", "Screensaver"), advarsler:t("Advarsler", "Alerts"), backup:"Backup & gendannelse", updates:"Opdatering" })[activeView] || "Administration";
+  }
+
+  function adminViewDescription() {
+    if (PANELS.some((panel) => panel.id === activeView) || activeView === "devices") return "Forbind Home Assistant-data til dashboardets funktioner. Layout redigeres på selve dashboard-siden.";
+    return ({ pages:"Opret og organiser dashboardets sider ét samlet sted.", setup:"Serverforbindelse, kioskfunktioner og hændelser.", theme:"Farve, stil og lystilstand for hele dashboardet.", settings:"Maskinspecifik adfærd for netop denne kiosk eller browser.", updates:"Se hvad der er nyt, og gendan en tidligere version om nødvendigt.", "security-settings":"Lokal adgang, pinkode og beskyttelse af adminpanelet.", screensaver:t("Styrer denne skærm/browser — hver kiosk kan have sin egen tidsplan.", "Controls this screen/browser only — each kiosk can have its own schedule."), advarsler:t("Alt om post-banneret samlet ét sted — slå til/fra og vælg entities.", "Everything about the post banner in one place — turn it on/off and pick entities.") })[activeView] || "Konfigurationen gemmes centralt på serveren.";
   }
 
   function renderShell(options = {}) {
@@ -1513,22 +1656,26 @@
           <div class="admin-brand">${brandLogoMarkup("sidebar")}<strong>Administration</strong></div>
           <nav class="admin-nav">
             <button class="${activeView === "overview" ? "is-active" : ""}" type="button" data-view="overview">Overblik</button>
-            <p class="admin-nav-section">Opsætning</p>
-            <button class="${activeView === "setup" ? "is-active" : ""}" type="button" data-view="setup">Grundindstillinger</button>
-            <button class="${activeView === "forside" ? "is-active" : ""}" type="button" data-view="forside">${t("Forside", "Front page")}</button>
-            ${PANELS.map((panel) => `<button class="${activeView === panel.id ? "is-active" : ""}" type="button" data-view="${panel.id}">${escapeHtml(panel.title)}</button>`).join("")}
-            <p class="admin-nav-section">Indstillinger</p>
-            <button class="${activeView === "settings" ? "is-active" : ""}" type="button" data-view="settings">Udseende & enhed</button>
-            <button class="${activeView === "security-settings" ? "is-active" : ""}" type="button" data-view="security-settings">Adgang & pinkode</button>
+            <p class="admin-nav-section">Dashboard</p>
+            <button class="${activeView === "pages" ? "is-active" : ""}" type="button" data-view="pages">Sider og navigation</button>
+            <button class="${activeView === "devices" || PANELS.some((panel) => panel.id === activeView) ? "is-active" : ""}" type="button" data-view="devices">Enheder og datakilder</button>
+            <p class="admin-nav-section">System</p>
+            <button class="${activeView === "setup" ? "is-active" : ""}" type="button" data-view="setup">Forbindelser & kiosk</button>
+            <p class="admin-nav-section">Skærm</p>
+            <button class="${activeView === "theme" ? "is-active" : ""}" type="button" data-view="theme">Tema og design</button>
+            <button class="${activeView === "settings" ? "is-active" : ""}" type="button" data-view="settings">Denne enhed</button>
             <button class="${activeView === "screensaver" ? "is-active" : ""}" type="button" data-view="screensaver">${t("Pauseskærm", "Screensaver")}</button>
             <button class="${activeView === "advarsler" ? "is-active" : ""}" type="button" data-view="advarsler">${t("Advarsler", "Alerts")}</button>
+            <p class="admin-nav-section">Sikkerhed</p>
+            <button class="${activeView === "security-settings" ? "is-active" : ""}" type="button" data-view="security-settings">Sikkerhed</button>
+            <p class="admin-nav-section">Vedligeholdelse</p>
             <button class="${activeView === "backup" ? "is-active" : ""}" type="button" data-view="backup">Backup & gendannelse</button>
             <button class="${activeView === "updates" ? "is-active" : ""}" type="button" data-view="updates">Opdatering</button>
           </nav>
           <div class="admin-sidebar-foot"><a class="admin-back" href="/">Åbn dashboard</a></div>
         </aside>
         <main class="admin-main">
-          <header class="admin-topbar"><div><h1>${activeView === "updates" ? "Opdatering" : activeView === "backup" ? "Backup & gendannelse" : activeView === "security-settings" ? "Sikkerhed" : activeView === "forside" ? t("Forside", "Front page") : activeView === "screensaver" ? t("Pauseskærm", "Screensaver") : activeView === "advarsler" ? t("Advarsler", "Alerts") : activeView === "settings" ? "Udseende & enhed" : activeView === "overview" ? "Overblik" : "Opsætning"}</h1><p>${activeView === "updates" ? "Se hvad der er nyt, og gendan en tidligere version om nødvendigt." : activeView === "security-settings" ? "Lokal adgang, pinkode og beskyttelse af adminpanelet." : activeView === "forside" ? t("Kortene på Oversigt-fanen — indhold, størrelse og rækkefølge, med live-forhåndsvisning.", "The cards on the Overview tab — content, size and order, with a live preview.") : activeView === "screensaver" ? t("Styrer denne skærm/browser — hver kiosk kan have sin egen tidsplan.", "Controls this screen/browser only — each kiosk can have its own schedule.") : activeView === "advarsler" ? t("Alt om post-banneret samlet ét sted — slå til/fra og vælg entities.", "Everything about the post banner in one place — turn it on/off and pick entities.") : "Konfigurationen gemmes centralt på serveren."}</p></div><div class="admin-topbar-tools"><label class="admin-language-picker"><span>${BeastCore.icon("globe", { size: 15 })}</span><select id="adminLanguageSelect" aria-label="Dashboard-sprog"><option value="en"${dashboardLanguage !== "da" ? " selected" : ""}>English</option><option value="da"${dashboardLanguage === "da" ? " selected" : ""}>Dansk</option></select></label><span class="admin-status" id="adminHaStatus" data-state="${connected ? "connected" : "connecting"}">${connected ? "Home Assistant forbundet" : "Forbinder til Home Assistant…"}</span></div></header>
+          <header class="admin-topbar"><div><h1>${adminViewTitle()}</h1><p>${adminViewDescription()}</p></div><div class="admin-topbar-tools"><label class="admin-language-picker"><span>${BeastCore.icon("globe", { size: 15 })}</span><select id="adminLanguageSelect" aria-label="Dashboard-sprog"><option value="en"${dashboardLanguage !== "da" ? " selected" : ""}>English</option><option value="da"${dashboardLanguage === "da" ? " selected" : ""}>Dansk</option></select></label><span class="admin-status" id="adminHaStatus" data-state="${connected ? "connected" : "connecting"}">${connected ? "Home Assistant forbundet" : "Forbinder til Home Assistant…"}</span></div></header>
           ${renderActiveView()}
         </main>
       </div>`;
@@ -1560,6 +1707,23 @@
         patch[field.key] = document.getElementById(id)?.value.trim() || null;
       }
     });
+    if (panel.id === "rooms") {
+      const current = BeastConfig.get("panels.rooms") || {};
+      const climateSensors = { ...(current.climateSensors || {}) };
+      const entityOverrides = { ...(current.entityOverrides || {}) };
+      document.querySelectorAll("[data-room-mapping]").forEach((row) => {
+        const areaId = row.dataset.roomMapping;
+        const temperature = document.getElementById(row.dataset.tempPicker)?.value || null;
+        const humidity = document.getElementById(row.dataset.humidityPicker)?.value || null;
+        const extras = Array.from(checkListSelections.get(row.dataset.extrasPicker) || []);
+        if (temperature || humidity) climateSensors[areaId] = [temperature, humidity];
+        else delete climateSensors[areaId];
+        if (extras.length) entityOverrides[areaId] = extras;
+        else delete entityOverrides[areaId];
+      });
+      patch.climateSensors = climateSensors;
+      patch.entityOverrides = entityOverrides;
+    }
     return patch;
   }
 
@@ -1580,9 +1744,14 @@
   function wireUi() {
     document.querySelectorAll("[data-view]").forEach((button) => button.addEventListener("click", () => {
       activeView = button.dataset.view;
+      window.history.replaceState(null, "", `#${activeView}`);
       hasUnsavedPanelChanges = false;
       renderShell({ resetContent: true });
     }));
+    document.querySelector("[data-open-page-manager]")?.addEventListener("click", () => {
+      if (typeof window.BeastPageManager?.open === "function") window.BeastPageManager.open();
+      else showToast("Sideadministrationen kunne ikke indlæses. Genindlæs Admin og prøv igen.", "error");
+    });
     document.getElementById("adminLanguageSelect")?.addEventListener("change", (event) => {
       BeastLocalSettings.set("language", event.target.value);
     });
@@ -1600,8 +1769,20 @@
       overviewVisualPreviewTimerId = window.setInterval(updateVisualOverviewPreviewLiveBits, 1000);
     }
     document.querySelector("[data-reload-backups]")?.addEventListener("click", loadBackupSettings);
-    document.querySelector("[data-reload-versions]")?.addEventListener("click", loadUpdatesSettings);
-    document.querySelector("[data-check-updates]")?.addEventListener("click", loadUpdatesSettings);
+    document.querySelector("[data-reload-versions]")?.addEventListener("click", () => loadUpdatesSettings(true));
+    document.querySelector("[data-check-updates]")?.addEventListener("click", () => loadUpdatesSettings(true));
+    document.querySelectorAll("[data-update-channel]").forEach((button) => {
+      button.addEventListener("click", async () => {
+        const channel = button.dataset.updateChannel === "beta" ? "beta" : "stable";
+        if (channel === (BeastConfig.get("updateChannel") === "beta" ? "beta" : "stable")) return;
+        if (channel === "beta") {
+          const accepted = window.confirm("Beta-kanalen henter udgivelser der endnu ikke er markeret stabile. De kan indeholde ændringer der ikke er færdigtestede.\n\nDenne installation vil fremover selv opdage og installere Beta-udgivelser, både her og i baggrunden.\n\nAccepterer du det, og vil du skifte til Beta?");
+          if (!accepted) return;
+        }
+        await BeastConfig.set("updateChannel", channel);
+        renderShell();
+      });
+    });
     document.getElementById("adminUpdateSkipNote")?.addEventListener("click", async (event) => {
       if (!event.target.closest("#adminClearUpdateSkip")) return;
       await fetch("/api/update.php", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "clearSkip" }) }).catch(() => {});
@@ -1627,7 +1808,11 @@
       }
       if (stateEl) stateEl.textContent = raw && !tag ? t("Kunne ikke genkende et versionsnummer i det du indsatte.", "Couldn't recognize a version number in what you pasted.") : "";
     });
-    document.getElementById("adminVersionSection")?.addEventListener("click", async (event) => {
+    // The latest-version action lives in the top "Denne installation" card,
+    // while rollback/manual actions live in "Versionshistorik" below. Bind
+    // their shared handler to the complete Updates view so moving a button
+    // between those cards cannot silently disconnect it again.
+    document.querySelector('[data-admin-view="updates"]')?.addEventListener("click", async (event) => {
       const button = event.target.closest("[data-rollback-version]");
       if (!button) return;
       const version = button.dataset.rollbackVersion;
@@ -1701,8 +1886,23 @@
         option.hidden = outsideSearch || outsideLikely;
       });
     }));
-    document.querySelectorAll("select[id]").forEach((select) => select.addEventListener("change", () => updateEntityPreview(select.id, select.value)));
-    document.querySelectorAll("[data-overview-type]").forEach((select) => select.addEventListener("change", () => { const custom = select.closest("[data-overview-card]").querySelector(".admin-overview-custom"); custom.hidden = select.value !== "custom"; }));
+    document.querySelectorAll("select[id]").forEach((select) => select.addEventListener("change", () => {
+      updateEntityPreview(select.id, select.value);
+      const meta = document.querySelector(`[data-picker-meta="${select.id}"] strong`);
+      if (meta) meta.textContent = select.value ? BeastEntityPicker.friendlyName(select.value) : "Ikke valgt";
+    }));
+    document.querySelectorAll("[data-overview-type]").forEach((select) => select.addEventListener("change", () => {
+      const row = select.closest("[data-overview-card]");
+      const custom = row.querySelector(".admin-overview-custom");
+      const needsEntity = select.value === "custom" || select.value === "heatpump";
+      custom.hidden = !needsEntity;
+      if (!needsEntity) return;
+      const picker = row.querySelector("[data-overview-entity]");
+      const source = select.value === "heatpump" ? allOverviewEntities().filter((entity) => entity.id.startsWith("climate.")) : allOverviewEntities();
+      selectSources.set(picker.id, source); entityFieldBaseSources.set(picker.id, source);
+      row.querySelector("[data-overview-entity-label]").textContent = select.value === "heatpump" ? "Vælg varmepumpe" : "Vælg entity";
+      picker.innerHTML = renderSelectOptions(picker.id, picker.value);
+    }));
     document.querySelectorAll("[data-filter-overview-device]").forEach((input) => input.addEventListener("input", () => { const select = document.getElementById(input.dataset.filterOverviewDevice), query = input.value.trim().toLowerCase(); Array.from(select.options).forEach((option,index) => { option.hidden = Boolean(index && query && !option.dataset.search.includes(query)); }); }));
     document.querySelectorAll("[data-overview-device]").forEach((deviceSelect) => deviceSelect.addEventListener("change", () => {
       const entitySelect = document.getElementById(deviceSelect.dataset.targetEntity), selected = entitySelect.value;
@@ -1759,6 +1959,27 @@
       } catch (error) {
         button.disabled = false;
         if (state) state.textContent = `Opdatering fejlede: ${error.message}`;
+      }
+    });
+    document.querySelector("[data-refresh-rooms]")?.addEventListener("click", async (event) => {
+      if (hasUnsavedPanelChanges && !window.confirm("Ikke-gemte valg på siden bliver nulstillet. Genindlæs rum alligevel?")) return;
+      const button = event.currentTarget;
+      const state = document.querySelector("[data-refresh-rooms-state]");
+      button.disabled = true;
+      if (state) state.textContent = "Henter rum, områder og entities…";
+      try {
+        await BeastHaSocket.refreshSnapshot();
+        await BeastRegistry.refresh();
+        entityCandidateCache.clear();
+        checkListSources.clear();
+        checkListSelections.clear();
+        selectSources.clear();
+        entityFieldBaseSources.clear();
+        hasUnsavedPanelChanges = false;
+        renderShell();
+      } catch (error) {
+        button.disabled = false;
+        if (state) state.textContent = `Genindlæsning fejlede: ${error.message}`;
       }
     });
     document.getElementById("adminFaviconUrl")?.addEventListener("input", (event) => {
@@ -1915,6 +2136,9 @@
     document.querySelectorAll("button[data-theme-palette]").forEach((button) => {
       button.addEventListener("click", () => { window.BeastTheme?.setPalette(button.dataset.themePalette); renderShell(); });
     });
+    document.querySelectorAll("button[data-theme-style]").forEach((button) => {
+      button.addEventListener("click", () => { window.BeastTheme?.setStyle(button.dataset.themeStyle); renderShell(); });
+    });
     document.getElementById("beastThemeOpacity")?.addEventListener("input", (event) => {
       const value = Number(event.currentTarget.value);
       const output = document.getElementById("beastThemeOpacityValue");
@@ -1957,6 +2181,22 @@
       const autoLockOn = window.BeastScreenLock?.isAutoLockEnabled();
       window.BeastScreenLock.setAutoLockEnabled(!autoLockOn);
       renderShell();
+    });
+    document.getElementById("adminAlarmScreenOffBtn")?.addEventListener("click", () => {
+      const enabled = window.BeastScreenLock?.isAlarmScreenOffEnabled();
+      window.BeastScreenLock.setAlarmScreenOffEnabled(!enabled);
+      renderShell();
+    });
+    document.getElementById("adminSaveAlarmLockRule")?.addEventListener("click", async (event) => {
+      const button = event.currentTarget;
+      button.disabled = true;
+      await BeastConfig.set("screenLock", {
+        ...(BeastConfig.get("screenLock") || {}),
+        alarmEntity: document.getElementById("adminLockAlarmEntity")?.value || null,
+        alarmUnlockMode: document.getElementById("adminAlarmUnlockMode")?.value === "disarm" ? "disarm" : "pin"
+      });
+      button.textContent = t("Gemt · genindlæs dashboardet", "Saved · reload the dashboard");
+      window.setTimeout(() => { button.disabled = false; button.textContent = t("Gem alarmregel", "Save alarm rule"); }, 1800);
     });
     document.getElementById("adminLockNowBtn")?.addEventListener("click", () => { window.BeastScreenLock.lockNow(); });
     document.getElementById("adminScreensaverBgFile")?.addEventListener("change", (event) => {
@@ -2115,6 +2355,8 @@
     const selected = checkListSelections.get(list.id);
     if (checkbox.checked) selected.add(checkbox.value);
     else selected.delete(checkbox.value);
+    const meta = document.querySelector(`[data-picker-meta="${list.id}"] strong`);
+    if (meta) meta.textContent = `${selected.size} valgt`;
   }
   document.addEventListener("click", (event) => {
     const addBtn = event.target.closest("[data-add-group]");
@@ -2138,11 +2380,44 @@
   });
 
   function renderLogin(message) {
-    root.innerHTML = `<div class="admin-login"><div class="admin-login-card"><div class="admin-login-logo">${brandLogoMarkup("login")}</div><small>Administration</small><h1>Forbind Home Assistant</h1><p>${escapeHtml(message || "Admin bruger din Home Assistant-login til at hente områder og entities. Login-oplysninger gemmes kun i browseren.")}</p><form id="adminLoginForm"><input type="url" id="adminHaUrl" value="${escapeHtml(BeastAuth.getHaBaseUrl() || `${window.location.origin}/ha`)}" placeholder="Home Assistant-adresse" required><button type="submit">Log ind med Home Assistant</button></form></div></div>`;
-    document.getElementById("adminLoginForm").addEventListener("submit", (event) => {
+    const diagnostics = BeastAuth.getDiagnostics();
+    const diagnosticText = diagnostics.length ? JSON.stringify(diagnostics, null, 2) : "Ingen loginfejl registreret i denne browserfane.";
+    root.innerHTML = `<div class="admin-login"><div class="admin-login-card"><div class="admin-login-logo">${brandLogoMarkup("login")}</div><small>Administration</small><h1>Forbind Home Assistant</h1><p class="admin-login-message">${escapeHtml(message || "Vælg almindeligt Home Assistant-login eller brug et Long-Lived Access Token. Oplysninger gemmes kun i denne browser.")}</p><form id="adminLoginForm"><input type="url" id="adminHaUrl" value="${escapeHtml(BeastAuth.getHaBaseUrl() || `${window.location.origin}/ha`)}" placeholder="Home Assistant-adresse" required><button type="submit">Log ind med Home Assistant</button></form><details class="admin-token-login"><summary>Log ind med token</summary><form id="adminTokenLoginForm"><label>Long-Lived Access Token<textarea id="adminHaToken" rows="4" autocomplete="off" spellcheck="false" placeholder="Indsæt token fra din Home Assistant-profil" required></textarea></label><small>Tokenet valideres mod Home Assistant og gemmes kun lokalt i browseren. Det vises aldrig i fejlloggen.</small><button type="submit">Kontrollér token og log ind</button></form></details><details class="admin-login-diagnostics"${diagnostics.length ? " open" : ""}><summary>Fejllog og forbindelsesdetaljer</summary><pre id="adminLoginDiagnosticText">${escapeHtml(diagnosticText)}</pre><div><button type="button" id="adminCopyLoginDiagnostics">Kopiér fejllog</button><button type="button" id="adminClearLoginDiagnostics">Ryd log</button></div></details></div></div>`;
+    document.getElementById("adminLoginForm").addEventListener("submit", async (event) => {
       event.preventDefault();
       BeastAuth.setHaBaseUrl(document.getElementById("adminHaUrl").value);
-      BeastAuth.startLogin();
+      const button = event.currentTarget.querySelector("button[type=submit]");
+      button.disabled = true;
+      button.textContent = "Kontrollerer forbindelse…";
+      try {
+        await BeastAuth.prepareLogin();
+      } catch (error) {
+        renderLogin(error.userMessage || "Kunne ikke kontrollere Home Assistant-forbindelsen.");
+      }
+    });
+    document.getElementById("adminTokenLoginForm").addEventListener("submit", async (event) => {
+      event.preventDefault();
+      const address = document.getElementById("adminHaUrl");
+      if (!address.reportValidity()) return;
+      BeastAuth.setHaBaseUrl(address.value);
+      const button = event.currentTarget.querySelector("button[type=submit]");
+      button.disabled = true;
+      button.textContent = "Kontrollerer token…";
+      try {
+        await BeastAuth.loginWithToken(document.getElementById("adminHaToken").value);
+        window.location.reload();
+      } catch (error) {
+        renderLogin(error.userMessage || "Token-login mislykkedes.");
+      }
+    });
+    document.getElementById("adminCopyLoginDiagnostics").addEventListener("click", async () => {
+      const text = document.getElementById("adminLoginDiagnosticText").textContent;
+      if (navigator.clipboard?.writeText) await navigator.clipboard.writeText(text);
+      else window.prompt("Kopiér fejlloggen:", text);
+    });
+    document.getElementById("adminClearLoginDiagnostics").addEventListener("click", () => {
+      BeastAuth.clearDiagnostics();
+      renderLogin(message);
     });
   }
 
@@ -2158,6 +2433,11 @@
     if (!BeastAuth.getHaBaseUrl() && BeastConfig.get("haBaseUrl")) BeastAuth.setHaBaseUrl(BeastConfig.get("haBaseUrl"));
     if (pinRecoveryPending && !callback) { BeastAuth.startLogin({ forceLogin: true }); return; }
     if (!BeastAuth.hasSession()) { renderLogin(); return; }
+    const alreadyVerifiedForAdmin = window.BeastScreenLock?.consumeAdminVerification?.() === true;
+    if (window.BeastScreenLock?.hasPin() && !pinRecoveryPending && !alreadyVerifiedForAdmin) {
+      const verified = await new Promise((resolve) => window.BeastScreenLock.requestPinVerification(resolve));
+      if (!verified) { window.location.href = "/"; return; }
+    }
     const returnView = sessionStorage.getItem("beast_admin_return_view_v1");
     if (returnView) { activeView = returnView; sessionStorage.removeItem("beast_admin_return_view_v1"); }
     renderShell();

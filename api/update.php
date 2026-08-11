@@ -17,16 +17,18 @@ $githubRepo = "MRDonnii/ha-smartdash";
 if (!is_dir($dataDir)) mkdir($dataDir, 0775, true);
 if (!is_dir($snapshotsDir)) mkdir($snapshotsDir, 0775, true);
 
-// Everything that ships the app, copied wholesale from the downloaded
-// release -- an allowlist would need editing every time a release adds a
-// file. data/ (config, backups, snapshots) is the only thing that must
-// never be touched; the rest is repository housekeeping that has no
-// business on a live deployment.
+// Repository items that are not part of a live deployment. Installation
+// still copies every other item from the clean GitHub archive, but rollback
+// snapshots deliberately use the same compact application-code list as
+// api/versions.php. A deployed folder can contain old backup-before-* dirs
+// and other local files; snapshotting the whole root recursively made every
+// update inherit those files and inflated snapshots from ~1.4 MB to ~138 MB.
 $excludeTopLevel = [
   "data", ".git", ".github", ".gitignore", ".gitattributes", ".DS_Store",
   "README.md", "README.da.md", "LICENSE", "CONTRIBUTING.md", "SECURITY.md",
   "THIRD_PARTY_NOTICES.md", "demo", "deploy", "docs", "scripts"
 ];
+$snapshotPaths = ["js", "css", "beast.html", "index.html", "admin/admin.js", "admin/admin.css", "admin/index.html"];
 
 function currentBuildId($root) {
   $html = @file_get_contents($root . "/beast.html");
@@ -36,6 +38,15 @@ function currentBuildId($root) {
 
 function isSafeVersion($version) {
   return is_string($version) && preg_match('/^[A-Za-z0-9._-]{1,64}$/', $version);
+}
+
+function compareBuildIds($a, $b) {
+  if (preg_match('/^(\d{8})-(\d+)$/', (string) $a, $left) && preg_match('/^(\d{8})-(\d+)$/', (string) $b, $right)) {
+    $dateCompare = strcmp($left[1], $right[1]);
+    if ($dateCompare !== 0) return $dateCompare;
+    return ((int) $left[2]) <=> ((int) $right[2]);
+  }
+  return version_compare((string) $a, (string) $b);
 }
 
 // If installing $toBuildId is actually a downgrade from $fromBuildId,
@@ -48,7 +59,7 @@ function isSafeVersion($version) {
 // as GitHub's latest happens to equal this exact build; a genuinely new
 // release naturally supersedes it and check() stops suppressing anything.
 function recordSkippedIfDowngrade($dataDir, $fromBuildId, $toBuildId) {
-  if (!$fromBuildId || !$toBuildId || $toBuildId >= $fromBuildId) return;
+  if (!$fromBuildId || !$toBuildId || compareBuildIds($toBuildId, $fromBuildId) >= 0) return;
   @file_put_contents($dataDir . "/update-skip.json", json_encode(["skippedBuildId" => $fromBuildId, "skippedAt" => time()]));
 }
 
@@ -76,18 +87,30 @@ function copyRecursive($src, $dst) {
   }
 }
 
-function snapshotCurrent($root, $snapshotsDir, $excludeTopLevel, $version) {
+function snapshotCurrent($root, $snapshotsDir, $snapshotPaths, $version) {
   if (!isSafeVersion($version)) return false;
   $dest = $snapshotsDir . "/" . $version;
   if (is_dir($dest)) return true;
   $tmp = $dest . ".tmp-" . uniqid();
-  foreach (scandir($root) as $item) {
-    if ($item === "." || $item === ".." || in_array($item, $excludeTopLevel, true)) continue;
-    copyRecursive("$root/$item", "$tmp/$item");
+  foreach ($snapshotPaths as $relPath) {
+    $src = $root . "/" . $relPath;
+    if (file_exists($src)) copyRecursive($src, $tmp . "/" . $relPath);
   }
   if (!is_dir($tmp)) return false;
   rename($tmp, $dest);
   return true;
+}
+
+function pruneSnapshots($snapshotsDir, $keepCount, $protectedVersions = []) {
+  $entries = [];
+  foreach (scandir($snapshotsDir) as $name) {
+    if ($name === "." || $name === ".." || !isSafeVersion($name) || !is_dir($snapshotsDir . "/" . $name)) continue;
+    $entries[] = $name;
+  }
+  usort($entries, function ($a, $b) { return compareBuildIds($b, $a); });
+  $keep = array_fill_keys(array_slice($entries, 0, max(1, (int) $keepCount)), true);
+  foreach ($protectedVersions as $version) if (isSafeVersion($version)) $keep[$version] = true;
+  foreach ($entries as $name) if (!isset($keep[$name])) recursiveRemove($snapshotsDir . "/" . $name);
 }
 
 function httpGet($url, &$error = null) {
@@ -153,6 +176,20 @@ function fetchLatestRelease($githubRepo, &$error = null) {
   return $data;
 }
 
+// GitHub's /releases/latest quietly excludes anything marked "pre-release"
+// -- exactly the behavior the stable channel wants, for free. The beta
+// channel instead reads the plain /releases list (newest first) and takes
+// the very first entry, pre-release or not, so a beta build is discovered
+// the moment it's published without needing a second tagging scheme.
+function fetchLatestReleaseForChannel($githubRepo, $channel, &$error = null) {
+  if ($channel !== "beta") return fetchLatestRelease($githubRepo, $error);
+  $body = httpGet("https://api.github.com/repos/$githubRepo/releases?per_page=5", $error);
+  if ($body === null) return null;
+  $data = json_decode($body, true);
+  if (!is_array($data) || empty($data[0]["tag_name"])) { $error = "Unexpected GitHub API response"; return null; }
+  return $data[0];
+}
+
 function fetchRemoteBuildId($githubRepo, $tag, &$error = null) {
   $safeTag = rawurlencode($tag);
   $body = httpGet("https://raw.githubusercontent.com/$githubRepo/$safeTag/beast.html", $error);
@@ -190,6 +227,10 @@ if (!is_array($body)) { http_response_code(400); echo json_encode(["error" => "i
 $action = $body["action"] ?? "";
 
 if ($action === "check") {
+  // "beta" opts into GitHub releases marked pre-release; anything else
+  // (including a missing/unrecognized value) is "stable" -- the exact
+  // behavior this endpoint already had before channels existed.
+  $channel = ($body["channel"] ?? "stable") === "beta" ? "beta" : "stable";
   // GitHub's unauthenticated API allows only 60 requests/hour per source
   // IP -- shared by every kiosk and every open Administration tab on this
   // network. Each check used to hit GitHub directly (2 requests), and the
@@ -199,12 +240,19 @@ if ($action === "check") {
   // admin tabs polling this endpoint only cost GitHub a request every few
   // minutes, not per poll. currentVersion/updateAvailable are still
   // recomputed fresh every call against whatever is actually installed
-  // right now -- only the GitHub half of the answer is cached.
-  $cacheFile = $dataDir . "/update-check-cache.json";
+  // right now -- only the GitHub half of the answer is cached. Cached
+  // per channel so a kiosk that switches between them doesn't serve a
+  // stable answer to a beta check or vice versa.
+  $cacheFile = $dataDir . "/update-check-cache-$channel.json";
   $cacheTtlSeconds = 300;
+  // Automatic/background checks reuse the short cache to protect GitHub's
+  // unauthenticated rate limit. A user explicitly pressing the check button
+  // must be able to discover a release published seconds ago, so that request
+  // bypasses the cache and refreshes it with GitHub's current latest release.
+  $forceRefresh = !empty($body["force"]);
   $skippedId = skippedBuildId($dataDir);
   $cached = null;
-  if (is_file($cacheFile)) {
+  if (!$forceRefresh && is_file($cacheFile)) {
     $raw = @file_get_contents($cacheFile);
     $decoded = $raw ? json_decode($raw, true) : null;
     if (is_array($decoded) && isset($decoded["fetchedAt"]) && (time() - $decoded["fetchedAt"]) < $cacheTtlSeconds) {
@@ -217,12 +265,14 @@ if ($action === "check") {
     $remoteBuildId = $cached["remoteVersion"];
     echo json_encode([
       "currentVersion" => $current,
+      "channel" => $channel,
       "tag" => $tag,
       "remoteVersion" => $remoteBuildId,
-      "updateAvailable" => $remoteBuildId > $current,
+      "updateAvailable" => compareBuildIds($remoteBuildId, $current) > 0,
       "releaseUrl" => $cached["releaseUrl"],
       "releaseNotes" => $cached["releaseNotes"],
       "publishedAt" => $cached["publishedAt"],
+      "prerelease" => $cached["prerelease"] ?? false,
       "cached" => true,
       "skipAutoInstall" => $skippedId !== null && $skippedId === $remoteBuildId,
     ]);
@@ -230,7 +280,7 @@ if ($action === "check") {
   }
 
   $error = null;
-  $release = fetchLatestRelease($githubRepo, $error);
+  $release = fetchLatestReleaseForChannel($githubRepo, $channel, $error);
   if ($release === null) {
     // GitHub is unreachable (rate-limited, offline, etc.) -- serve a stale
     // cache if one exists rather than failing outright; a slightly old
@@ -241,12 +291,14 @@ if ($action === "check") {
       if (is_array($stale)) {
         echo json_encode([
           "currentVersion" => $current,
+          "channel" => $channel,
           "tag" => $stale["tag"],
           "remoteVersion" => $stale["remoteVersion"],
-          "updateAvailable" => $stale["remoteVersion"] > $current,
+          "updateAvailable" => compareBuildIds($stale["remoteVersion"], $current) > 0,
           "releaseUrl" => $stale["releaseUrl"],
           "releaseNotes" => $stale["releaseNotes"],
           "publishedAt" => $stale["publishedAt"],
+          "prerelease" => $stale["prerelease"] ?? false,
           "cached" => true,
           "stale" => true,
           "skipAutoInstall" => $skippedId !== null && $skippedId === $stale["remoteVersion"],
@@ -268,12 +320,14 @@ if ($action === "check") {
     "releaseUrl" => $release["html_url"] ?? null,
     "releaseNotes" => $release["body"] ?? "",
     "publishedAt" => $release["published_at"] ?? null,
+    "prerelease" => $release["prerelease"] ?? false,
   ];
   @file_put_contents($cacheFile, json_encode(["fetchedAt" => time()] + $payload));
 
   echo json_encode([
     "currentVersion" => $current,
-    "updateAvailable" => $remoteBuildId > $current,
+    "channel" => $channel,
+    "updateAvailable" => compareBuildIds($remoteBuildId, $current) > 0,
     "cached" => false,
     "skipAutoInstall" => $skippedId !== null && $skippedId === $remoteBuildId,
   ] + $payload);
@@ -355,7 +409,7 @@ if ($action === "install") {
     // Safety net: snapshot what's live right now before overwriting it, so
     // if the copy below fails partway, or the new version turns out to be
     // broken, the existing local rollback (api/versions.php) can undo this.
-    snapshotCurrent($root, $snapshotsDir, $excludeTopLevel, $current);
+    snapshotCurrent($root, $snapshotsDir, $snapshotPaths, $current);
 
     try {
       foreach (scandir($extractedRoot) as $item) {
@@ -377,7 +431,8 @@ if ($action === "install") {
     }
 
     $installedVersion = currentBuildId($root);
-    snapshotCurrent($root, $snapshotsDir, $excludeTopLevel, $installedVersion);
+    snapshotCurrent($root, $snapshotsDir, $snapshotPaths, $installedVersion);
+    pruneSnapshots($snapshotsDir, 25, [$installedVersion]);
     recordSkippedIfDowngrade($dataDir, $current, $installedVersion);
 
     echo json_encode(["success" => true, "installedVersion" => $installedVersion, "tag" => $tag]);

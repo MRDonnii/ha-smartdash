@@ -6,6 +6,11 @@
   overflow-y: auto;
 }
 
+/* Live HVAC activity. The icon identifies the state; the full-width strip
+   along the bottom carries the motion so activity reads across the card. */
+.beast-heating-room-card.is-cooling { border-color:rgba(66,200,255,.55); box-shadow:inset 0 0 28px rgba(66,200,255,.08),0 0 15px rgba(66,200,255,.12); }
+.beast-heating-room-card.is-cooling .beast-heating-room-reading i { color:#42c8ff; background:rgba(66,200,255,.13); }
+
 .beast-settings-panel {
   overflow-y: auto;
 }
@@ -36,6 +41,7 @@
 }
 
 .beast-theme-mode-grid,
+.beast-theme-style-grid,
 .beast-theme-palette-grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -43,6 +49,7 @@
 }
 
 .beast-theme-mode-grid button,
+.beast-theme-style-grid button,
 .beast-theme-palette-grid button {
   appearance: none;
   min-height: 76px;
@@ -60,18 +67,23 @@
 }
 
 .beast-theme-mode-grid button > span,
+.beast-theme-style-grid button > span,
 .beast-theme-palette-grid button > span { min-width: 0; flex: 1; }
 .beast-theme-mode-grid strong,
+.beast-theme-style-grid strong,
 .beast-theme-palette-grid strong { display: block; font-size: var(--text-md); }
 .beast-theme-mode-grid small,
+.beast-theme-style-grid small,
 .beast-theme-palette-grid small { display: block; margin-top: 2px; color: var(--ink-muted); font-size: var(--text-xs); }
 .beast-theme-mode-grid button.is-active,
+.beast-theme-style-grid button.is-active,
 .beast-theme-palette-grid button.is-active {
   border-color: var(--accent-border);
   background: var(--accent-soft);
   box-shadow: inset 0 0 0 1px var(--accent-border);
 }
 .beast-theme-mode-grid button.is-active > svg,
+.beast-theme-style-grid button.is-active > svg,
 .beast-theme-palette-grid button.is-active > svg { color: var(--accent); }
 
 .beast-theme-swatch {
@@ -88,6 +100,76 @@
 .beast-theme-swatch.is-sage { background: linear-gradient(135deg, #6f9d86, #75a9a4); }
 .beast-theme-swatch.is-sand { background: linear-gradient(135deg, #b98d68, #c2a878); }
 .beast-theme-swatch.is-slate { background: linear-gradient(135deg, #7186a0, #8299a8); }
+.beast-theme-swatch.is-ruby { background: linear-gradient(135deg, #ff3d5f, #ff7a5c); }
+.beast-theme-swatch.is-berry { background: linear-gradient(135deg, #c026d3, #7c3aed); }
+.beast-theme-swatch.is-sunglow { background: linear-gradient(135deg, #ff9d3d, #ff4d6a); }
+.beast-theme-swatch.is-graphite { background: linear-gradient(135deg, #7c8797, #9aa5b3); }
+
+/* Design-style swatches (js/ha-smartdash-theme.js STYLE_TOKENS) -- each
+   preview is self-contained (own border-radius/shadow, not driven by the
+   live --radius-*/--panel-shadow-opacity vars) so all three stay visibly
+   different from one another regardless of which style is currently
+   active, letting people compare before switching. */
+.beast-theme-style-swatch {
+  width: 42px;
+  height: 42px;
+  flex: 0 0 42px;
+  background: linear-gradient(160deg, color-mix(in srgb, var(--accent-a) 22%, var(--surface-2-solid)), var(--surface-2-solid));
+}
+.beast-theme-style-swatch.is-glass {
+  border-radius: 14px;
+  border: 1px solid color-mix(in srgb, var(--ink) 14%, transparent);
+  box-shadow: 0 10px 18px -8px rgba(0, 0, 0, .4);
+}
+.beast-theme-style-swatch.is-clean {
+  border-radius: 9px;
+  border: 1px solid color-mix(in srgb, var(--ink) 8%, transparent);
+  box-shadow: 0 4px 8px -4px rgba(0, 0, 0, .2);
+}
+.beast-theme-style-swatch.is-rich {
+  border-radius: 20px;
+  border: 1px solid color-mix(in srgb, var(--ink) 20%, transparent);
+  box-shadow: 0 16px 26px -8px rgba(0, 0, 0, .55);
+}
+
+/* Live preview -- reuses .beast-panel itself (not a lookalike copy) so it
+   renders with the exact same --panel-surface/--panel-border/--radius-lg/
+   --panel-shadow-opacity every real dashboard card uses. Admin's own
+   .admin-card chrome is a separate, hardcoded skin that doesn't consume
+   those tokens, so without this the style/opacity pickers above would
+   change nothing visible anywhere on the admin page itself. */
+.beast-theme-preview-wrap { display: grid; gap: var(--space-2); }
+/* Renders the actual page background (var(--bg) -- a flat color for
+   glass/clean, a gradient for rich, see apply() in ha-smartdash-theme.js)
+   behind the preview card, not just the card itself -- the background
+   treatment is the single biggest visible difference between styles and
+   was invisible before this stage existed. */
+.beast-theme-preview-stage {
+  padding: var(--space-5);
+  border-radius: var(--radius-lg);
+  background: var(--bg);
+  border: 1px solid var(--border);
+  overflow: hidden;
+}
+.beast-theme-preview-card {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-4) var(--space-5);
+}
+.beast-theme-preview-icon {
+  width: 46px;
+  height: 46px;
+  flex: 0 0 46px;
+  display: grid;
+  place-items: center;
+  border-radius: 13px;
+  color: var(--accent);
+  background: var(--accent-soft);
+}
+.beast-theme-preview-card strong,
+.beast-theme-preview-card small { display: block; }
+.beast-theme-preview-card small { margin-top: 2px; color: var(--ink-muted); font-size: var(--text-xs); }
 
 .beast-theme-opacity {
   min-height: 78px;
@@ -481,7 +563,8 @@
   border-color: color-mix(in srgb, var(--energy-tile-accent), transparent 78%);
   background:
     radial-gradient(circle at 100% 0%, color-mix(in srgb, var(--energy-tile-accent), transparent 86%), transparent 48%),
-    linear-gradient(145deg, var(--surface-2), color-mix(in srgb, var(--energy-tile-accent), var(--surface-2) 94%));
+    linear-gradient(145deg, var(--surface-2-solid), color-mix(in srgb, var(--energy-tile-accent), var(--surface-2-solid) 94%)),
+    var(--surface-2);
   box-shadow: inset 3px 0 0 color-mix(in srgb, var(--energy-tile-accent), transparent 18%);
 }
 
@@ -1349,6 +1432,9 @@
 .beast-pool-live > header > span i { width: 8px; height: 8px; border-radius: 50%; background: var(--success); box-shadow: 0 0 10px var(--success); }
 .beast-pool-live-frame { min-height: 0; overflow: hidden; border-radius: var(--radius-md); background: #020406; border: 1px solid var(--border); }
 .beast-pool-live-frame iframe { width: 100%; height: 100%; display: block; border: 0; }
+.beast-pool-live-frame .beast-pool-shared-camera,.beast-pool-live-frame .beast-shared-camera-frame,.beast-pool-live-frame .beast-shared-camera-live,.beast-pool-live-frame .beast-shared-camera-snapshot { width:100%; height:100%; display:block; }
+.beast-pool-live-frame .beast-shared-camera-live,.beast-pool-live-frame .beast-shared-camera-snapshot { object-fit:contain; background:#020406; }
+.beast-pool-camera-empty { width:100%; height:100%; min-height:180px; display:grid; place-items:center; padding:24px; color:var(--ink-muted); text-align:center; }
 .beast-pool-live > footer { color: var(--ink-muted); font-size: var(--text-xs); }
 .beast-pool-live > footer span { display: flex; align-items: center; gap: 6px; }
 .beast-pool-live > footer em { font-style: normal; }
@@ -1440,10 +1526,241 @@
   height: 100%;
 }
 
+.beast-page-edit-trigger {
+  position: fixed;
+  top: 30px;
+  right: 8px;
+  z-index: 39;
+  width: 44px;
+  height: 44px;
+  display: grid;
+  align-items: center;
+  justify-content: center;
+  padding: 0 0 8px;
+  border: 0;
+  border-radius: 14px;
+  background: transparent;
+  color: var(--ink);
+  font: 800 30px/1 var(--font-sans);
+  box-shadow: none;
+  touch-action: manipulation;
+}
+.beast-page-edit-trigger:active { transform: scale(.94); }
+.beast-content .beast-page-edit-trigger { display:none !important; }
+.beast-page-action-menu { position:fixed; z-index:160; width:min(330px,calc(100vw - 20px)); max-height:calc(100dvh - 20px); overflow-y:auto; display:grid; gap:8px; padding:10px; border:1px solid var(--border-strong); border-radius:20px; background:color-mix(in srgb,var(--surface-2-solid),transparent 4%); box-shadow:0 22px 65px rgba(0,0,0,.48); backdrop-filter:blur(24px) saturate(1.2); }
+.beast-page-action-menu button { width:100%; min-height:72px; display:grid; grid-template-columns:48px minmax(0,1fr); align-items:center; gap:12px; padding:10px 13px; border:1px solid transparent; border-radius:15px; background:var(--surface-solid); color:var(--ink); text-align:left; font:inherit; touch-action:manipulation; }
+.beast-page-action-menu button:hover,.beast-page-action-menu button:active,.beast-page-action-menu button.is-busy { border-color:var(--accent-border); background:var(--accent-soft); }
+.beast-page-action-menu button i { width:44px; height:44px; display:grid; place-items:center; border-radius:13px; color:var(--accent-a); background:var(--accent-soft); font-style:normal; }
+.beast-page-action-menu button[data-page-action="fit"] i { color:var(--accent-b); background:color-mix(in srgb,var(--accent-b),transparent 86%); }
+.beast-page-action-menu strong,.beast-page-action-menu small { display:block; }
+.beast-page-action-menu strong { font-size:var(--text-md); line-height:1.2; }
+.beast-page-action-menu small { margin-top:5px; color:var(--ink-muted); font-size:var(--text-xs); line-height:1.35; }
+.beast-section.is-responsive-fitted { overflow-x:hidden !important; overflow-y:auto !important; }
+.beast-section.is-responsive-fitted .beast-overview-grid,.beast-section.is-responsive-fitted .beast-page-builder-grid { width:100%; max-width:100%; }
+.beast-camera-featured[data-camera-fit="contain"] .beast-shared-camera-live,
+.beast-camera-featured[data-camera-fit="contain"] .beast-shared-camera-snapshot { object-fit:contain; }
+.beast-music-control.hide-speaker-picker .beast-speaker-drawer,
+.beast-music-control.hide-speaker-picker .beast-speaker-trigger { display:none !important; }
+
+.beast-page-builder-grid {
+  height: 100%;
+  padding-top: 0;
+}
+
+/* The editor uses this only as a DOM insertion marker. It must not become
+   an extra implicit grid row, otherwise height-2 cards occupy only two of
+   three rows and leave the bottom third of the full-page view empty. */
+.beast-page-builder-grid > [data-card-editor-anchor] { display: none; }
+.beast-page-editor-host { position: relative; display: contents; }
+.beast-page-editor-scroll-host { overflow-x: hidden !important; overflow-y: auto !important; overscroll-behavior-y: contain; -webkit-overflow-scrolling: touch; }
+.beast-page-editor-scroll-host.is-card-editing { padding-bottom: 124px !important; scroll-padding-bottom: 124px; }
+.beast-page-editor-scroll-host > :not(.beast-page-editor-host) { flex-shrink: 0; }
+/* Regression guard: this auxiliary editor grid lives inside an existing
+   full-page panel. It must never inherit the overview freeform grid's
+   100%-height/1fr behaviour, otherwise the original view is visually cut in
+   half whenever a custom card is present. */
+.beast-page-entity-grid { display: none; flex: 0 0 auto; width: 100%; height: fit-content !important; max-height: none !important; min-height: 0; margin-top: 18px; padding-bottom: 28px; overflow: visible !important; grid-auto-rows: minmax(180px, auto) !important; }
+.beast-page-entity-grid.is-editing { display: grid; min-height: 180px; }
+.beast-page-entity-grid.is-editing { margin-bottom: 18px; }
+.beast-page-entity-grid.is-freeform { display: grid; min-height: 0; }
+.beast-page-entity-card { min-height: 180px; }
+.beast-page-editor-hint { color: var(--ink-muted); line-height: 1.45; }
+.beast-editor-hidden-actions { display:none !important; }
+.beast-card-editor-tools { width:min(760px,calc(100vw - 28px)); max-width:760px; }
+.beast-card-editor-tools-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:10px; }
+.beast-card-editor-tools-grid > button { min-height:78px; display:grid; grid-template-columns:38px minmax(0,1fr); align-items:center; gap:10px; padding:12px 14px; border:1px solid var(--border); border-radius:13px; background:var(--surface-2); color:var(--ink); text-align:left; }
+.beast-card-editor-tools-grid > button > svg { color:var(--accent); }
+.beast-card-editor-tools-grid strong,.beast-card-editor-tools-grid small { display:block; }
+.beast-card-editor-tools-grid small { margin-top:3px; color:var(--ink-muted); font-size:11px; }
+.beast-card-editor-tools-grid > button:disabled { opacity:.4; }
+.beast-card-editor-tools-grid > button.is-danger { border-color:color-mix(in srgb,var(--danger) 35%,var(--border)); color:var(--danger); background:color-mix(in srgb,var(--danger) 8%,var(--surface-2-solid)); }
+@media (max-width:620px) { .beast-card-editor-tools-grid { grid-template-columns:minmax(0,1fr); } }
+.beast-page-editor-field { display: grid; gap: 7px; margin-bottom: 14px; color: var(--ink-muted); font-size: var(--text-sm); }
+.beast-page-editor-field input { min-height: 50px; padding: 0 14px; border: 1px solid var(--border-strong); border-radius: var(--radius-md); background: var(--surface-solid); color: var(--ink); font: inherit; }
+.beast-page-editor-field select { min-height: 50px; padding: 0 14px; border: 1px solid var(--border-strong); border-radius: var(--radius-md); background: var(--surface-solid); color: var(--ink); font: inherit; }
+.beast-page-editor-size-fields { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+.beast-page-editor-check { display: flex; align-items: center; gap: 10px; min-height: 48px; margin-bottom: 14px; color: var(--ink); font-size: var(--text-sm); }
+.beast-page-editor-check input { width: 22px; height: 22px; accent-color: var(--accent); }
+.beast-page-entity-card.is-disabled { opacity: .48; filter: saturate(.4); }
+.beast-page-entity-grid:not(.is-editing) .beast-page-entity-card.is-disabled { display: none; }
+.beast-standard-graph, .beast-standard-media, .beast-standard-calendar { display: grid; gap: 10px; padding: 18px; }
+.beast-standard-graph small, .beast-standard-media small, .beast-standard-calendar small { color: var(--ink-muted); }
+.beast-standard-graph strong, .beast-standard-media strong, .beast-standard-calendar strong { display: block; font-size: var(--text-lg); }
+.beast-standard-graph-history { min-height: 86px; display: grid; align-items: end; }
+.beast-standard-graph-history svg { width: 100%; height: 86px; }
+.beast-standard-graph-history em { align-self: center; color: var(--ink-muted); font-size: var(--text-xs); font-style: normal; }
+.beast-standard-media, .beast-standard-calendar { grid-template-columns: auto 1fr; align-items: center; }
+.beast-standard-media > span, .beast-standard-calendar > span { display: grid; place-items: center; width: 48px; height: 48px; border-radius: 14px; background: var(--accent-soft); color: var(--accent); }
+.beast-standard-media em, .beast-standard-calendar em { color: var(--ink-faint); font-size: var(--text-xs); }
+.beast-standard-camera { padding: 10px; }
+.beast-standard-camera-frame { position: relative; overflow: hidden; aspect-ratio: 16 / 9; display: grid; place-items: center; border-radius: var(--radius-md); background: #05070b; color: var(--ink-muted); }
+.beast-standard-camera-frame img { width: 100%; height: 100%; object-fit: contain; }
+.beast-page-entity-grid .beast-standard-camera-card { min-height: 220px; overflow: visible; }
+.beast-page-entity-grid .beast-standard-camera-card .beastStandardCardBody,
+.beast-page-entity-grid .beast-standard-camera-card .beast-standard-camera { width: 100%; height: 100%; min-height: 0; }
+.beast-page-entity-grid .beast-standard-camera-card .beast-standard-camera { display: grid; grid-template-rows: minmax(0, 1fr) auto; }
+.beast-page-entity-grid .beast-standard-camera-card .beast-standard-camera-frame { width: 100%; height: 100%; min-height: 180px; aspect-ratio: auto; }
+.beast-standard-camera-quality { position: absolute; top: 10px; right: 10px; z-index: 5; }
+.beast-standard-camera-quality > button { width: 44px; height: 44px; display: grid; place-items: center; padding: 0 0 7px; border: 0; border-radius: 50%; background: rgba(5,8,12,.8); color: #fff; font-size: 27px; line-height: 1; touch-action: manipulation; }
+.beast-standard-camera-quality > div { position: absolute; top: 49px; right: 0; width: 190px; padding: 7px; border: 1px solid rgba(255,255,255,.16); border-radius: 13px; background: rgba(6,9,14,.95); box-shadow: 0 16px 42px rgba(0,0,0,.5); }
+.beast-standard-camera-quality > div[hidden] { display: none; }
+.beast-standard-camera-quality > div button { width: 100%; min-height: 46px; display: flex; align-items: center; justify-content: space-between; padding: 0 11px; border: 0; border-radius: 9px; background: transparent; color: #fff; font: inherit; font-weight: 750; }
+.beast-standard-camera-quality > div button.is-active { background: rgba(51,153,255,.2); color: #7ec5ff; }
+.beast-standard-camera strong { display: block; padding: 8px 4px 2px; }
+.beast-page-card-label { position: absolute; top: 12px; right: 16px; color: var(--ink-muted); font-size: var(--text-xs); }
+.beast-ov-card-duplicate { position: absolute; top: 10px; left: 48px; z-index: 22; width: 32px; height: 32px; display: grid; place-items: center; padding: 0; border: 1px solid var(--border-strong); border-radius: 10px; background: var(--surface-solid); color: var(--ink); touch-action: manipulation; }
+.beast-ov-card-reset { position:absolute;top:10px;left:86px;z-index:22;width:32px;height:32px;display:grid;place-items:center;padding:0;border:1px solid var(--border-strong);border-radius:10px;background:var(--surface-solid);color:var(--ink);font:800 18px/1 var(--font-sans);touch-action:manipulation;pointer-events:auto; }
+.beast-standard-toggle { width: 100%; min-height: 86px; display: flex; align-items: center; gap: 14px; padding: 16px; border: 1px solid var(--border); border-radius: var(--radius-md); background: var(--surface-2); color: var(--ink); text-align: left; font: inherit; touch-action: manipulation; }
+.beast-standard-toggle-icon { width: 48px; height: 48px; display: grid; place-items: center; flex: 0 0 48px; border-radius: 14px; background: var(--accent-soft); color: var(--accent); }
+.beast-standard-toggle small, .beast-standard-toggle strong { display: block; }
+.beast-standard-toggle small { color: var(--ink-muted); font-size: var(--text-sm); }
+.beast-standard-toggle strong { margin-top: 3px; font-size: var(--text-lg); }
+.beast-page-entity-modal { width: min(860px, calc(100vw - 28px)); max-width:860px; }
+.beast-page-entity-search { width: 100%; min-height: 54px; margin-bottom: 12px; padding: 0 16px; border: 1px solid var(--border-strong); border-radius: var(--radius-md); background: var(--surface-solid); color: var(--ink); font: inherit; }
+.beast-page-entity-select { width: 100%; min-height: 240px; margin-bottom: 14px; padding: 8px; border: 1px solid var(--border); border-radius: var(--radius-md); background: var(--surface-solid); color: var(--ink); font: inherit; }
+.beast-page-entity-select option { padding: 10px; }
+.beast-layout-history-modal { width:min(620px,calc(100vw - 30px)); }
+.beast-layout-history-list { display:grid; gap:9px; }
+.beast-layout-history-list button { min-height:64px; display:flex; align-items:center; justify-content:space-between; gap:16px; padding:11px 14px; border:1px solid var(--border); border-radius:var(--radius-md); background:var(--surface-2); color:var(--ink); text-align:left; font:inherit; touch-action:manipulation; }
+.beast-layout-history-list button small { color:var(--ink-muted); }
+.beast-card-binding-field { padding: 10px 12px; border: 1px solid var(--border); border-radius: var(--radius-md); background: var(--surface-2); }
+.beast-card-binding-field input { width: 100%; }
+.beast-template-composite { width: 100%; height: 100%; min-height: 0; display: grid; grid-template-rows: auto minmax(0,1fr); gap: 12px; padding: 16px; }
+.beast-template-composite header { display: flex; align-items: center; gap: 11px; }
+.beast-template-composite header > span { width: 44px; height: 44px; display: grid; place-items: center; flex: 0 0 44px; border-radius: 13px; background: var(--accent-soft); color: var(--accent); }
+.beast-template-composite header small, .beast-template-composite header strong { display: block; }
+.beast-template-composite header small { color: var(--ink-muted); font-size: var(--text-xs); }
+.beast-template-composite header strong { margin-top: 2px; font-size: var(--text-lg); }
+.beast-template-composite-grid { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 9px; min-height: 0; overflow-y: auto; }
+.beast-template-composite-grid article { min-width: 0; display: flex; flex-direction: column; justify-content: center; padding: 11px 12px; border: 1px solid var(--border); border-radius: var(--radius-sm); background: var(--surface-solid); }
+.beast-template-composite-grid article small, .beast-template-composite-grid article span { overflow: hidden; color: var(--ink-muted); white-space: nowrap; text-overflow: ellipsis; }
+.beast-template-composite-grid article strong { margin: 4px 0; font-size: var(--text-lg); font-variant-numeric: tabular-nums; }
+.beast-template-composite-grid article strong em { color: var(--ink-muted); font-size: var(--text-xs); font-style: normal; }
+.beast-template-composite-grid article span { font-size: 10px; }
+.beast-template-composite-grid article.is-unavailable { opacity: .55; }
+
+.beast-template-card em { display:flex !important; align-items:center; justify-content:space-between; gap:8px; }
+.beast-template-card em i { padding:3px 7px; border-radius:999px; background:var(--surface-solid); color:var(--ink-faint); font-size:9px; font-style:normal; white-space:nowrap; }
+.beast-template-selected b { display:block; margin-top:7px; color:var(--accent-b); font-size:var(--text-xs); }
+.beast-card-binding-field { position:relative; }.beast-card-binding-field>b,.beast-card-binding-field>small{position:absolute;top:0;right:0;font-size:10px}.beast-card-binding-field>b{color:var(--warning)}.beast-card-binding-field>small{color:var(--ink-faint)}.beast-card-binding-field input[aria-invalid="true"]{border-color:var(--danger);box-shadow:0 0 0 2px color-mix(in srgb,var(--danger),transparent 70%)}.beast-card-binding-error{margin:0;padding:10px 12px;border-radius:10px;color:var(--danger);background:rgba(255,93,122,.1);font-size:var(--text-xs);font-weight:750}
+.beast-template-warning { min-height:36px; padding:7px 10px; display:flex; align-items:center; gap:7px; border:1px solid rgba(255,200,87,.35); border-radius:10px; color:var(--warning); background:var(--warning-soft); font-size:var(--text-xs); }
+.beast-template-climate,.beast-template-security,.beast-template-room,.beast-template-media-player,.beast-template-pool,.beast-template-car,.beast-template-tpms,.beast-template-robot,.beast-template-printer,.beast-template-weather { width:100%; height:100%; min-height:0; padding:16px; display:flex; flex-direction:column; gap:12px; overflow:hidden; }
+.beast-template-climate header,.beast-template-security header,.beast-template-room header,.beast-template-pool header,.beast-template-car header,.beast-template-tpms header,.beast-template-robot header,.beast-template-printer header,.beast-template-weather header { display:flex; align-items:center; gap:11px; }
+.beast-template-climate header>span,.beast-template-security header>span,.beast-template-room header>span,.beast-template-pool header>span,.beast-template-car header>span,.beast-template-tpms header>span,.beast-template-robot header>span,.beast-template-printer header>span,.beast-template-weather header>span { width:46px;height:46px;flex:0 0 46px;display:grid;place-items:center;border-radius:14px;color:var(--accent-b);background:var(--accent-soft); }
+.beast-template-climate header div,.beast-template-security header div,.beast-template-room header div,.beast-template-pool header div,.beast-template-car header div,.beast-template-tpms header div,.beast-template-robot header div,.beast-template-printer header div,.beast-template-weather header div { min-width:0;flex:1; }
+.beast-template-climate header small,.beast-template-climate header strong,.beast-template-security header small,.beast-template-security header strong,.beast-template-room header small,.beast-template-room header strong,.beast-template-pool header small,.beast-template-pool header strong,.beast-template-car header small,.beast-template-car header strong,.beast-template-tpms header small,.beast-template-tpms header strong,.beast-template-robot header small,.beast-template-robot header strong,.beast-template-printer header small,.beast-template-printer header strong,.beast-template-weather header small,.beast-template-weather header strong { display:block;overflow:hidden;white-space:nowrap;text-overflow:ellipsis; }
+.beast-template-climate header b,.beast-template-pool header b,.beast-template-car header b,.beast-template-robot header b,.beast-template-printer header b,.beast-template-weather header b { font-size:var(--text-xl); }
+.beast-template-climate-target { flex:1;display:grid;grid-template-columns:62px minmax(0,1fr) 62px;align-items:center;gap:10px;text-align:center; }
+.beast-template-climate-target button,.beast-template-media-controls button,.beast-template-robot-actions button,.beast-template-printer-actions button { min-height:52px;border:1px solid var(--border-strong);border-radius:14px;background:var(--surface-solid);color:var(--ink);font:800 var(--text-lg) var(--font-sans); }
+.beast-template-climate-target small,.beast-template-climate-target strong { display:block; }.beast-template-climate-target strong{font-size:var(--text-2xl)}
+.beast-template-climate footer,.beast-template-pool footer { display:flex;justify-content:space-between;color:var(--ink-muted);font-size:var(--text-xs); }
+.beast-template-security header b { padding:7px 10px;border-radius:999px;font-size:var(--text-xs); }.beast-template-security header b.is-safe{color:var(--success);background:var(--success-soft)}.beast-template-security header b.is-warning{color:var(--warning);background:var(--warning-soft)}
+.beast-template-security-metrics,.beast-template-room-values,.beast-template-printer-metrics { display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px; }.beast-template-security-metrics span,.beast-template-room-values span,.beast-template-printer-metrics span{padding:10px;border:1px solid var(--border);border-radius:11px;background:var(--surface-solid)}.beast-template-security-metrics small,.beast-template-security-metrics strong,.beast-template-room-values small,.beast-template-room-values strong{display:block}.beast-template-security-metrics strong,.beast-template-room-values strong{margin-top:3px;font-size:var(--text-xl)}
+.beast-template-security-actions,.beast-template-pool-actions,.beast-template-robot-actions,.beast-template-printer-actions { display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin-top:auto; }.beast-template-security-actions button,.beast-template-pool-actions button,.beast-template-room-light { min-height:48px;border:1px solid var(--border-strong);border-radius:12px;background:var(--surface-solid);color:var(--ink);font:750 var(--text-xs) var(--font-sans); }.beast-template-security-actions button{display:flex;align-items:center;justify-content:center;gap:6px}
+.beast-template-room header i { padding:6px 9px;border-radius:999px;color:var(--ink-muted);background:var(--surface-solid);font-size:var(--text-xs);font-style:normal}.beast-template-room header i.is-on{color:var(--success);background:var(--success-soft)}.beast-template-room-light{margin-top:auto;display:flex;align-items:center;justify-content:center;gap:8px}
+.beast-template-media-player { display:grid;grid-template-columns:minmax(110px,.7fr) minmax(0,1.3fr);grid-template-rows:minmax(0,1fr) auto; }.beast-template-media-art{min-height:0;display:grid;place-items:center;overflow:hidden;border-radius:14px;background:var(--accent-soft);color:var(--accent-b)}.beast-template-media-art img{width:100%;height:100%;object-fit:cover}.beast-template-media-copy{min-width:0;align-self:center}.beast-template-media-copy small,.beast-template-media-copy strong,.beast-template-media-copy span{display:block;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}.beast-template-media-copy strong{margin:7px 0;font-size:var(--text-xl)}.beast-template-media-copy small,.beast-template-media-copy span{color:var(--ink-muted)}.beast-template-media-controls{grid-column:1/-1;display:grid;grid-template-columns:repeat(6,minmax(48px,1fr));gap:7px}.beast-template-media-controls button{font-size:var(--text-md)}.beast-template-media-controls button.is-primary{color:white;background:var(--accent-gradient)}.beast-template-media-controls b{display:grid;place-items:center}
+.beast-template-pool-actions{grid-template-columns:repeat(2,minmax(0,1fr));flex:1}.beast-template-pool-actions button{padding:10px}.beast-template-pool-actions small,.beast-template-pool-actions strong{display:block}.beast-template-pool-actions button.is-on{color:var(--success);background:var(--success-soft)}
+.beast-template-car-battery,.beast-template-printer-progress{height:12px;overflow:hidden;border-radius:999px;background:var(--surface-solid)}.beast-template-car-battery i,.beast-template-printer-progress i{display:block;height:100%;border-radius:inherit;background:var(--accent-gradient)}.beast-template-car-meta{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));align-items:center;gap:8px}.beast-template-car-meta span,.beast-template-car-meta button{min-height:48px;padding:8px;border:1px solid var(--border);border-radius:11px;background:var(--surface-solid);color:var(--ink)}
+.beast-template-tpms>div{flex:1;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}.beast-template-tpms>div span{display:grid;grid-template-columns:34px 1fr;grid-template-rows:auto auto;align-items:center;padding:9px;border:1px solid var(--border);border-radius:12px;background:var(--surface-solid)}.beast-template-tpms i{grid-row:1/3;width:22px;height:42px;border:4px solid var(--ink-muted);border-radius:9px}.beast-template-tpms small,.beast-template-tpms strong{display:block}
+.beast-template-robot-status{flex:1;display:grid;place-items:center;border:1px solid var(--border);border-radius:14px;background:var(--surface-solid);font-size:var(--text-xl);text-transform:capitalize}.beast-template-printer-metrics{grid-template-columns:repeat(4,minmax(0,1fr))}.beast-template-printer-metrics span{display:flex;flex-direction:column;gap:4px;color:var(--ink-muted)}
+.beast-template-weather header em{display:block;margin-top:4px;color:var(--ink-muted);font-style:normal;text-transform:capitalize}.beast-template-weather>div:last-child{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}.beast-template-weather>div:last-child span{padding:10px;border:1px solid var(--border);border-radius:11px;background:var(--surface-solid)}
+.beast-standard-toggle.is-busy { opacity: .65; pointer-events: none; }
+.beast-template-climate button.is-busy,.beast-template-security button.is-busy,.beast-template-room button.is-busy,.beast-template-media-player button.is-busy,.beast-template-pool button.is-busy,.beast-template-car button.is-busy,.beast-template-robot button.is-busy,.beast-template-printer button.is-busy { opacity:.58; pointer-events:none; }
+.is-command-ok { box-shadow:0 0 0 2px color-mix(in srgb,var(--success),transparent 40%) !important; }
+.is-command-error { border-color:var(--danger) !important; box-shadow:0 0 0 3px color-mix(in srgb,var(--danger),transparent 65%) !important; animation:beastCommandError .2s ease 2; }
+@keyframes beastCommandError { 50% { transform:translateX(3px); } }
+.beast-ov-grid:not(.is-editing) > .is-visibility-hidden,
+.beast-page-editor-grid:not(.is-editing) > .is-visibility-hidden { display: none !important; }
+.beast-page-manager-modal { width: min(1120px, calc(100vw - 30px)); max-width:1120px; max-height: calc(100dvh - 28px); }
+.beast-page-manager-modal .beast-modal-body { overflow-y: auto; }
+.beast-page-manager-list { display: grid; gap: 10px; }
+.beast-page-manager-list article { display: grid; grid-template-columns: 48px 52px minmax(180px, 1fr) 150px auto auto; align-items: end; gap: 10px; padding: 12px; border: 1px solid var(--border); border-radius: var(--radius-md); background: var(--surface-2); transition: opacity .15s ease, transform .15s ease; }
+.beast-page-manager-list article.is-page-dragging { z-index: 3; opacity: .72; transform: scale(.99); box-shadow: 0 18px 42px rgba(0,0,0,.35); }
+.beast-page-manager-drag { width: 48px; height: 48px; display: grid; place-items: center; align-self: end; border: 1px solid var(--border-strong); border-radius: 13px; background: var(--surface-solid); color: var(--ink-muted); cursor: grab; touch-action: none; }
+.beast-page-manager-drag:active { cursor: grabbing; color: var(--accent); }
+.beast-page-manager-list article[hidden] { display: none; }
+.beast-page-manager-icon { width: 48px; height: 48px; display: grid; place-items: center; align-self: end; border-radius: 14px; background: var(--accent-soft); color: var(--accent); }
+.beast-page-manager-list label { display: grid; gap: 5px; color: var(--ink-muted); }
+.beast-page-manager-list input, .beast-page-manager-list select, .beast-page-create input, .beast-page-create select { min-height: 48px; padding: 0 12px; border: 1px solid var(--border-strong); border-radius: 11px; background: var(--surface-solid); color: var(--ink); font: inherit; }
+.beast-page-manager-move { display: flex; gap: 6px; }
+.beast-page-manager-move button, .beast-page-manager-remove { min-width: 48px; min-height: 48px; border: 1px solid var(--border-strong); border-radius: 11px; background: var(--surface-solid); color: var(--ink); font-weight: 750; }
+.beast-page-manager-remove { padding: 0 14px; color: var(--danger); }
+.beast-page-library { display: grid; gap: 12px; margin-top: 18px; padding-top: 16px; border-top: 1px solid var(--border); }
+.beast-page-library h4 { margin: 0; }
+.beast-page-create { display: grid; grid-template-columns: minmax(180px, 1fr) 160px auto; gap: 10px; }
+.beast-page-create .beast-btn { min-height: 50px; display: inline-flex; align-items: center; justify-content: center; gap: 8px; }
+.beast-page-restore-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+.beast-page-restore-grid button { min-height: 92px; display: grid; grid-template-columns: 42px 1fr; align-items: center; gap: 2px 10px; padding: 12px; border: 1px solid var(--border); border-radius: var(--radius-md); background: var(--surface-2); color: var(--ink); text-align: left; }
+.beast-page-restore-grid button span { grid-row: span 2; width: 42px; height: 42px; display: grid; place-items: center; border-radius: 12px; background: var(--accent-soft); color: var(--accent); }
+.beast-page-restore-grid button small { color: var(--ink-muted); }
+.beast-custom-page-zone { position: relative; min-height: 100%; overflow-y: auto; }
+@media (max-width: 820px) { .beast-page-manager-list article { grid-template-columns: 48px 48px minmax(0,1fr); } .beast-page-manager-list article > label:nth-of-type(2) { grid-column: 3; } .beast-page-manager-move, .beast-page-manager-remove { grid-column: auto; } .beast-page-create { grid-template-columns: 1fr; } .beast-page-restore-grid { grid-template-columns: repeat(2,minmax(0,1fr)); } }
+
+.beast-page-builder-card {
+  position: relative;
+  padding: 0;
+  overflow: hidden;
+}
+
+.beast-robot-builder-card > .beast-robot-card {
+  width: 100%;
+  height: 100%;
+  border: 0;
+  border-radius: inherit;
+}
+
+.beast-robot-builder-card[data-card-display="compact"] :is(.beast-robot-settings, .beast-robot-selection, .beast-robot-quick-actions) { display: none; }
+.beast-robot-builder-card[data-card-display="compact"] .beast-robot-media,
+.beast-robot-builder-card[data-card-display="compact"] .beast-robot-map { max-height: 68%; }
+.beast-robot-builder-card[data-card-display="media"] :is(.beast-robot-card-head, .beast-robot-facts, .beast-robot-actions, .beast-robot-settings, .beast-robot-selection, .beast-robot-quick-actions) { display: none; }
+.beast-robot-builder-card[data-card-display="controls"] :is(.beast-robot-media, .beast-robot-map) { display: none; }
+
+.beast-page-card-settings .beast-modal-body label { display: grid; gap: 8px; color: var(--ink-muted); font-weight: 700; }
+.beast-page-card-settings { width:min(820px,calc(100vw - 28px)); max-width:820px; }
+.beast-page-card-settings select { min-height: 52px; padding: 0 12px; border: 1px solid var(--border-strong); border-radius: var(--radius-sm); background: var(--surface-2); color: var(--ink); font: 700 var(--text-sm) var(--font-sans); }
+.beast-page-card-settings p { color: var(--ink-muted); }
+.beast-robot-card-settings { width:min(1180px, calc(100vw - 32px)); max-width:1180px; }
+.beast-robot-card-settings .beast-modal-body { overflow:auto; }
+.beast-robot-editor-grid { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:18px; align-items:start; }
+.beast-robot-editor-grid > section { min-width:0; display:grid; gap:12px; padding:18px; border:1px solid var(--border); border-radius:var(--radius-md); background:var(--surface-2); }
+.beast-robot-editor-grid h4 { margin:0 0 2px; color:var(--ink); font-size:var(--text-md); }
+.beast-robot-card-settings input:is([type="text"],[type="url"],[type="search"],[type="number"]) { width:100%; min-width:0; min-height:52px; padding:0 12px; border:1px solid var(--border-strong); border-radius:var(--radius-sm); background:var(--surface-1); color:var(--ink); font:700 var(--text-sm) var(--font-sans); }
+.beast-robot-editor-checks { display:grid; grid-template-columns:1fr 1fr; gap:9px; }
+.beast-robot-editor-checks .beast-page-editor-check { min-height:48px; padding:8px 10px; border:1px solid var(--border); border-radius:var(--radius-sm); background:var(--surface-1); display:flex; align-items:center; gap:9px; }
+.beast-robot-editor-checks input { width:22px; height:22px; accent-color:var(--accent-b); }
+@media (max-width:1100px) { .beast-robot-editor-grid { grid-template-columns:1fr 1fr; } .beast-robot-editor-grid > section:last-child { grid-column:1/-1; } }
+@media (max-width:720px) { .beast-robot-editor-grid { grid-template-columns:1fr; } .beast-robot-editor-grid > section:last-child { grid-column:auto; } }
+
+/* Same background/border/radius/shadow recipe as .beast-panel (front page +
+   every page's "extra cards") instead of the static --surface-2 this used
+   to sit on -- --surface-2 never responds to the theme/design opacity
+   picker, so robot cards used to stay fixed while every other page's
+   cards moved when that setting changed. */
 .beast-robot-card {
-  background: var(--surface-2);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-md);
+  background: var(--panel-surface);
+  border: 1px solid var(--panel-border);
+  border-radius: var(--radius-lg);
+  box-shadow: 0 20px 40px -12px rgb(0 0 0 / var(--panel-shadow-opacity));
   padding: var(--space-5);
   display: flex;
   flex-direction: column;
@@ -1484,8 +1801,16 @@
   overflow: hidden;
   border: 1px solid var(--border);
   border-radius: var(--radius-md);
-  background: #080a0f;
+  background: color-mix(in srgb, var(--surface-2-solid) 92%, #080a0f);
 }
+
+.beast-robot-media picture { position: relative; width: 100%; height: 100%; display: block; }
+.beast-robot-theme-image { position: absolute; inset: 0; }
+.beast-robot-theme-image.is-light { display: none; }
+:root[data-color-mode="light"] .beast-robot-theme-image.is-dark { display: none; }
+:root[data-color-mode="light"] .beast-robot-theme-image.is-light { display: block; }
+:root[data-color-mode="light"] .beast-robot-media,
+:root[data-color-mode="light"] .beast-robot-map { background: #e9f1f8; }
 
 .beast-robot-map { aspect-ratio: 1 / 1; }
 
@@ -1705,9 +2030,12 @@
 
 /* 3D printer */
 .beast-printer-panel {
+  position: relative;
   min-height: 0;
   overflow: hidden;
 }
+
+.beast-robots-panel { position: relative; }
 
 .beast-printer-dashboard {
   height: 100%;
@@ -1718,6 +2046,13 @@
   overflow: hidden;
 }
 
+.beast-printer-dashboard.is-freeform { gap: var(--space-4); }
+.beast-printer-builder-card > :is(.beast-printer-visual, .beast-printer-control) { width: 100%; height: 100%; }
+.beast-printer-builder-card .beast-printer-control { padding:var(--space-4); overflow:hidden; }
+.beast-printer-builder-card[data-printer-card="control"] { background:linear-gradient(145deg,color-mix(in srgb,var(--accent-soft) 55%,transparent),transparent 42%),var(--surface-2); }
+.beast-printer-builder-card[data-card-display="compact"] :is(.beast-printer-model-section, .beast-printer-ams-section) { display:none; }
+.beast-printer-builder-card[data-card-display="status"] :is(.beast-printer-quick-controls, .beast-printer-model-section, .beast-printer-actions, .beast-printer-ams-section) { display:none; }
+
 .beast-printer-visual {
   min-width: 0;
   min-height: 0;
@@ -1725,6 +2060,7 @@
   grid-template-rows: repeat(2, minmax(0, 1fr));
   gap: var(--space-3);
 }
+.beast-printer-visual.is-single { grid-template-rows:minmax(0,1fr); }
 
 .beast-printer-cam {
   width: 100%;
@@ -1801,6 +2137,20 @@
   scrollbar-width: thin;
   padding-right: 2px;
 }
+.beast-printer-builder-card[data-printer-card="control"] .beast-printer-control {
+  display:grid;
+  grid-template-columns:minmax(0,1fr) minmax(250px,.72fr);
+  grid-template-rows:auto auto auto auto minmax(0,.7fr);
+  align-content:stretch;
+  gap:clamp(6px,.8vh,10px) 12px;
+  overflow:hidden;
+}
+.beast-printer-control > .beast-printer-status-head { grid-column:1; grid-row:1; align-self:center; }
+.beast-printer-control > .beast-printer-quick-controls { grid-column:2; grid-row:1; align-self:center; justify-self:stretch; }
+.beast-printer-control > .beast-printer-progress-panel { grid-column:1 / -1; grid-row:2; }
+.beast-printer-control > .beast-printer-metrics { grid-column:1 / -1; grid-row:3; }
+.beast-printer-control > .beast-printer-actions { grid-column:1 / -1; grid-row:4; }
+.beast-printer-control > .beast-printer-ams-section { grid-column:1 / -1; grid-row:5; min-height:0; display:grid; grid-template-columns:minmax(150px,.7fr) minmax(0,3fr); grid-template-rows:minmax(0,1fr); gap:10px; padding:10px; border:1px solid var(--border); border-radius:var(--radius-lg); background:color-mix(in srgb,var(--surface-solid) 62%,transparent); }
 
 .beast-printer-status-head {
   display: flex;
@@ -1821,9 +2171,27 @@
 .beast-printer-state.is-printing { color: var(--accent-b); }
 .beast-printer-percent { font-size: clamp(42px, 4vw, 64px); line-height: 1; color: var(--accent-b); }
 .beast-printer-percent small { font-size: .42em; color: var(--ink-muted); }
+.beast-printer-progress-panel { display:grid; grid-template-columns:minmax(0,1fr); gap:11px; padding:12px; border:1px solid var(--accent-border); border-radius:var(--radius-lg); background:linear-gradient(135deg,var(--accent-soft),color-mix(in srgb,var(--surface-solid) 92%,transparent)); box-shadow:inset 0 1px rgba(255,255,255,.04); }
+.beast-printer-progress-panel.has-model { grid-template-columns:clamp(120px,10vw,168px) minmax(0,1fr); }
+.beast-printer-progress-model { position:relative; min-width:0; min-height:118px; padding:0; overflow:hidden; border:1px solid var(--border); border-radius:14px; background:var(--surface-solid); color:#fff; cursor:pointer; }
+.beast-printer-progress-model img { width:100%; height:100%; display:block; object-fit:contain; }
+.beast-printer-progress-model span { position:absolute; left:6px; right:6px; bottom:6px; padding:5px 7px; overflow:hidden; border-radius:8px; background:rgba(5,8,14,.74); font-size:9px; font-weight:800; white-space:nowrap; text-overflow:ellipsis; }
+.beast-printer-progress-content { min-width:0; display:grid; align-content:center; gap:10px; }
+.beast-printer-progress-content > header { display:flex; align-items:flex-end; justify-content:space-between; gap:14px; }
+.beast-printer-progress-content > header small,.beast-printer-progress-content > header strong { display:block; }
+.beast-printer-progress-content > header small { color:var(--ink-muted); font-size:10px; font-weight:800; letter-spacing:.08em; text-transform:uppercase; }
+.beast-printer-progress-content > header strong { margin-top:3px; color:var(--ink); font-size:var(--text-md); }
+.beast-printer-progress-content > header b { color:var(--accent-b); font-size:clamp(1.8rem,2.4vw,2.8rem); line-height:.9; font-variant-numeric:tabular-nums; }
+.beast-printer-progress-content > header b small { display:inline; margin-left:2px; color:var(--ink-muted); font-size:.42em; }
+.beast-printer-progress-content > footer { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:9px; }
+.beast-printer-progress-content > footer > span { min-width:0; display:grid; grid-template-columns:30px minmax(0,1fr); grid-template-rows:auto auto; align-items:center; padding:8px 10px; border-radius:12px; background:color-mix(in srgb,var(--surface-solid) 78%,transparent); }
+.beast-printer-progress-content > footer svg { grid-row:1 / 3; color:var(--accent-b); }
+.beast-printer-progress-content > footer small,.beast-printer-progress-content > footer strong { display:block; overflow:hidden; white-space:nowrap; text-overflow:ellipsis; }
+.beast-printer-progress-content > footer small { color:var(--ink-muted); font-size:10px; }
+.beast-printer-progress-content > footer strong { font-size:var(--text-sm); font-variant-numeric:tabular-nums; }
 
-.beast-printer-quick-controls { display: flex; }
-.beast-printer-light { min-width: 280px; min-height: 68px; display: grid; grid-template-columns: 46px minmax(0, 1fr) 52px; align-items: center; gap: 11px; padding: 8px 10px; border: 1px solid var(--border-strong); border-radius: var(--radius-md); background: var(--surface-2); color: var(--ink); font: inherit; text-align: left; cursor: pointer; touch-action: manipulation; }
+.beast-printer-quick-controls { display:flex; }
+.beast-printer-light { width:100%; min-width:0; min-height:58px; display:grid; grid-template-columns:46px minmax(0,1fr) 52px; align-items:center; gap:11px; padding:8px 10px; border:1px solid var(--border-strong); border-radius:var(--radius-md); background:var(--surface-2); color:var(--ink); font:inherit; text-align:left; cursor:pointer; touch-action:manipulation; }
 .beast-printer-light:disabled { cursor: default; opacity: .48; }
 .beast-printer-light-icon { width: 46px; height: 46px; display: grid; place-items: center; border-radius: 14px; background: var(--surface-solid); color: var(--ink-muted); }
 .beast-printer-light small,.beast-printer-light strong { display: block; }
@@ -1843,12 +2211,13 @@
 .beast-printer-model-head strong { margin-top: 3px; font-size: var(--text-lg); }
 .beast-printer-model-head em { color: var(--ink-muted); font-size: var(--text-xs); font-style: normal; }
 .beast-printer-model-gallery { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
-.beast-printer-model-image { min-width: 0; height: 132px; position: relative; padding: 0; overflow: hidden; border: 1px solid var(--border); border-radius: var(--radius-md); background: var(--surface-solid); color: #fff; cursor: pointer; }
+.beast-printer-model-image { min-width:0; height:clamp(64px,9vh,96px); position:relative; padding:0; overflow:hidden; border:1px solid var(--border); border-radius:var(--radius-md); background:var(--surface-solid); color:#fff; cursor:pointer; }
 .beast-printer-model-image img { width: 100%; height: 100%; display: block; object-fit: contain; }
 .beast-printer-model-image span { position: absolute; left: 7px; right: 7px; bottom: 7px; padding: 6px 8px; overflow: hidden; border-radius: 9px; background: rgba(5,8,14,.74); font-size: 10px; font-weight: 800; white-space: nowrap; text-overflow: ellipsis; }
 
 .beast-printer-progress {
-  height: 18px;
+  height:20px;
+  padding:3px;
   overflow: hidden;
   border-radius: var(--radius-full);
   background: var(--surface-solid);
@@ -1861,21 +2230,30 @@
   border-radius: inherit;
   background: var(--accent-gradient);
   box-shadow: 0 0 18px rgba(105, 118, 255, .5);
+  position:relative;
+  transition:width .5s ease;
 }
+.beast-printer-progress i::after { content:""; position:absolute; inset:0; border-radius:inherit; background:linear-gradient(110deg,transparent 20%,rgba(255,255,255,.3) 48%,transparent 72%); background-size:180% 100%; animation:beast-printer-progress-shine 2.6s linear infinite; }
+@keyframes beast-printer-progress-shine { from{background-position:180% 0} to{background-position:-180% 0} }
 
 .beast-printer-metrics {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  grid-template-columns:repeat(2,minmax(0,1fr));
   gap: var(--space-3);
 }
 
 .beast-printer-metrics > div {
   min-width: 0;
-  padding: var(--space-4);
+  padding:12px 14px;
+  display:grid;
+  grid-template-columns:42px minmax(0,1fr);
+  align-items:center;
+  gap:11px;
   background: var(--surface-2);
   border: 1px solid var(--border);
   border-radius: var(--radius-md);
 }
+.beast-printer-metrics > div > span { width:42px; height:42px; display:grid; place-items:center; border-radius:13px; color:#ff9f43; background:rgba(255,159,67,.13); }
 
 .beast-printer-metrics small,
 .beast-printer-ams-head small,
@@ -1889,42 +2267,66 @@
 .beast-printer-actions .is-confirming { color: #fff; background: var(--danger); border-color: var(--danger); }
 
 .beast-printer-ams-head {
-  display: flex;
-  align-items: flex-end;
-  justify-content: space-between;
-  margin-top: clamp(4px, .7vh, 10px);
+  min-width:0;
+  display:flex;
+  flex-direction:column;
+  align-items:flex-start;
+  justify-content:center;
+  gap:5px;
+  margin:0;
+  padding:4px 12px 4px 4px;
+  border-right:1px solid var(--border);
 }
+.beast-printer-ams-section { min-height:0; }
 
 .beast-printer-ams-head strong { display: block; font-size: var(--text-xl); }
-.beast-printer-ams-head > span { color: var(--ink-muted); font-size: var(--text-sm); }
-.beast-printer-trays { display: grid; grid-template-columns: repeat(2, 1fr); gap: var(--space-3); }
+.beast-printer-ams-head > span { max-width:100%; overflow:hidden; color:var(--ink-muted); font-size:11px; line-height:1.35; white-space:normal; }
+.beast-printer-trays { min-height:0; display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:8px; }
 
 .beast-printer-tray {
-  min-height: 76px;
-  padding: var(--space-3);
+  position:relative;
+  min-height:0;
+  height:100%;
+  padding:9px;
   display: flex;
   align-items: center;
-  gap: var(--space-3);
+  gap:8px;
   background: var(--surface-2);
   border: 1px solid var(--border);
   border-radius: var(--radius-md);
 }
+.beast-printer-tray > span:nth-child(2) { min-width:0; flex:1 1 auto; overflow:hidden; }
 
 .beast-printer-tray.is-active {
   border-color: var(--accent-b);
   background: rgba(83, 190, 255, .1);
   box-shadow: inset 0 0 0 1px rgba(83, 190, 255, .2);
 }
+.beast-printer-tray.is-active::after { content:""; position:absolute; inset:auto 10px 0; height:3px; border-radius:3px 3px 0 0; background:var(--spool-color,var(--accent-b)); box-shadow:0 0 10px var(--accent-b); }
+.beast-printer-tray > b { position:absolute; right:7px; top:7px; padding:3px 6px; border-radius:7px; color:var(--accent-b); background:var(--accent-soft); font-size:8px; letter-spacing:.05em; text-transform:uppercase; }
 
-.beast-printer-tray strong { display: block; margin-top: 5px; font-size: var(--text-md); }
+.beast-printer-tray strong { display:-webkit-box; max-width:100%; margin-top:3px; overflow:hidden; font-size:clamp(11px,.72vw,13px); line-height:1.15; white-space:normal; overflow-wrap:anywhere; -webkit-box-orient:vertical; -webkit-line-clamp:2; }
 .beast-printer-spool {
-  width: 42px;
-  height: 42px;
-  flex: 0 0 42px;
-  border: 8px solid var(--spool-color, var(--ink-faint));
+  width:34px;
+  height:34px;
+  flex:0 0 34px;
+  border:6px solid var(--spool-color, var(--ink-faint));
   border-radius: 50%;
   box-shadow: inset 0 0 0 3px var(--surface-solid);
+  position:relative;
 }
+.beast-printer-spool i { position:absolute; inset:6px; border:2px solid color-mix(in srgb,var(--spool-color,var(--ink-faint)) 55%,var(--surface-solid)); border-radius:50%; }
+@media (max-width:1500px) { .beast-printer-control > .beast-printer-ams-section { grid-template-columns:125px minmax(0,1fr); } .beast-printer-trays { grid-template-columns:repeat(2,minmax(0,1fr)); } .beast-printer-ams-head { padding-right:8px; } }
+@media (min-width:1181px) and (max-width:1300px) {
+  .beast-printer-builder-card[data-printer-card="control"] .beast-printer-control { grid-template-rows:auto auto auto auto minmax(64px,1fr); }
+  .beast-printer-control > .beast-printer-progress-panel { padding:9px 11px; gap:7px; }
+  .beast-printer-progress-panel.has-model { grid-template-columns:108px minmax(0,1fr); }
+  .beast-printer-progress-model { min-height:100px; }
+  .beast-printer-progress-content > footer > span { padding:5px 8px; }
+  .beast-printer-control > .beast-printer-ams-section { grid-template-columns:130px minmax(0,1fr); padding:7px; }
+  .beast-printer-trays { grid-template-columns:repeat(4,minmax(0,1fr)); }
+}
+@media (prefers-reduced-motion:reduce) { .beast-printer-progress i::after { animation:none; } }
 
 .beast-settings-panel {
   overflow-y: auto;
@@ -2018,11 +2420,49 @@
 .beast-heating-room-card.is-heating::after {
   content: "";
   position: absolute;
-  inset: auto -30% -65% -30%;
-  height: 100%;
-  background: radial-gradient(circle, rgba(255, 167, 65, .22), transparent 65%);
-  animation: beast-heat-breathe 2.8s ease-in-out infinite;
+  z-index: 0;
+  right: 10px;
+  bottom: -2px;
+  width: 92px;
+  height: 25px;
+  background:
+    radial-gradient(ellipse at 50% 100%,rgba(255,235,120,.95) 0 17%,rgba(255,132,35,.86) 20% 40%,transparent 43%) 34px 2px/25px 25px no-repeat,
+    radial-gradient(ellipse at 50% 100%,rgba(255,199,71,.9) 0 19%,rgba(255,103,27,.72) 22% 40%,transparent 43%) 12px 9px/22px 18px no-repeat,
+    radial-gradient(ellipse at 50% 100%,rgba(255,207,76,.88) 0 18%,rgba(255,112,30,.7) 21% 40%,transparent 43%) 60px 8px/20px 19px no-repeat,
+    radial-gradient(ellipse at 50% 100%,rgba(255,103,24,.34),transparent 70%) center bottom/88px 15px no-repeat;
+  filter:drop-shadow(0 -2px 6px rgba(255,126,34,.48));
+  transform-origin:50% 100%;
+  animation:beast-card-flames .95s ease-in-out infinite alternate;
   pointer-events: none;
+}
+
+.beast-heating-room-card.is-cooling::after {
+  content:"";
+  position:absolute;
+  z-index:0;
+  right:10px;
+  bottom:-2px;
+  width:88px;
+  height:23px;
+  background:
+    radial-gradient(circle,rgba(220,250,255,.95) 0 2px,transparent 2.8px) 15px 5px/18px 18px no-repeat,
+    radial-gradient(circle,rgba(110,221,255,.86) 0 1.7px,transparent 2.5px) 44px 1px/17px 17px no-repeat,
+    radial-gradient(circle,rgba(184,241,255,.8) 0 1.5px,transparent 2.3px) 64px 9px/15px 15px no-repeat,
+    radial-gradient(ellipse at 50% 100%,rgba(35,171,232,.34),transparent 70%) center bottom/84px 14px no-repeat;
+  filter:drop-shadow(0 -2px 6px rgba(66,200,255,.45));
+  animation:beast-card-frost 2.4s linear infinite;
+  pointer-events:none;
+}
+.beast-heating-room-card > * { position:relative; z-index:1; }
+
+@keyframes beast-card-flames {
+  0% { transform:scaleY(.78) skewX(-2deg); opacity:.68; }
+  55% { transform:scaleY(1.08) skewX(2deg); opacity:.96; }
+  100% { transform:scaleY(.9) skewX(-1deg); opacity:.8; }
+}
+@keyframes beast-card-frost {
+  0%,100% { transform:translateY(2px) rotate(-2deg); opacity:.58; }
+  50% { transform:translateY(-3px) rotate(2deg); opacity:.92; }
 }
 
 @keyframes beast-heat-breathe {
@@ -2076,22 +2516,48 @@
 }
 .beast-heatpump-card.is-heating { border-color: rgba(255,168,70,.48); box-shadow: inset 0 0 35px rgba(255,168,70,.07); }
 .beast-heatpump-card.is-cooling { border-color: rgba(83,190,255,.48); box-shadow: inset 0 0 35px rgba(83,190,255,.08); }
-.beast-heatpump-card.is-heating::before,
-.beast-heatpump-card.is-cooling::before {
+.beast-heatpump-card.is-heating::before {
   content: "";
   position: absolute;
-  width: 150px;
-  height: 150px;
-  right: -60px;
-  top: -70px;
-  border-radius: 50%;
-  background: radial-gradient(circle, currentColor, transparent 68%);
-  opacity: .12;
-  animation: beast-heat-breathe 2.8s ease-in-out infinite;
+  z-index:0;
+  right:12px;
+  bottom:-2px;
+  width:110px;
+  height:28px;
+  background:
+    radial-gradient(ellipse at 50% 100%,rgba(255,235,120,.95) 0 17%,rgba(255,132,35,.86) 20% 40%,transparent 43%) 42px 1px/28px 29px no-repeat,
+    radial-gradient(ellipse at 50% 100%,rgba(255,199,71,.9) 0 19%,rgba(255,103,27,.72) 22% 40%,transparent 43%) 15px 10px/25px 20px no-repeat,
+    radial-gradient(ellipse at 50% 100%,rgba(255,207,76,.88) 0 18%,rgba(255,112,30,.7) 21% 40%,transparent 43%) 75px 8px/23px 22px no-repeat,
+    radial-gradient(ellipse at 50% 100%,rgba(255,103,24,.38),transparent 70%) center bottom/104px 17px no-repeat;
+  filter:drop-shadow(0 -3px 8px rgba(255,126,34,.55));
+  transform-origin:50% 100%;
+  animation:beast-card-flames .95s ease-in-out infinite alternate;
+  pointer-events:none;
+}
+.beast-heatpump-card.is-cooling::before {
+  content:"";
+  position:absolute;
+  z-index:0;
+  right:12px;
+  bottom:-2px;
+  width:102px;
+  height:26px;
+  background:
+    radial-gradient(circle,rgba(220,250,255,.95) 0 2.2px,transparent 3px) 17px 6px/20px 20px no-repeat,
+    radial-gradient(circle,rgba(110,221,255,.86) 0 1.9px,transparent 2.7px) 51px 1px/19px 19px no-repeat,
+    radial-gradient(circle,rgba(184,241,255,.8) 0 1.7px,transparent 2.5px) 77px 10px/17px 17px no-repeat,
+    radial-gradient(ellipse at 50% 100%,rgba(35,171,232,.38),transparent 70%) center bottom/98px 16px no-repeat;
+  filter:drop-shadow(0 -2px 7px rgba(66,200,255,.5));
+  animation:beast-card-frost 2.4s linear infinite;
+  pointer-events:none;
 }
 .beast-heatpump-card.is-heating { color: var(--warning); }
 .beast-heatpump-card.is-cooling { color: var(--accent-b); }
 .beast-heatpump-card > * { position: relative; z-index: 1; }
+@media (prefers-reduced-motion:reduce) {
+  .beast-heating-room-card:is(.is-heating,.is-cooling)::after,
+  .beast-heatpump-card:is(.is-heating,.is-cooling)::before { animation:none; }
+}
 .beast-heatpump-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 8px; color: var(--ink); }
 .beast-heatpump-head small { display: block; color: var(--ink-muted); font-size: var(--text-xs); }
 .beast-heatpump-head strong { display: block; margin-top: 2px; font-size: var(--text-lg); }
@@ -2172,6 +2638,301 @@
 .beast-district-flow i::after { content: "›"; position: absolute; right: -2px; top: -13px; color: var(--accent-b); font-size: 22px; }
 .beast-district-meta { display: flex; justify-content: space-between; gap: 8px; margin-top: var(--space-3); color: var(--ink-muted); font-size: var(--text-xs); }
 
+/* Heating command center — compact comfort overview above complete pump
+   controls. The status motion is intentionally subtle and only runs when
+   the corresponding system is active. */
+.beast-heating-panel {
+  grid-template-columns: minmax(0, 3.05fr) minmax(300px, 1fr);
+  gap: 14px;
+}
+.beast-heating-main { grid-template-rows:auto minmax(250px,1.35fr) auto minmax(185px,.65fr); gap:10px; }
+.beast-heating-sidebar { gap: 12px; }
+.beast-heating-hero {
+  min-height: 72px;
+  padding: 4px 2px;
+}
+.beast-heating-hero .beast-panel-title { margin-bottom: 3px; color: var(--accent-energy); font-size: 10px; letter-spacing: .12em; }
+.beast-heating-hero h2 { font-size: clamp(1.8rem, 2.4vw, 2.6rem); letter-spacing: -.035em; }
+.beast-heating-hero p { font-size: 12px; }
+.beast-heating-auto { min-width: 190px; min-height: 54px; padding: 8px 14px; border-radius: 15px; cursor: pointer; }
+.beast-heating-edit-actions { display:flex; align-items:center; gap:4px; }
+.beast-heating-display-btn { width:42px; height:42px; display:grid; place-items:center; border:1px solid var(--border); border-radius:12px; color:var(--ink-muted); background:var(--surface-solid); }
+.beast-heating-display-btn:hover { color:var(--accent); border-color:var(--accent-border); background:var(--accent-soft); }
+.beast-heating-auto.is-on svg { animation: beast-heating-bolt 2.2s ease-in-out infinite; }
+@keyframes beast-heating-bolt { 0%,100% { transform:scale(1); filter:drop-shadow(0 0 0 transparent); } 50% { transform:scale(1.12); filter:drop-shadow(0 0 7px currentColor); } }
+
+.beast-heating-room-grid {
+  min-height: 0;
+  grid-template-columns:repeat(4,minmax(0,1fr));
+  grid-template-rows:repeat(2,minmax(0,1fr));
+  grid-auto-rows:minmax(122px,1fr);
+  gap: 7px;
+}
+.beast-heating-room-card {
+  min-width: 0;
+  padding:13px 14px;
+  gap:8px;
+  border-radius: 16px;
+  background:radial-gradient(circle at 90% 76%,color-mix(in srgb,var(--accent-energy) 7%,transparent),transparent 32%),linear-gradient(155deg,color-mix(in srgb,var(--surface-2-solid) 92%,white 8%),var(--surface-solid));
+  box-shadow:0 12px 28px rgba(0,0,0,.07);
+}
+.beast-heating-room-card.is-off { opacity: .72; }
+.beast-heating-room-head { gap: 5px; }
+.beast-heating-room-name { min-width:0; overflow:hidden; font-size:14px; text-overflow:ellipsis; white-space:nowrap; }
+.beast-heating-room-card .beast-room-badge { flex:0 0 auto; padding:4px 8px; font-size:9px; }
+.beast-heating-room-reading { display:flex; align-items:center; justify-content:space-between; gap:6px; color:var(--ink); }
+.beast-heating-room-reading span small { display:block; margin-bottom:3px; color:var(--ink-faint); font-size:9px; letter-spacing:.04em; text-transform:uppercase; }
+.beast-heating-room-reading i { width:38px; height:38px; display:grid; place-items:center; border-radius:11px; color:var(--ink-faint); background:var(--surface-solid); }
+.beast-heating-room-card.is-heating .beast-heating-room-reading i { color:#ff9f43; background:rgba(255,159,67,.13); animation:beast-heat-breathe 2.4s ease-in-out infinite; }
+.beast-heating-room-current { display:block; font-size:clamp(1.85rem,2.2vw,2.5rem); line-height:.95; }
+.beast-heating-room-card .beast-stepper { width:100%; display:grid; grid-template-columns:38px minmax(0,1fr) 38px; gap:5px; align-items:center; }
+.beast-heating-room-card .beast-stepper .beast-transport-btn { width:38px; height:38px; min-width:38px; border-radius:10px; }
+.beast-heating-room-card .beast-stepper-value { font-size:12px; text-align:center; }
+.beast-heating-room-card .beast-stepper-value small,.beast-heating-room-card .beast-stepper-value strong { display:block; }
+.beast-heating-room-card .beast-stepper-value small { color:var(--ink-faint); font-size:8px; letter-spacing:.035em; text-transform:uppercase; }
+.beast-heating-room-card .beast-stepper-value strong { margin-top:2px; color:var(--ink); font-size:15px; }
+.beast-heating-panel.is-room-compact .beast-heating-room-grid { grid-template-columns:repeat(7,minmax(0,1fr)); grid-template-rows:minmax(0,1fr); }
+.beast-heating-panel.is-room-compact .beast-heating-room-card { padding:9px; gap:4px; }
+.beast-heating-panel.is-room-compact .beast-heating-room-name { font-size:11px; }
+.beast-heating-panel.is-room-compact .beast-heating-room-reading span small { display:none; }
+.beast-heating-panel.is-room-compact .beast-heating-room-current { font-size:1.65rem; }
+.beast-heating-panel.is-room-compact .beast-heating-room-reading i { width:28px; height:28px; }
+.beast-heating-panel.is-room-compact .beast-heating-room-card .beast-stepper { grid-template-columns:32px minmax(0,1fr) 32px; gap:3px; }
+.beast-heating-panel.is-room-compact .beast-heating-room-card .beast-stepper .beast-transport-btn { width:32px; height:32px; min-width:32px; }
+
+.beast-heating-pumps-head { min-height:24px; padding-inline:2px; }
+.beast-heating-pumps-head span { display:flex; align-items:center; gap:7px; font-size:14px; }
+.beast-heating-pumps-head span::before { content:""; width:7px; height:7px; border-radius:50%; background:var(--accent-energy); box-shadow:0 0 10px var(--accent-energy); }
+.beast-heating-pumps-head small { font-size:10px; }
+.beast-heatpump-grid { height:100%; gap:9px; }
+.beast-heatpump-card {
+  height:100%;
+  padding:12px;
+  gap:8px;
+  border-radius:18px;
+  background:linear-gradient(155deg, color-mix(in srgb, var(--surface-2-solid) 92%, white 8%), var(--surface-solid));
+  box-shadow:0 14px 34px rgba(0,0,0,.08);
+}
+.beast-heatpump-head strong { max-width:170px; overflow:hidden; font-size:17px; text-overflow:ellipsis; text-transform:capitalize; white-space:nowrap; }
+.beast-heatpump-head > span { display:inline-flex; align-items:center; gap:5px; padding:5px 8px; }
+.beast-heatpump-card.is-heating .beast-heatpump-head > span { color:#ff9f43; background:rgba(255,159,67,.12); }
+.beast-heatpump-card.is-cooling .beast-heatpump-head > span { color:#55c8ff; background:rgba(85,200,255,.12); }
+.beast-heatpump-visual { min-height:86px; flex:1 1 auto; display:flex; align-items:center; justify-content:center; gap:8px; color:var(--ink-faint); overflow:hidden; }
+.beast-heatpump-visual::after { content:"Klar til drift"; position:absolute; bottom:4px; left:0; right:0; color:var(--ink-faint); font-size:9px; font-weight:750; letter-spacing:.08em; text-align:center; text-transform:uppercase; }
+.beast-heatpump-card.is-heating .beast-heatpump-visual::after { content:"Opvarmer luften"; color:#ff9f43; }
+.beast-heatpump-card.is-cooling .beast-heatpump-visual::after { content:"Køler luften"; color:#55c8ff; }
+.beast-heatpump-visual > span { width:58px; height:58px; display:grid; place-items:center; flex:0 0 auto; border:1px solid var(--border); border-radius:18px; background:var(--surface-solid); box-shadow:0 10px 26px rgba(0,0,0,.08); }
+.beast-heatpump-visual > span svg { width:34px; height:34px; }
+.beast-heatpump-visual i { width:34px; height:2px; border-radius:2px; background:currentColor; opacity:.18; transform-origin:left center; }
+.beast-heatpump-card.is-heating .beast-heatpump-visual { color:#ff9f43; }
+.beast-heatpump-card.is-cooling .beast-heatpump-visual { color:#55c8ff; }
+.beast-heatpump-card:is(.is-heating,.is-cooling) .beast-heatpump-visual > span svg { animation:beast-fan-pulse 1.5s ease-in-out infinite; }
+.beast-heatpump-card:is(.is-heating,.is-cooling) .beast-heatpump-visual i { animation:beast-air-wave 1.8s ease-in-out infinite; }
+.beast-heatpump-card:is(.is-heating,.is-cooling) .beast-heatpump-visual i:nth-child(3) { animation-delay:.22s; }
+.beast-heatpump-card:is(.is-heating,.is-cooling) .beast-heatpump-visual i:nth-child(4) { animation-delay:.44s; }
+@keyframes beast-fan-pulse { 0%,100%{transform:translateX(0);opacity:.65} 50%{transform:translateX(3px);opacity:1} }
+@keyframes beast-air-wave { 0%,100%{transform:scaleX(.35);opacity:.12} 50%{transform:scaleX(1);opacity:.65} }
+.beast-heatpump-temperature { min-height:62px; padding:7px 9px; border:1px solid var(--border); border-radius:13px; background:color-mix(in srgb, var(--surface-solid) 88%, transparent); }
+.beast-heatpump-temperature > span strong { font-size:clamp(1.7rem,2vw,2.25rem); line-height:1.05; }
+.beast-heatpump-temperature .beast-stepper { display:grid; grid-template-columns:40px 52px 40px; gap:3px; align-items:center; }
+.beast-heatpump-temperature .beast-transport-btn { width:40px; height:40px; min-width:40px; }
+.beast-heatpump-modes { padding:3px; border:1px solid var(--border); border-radius:12px; background:rgba(0,0,0,.08); }
+.beast-heatpump-modes button,.beast-heatpump-presets button { min-height:38px; border-radius:9px; }
+.beast-heatpump-options { grid-template-columns:1.15fr .9fr .9fr; align-items:end; gap:5px; }
+.beast-heatpump-select select { min-height:40px; }
+
+/* Capability-driven heat-pump controls. The important temperatures and
+   everyday actions stay visually dominant while optional HA capabilities
+   collapse naturally when an integration does not expose them. */
+.beast-heatpump-card { --pump-color:var(--accent-energy); display:grid; grid-template-rows:auto minmax(92px,1fr) auto auto; color:var(--ink); container-type:inline-size; background:radial-gradient(circle at 82% 31%,color-mix(in srgb,var(--pump-color) 12%,transparent),transparent 34%),linear-gradient(155deg,color-mix(in srgb,var(--surface-2-solid) 92%,white 8%),var(--surface-solid)); }
+.beast-heatpump-card.is-heating { --pump-color:#ff9b54; color:var(--ink); }.beast-heatpump-card.is-cooling { --pump-color:#42c8ff; color:var(--ink); }.beast-heatpump-card.is-fan,.beast-heatpump-card.is-fan_only { --pump-color:#34dfb2; color:var(--ink); }.beast-heatpump-card.is-off { --pump-color:var(--ink-faint); color:var(--ink); }
+.beast-heatpump-head { display:grid; grid-template-columns:40px minmax(0,1fr) auto 38px; align-items:center; gap:9px; }
+.beast-heatpump-head > i { width:40px; height:40px; display:grid; place-items:center; border-radius:12px; color:var(--pump-color); background:color-mix(in srgb,var(--pump-color) 13%,var(--surface-solid)); box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--pump-color) 17%,transparent); }
+.beast-heatpump-head strong { max-width:none; margin:1px 0 0; font-size:16px; }
+.beast-heatpump-head > span { padding:0; color:var(--pump-color) !important; background:none !important; font-size:10px; }
+.beast-heatpump-head > span b { width:7px; height:7px; border-radius:50%; background:currentColor; box-shadow:0 0 9px currentColor; }
+.beast-heatpump-head > button { width:38px; height:38px; display:grid; place-items:center; border:1px solid var(--border-strong); border-radius:11px; color:var(--ink-muted); background:var(--surface-solid); }
+.beast-heatpump-head > button.is-on { color:var(--pump-color); border-color:color-mix(in srgb,var(--pump-color) 44%,var(--border)); background:color-mix(in srgb,var(--pump-color) 11%,var(--surface-solid)); box-shadow:0 0 16px color-mix(in srgb,var(--pump-color) 17%,transparent); }
+.beast-heatpump-main-control { min-height:0; display:grid; grid-template-columns:minmax(0,1fr) 78px; align-items:center; gap:10px; }
+.beast-heatpump-temperature { min-height:78px; display:grid; grid-template-columns:minmax(76px,.65fr) minmax(150px,1.35fr); align-items:center; gap:8px; padding:10px 11px; }
+.beast-heatpump-temperature > span small,.beast-heatpump-temperature .beast-stepper-value small { color:var(--ink-faint); font-size:9px; text-transform:uppercase; letter-spacing:.045em; }
+.beast-heatpump-temperature > span strong { margin-top:3px; font-size:clamp(2rem,10cqi,2.8rem); line-height:.95; }
+.beast-heatpump-temperature .beast-stepper { grid-template-columns:38px minmax(60px,1fr) 38px; gap:5px; }
+.beast-heatpump-temperature .beast-transport-btn { width:38px; height:38px; min-width:38px; border-radius:10px; }
+.beast-heatpump-temperature .beast-stepper-value { text-align:center; }
+.beast-heatpump-temperature .beast-stepper-value strong { display:block; margin-top:3px; color:var(--ink); font-size:clamp(1.25rem,6cqi,1.65rem); line-height:1; }
+.beast-heatpump-visual { position:relative; min-height:0; width:74px; aspect-ratio:1; place-self:center; display:grid; place-items:center; border:1px solid color-mix(in srgb,var(--pump-color) 32%,var(--border)); border-radius:50%; color:var(--pump-color); background:radial-gradient(circle,color-mix(in srgb,var(--pump-color) 15%,var(--surface-solid)),var(--surface-solid) 68%); box-shadow:0 0 24px color-mix(in srgb,var(--pump-color) 15%,transparent); overflow:visible; }
+.beast-heatpump-visual::after { display:none; }
+.beast-heatpump-visual > span { width:auto; height:auto; border:0; border-radius:0; color:inherit; background:none; box-shadow:none; z-index:2; }
+.beast-heatpump-visual > span svg { width:30px; height:30px; }
+.beast-heatpump-visual i { position:absolute; width:auto; height:auto; inset:9%; border:1px solid currentColor; border-radius:50%; background:none; opacity:0; transform:none; animation:beast-heatpump-ring 2.4s ease-out infinite; }
+.beast-heatpump-visual i:nth-of-type(2) { animation-delay:.8s; }.beast-heatpump-visual i:nth-of-type(3) { animation-delay:1.6s; }
+.beast-heatpump-card:is(.is-heating,.is-cooling,.is-fan,.is-fan_only) .beast-heatpump-visual > span svg { animation:beast-heatpump-spin 3.2s linear infinite; }
+.beast-heatpump-card:is(.is-off,.is-idle) .beast-heatpump-visual i { display:none; }
+.beast-heatpump-modes { display:flex; padding:3px; overflow-x:auto; scrollbar-width:none; }
+.beast-heatpump-modes button { min-width:58px; min-height:36px; flex:1 0 auto; }
+.beast-heatpump-modes button.is-active { color:#071016; background:var(--pump-color); box-shadow:0 5px 15px color-mix(in srgb,var(--pump-color) 20%,transparent); }
+.beast-heatpump-options { grid-template-columns:repeat(auto-fit,minmax(92px,1fr)); gap:6px; }
+.beast-heatpump-select > span { color:var(--ink-faint); font-size:9px; text-transform:uppercase; letter-spacing:.04em; }
+.beast-heatpump-select select { min-height:38px; border-radius:10px; }
+.beast-heating-panel:not(.is-pump-roomy) .beast-heatpump-card { grid-template-rows:auto auto auto auto; padding:10px; gap:6px; }
+.beast-heating-panel:not(.is-pump-roomy) .beast-heatpump-main-control { grid-template-columns:1fr; }
+.beast-heating-panel:not(.is-pump-roomy) .beast-heatpump-visual { display:none; }
+.beast-heating-panel:not(.is-pump-roomy) .beast-heatpump-temperature { min-height:66px; padding:7px 9px; }
+.beast-heating-panel:not(.is-pump-roomy) .beast-heatpump-options select { min-height:34px; }
+@keyframes beast-heatpump-spin { to { transform:rotate(360deg); } }
+@keyframes beast-heatpump-ring { 0% { transform:scale(.55); opacity:.5; } 75%,100% { transform:scale(1.18); opacity:0; } }
+@container (max-width:330px) { .beast-heatpump-main-control { grid-template-columns:1fr; }.beast-heatpump-visual { display:none; }.beast-heatpump-temperature { grid-template-columns:minmax(72px,.6fr) minmax(150px,1.4fr); }.beast-heatpump-head { grid-template-columns:minmax(0,1fr) auto; }.beast-heatpump-head > i,.beast-heatpump-head > span { display:none; } }
+@media (prefers-reduced-motion:reduce) { .beast-heatpump-visual > span svg,.beast-heatpump-visual i { animation:none !important; } }
+
+.beast-heating-side-card { overflow:hidden; border-radius:18px; background:linear-gradient(155deg,var(--surface-2-solid),var(--surface-solid)),var(--surface-2); box-shadow:0 14px 32px rgba(0,0,0,.07); }
+.beast-dantherm-card { flex:1 1 auto; padding:14px; }
+.beast-dantherm-air > div { position:relative; overflow:hidden; border:1px solid var(--border); border-radius:13px; }
+.beast-dantherm-card.is-running .beast-dantherm-air > div::after { content:""; position:absolute; inset:0; background:linear-gradient(100deg,transparent 20%,color-mix(in srgb,var(--accent-b) 16%,transparent),transparent 80%); transform:translateX(-100%); animation:beast-vent-flow 3s linear infinite; pointer-events:none; }
+.beast-dantherm-card.is-running .beast-dantherm-air > div:nth-child(2)::after { animation-delay:1.1s; }
+@keyframes beast-vent-flow { to { transform:translateX(100%); } }
+.beast-dantherm-air i { position:relative; z-index:1; box-shadow:0 0 10px color-mix(in srgb,var(--accent-b) 35%,transparent); }
+.beast-dantherm-visual { min-height:120px; display:grid; place-items:center; align-content:center; gap:8px; margin:10px 0; color:var(--ink-faint); border:1px solid var(--border); border-radius:16px; background:radial-gradient(circle at center,color-mix(in srgb,var(--accent-b) 10%,transparent),transparent 68%); }
+.beast-dantherm-visual > span { width:58px; height:58px; display:grid; place-items:center; border-radius:50%; border:1px solid var(--border); background:var(--surface-solid); }
+.beast-dantherm-visual > div { display:flex; gap:5px; }
+.beast-dantherm-visual > div i { width:34px; height:2px; border-radius:2px; background:var(--accent-b); opacity:.18; }
+.beast-dantherm-visual small { font-size:10px; font-weight:750; letter-spacing:.05em; text-transform:uppercase; }
+.beast-dantherm-card.is-running .beast-dantherm-visual > span svg { animation:beast-fan-pulse 1.5s ease-in-out infinite; }
+.beast-dantherm-card.is-running .beast-dantherm-visual > div i { animation:beast-air-wave 1.8s ease-in-out infinite; }
+.beast-dantherm-card.is-running .beast-dantherm-visual > div i:nth-child(2) { animation-delay:.22s; }
+.beast-dantherm-card.is-running .beast-dantherm-visual > div i:nth-child(3) { animation-delay:.44s; }
+.beast-dantherm-metrics > span { min-height:58px; display:flex; flex-direction:column; justify-content:center; border-radius:12px; background:color-mix(in srgb,var(--surface-solid) 74%,transparent); }
+.beast-district-compact { flex:0 0 auto; padding:14px; }
+.beast-district-flow { padding:8px 0; }
+.beast-district-flow i { overflow:visible; }
+.beast-district-compact.is-flowing .beast-district-flow i::before { content:""; position:absolute; top:-2px; left:0; width:6px; height:6px; border-radius:50%; background:#fff; box-shadow:0 0 8px var(--accent-b); animation:beast-district-dot 2s linear infinite; }
+@keyframes beast-district-dot { from{transform:translateX(0)} to{transform:translateX(40px)} }
+
+@media (prefers-reduced-motion: reduce) {
+  .beast-heating-panel * { animation:none !important; }
+}
+
+/* Heating workspace: consumption and comfort on the main canvas; all
+   mechanical systems (heat pumps, Dantherm and district heating) share the
+   right operations column. */
+.beast-heating-panel { grid-template-columns:minmax(0,2fr) minmax(360px,.92fr); overflow-y:auto; align-items:start; }
+.beast-heating-main { min-height:100%; display:grid; grid-template-rows:auto auto auto; align-content:start; gap:10px; }
+.beast-heating-sidebar { min-height:100%; overflow:visible; }
+.beast-heating-sidebar .beast-heatpump-grid { height:auto; grid-template-columns:minmax(0,1fr); grid-auto-rows:auto; }
+.beast-heating-sidebar .beast-heatpump-card { height:auto; min-height:0; }
+.beast-heating-sidebar .beast-heating-pumps-head { padding:2px 4px; }
+.beast-heating-analytics { padding:14px; border:1px solid var(--border); border-radius:20px; background:linear-gradient(150deg,color-mix(in srgb,var(--surface-2-solid) 94%,white 6%),var(--surface-solid)); box-shadow:0 16px 38px rgba(0,0,0,.08); }
+.beast-heating-analytics-head { display:flex; align-items:center; justify-content:space-between; gap:14px; margin-bottom:10px; }
+.beast-heating-analytics-head small,.beast-heating-analytics-head strong { display:block; }
+.beast-heating-analytics-head small { color:var(--accent-energy); font-size:9px; font-weight:800; letter-spacing:.1em; text-transform:uppercase; }
+.beast-heating-analytics-head strong { margin-top:2px; font-size:17px; }
+.beast-heating-analytics-head > span { display:flex; align-items:center; gap:6px; color:var(--ink-muted); font-size:10px; }
+.beast-heating-kpis { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:8px; }
+.beast-heating-kpis article { min-width:0; padding:10px 11px; border:1px solid var(--border); border-radius:14px; background:color-mix(in srgb,var(--surface-solid) 82%,transparent); }
+.beast-heating-kpis small,.beast-heating-kpis span { display:block; overflow:hidden; color:var(--ink-faint); font-size:9px; text-overflow:ellipsis; white-space:nowrap; }
+.beast-heating-kpis strong { display:block; margin:5px 0 3px; font-size:clamp(1.25rem,2vw,1.75rem); line-height:1; }
+.beast-heating-kpis strong em { margin-left:4px; color:var(--ink-muted); font-size:10px; font-style:normal; }
+.beast-heating-chart-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:8px; margin-top:8px; }
+.beast-heating-chart { min-width:0; padding:9px 10px 5px; overflow:hidden; border:1px solid var(--border); border-radius:14px; background:rgba(0,0,0,.08); }
+.beast-heating-chart > div { display:flex; justify-content:space-between; gap:8px; font-size:10px; font-weight:750; }
+.beast-heating-chart > div small { color:var(--ink-faint); font-weight:600; }
+.beast-heating-chart svg { width:100%; height:82px; margin-top:4px; overflow:visible; }
+.beast-heating-chart path.line { fill:none; stroke:var(--chart-color); stroke-width:3; vector-effect:non-scaling-stroke; filter:drop-shadow(0 0 5px var(--chart-color)); }
+.beast-heating-chart path.area { fill:color-mix(in srgb,var(--chart-color) 18%,transparent); stroke:none; }
+.beast-heating-chart.is-heat { --chart-color:#ffad47; }.beast-heating-chart.is-air { --chart-color:#42c8ff; }
+.beast-heating-main .beast-heating-room-grid { min-height:0; grid-template-rows:repeat(2,minmax(112px,auto)); grid-auto-rows:minmax(112px,auto); gap:7px; }
+.beast-heating-main .beast-heating-room-card { min-height:112px; padding:9px 11px; gap:5px; }
+.beast-heating-main .beast-heating-room-current { font-size:clamp(1.55rem,1.8vw,2rem); }
+.beast-heating-main .beast-heating-room-reading i { width:32px; height:32px; }
+.beast-heating-main .beast-heating-room-card .beast-stepper { grid-template-columns:34px minmax(0,1fr) 34px; }
+.beast-heating-main .beast-heating-room-card .beast-stepper .beast-transport-btn { width:34px; height:34px; min-width:34px; }
+
+@media (max-width:1180px) {
+  .beast-heating-panel { grid-template-columns:minmax(0,1fr) !important; overflow-y:auto !important; }
+  .beast-heating-sidebar { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); }
+  .beast-heating-sidebar .beast-heating-pumps-head { grid-column:1/-1; }
+  .beast-heating-sidebar .beast-heatpump-grid { grid-template-columns:repeat(2,minmax(0,1fr)); grid-column:1/-1; }
+}
+@media (max-width:720px) {
+  .beast-heating-kpis,.beast-heating-chart-grid,.beast-heating-sidebar,.beast-heating-sidebar .beast-heatpump-grid { grid-template-columns:minmax(0,1fr); }
+  .beast-heating-kpis { grid-template-columns:repeat(2,minmax(0,1fr)); }
+  .beast-heating-sidebar .beast-heating-pumps-head,.beast-heating-sidebar .beast-heatpump-grid { grid-column:auto; }
+  .beast-heating-analytics-head { align-items:flex-start; flex-direction:column; }
+}
+
+/* Full-height heating composition. The main analysis canvas consumes all
+   remaining height instead of leaving an unused lower half, while the right
+   operations column keeps three complete pump controls and Dantherm visible
+   inside the same viewport. */
+@media (min-width:1181px) {
+  .beast-heating-panel { height:calc(100dvh - (2 * var(--space-5))); min-height:calc(100dvh - (2 * var(--space-5))); overflow:hidden; }
+  .beast-heating-main { height:100%; min-height:0; grid-template-rows:auto auto minmax(250px,1fr); }
+  .beast-heating-analytics { min-height:0; display:grid; grid-template-rows:auto auto minmax(150px,1fr); }
+  .beast-heating-chart-grid { min-height:0; }
+  .beast-heating-chart { min-height:0; display:grid; grid-template-rows:auto minmax(0,1fr); }
+  .beast-heating-chart svg { height:100%; min-height:130px; }
+  .beast-heating-sidebar { height:100%; min-height:0; display:grid; grid-template-rows:auto minmax(0,1fr) auto auto; gap:8px; overflow:hidden; }
+  .beast-heating-sidebar .beast-heatpump-grid { min-height:0; height:100%; display:grid; grid-template-columns:minmax(0,1fr); grid-template-rows:repeat(3,minmax(0,1fr)); gap:7px; }
+  .beast-heating-sidebar .beast-heatpump-card { min-height:0; height:100%; padding:8px 10px; gap:4px; grid-template-rows:auto auto auto auto; border-radius:15px; }
+  .beast-heating-sidebar .beast-heatpump-head { grid-template-columns:34px minmax(0,1fr) auto 34px; gap:7px; }
+  .beast-heating-sidebar .beast-heatpump-head > i,.beast-heating-sidebar .beast-heatpump-head > button { width:34px; height:34px; }
+  .beast-heating-sidebar .beast-heatpump-head strong { font-size:14px; }
+  .beast-heating-sidebar .beast-heatpump-main-control { grid-template-columns:minmax(0,1fr); }
+  .beast-heating-sidebar .beast-heatpump-visual { display:none; }
+  .beast-heating-sidebar .beast-heatpump-temperature { min-height:50px; grid-template-columns:minmax(90px,.7fr) minmax(170px,1.3fr); padding:5px 7px; }
+  .beast-heating-sidebar .beast-heatpump-temperature > span strong { font-size:1.7rem; }
+  .beast-heating-sidebar .beast-heatpump-temperature .beast-stepper { grid-template-columns:34px minmax(58px,1fr) 34px; }
+  .beast-heating-sidebar .beast-heatpump-temperature .beast-transport-btn { width:34px; height:34px; min-width:34px; }
+  .beast-heating-sidebar .beast-heatpump-modes button { min-height:30px; }
+  .beast-heating-sidebar .beast-heatpump-options { grid-template-columns:repeat(3,minmax(0,1fr)); }
+  .beast-heating-sidebar .beast-heatpump-select > span { display:none; }
+  .beast-heating-sidebar .beast-heatpump-select select { min-height:31px; padding-block:3px; }
+  .beast-heating-sidebar .beast-dantherm-card { flex:none; padding:10px; }
+  .beast-heating-sidebar .beast-dantherm-card .beast-heating-side-head { margin-bottom:6px; }
+  .beast-heating-sidebar .beast-dantherm-air { gap:6px; }
+  .beast-heating-sidebar .beast-dantherm-air > div { padding:7px 9px; }
+  .beast-heating-sidebar .beast-dantherm-air strong { margin:2px 0 4px; font-size:15px; }
+  .beast-heating-sidebar .beast-dantherm-visual { display:none; }
+  .beast-heating-sidebar .beast-dantherm-metrics { grid-template-columns:repeat(4,minmax(0,1fr)); }
+  .beast-heating-sidebar .beast-dantherm-metrics > span { min-height:44px; padding:5px 7px; }
+  .beast-heating-sidebar .beast-district-compact { padding:9px 11px; }
+  .beast-heating-sidebar .beast-district-flow { padding:3px 0; }
+}
+
+/* Three-column heating cockpit: comfort, control, and insight each get a
+   dedicated full-height container. */
+@media (min-width:1181px) {
+  .beast-heating-panel { grid-template-columns:minmax(320px,1fr) minmax(390px,1.08fr) minmax(390px,1.16fr); gap:10px; align-items:stretch; }
+  .beast-heating-main,.beast-heating-sidebar,.beast-heating-insights { min-width:0; height:100%; min-height:0; padding:12px; overflow:hidden; border:1px solid var(--border); border-radius:20px; background:linear-gradient(155deg,color-mix(in srgb,var(--surface-2-solid) 93%,white 7%),var(--surface-solid)); box-shadow:0 16px 38px rgba(0,0,0,.08); }
+  .beast-heating-main { grid-template-rows:auto minmax(0,1fr); gap:10px; }
+  .beast-heating-main .beast-heating-hero { min-height:0; padding:0; flex-wrap:wrap; align-items:flex-start; }
+  .beast-heating-main .beast-heating-hero h2 { font-size:clamp(1.45rem,1.7vw,2rem); }
+  .beast-heating-main .beast-heating-auto { min-width:150px; min-height:44px; padding:6px 10px; }
+  .beast-heating-main .beast-heating-room-grid { height:100%; min-height:0; display:flex; flex-direction:column; gap:7px; }
+  .beast-heating-main .beast-heating-room-card { height:auto; min-height:0; flex:1 1 0; }
+  .beast-heating-sidebar { display:grid; grid-template-rows:auto minmax(0,1fr); gap:8px; }
+  .beast-heating-sidebar .beast-heatpump-grid { grid-template-rows:repeat(3,minmax(0,1fr)); }
+  .beast-heating-insights { display:grid; grid-template-rows:minmax(0,1fr) auto auto; align-content:stretch; gap:8px; overflow:hidden; }
+  .beast-heating-insights .beast-heating-analytics { height:100%; min-height:0; padding:10px; grid-template-rows:auto auto minmax(0,1fr); box-shadow:none; }
+  .beast-heating-insights .beast-heating-analytics-head { margin-bottom:7px; }
+  .beast-heating-insights .beast-heating-analytics-head > span { display:none; }
+  .beast-heating-insights .beast-heating-kpis { grid-template-columns:repeat(2,minmax(0,1fr)); gap:6px; }
+  .beast-heating-insights .beast-heating-kpis article { padding:7px 9px; }
+  .beast-heating-insights .beast-heating-kpis strong { font-size:1.25rem; }
+  .beast-heating-insights .beast-heating-chart-grid { grid-template-columns:minmax(0,1fr); grid-template-rows:repeat(2,minmax(0,1fr)); gap:6px; }
+  .beast-heating-insights .beast-heating-chart { padding:6px 8px 3px; }
+  .beast-heating-insights .beast-heating-chart svg { min-height:60px; }
+  .beast-heating-insights .beast-dantherm-card { padding:9px; }
+  .beast-heating-insights .beast-dantherm-visual { display:none; }
+  .beast-heating-insights .beast-dantherm-metrics { grid-template-columns:repeat(4,minmax(0,1fr)); }
+  .beast-heating-insights .beast-dantherm-metrics > span { min-height:42px; padding:5px 6px; }
+  .beast-heating-insights .beast-district-compact { padding:9px; }
+}
+
+@media (max-width:1180px) {
+  .beast-heating-insights { display:grid; grid-template-columns:minmax(0,1fr); gap:10px; }
+}
+
 /* Full-screen compositions for secondary control views */
 .beast-waste-panel {
   display: grid;
@@ -2208,6 +2969,62 @@
 }
 
 .beast-waste-section:first-child .beast-stat-tile-value { font-size: clamp(1.35rem, 1.8vw, 2rem); }
+
+/* Calendar dashboard */
+.beast-waste-panel { grid-template-columns:minmax(330px,4fr) minmax(0,8fr); gap:clamp(12px,1.2vw,22px); }
+.beast-waste-section { position:relative; overflow:hidden; padding:clamp(16px,1.4vw,24px); border-color:var(--border-strong); background:linear-gradient(145deg,color-mix(in srgb,var(--surface-2-solid) 94%,var(--accent-soft)),var(--surface-2-solid)),var(--surface-2); box-shadow:0 16px 42px rgba(0,0,0,.12); }
+.beast-waste-section::after { content:""; position:absolute; width:220px; height:220px; right:-100px; top:-120px; border-radius:50%; background:var(--accent-soft); filter:blur(12px); opacity:.45; pointer-events:none; }
+.beast-calendar-section-head { position:relative; z-index:1; min-height:58px; display:flex; align-items:center; gap:12px; margin-bottom:16px; }
+.beast-calendar-section-head > span { width:48px; height:48px; display:grid; place-items:center; flex:0 0 auto; border-radius:15px; color:#fff; background:var(--accent-gradient); box-shadow:var(--accent-glow); }
+.beast-calendar-section-head div { min-width:0; }
+.beast-calendar-section-head small { display:block; color:var(--ink-muted); font-size:11px; font-weight:750; letter-spacing:.06em; text-transform:uppercase; }
+.beast-calendar-section-head h2 { margin:2px 0 0; color:var(--ink); font-size:clamp(1.25rem,1.55vw,1.75rem); line-height:1.05; }
+.beast-calendar-section-head > time { margin-left:auto; color:var(--ink-muted); font-size:var(--text-xs); font-weight:700; text-transform:capitalize; }
+.beast-calendar-waste-list { min-height:0; display:grid; grid-template-columns:minmax(0,1fr); align-content:start; gap:10px; overflow:auto; scrollbar-width:none; }
+.beast-calendar-waste-list::-webkit-scrollbar,.beast-calendar-agenda::-webkit-scrollbar { display:none; }
+.beast-calendar-waste-item { min-height:72px; display:grid; grid-template-columns:42px minmax(0,1fr) auto; align-items:center; gap:11px; padding:11px 13px; border:1px solid var(--border); border-radius:15px; background:color-mix(in srgb,var(--surface-solid) 90%,transparent); }
+.beast-calendar-waste-item.is-next { min-height:116px; padding:16px; border-color:color-mix(in srgb,var(--warning) 42%,var(--border)); background:linear-gradient(135deg,color-mix(in srgb,var(--warning) 16%,var(--surface-solid)),var(--surface-solid)); }
+.beast-calendar-waste-icon { width:42px; height:42px; display:grid; place-items:center; border-radius:13px; color:var(--accent); background:var(--accent-soft); }
+.beast-calendar-waste-item.is-next .beast-calendar-waste-icon { width:52px; height:52px; color:var(--warning); background:color-mix(in srgb,var(--warning) 18%,transparent); }
+.beast-calendar-waste-item > div { min-width:0; }
+.beast-calendar-waste-item small,.beast-calendar-waste-item em { display:block; overflow:hidden; color:var(--ink-muted); font-size:11px; font-style:normal; white-space:nowrap; text-overflow:ellipsis; }
+.beast-calendar-waste-item strong { display:block; overflow:hidden; margin:2px 0; color:var(--ink); font-size:var(--text-sm); white-space:nowrap; text-overflow:ellipsis; }
+.beast-calendar-waste-item > b { padding:7px 9px; border-radius:10px; color:var(--ink); background:var(--surface-2-solid); font-size:12px; white-space:nowrap; }
+.beast-calendar-waste-item.is-next > b { color:var(--warning); font-size:clamp(.95rem,1vw,1.15rem); }
+.beast-calendar-events { min-height:0; flex:1; display:grid; grid-template-rows:auto minmax(0,1fr); gap:14px; }
+.beast-calendar-week { display:grid; grid-template-columns:repeat(8,minmax(0,1fr)); gap:8px; }
+.beast-calendar-day { position:relative; min-width:0; min-height:92px; display:grid; grid-template-columns:auto auto; place-content:center; align-items:center; gap:1px 5px; padding:7px 4px; border:1px solid var(--border); border-radius:14px; background:color-mix(in srgb,var(--surface-solid) 82%,transparent); color:var(--ink); font-family:var(--font-sans); cursor:pointer; touch-action:manipulation; transition:border-color .18s ease,background .18s ease,transform .18s ease,box-shadow .18s ease; }
+.beast-calendar-day:active { transform:scale(.97); }
+.beast-calendar-day small { color:var(--ink-muted); font-size:10px; font-weight:800; text-transform:uppercase; }
+.beast-calendar-day > small,.beast-calendar-day > strong { grid-column:1 / -1; text-align:center; }
+.beast-calendar-day > strong { color:var(--ink); font-size:1.25rem; }
+.beast-calendar-day i { position:absolute; right:6px; top:6px; min-width:18px; height:18px; display:grid; place-items:center; border-radius:9px; color:#fff; background:var(--accent); font:800 9px/1 var(--font-sans); }
+.beast-calendar-day i:empty { display:none; }
+.beast-calendar-day.is-today { border-color:var(--accent); background:var(--accent-soft); box-shadow:inset 0 -3px 0 var(--accent); }
+.beast-calendar-day.is-selected { border-color:var(--accent); background:linear-gradient(145deg,color-mix(in srgb,var(--accent) 22%,var(--surface-solid)),var(--accent-soft)); box-shadow:inset 0 0 0 2px color-mix(in srgb,var(--accent) 48%,transparent),var(--accent-glow); }
+.beast-calendar-day.is-all { grid-template-columns:minmax(0,1fr); background:color-mix(in srgb,var(--accent-soft) 68%,var(--surface-solid)); }
+.beast-calendar-day.is-all > strong { font-size:1rem; }
+.beast-calendar-day.is-all > span { display:block; overflow:hidden; max-width:100%; color:var(--ink-muted); font-size:9px; font-weight:750; white-space:nowrap; text-overflow:ellipsis; }
+.beast-calendar-agenda { min-height:0; display:grid; align-content:start; gap:8px; overflow:auto; scrollbar-width:none; }
+.beast-calendar-event { position:relative; min-height:70px; display:grid; grid-template-columns:112px 4px minmax(0,1fr) auto auto; align-items:center; gap:13px; padding:10px 13px; border:1px solid var(--border); border-radius:14px; background:color-mix(in srgb,var(--surface-solid) 88%,transparent); }
+.beast-calendar-event time strong,.beast-calendar-event time span { display:block; }
+.beast-calendar-event time strong { color:var(--ink); font-size:12px; text-transform:capitalize; }
+.beast-calendar-event time span { margin-top:3px; color:var(--accent); font-size:11px; font-weight:800; }
+.beast-calendar-event > i { align-self:stretch; border-radius:4px; background:var(--accent-gradient); }
+.beast-calendar-event > div { min-width:0; }
+.beast-calendar-event > div strong,.beast-calendar-event > div span { display:block; overflow:hidden; white-space:nowrap; text-overflow:ellipsis; }
+.beast-calendar-event > div strong { color:var(--ink); font-size:var(--text-sm); }
+.beast-calendar-event > div span { margin-top:3px; color:var(--ink-muted); font-size:11px; }
+.beast-calendar-event > b { padding:6px 9px; border-radius:9px; color:var(--accent); background:var(--accent-soft); font-size:10px; text-transform:uppercase; }
+.beast-calendar-weather { display:flex; align-items:center; gap:4px; padding:4px 7px; border-radius:11px; color:var(--ink); background:color-mix(in srgb,var(--accent-soft) 70%,transparent); }
+.beast-calendar-weather svg { overflow:visible; }
+.beast-calendar-weather strong { font-size:12px; font-variant-numeric:tabular-nums; }
+.beast-calendar-weather.is-compact { grid-column:1 / -1; min-width:50px; justify-self:center; padding:0 4px; background:transparent; }
+.beast-calendar-weather.is-compact strong { font-size:11px; }
+.beast-calendar-empty { min-height:220px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:8px; color:var(--ink-muted); text-align:center; }
+.beast-calendar-empty strong { color:var(--ink); font-size:var(--text-lg); }
+@media (max-width:1050px) { .beast-waste-panel { grid-template-columns:minmax(280px,4fr) minmax(0,8fr); } .beast-calendar-event { grid-template-columns:90px 4px minmax(0,1fr) auto auto; } }
+@media (max-width:760px) { .beast-waste-panel { grid-template-columns:minmax(0,1fr); overflow:auto; } .beast-waste-section { min-height:520px; } .beast-calendar-section-head > time { display:none; } }
 
 @media (max-width: 1350px) {
   .beast-energy-panel { grid-template-columns: minmax(220px, .5fr) minmax(0, 1.5fr); }
@@ -2354,4 +3171,302 @@
   color: var(--ink-muted);
   font-size: 12.5px;
   line-height: 1.5;
+}
+.beast-energy-panel .is-layout-hidden { display: none !important; }
+.beast-energy-layout-btn { width: 44px; height: 44px; border: 0; background: transparent; color: var(--ink-muted); font-size: 28px; }
+.beast-energy-layout-modal { width: min(1080px, calc(100vw - 28px)); max-width:1080px; max-height: min(900px, calc(100dvh - 28px)); }
+.beast-energy-layout-list { display: grid; gap: 10px; margin-bottom: 18px; }
+.beast-energy-native-editor-card { padding: 12px; border: 1px solid var(--border); border-radius: var(--radius-md); background: var(--surface-2); }
+.beast-energy-native-editor-head { display: grid; grid-template-columns: 34px minmax(0,1fr) auto; align-items: center; gap: 10px; }
+.beast-energy-native-editor-grip { color: var(--ink-muted); }
+.beast-energy-native-editor-head > label { min-width: 0; display: grid; grid-template-columns: 26px minmax(0,1fr); align-items: center; gap: 0 9px; }
+.beast-energy-native-editor-head > label input { grid-row: 1 / 3; width: 23px; height: 23px; accent-color: var(--accent); }
+.beast-energy-native-editor-head > label strong, .beast-energy-native-editor-head > label small { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.beast-energy-native-editor-head > label small { color: var(--ink-muted); }
+.beast-energy-native-editor-head > div { display: flex; gap: 6px; }
+.beast-energy-native-editor-head button { width: 42px; height: 42px; border: 1px solid var(--border); border-radius: 11px; background: var(--surface-solid); color: var(--ink); font-size: 19px; }
+.beast-energy-native-editor-head button:disabled { opacity: .3; }
+.beast-energy-native-editor-fields { display: grid; grid-template-columns: 1.25fr repeat(2,minmax(100px,.45fr)) repeat(2,minmax(150px,1fr)); gap: 9px; margin-top: 11px; }
+.beast-energy-native-editor-fields label { min-width: 0; display: flex; flex-direction: column; gap: 5px; color: var(--ink-muted); font-size: var(--text-xs); }
+.beast-energy-native-editor-fields input, .beast-energy-native-editor-fields select { width: 100%; min-height: 44px; padding: 0 10px; border: 1px solid var(--border); border-radius: 10px; background: var(--surface-solid); color: var(--ink); }
+@media (max-width: 820px) { .beast-energy-native-editor-fields { grid-template-columns: repeat(2,minmax(0,1fr)); } }
+.beast-energy-panel.has-native-layout {
+  display: grid;
+  grid-template-columns: repeat(12, minmax(0, 1fr));
+  grid-template-rows: auto;
+  grid-auto-rows: minmax(84px, 1fr);
+  grid-auto-flow: dense;
+  align-content: stretch;
+  gap: var(--space-3);
+  overflow-x: hidden;
+  overflow-y: auto;
+}
+.beast-energy-panel.has-native-layout > .beast-energy-viewbar {
+  grid-column: 1 / -1 !important;
+  grid-row: auto !important;
+  order: -1;
+}
+.beast-energy-panel.has-native-layout > .beast-energy-native-card {
+  grid-column: var(--energy-native-x) / span var(--energy-native-w) !important;
+  grid-row: var(--energy-native-y) / span var(--energy-native-h) !important;
+  order: var(--energy-native-order);
+  min-width: 0;
+  min-height: 0;
+}
+.beast-energy-panel.has-native-layout > .beast-stat-grid {
+  grid-template-columns: minmax(0,1fr);
+  grid-template-rows: repeat(4,minmax(0,1fr));
+}
+.beast-energy-panel.has-native-layout > .beast-energy-chart-wrap { grid-column: auto; }
+.beast-energy-panel.has-native-layout > .beast-energy-now-summary { display: grid; }
+.beast-energy-panel.has-native-layout > .beast-energy-now-groups { overflow-y: auto; }
+@media (max-width: 820px) {
+  .beast-energy-panel.has-native-layout { display: flex; flex-direction: column; overflow-y: visible; }
+  .beast-energy-panel.has-native-layout > .beast-energy-native-card { flex: none; min-height: 240px; order: var(--energy-native-order); }
+  .beast-energy-panel.has-native-layout > .beast-energy-recommendation { min-height: 74px; }
+}
+.beast-page-editor-choice { width: min(760px, calc(100vw - 28px)); max-width:760px; }
+.beast-page-editor-choice-grid { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 12px; }
+.beast-page-editor-choice-grid > button { min-height: 128px; display: flex; align-items: center; gap: 15px; padding: 20px; border: 1px solid var(--border); border-radius: var(--radius-md); background: var(--surface-2); color: var(--ink); text-align: left; }
+.beast-page-editor-choice-grid > button:hover { border-color: var(--accent-border); background: var(--accent-soft); }
+.beast-page-editor-choice-grid > button > svg { flex: 0 0 auto; color: var(--accent); }
+.beast-page-editor-choice-grid strong, .beast-page-editor-choice-grid small { display: block; }
+.beast-page-editor-choice-grid strong { font-size: var(--text-md); }
+.beast-page-editor-choice-grid small { margin-top: 5px; color: var(--ink-muted); line-height: 1.4; }
+@media (max-width: 620px) { .beast-page-editor-choice-grid { grid-template-columns: minmax(0,1fr); } }
+.beast-energy-panel.is-native-editing > .beast-energy-native-card {
+  position: relative;
+  overflow: visible;
+  outline: 2px dashed color-mix(in srgb, var(--accent), transparent 35%);
+  outline-offset: -3px;
+  touch-action: none;
+}
+.beast-energy-native-drag {
+  position: absolute;
+  z-index: 35;
+  top: 10px;
+  left: 10px;
+  width: 50px;
+  height: 50px;
+  display: grid;
+  place-items: center;
+  border: 2px solid color-mix(in srgb,var(--accent-a) 72%,#fff);
+  border-radius: 14px;
+  background: var(--accent-gradient);
+  color: #fff;
+  box-shadow: 0 9px 26px rgba(0,0,0,.42),var(--accent-glow);
+  cursor: grab;
+  touch-action: none;
+}
+.beast-energy-native-resize {
+  position: absolute;
+  z-index: 36;
+  right: 0;
+  bottom: 0;
+  width: 58px;
+  height: 58px;
+  border-radius: 20px 0 0 0;
+  background: linear-gradient(135deg,transparent 39%,color-mix(in srgb,var(--accent-a) 28%,#07101d) 40%);
+  filter: drop-shadow(-3px -3px 5px rgba(0,0,0,.34));
+  cursor: nwse-resize;
+  touch-action: none;
+}
+.beast-energy-panel.is-native-editing > .is-dragging,
+.beast-energy-panel.is-native-editing > .is-resizing { z-index: 40; opacity: .88; }
+.beast-template-energy-price, .beast-template-energy-usage { width: 100%; height: 100%; min-height: 0; display: flex; flex-direction: column; gap: 12px; padding: 16px; }
+.beast-template-energy-price header, .beast-template-energy-usage header { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.beast-template-energy-price header small, .beast-template-energy-price header strong, .beast-template-energy-usage header small, .beast-template-energy-usage header strong { display: block; }
+.beast-template-energy-price header small, .beast-template-energy-usage header small { color: var(--ink-muted); font-size: var(--text-xs); text-transform: uppercase; letter-spacing: .06em; }
+.beast-template-energy-price header strong, .beast-template-energy-usage header strong { margin-top: 3px; font-size: var(--text-md); }
+.beast-template-energy-price header b { color: var(--warning); font-size: var(--text-lg); white-space: nowrap; }
+.beast-template-energy-bars { flex: 1; min-height: 90px; display: flex; align-items: end; gap: 4px; padding-top: 8px; border-bottom: 1px solid var(--border); }
+.beast-template-energy-bars i { flex: 1 1 0; min-width: 3px; height: var(--h); border-radius: 5px 5px 1px 1px; background: var(--c); box-shadow: 0 0 12px color-mix(in srgb, var(--c), transparent 65%); }
+.beast-template-energy-price > em { margin: auto; color: var(--ink-muted); font-style: normal; }
+.beast-template-energy-usage header span { color: var(--ink-muted); white-space: nowrap; }
+.beast-template-energy-usage header span b { color: var(--accent-b); font-size: var(--text-lg); }
+.beast-template-energy-usage-metrics { display: flex; gap: 18px; color: var(--ink-muted); font-size: var(--text-xs); }
+.beast-template-energy-usage-metrics b { color: var(--ink); }
+.beast-template-energy-usage .beast-standard-graph-history { flex: 1; min-height: 90px; }
+.beast-heating-panel .is-layout-hidden { display: none !important; }
+.beast-heating-layout-btn { width: 44px; height: 44px; border: 0; background: transparent; color: var(--ink-muted); font-size: 28px; }
+.beast-heating-layout-modal { width: min(760px, calc(100vw - 28px)); max-width:760px; }
+.beast-heating-layout-list { display: grid; gap: 10px; margin-bottom: 18px; }
+.beast-heating-layout-list label { display: flex; align-items: center; gap: 12px; min-height: 56px; padding: 10px 14px; border: 1px solid var(--border); border-radius: var(--radius-md); background: var(--surface-2); }
+.beast-heating-layout-list input { width: 24px; height: 24px; accent-color: var(--accent); }
+.beast-heating-layout-selects { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:10px; margin:0 0 18px; }
+.beast-heating-layout-selects label { min-width:0; display:grid; gap:7px; color:var(--ink-muted); font-size:11px; font-weight:750; }
+.beast-heating-layout-selects select { width:100%; min-height:44px; padding:0 10px; border:1px solid var(--border); border-radius:11px; color:var(--ink); background:var(--surface-solid); }
+@media (max-width:680px) { .beast-heating-layout-selects { grid-template-columns:1fr; } }
+.beast-pool-panel .is-layout-hidden { display: none !important; }
+.beast-pool-layout-btn { width: 44px; height: 44px; border: 0; background: transparent; color: var(--ink-muted); font-size: 28px; }
+.beast-pool-layout-modal { width: min(760px, calc(100vw - 28px)); max-width:760px; }
+.beast-pool-layout-list { display: grid; gap: 10px; margin-bottom: 18px; }
+.beast-pool-layout-list label { display: flex; align-items: center; gap: 12px; min-height: 56px; padding: 10px 14px; border: 1px solid var(--border); border-radius: var(--radius-md); background: var(--surface-2); }
+.beast-pool-layout-list input { width: 24px; height: 24px; accent-color: var(--accent); }
+.beast-car-panel .is-layout-hidden { display: none !important; }
+.beast-car-layout-btn { position: absolute; top: 12px; right: 12px; width: 44px; height: 44px; border: 0; background: transparent; color: var(--ink-muted); font-size: 28px; }
+.beast-car-layout-modal { width: min(760px, calc(100vw - 28px)); max-width:760px; }
+.beast-car-layout-list { display: grid; gap: 10px; margin-bottom: 18px; }
+.beast-car-layout-list label { display: flex; align-items: center; gap: 12px; min-height: 56px; padding: 10px 14px; border: 1px solid var(--border); border-radius: var(--radius-md); background: var(--surface-2); }
+.beast-car-layout-list input { width: 24px; height: 24px; accent-color: var(--accent); }
+.beast-waste-panel .is-layout-hidden { display: none !important; }
+.beast-calendar-layout-modal { width: min(760px, calc(100vw - 28px)); max-width:760px; }
+.beast-calendar-layout-list { display: grid; gap: 10px; margin-bottom: 18px; }
+.beast-calendar-layout-list label { display: flex; align-items: center; gap: 12px; min-height: 56px; padding: 10px 14px; border: 1px solid var(--border); border-radius: var(--radius-md); background: var(--surface-2); }
+.beast-calendar-layout-list input { width: 24px; height: 24px; accent-color: var(--accent); }
+.beast-waste-section[data-calendar-section="waste"] .beast-stat-grid { grid-template-columns:minmax(0,1fr) !important; align-content:start; }
+.beast-waste-section[data-calendar-section="waste"] .beast-stat-tile { min-height:84px; grid-template-columns:52px minmax(0,1fr) auto; align-items:center; }
+
+/* Calendar cards share the available panel height instead of growing the page.
+   The row count is supplied by the panel renderer and remains stable between
+   Home Assistant updates. */
+.beast-waste-section > .beast-stat-grid {
+  min-height: 0;
+  grid-template-rows: repeat(var(--calendar-item-rows, 1), minmax(0, 1fr));
+  grid-auto-rows: minmax(0, 1fr);
+  overflow: hidden;
+}
+
+@media (min-width: 901px) and (max-height: 850px) {
+  .beast-waste-panel { gap: var(--space-3); }
+  .beast-waste-section { padding: var(--space-3); }
+  .beast-waste-section > .beast-stat-grid { gap: 8px; }
+  .beast-waste-section .beast-stat-tile { padding: 9px 11px; }
+  .beast-waste-section[data-calendar-section="waste"] .beast-stat-tile {
+    min-height: 0;
+    grid-template-columns: 42px minmax(0, 1fr) auto;
+  }
+  .beast-waste-section[data-calendar-section="events"] .beast-stat-tile-value {
+    font-size: clamp(.92rem, 1vw, 1.08rem);
+    line-height: 1.2;
+  }
+}
+
+/* Shared direct editor for specialised full-page views. */
+.beast-native-layout-grid {
+  display: grid !important;
+  grid-template-columns: repeat(12, minmax(0, 1fr)) !important;
+  grid-template-rows: repeat(var(--native-total-rows, 12), minmax(0, 1fr)) !important;
+  grid-auto-rows: minmax(0, 1fr) !important;
+  align-content: start;
+  gap: var(--space-4);
+  height: 100% !important;
+  min-height: 0;
+  overflow: hidden !important;
+}
+.beast-native-layout-card {
+  min-width: 0;
+  min-height: 0;
+  grid-column: var(--native-x) / span var(--native-w) !important;
+  grid-row: var(--native-y) / span var(--native-h) !important;
+  height: auto !important;
+  max-height: none !important;
+  overflow: hidden;
+}
+.is-native-page-editing .beast-native-layout-card {
+  position: relative;
+  overflow: visible !important;
+  outline: 2px dashed color-mix(in srgb, var(--accent-a), transparent 28%);
+  outline-offset: -3px;
+  touch-action: none;
+  pointer-events: none;
+}
+.is-native-page-editing .beast-native-layout-card > :not(.beast-native-card-drag):not(.beast-native-card-resize) { pointer-events: none !important; }
+.is-native-page-editing .beast-native-card-drag,.is-native-page-editing .beast-native-card-resize { pointer-events: auto; }
+.beast-native-card-drag {
+  position: absolute; z-index: 90; top: 10px; left: 10px;
+  width: 50px; height: 50px; display: grid; place-items: center;
+  border: 2px solid color-mix(in srgb,var(--accent-a) 72%,#fff); border-radius: 14px;
+  background: var(--accent-gradient); color: #fff; box-shadow: 0 9px 26px rgba(0,0,0,.42),var(--accent-glow);
+  cursor: grab; touch-action: none;
+}
+.beast-native-card-drag:active { cursor: grabbing; transform: scale(.97); }
+.beast-native-card-resize {
+  position: absolute; z-index: 91; right: 0; bottom: 0;
+  width: 58px; height: 58px; border-radius: 20px 0 0 0;
+  background: linear-gradient(135deg,transparent 39%,color-mix(in srgb,var(--accent-a) 28%,#07101d) 40%);
+  filter: drop-shadow(-3px -3px 5px rgba(0,0,0,.34));
+  cursor: nwse-resize; touch-action: none;
+}
+.beast-native-layout-card.is-dragging,.beast-native-layout-card.is-resizing { z-index: 80; box-shadow: var(--shadow-lg); }
+.beast-native-settings-modal { width: min(1120px, calc(100vw - 32px)); max-width:1120px; max-height: calc(100dvh - 28px); }
+.beast-responsive-profile-note { margin:0 0 14px; padding:11px 13px; border:1px solid var(--accent-border); border-radius:12px; color:var(--ink-muted); background:var(--accent-soft); font-size:var(--text-xs); }
+.beast-responsive-profile-note strong { color:var(--accent-a); }
+.beast-native-settings-list { display: grid; gap: 10px; margin-bottom: 18px; }
+.beast-native-settings-list article { padding: 13px; border: 1px solid var(--border); border-radius: var(--radius-md); background: var(--surface-2); }
+.beast-native-settings-list header label { min-height: 42px; display: flex; align-items: center; gap: 10px; }
+.beast-native-settings-list header input { width: 24px; height: 24px; accent-color: var(--accent-a); }
+.beast-native-settings-list article > div { display: grid; grid-template-columns: minmax(190px,1.5fr) repeat(4,minmax(100px,.65fr)); gap: 9px; margin-top: 9px; }
+.beast-native-settings-list article > div label { min-width: 0; display: flex; flex-direction: column; gap: 5px; color: var(--ink-muted); font-size: var(--text-xs); }
+.beast-native-settings-list input,.beast-native-settings-list select { width: 100%; min-height: 46px; padding: 0 10px; border: 1px solid var(--border); border-radius: 10px; background: var(--surface-solid); color: var(--ink); font: inherit; }
+.beast-native-settings-list .beast-native-option-action {
+  grid-column:span 2;
+  width:100%;
+  min-width:0;
+  min-height:58px;
+  align-self:end;
+  display:inline-flex;
+  align-items:center;
+  justify-content:flex-start;
+  gap:11px;
+  padding:0 17px;
+  overflow:hidden;
+  border-color:var(--accent-border);
+  background:linear-gradient(135deg,var(--accent-soft),var(--surface-solid));
+  color:var(--ink);
+  font-weight:850;
+  text-align:left;
+  white-space:normal;
+  touch-action:manipulation;
+}
+.beast-native-settings-list .beast-native-option-action svg { flex:0 0 auto; color:var(--accent); }
+.beast-native-settings-list .beast-native-option-action span { min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.beast-native-settings-list .beast-native-option-action:active { transform:scale(.985); }
+.beast-page-editor-host:has(.beast-page-entity-grid:empty) { min-height: 0; }
+.beast-page-editor-host:has(.beast-page-entity-grid:empty) .beast-page-entity-grid { display: none; }
+
+@media (max-width: 900px) {
+  .beast-native-layout-grid { grid-template-columns: minmax(0,1fr) !important; grid-auto-rows: auto !important; }
+  .beast-native-layout-card { grid-column: 1 !important; grid-row: auto !important; min-height: calc(var(--native-h) * 54px); }
+  .beast-native-settings-list article > div { grid-template-columns: repeat(2,minmax(0,1fr)); }
+}
+
+/* Heating's three cockpit columns are also native-editor cards. The shared
+   editor intentionally gives ordinary cards height:auto, but these columns
+   must stretch to their complete 12-row grid area for the equal thermostat
+   flex distribution to have a definite height. Keep this after the shared
+   native-card rule so the specialised full-height contract wins. */
+@media (min-width:1181px) {
+  .beast-heating-panel > .beast-heating-main.beast-native-layout-card,
+  .beast-heating-panel > .beast-heating-sidebar.beast-native-layout-card,
+  .beast-heating-panel > .beast-heating-insights.beast-native-layout-card {
+    height:100% !important;
+    min-height:0 !important;
+    align-self:stretch;
+  }
+  .beast-heating-panel > .beast-heating-main.beast-native-layout-card {
+    display:flex !important;
+    flex-direction:column;
+  }
+  .beast-heating-main .beast-heating-hero { flex:0 0 auto; }
+  .beast-heating-main .beast-heating-room-grid { height:auto; min-height:0; flex:1 1 0; }
+  .beast-heating-main .beast-heating-room-card {
+    display:grid;
+    grid-template-columns:minmax(0,1fr) minmax(170px,.85fr);
+    grid-template-rows:auto minmax(0,1fr);
+    align-items:center;
+    column-gap:10px;
+    row-gap:2px;
+    padding:6px 9px;
+    overflow:hidden;
+  }
+  .beast-heating-main .beast-heating-room-head { grid-column:1/-1; min-height:18px; }
+  .beast-heating-main .beast-heating-room-reading { grid-column:1; min-height:0; }
+  .beast-heating-main .beast-heating-room-reading span small { display:none; }
+  .beast-heating-main .beast-heating-room-current { font-size:clamp(1.35rem,1.45vw,1.75rem); }
+  .beast-heating-main .beast-heating-room-reading i { width:28px; height:28px; }
+  .beast-heating-main .beast-heating-room-card .beast-stepper { grid-column:2; grid-row:2; grid-template-columns:30px minmax(68px,1fr) 30px; align-self:center; gap:4px; }
+  .beast-heating-main .beast-heating-room-card .beast-stepper .beast-transport-btn { width:30px; height:30px; min-width:30px; }
+  .beast-heating-main .beast-heating-room-card .beast-stepper-value small { font-size:7px; }
+  .beast-heating-main .beast-heating-room-card .beast-stepper-value strong { font-size:13px; }
 }
