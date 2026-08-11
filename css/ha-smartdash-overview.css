@@ -2000,13 +2000,13 @@
 .beast-ov-heatpump-head button,.beast-ov-heatpump-target button,.beast-ov-heatpump-modes button { appearance:none; border:1px solid var(--border-strong); background:var(--surface-solid); color:var(--ink-muted); }
 .beast-ov-heatpump-head button { width:40px; height:40px; display:grid; place-items:center; border-radius:11px; }
 .beast-ov-heatpump-head button.is-on { color:var(--pump-color); border-color:color-mix(in srgb,var(--pump-color) 48%,var(--border)); background:color-mix(in srgb,var(--pump-color) 12%,var(--surface-solid)); box-shadow:0 0 18px color-mix(in srgb,var(--pump-color) 20%,transparent); }
-.beast-ov-heatpump-main { min-height:0; display:grid; grid-template-columns:minmax(235px,1.35fr) minmax(90px,.65fr); align-items:center; gap:clamp(10px,3cqi,24px); }
-.beast-ov-heatpump-reading { display:grid; grid-template-columns:minmax(72px,.7fr) minmax(150px,1.3fr); align-items:center; gap:10px; }
-.beast-ov-heatpump-reading > span small,.beast-ov-heatpump-target small { display:block; color:var(--ink-faint); font-size:9px; text-transform:uppercase; letter-spacing:.05em; }
-.beast-ov-heatpump-reading > span strong { font-size:clamp(24px,9cqi,44px); line-height:1; }
-.beast-ov-heatpump-target { display:grid; grid-template-columns:38px minmax(56px,1fr) 38px; align-items:center; gap:7px; text-align:center; }
-.beast-ov-heatpump-target button { width:38px; height:38px; display:grid; place-items:center; border-radius:10px; }
-.beast-ov-heatpump-target strong { font-size:20px; }
+.beast-ov-heatpump-main { min-height:0; display:grid; grid-template-columns:minmax(300px,1.5fr) minmax(86px,.5fr); align-items:center; gap:clamp(10px,3cqi,24px); }
+.beast-ov-heatpump-reading { display:grid; grid-template-columns:minmax(112px,.85fr) minmax(190px,1.15fr); align-items:center; gap:12px; }
+.beast-ov-heatpump-reading > span small,.beast-ov-heatpump-target small { display:block; color:var(--ink-faint); font-size:10px; text-transform:uppercase; letter-spacing:.05em; }
+.beast-ov-heatpump-reading > span strong { display:block; margin-top:3px; font-size:clamp(36px,11cqi,58px); line-height:.94; }
+.beast-ov-heatpump-target { display:grid; grid-template-columns:44px minmax(82px,1fr) 44px; align-items:center; gap:8px; text-align:center; }
+.beast-ov-heatpump-target button { width:44px; height:44px; display:grid; place-items:center; border-radius:11px; }
+.beast-ov-heatpump-target strong { display:block; margin-top:3px; font-size:clamp(25px,6.5cqi,34px); line-height:1; }
 .beast-ov-heatpump-visual { position:relative; width:clamp(74px,24cqi,126px); aspect-ratio:1; place-self:center; display:grid; place-items:center; border:1px solid color-mix(in srgb,var(--pump-color) 32%,var(--border)); border-radius:50%; color:var(--pump-color); background:radial-gradient(circle,color-mix(in srgb,var(--pump-color) 16%,var(--surface-solid)),var(--surface-solid) 68%); box-shadow:0 0 34px color-mix(in srgb,var(--pump-color) 16%,transparent),inset 0 0 24px color-mix(in srgb,var(--pump-color) 8%,transparent); }
 .beast-ov-heatpump-visual > span { position:relative; z-index:2; display:grid; place-items:center; animation:beast-pump-fan 3.2s linear infinite; }
 .beast-ov-heatpump-visual > i { position:absolute; inset:8%; border:1px solid currentColor; border-radius:50%; opacity:0; animation:beast-pump-air 2.4s ease-out infinite; }.beast-ov-heatpump-visual > i:nth-of-type(2) { animation-delay:.8s; }.beast-ov-heatpump-visual > i:nth-of-type(3) { animation-delay:1.6s; }
@@ -2021,6 +2021,7 @@
 @keyframes beast-pump-fan { to { transform:rotate(360deg); } }
 @keyframes beast-pump-air { 0% { transform:scale(.55); opacity:.5; } 75%,100% { transform:scale(1.18); opacity:0; } }
 @keyframes beast-pump-status { 50% { opacity:.35; box-shadow:0 0 3px currentColor; } }
+@container (max-width:470px) { .beast-ov-heatpump-main { grid-template-columns:1fr; }.beast-ov-heatpump-visual { display:none; }.beast-ov-heatpump-reading { grid-template-columns:minmax(110px,.8fr) minmax(190px,1.2fr); } }
 @container (max-width:360px) { .beast-ov-heatpump-head { grid-template-columns:minmax(0,1fr) auto; }.beast-ov-heatpump-head > span,.beast-ov-heatpump-state { display:none; }.beast-ov-heatpump-main { grid-template-columns:1fr; }.beast-ov-heatpump-visual { display:none; }.beast-ov-heatpump-reading { grid-template-columns:1fr auto; }.beast-ov-heatpump-options { grid-template-columns:1fr; } }
 @media (prefers-reduced-motion:reduce) { .beast-ov-heatpump-visual > span,.beast-ov-heatpump-visual > i,.beast-ov-heatpump-state i { animation:none !important; } }
 @supports not (container-type: size) {

@@ -211,9 +211,14 @@ if ($action === "check") {
   // right now -- only the GitHub half of the answer is cached.
   $cacheFile = $dataDir . "/update-check-cache.json";
   $cacheTtlSeconds = 300;
+  // Automatic/background checks reuse the short cache to protect GitHub's
+  // unauthenticated rate limit. A user explicitly pressing the check button
+  // must be able to discover a release published seconds ago, so that request
+  // bypasses the cache and refreshes it with GitHub's current latest release.
+  $forceRefresh = !empty($body["force"]);
   $skippedId = skippedBuildId($dataDir);
   $cached = null;
-  if (is_file($cacheFile)) {
+  if (!$forceRefresh && is_file($cacheFile)) {
     $raw = @file_get_contents($cacheFile);
     $decoded = $raw ? json_decode($raw, true) : null;
     if (is_array($decoded) && isset($decoded["fetchedAt"]) && (time() - $decoded["fetchedAt"]) < $cacheTtlSeconds) {

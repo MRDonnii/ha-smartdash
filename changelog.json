@@ -1,5 +1,16 @@
 [
   {
+    "version": "20260811-114",
+    "tag": "v0.7.36",
+    "date": "2026-08-11",
+    "changes": [
+      "Heat-pump controls now use the selected dashboard language consistently, including HVAC modes, fan speeds, presets, swing modes, temperature labels and accessible control names.",
+      "The heat-pump front-page card now gives room temperature and target temperature more visual weight with larger values and larger target controls.",
+      "Heating and Water graph tabs on the front-page energy card can now be hidden independently from Energy setup when those utilities are not used.",
+      "The manual Check for updates and Refresh list actions now bypass the short server cache, so a newly published GitHub release is discovered immediately."
+    ]
+  },
+  {
     "version": "20260811-113",
     "tag": "v0.7.35",
     "date": "2026-08-11",

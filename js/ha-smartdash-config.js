@@ -27,6 +27,7 @@ const BeastConfig = (() => {
       powerSensor: null, priceSensor: null, priceForecastSensor: null, tomorrowAvailableSensor: null,
       totalEnergySensor: null, totalCostSensor: null, nowMeasuredSensor: null, nowUnmeasuredSensor: null,
       heatPowerSensor: null, heatEnergySensor: null, waterUsageSensor: null, waterFlowSensor: null,
+      showHeatOnOverview: true, showWaterOnOverview: true,
       nowGroups: []
     },
     rooms: { areaIds: [], climateSensors: {}, entityOverrides: {} },
