@@ -581,6 +581,23 @@ html, body, .beast-app { width: 100%; height: 100%; height: 100dvh; }
     min-height: 0 !important;
     overflow: hidden !important;
   }
+  /* Heating's three panels (Termostater, Varmepumper, Statistik) are each
+     dense enough that squeezing them into 1/3-width columns shrinks room
+     cards and heat pump cards more than is readable. Stack them full-width
+     instead and let the page scroll between them, rather than forcing
+     everything to fit one screen. */
+  .beast-heating-panel {
+    grid-template-columns: minmax(0, 1fr) !important;
+    height: auto !important;
+    overflow-y: auto !important;
+    overflow-x: hidden !important;
+  }
+  .beast-heating-panel > .beast-native-layout-card {
+    grid-column: 1 / -1 !important;
+    grid-row: auto !important;
+    height: auto !important;
+    min-height: calc(var(--native-h, 12) * 46px);
+  }
 }
 
 /* One editor dock for every page editor (overview/custom cards, native
