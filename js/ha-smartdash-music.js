@@ -31,6 +31,10 @@
   const playerRenderSignatures = new Map();
   const linkedPlayersByLeader = new Map();
 
+  function musicT(da, en) {
+    return BeastLocalSettings.get("language", "en") === "da" ? da : en;
+  }
+
   function findItems(payload) {
     if (!payload || typeof payload !== "object") return null;
     if (Array.isArray(payload.items)) return payload.items;
@@ -164,6 +168,12 @@
     if (!feedback) return;
     feedback.textContent = message;
     feedback.className = `beast-speaker-feedback${type ? ` is-${type}` : ""}`;
+    const popoverFeedback = document.getElementById("beastPlayerPopoverFeedback");
+    if (popoverFeedback) {
+      popoverFeedback.hidden = !message;
+      popoverFeedback.textContent = message;
+      popoverFeedback.className = `beast-player-popover-feedback${type ? ` is-${type}` : ""}`;
+    }
   }
 
   async function changeSpeakerGroup(players, activePlayer, player, shouldJoin, button) {
@@ -175,9 +185,9 @@
     if (button) {
       button.disabled = true;
       button.classList.add("is-busy");
-      button.innerHTML = `<span>${shouldJoin ? "Tilslutter…" : "Frakobler…"}</span>`;
+      if (button.tagName !== "INPUT") button.innerHTML = `<span>${shouldJoin ? musicT("Tilslutter…", "Joining…") : musicT("Frakobler…", "Disconnecting…")}</span>`;
     }
-    setGroupFeedback(`${shouldJoin ? "Tilslutter" : "Frakobler"} ${playerName}…`);
+    setGroupFeedback(`${shouldJoin ? musicT("Tilslutter", "Joining") : musicT("Frakobler", "Disconnecting")} ${playerName}…`);
     try {
       if (shouldJoin) {
         const oldGroup = playerGroupIds(players, player);
@@ -189,12 +199,12 @@
         const leaderState = await BeastAuth.haFetch(`/api/states/${encodeURIComponent(leaderId)}`);
         const nativeMembers = Array.isArray(leaderState?.attributes?.group_members) ? leaderState.attributes.group_members : [];
         if (!nativeMembers.includes(player.entity_id)) {
-          setGroupFeedback(`Starter samme musik på ${playerName}…`);
+          setGroupFeedback(`${musicT("Starter samme musik på", "Starting the same music on")} ${playerName}…`);
           await mirrorCurrentPlayback(activePlayer, player, leaderId);
-          setGroupFeedback(`${playerName} afspiller med · uden fast synkronisering.`, "success");
+          setGroupFeedback(`${playerName} ${musicT("afspiller med · uden fast synkronisering.", "is playing along · without fixed synchronisation.")}`, "success");
         } else {
           linkedPlayers.delete(player.entity_id);
-          setGroupFeedback(`${playerName} er tilsluttet.`, "success");
+          setGroupFeedback(`${playerName} ${musicT("er tilsluttet.", "is connected.")}`, "success");
         }
       } else {
         if (linkedPlayers.has(player.entity_id)) {
@@ -203,12 +213,12 @@
         } else {
           await callServiceStrict("media_player", "unjoin", player.entity_id);
         }
-        setGroupFeedback(`${playerName} er frakoblet.`, "success");
+        setGroupFeedback(`${playerName} ${musicT("er frakoblet.", "is disconnected.")}`, "success");
       }
       window.setTimeout(render, 700);
     } catch (error) {
       BeastCore.log(`Musik: gruppering fejlede for ${player.entity_id} (${error.message}).`);
-      setGroupFeedback(`Kunne ikke ${shouldJoin ? "tilslutte" : "frakoble"} ${playerName}.`, "error");
+      setGroupFeedback(`${musicT("Kunne ikke", "Could not")} ${shouldJoin ? musicT("tilslutte", "connect") : musicT("frakoble", "disconnect")} ${playerName}.`, "error");
       if (button) {
         button.disabled = false;
         button.classList.remove("is-busy");
@@ -341,7 +351,7 @@
     const nativeGroupIds = playerGroupIds(players, activePlayer);
     const groupLeaderId = nativeGroupIds[0] || activePlayer.entity_id;
     const visibleGroupCount = stereoGroupInfo(activePlayer.entity_id)?.speakers || new Set([...nativeGroupIds, ...linkedPlayerIds(groupLeaderId)]).size;
-    const english = window.HASmartdashI18n?.language === "en";
+    const english = BeastLocalSettings.get("language", "en") !== "da";
     const playerCountLabel = `${visibleGroupCount} ${english ? (visibleGroupCount === 1 ? "player" : "players") : (visibleGroupCount === 1 ? "afspiller" : "afspillere")}`;
     const nativeMemberIds = new Set(nativeGroupIds);
     const linkedMemberIds = linkedPlayerIds(groupLeaderId);
@@ -416,6 +426,7 @@
                 <div class="beast-player-popover" id="beastGroupPopover" hidden>
                   <header><strong>${english ? "Devices in group" : "Enheder i gruppen"}</strong><button type="button" data-close-player-popover aria-label="${english ? "Close" : "Luk"}">Ã—</button></header>
                   <div class="beast-player-popover-list">${groupRows}</div>
+                  <p class="beast-player-popover-feedback" id="beastPlayerPopoverFeedback" hidden></p>
                 </div>
                 <div class="beast-player-popover" id="beastPlayerPopover" hidden>
                   <header><strong>${english ? "Players" : "Afspillere"}</strong><button type="button" data-close-player-popover aria-label="${english ? "Close" : "Luk"}">Ã—</button></header>

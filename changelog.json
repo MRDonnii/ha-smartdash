@@ -1,5 +1,15 @@
 [
   {
+    "version": "20260811-165",
+    "tag": "v0.7.87",
+    "date": "2026-08-11",
+    "changes": [
+      { "da": "Afspiller- og gruppemenuernes tekster og statusbeskeder følger nu konsekvent dashboardets valgte sprog.", "en": "Player and group menu labels and status messages now consistently follow the dashboard's selected language." },
+      { "da": "Opdateringsbanneret genåbner nu dashboardet uden gammel browsercache og kontrollerer, at serveren faktisk installerede det forventede build.", "en": "The update banner now reopens the dashboard without stale browser cache and verifies that the server actually installed the expected build." },
+      { "da": "Opdateringsserveren opdager nu manglende skriveadgang eller ufuldstændig filkopiering og gendanner den tidligere version i stedet for at melde falsk succes.", "en": "The updater now detects write-permission or incomplete-copy failures and restores the previous version instead of reporting false success." }
+    ]
+  },
+  {
     "version": "20260811-164",
     "tag": "v0.7.86",
     "date": "2026-08-11",
