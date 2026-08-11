@@ -2421,13 +2421,16 @@
   content: "";
   position: absolute;
   z-index: 0;
-  inset: auto -8% -2px;
-  height: 27px;
+  right: 10px;
+  bottom: -2px;
+  width: 92px;
+  height: 25px;
   background:
-    radial-gradient(ellipse at 50% 100%,rgba(255,225,92,.95) 0 18%,rgba(255,135,36,.82) 20% 38%,transparent 41%) 0 7px/25px 23px repeat-x,
-    radial-gradient(ellipse at 50% 100%,rgba(255,167,43,.72) 0 30%,transparent 34%) 12px 2px/31px 28px repeat-x,
-    linear-gradient(0deg,rgba(255,91,20,.55),transparent 82%);
-  filter:drop-shadow(0 -3px 7px rgba(255,126,34,.5));
+    radial-gradient(ellipse at 50% 100%,rgba(255,235,120,.95) 0 17%,rgba(255,132,35,.86) 20% 40%,transparent 43%) 34px 2px/25px 25px no-repeat,
+    radial-gradient(ellipse at 50% 100%,rgba(255,199,71,.9) 0 19%,rgba(255,103,27,.72) 22% 40%,transparent 43%) 12px 9px/22px 18px no-repeat,
+    radial-gradient(ellipse at 50% 100%,rgba(255,207,76,.88) 0 18%,rgba(255,112,30,.7) 21% 40%,transparent 43%) 60px 8px/20px 19px no-repeat,
+    radial-gradient(ellipse at 50% 100%,rgba(255,103,24,.34),transparent 70%) center bottom/88px 15px no-repeat;
+  filter:drop-shadow(0 -2px 6px rgba(255,126,34,.48));
   transform-origin:50% 100%;
   animation:beast-card-flames .95s ease-in-out infinite alternate;
   pointer-events: none;
@@ -2437,12 +2440,15 @@
   content:"";
   position:absolute;
   z-index:0;
-  inset:auto -8% -2px;
-  height:25px;
+  right:10px;
+  bottom:-2px;
+  width:88px;
+  height:23px;
   background:
-    radial-gradient(circle,rgba(204,246,255,.9) 0 2px,transparent 2.7px) 0 2px/24px 18px repeat-x,
-    radial-gradient(circle,rgba(66,200,255,.7) 0 1.5px,transparent 2.3px) 11px 8px/29px 17px repeat-x,
-    linear-gradient(0deg,rgba(35,171,232,.38),transparent 88%);
+    radial-gradient(circle,rgba(220,250,255,.95) 0 2px,transparent 2.8px) 15px 5px/18px 18px no-repeat,
+    radial-gradient(circle,rgba(110,221,255,.86) 0 1.7px,transparent 2.5px) 44px 1px/17px 17px no-repeat,
+    radial-gradient(circle,rgba(184,241,255,.8) 0 1.5px,transparent 2.3px) 64px 9px/15px 15px no-repeat,
+    radial-gradient(ellipse at 50% 100%,rgba(35,171,232,.34),transparent 70%) center bottom/84px 14px no-repeat;
   filter:drop-shadow(0 -2px 6px rgba(66,200,255,.45));
   animation:beast-card-frost 2.4s linear infinite;
   pointer-events:none;
@@ -2450,14 +2456,13 @@
 .beast-heating-room-card > * { position:relative; z-index:1; }
 
 @keyframes beast-card-flames {
-  0% { background-position:0 7px,12px 3px,0 0; transform:scaleY(.78) skewX(-2deg); opacity:.72; }
-  55% { background-position:-8px 3px,20px 7px,0 0; transform:scaleY(1.08) skewX(2deg); opacity:1; }
-  100% { background-position:-15px 6px,29px 1px,0 0; transform:scaleY(.9) skewX(-1deg); opacity:.86; }
+  0% { transform:scaleY(.78) skewX(-2deg); opacity:.68; }
+  55% { transform:scaleY(1.08) skewX(2deg); opacity:.96; }
+  100% { transform:scaleY(.9) skewX(-1deg); opacity:.8; }
 }
 @keyframes beast-card-frost {
-  from { background-position:0 2px,11px 8px,0 0; opacity:.68; }
-  50% { opacity:1; }
-  to { background-position:48px -7px,-47px 1px,0 0; opacity:.68; }
+  0%,100% { transform:translateY(2px) rotate(-2deg); opacity:.58; }
+  50% { transform:translateY(-3px) rotate(2deg); opacity:.92; }
 }
 
 @keyframes beast-heat-breathe {
@@ -2515,12 +2520,15 @@
   content: "";
   position: absolute;
   z-index:0;
-  inset:auto -8% -2px;
-  height:30px;
+  right:12px;
+  bottom:-2px;
+  width:110px;
+  height:28px;
   background:
-    radial-gradient(ellipse at 50% 100%,rgba(255,225,92,.95) 0 18%,rgba(255,135,36,.82) 20% 38%,transparent 41%) 0 8px/27px 25px repeat-x,
-    radial-gradient(ellipse at 50% 100%,rgba(255,167,43,.72) 0 30%,transparent 34%) 13px 2px/34px 31px repeat-x,
-    linear-gradient(0deg,rgba(255,91,20,.58),transparent 84%);
+    radial-gradient(ellipse at 50% 100%,rgba(255,235,120,.95) 0 17%,rgba(255,132,35,.86) 20% 40%,transparent 43%) 42px 1px/28px 29px no-repeat,
+    radial-gradient(ellipse at 50% 100%,rgba(255,199,71,.9) 0 19%,rgba(255,103,27,.72) 22% 40%,transparent 43%) 15px 10px/25px 20px no-repeat,
+    radial-gradient(ellipse at 50% 100%,rgba(255,207,76,.88) 0 18%,rgba(255,112,30,.7) 21% 40%,transparent 43%) 75px 8px/23px 22px no-repeat,
+    radial-gradient(ellipse at 50% 100%,rgba(255,103,24,.38),transparent 70%) center bottom/104px 17px no-repeat;
   filter:drop-shadow(0 -3px 8px rgba(255,126,34,.55));
   transform-origin:50% 100%;
   animation:beast-card-flames .95s ease-in-out infinite alternate;
@@ -2530,12 +2538,15 @@
   content:"";
   position:absolute;
   z-index:0;
-  inset:auto -8% -2px;
-  height:28px;
+  right:12px;
+  bottom:-2px;
+  width:102px;
+  height:26px;
   background:
-    radial-gradient(circle,rgba(204,246,255,.9) 0 2px,transparent 2.7px) 0 2px/24px 18px repeat-x,
-    radial-gradient(circle,rgba(66,200,255,.7) 0 1.5px,transparent 2.3px) 11px 8px/29px 17px repeat-x,
-    linear-gradient(0deg,rgba(35,171,232,.42),transparent 88%);
+    radial-gradient(circle,rgba(220,250,255,.95) 0 2.2px,transparent 3px) 17px 6px/20px 20px no-repeat,
+    radial-gradient(circle,rgba(110,221,255,.86) 0 1.9px,transparent 2.7px) 51px 1px/19px 19px no-repeat,
+    radial-gradient(circle,rgba(184,241,255,.8) 0 1.7px,transparent 2.5px) 77px 10px/17px 17px no-repeat,
+    radial-gradient(ellipse at 50% 100%,rgba(35,171,232,.38),transparent 70%) center bottom/98px 16px no-repeat;
   filter:drop-shadow(0 -2px 7px rgba(66,200,255,.5));
   animation:beast-card-frost 2.4s linear infinite;
   pointer-events:none;

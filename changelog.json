@@ -1,5 +1,13 @@
 [
   {
+    "version": "20260811-131",
+    "tag": "v0.7.53",
+    "date": "2026-08-11",
+    "changes": [
+      "Heating and cooling activity effects are now compact, softly animated accents in the lower corner instead of full-width strips across the cards."
+    ]
+  },
+  {
     "version": "20260811-130",
     "tag": "v0.7.52",
     "date": "2026-08-11",
