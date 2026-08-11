@@ -2656,6 +2656,45 @@
 .beast-heatpump-options { grid-template-columns:1.15fr .9fr .9fr; align-items:end; gap:5px; }
 .beast-heatpump-select select { min-height:40px; }
 
+/* Capability-driven heat-pump controls. The important temperatures and
+   everyday actions stay visually dominant while optional HA capabilities
+   collapse naturally when an integration does not expose them. */
+.beast-heatpump-card { --pump-color:var(--accent-energy); display:grid; grid-template-rows:auto minmax(92px,1fr) auto auto; color:var(--ink); container-type:inline-size; background:radial-gradient(circle at 82% 31%,color-mix(in srgb,var(--pump-color) 12%,transparent),transparent 34%),linear-gradient(155deg,color-mix(in srgb,var(--surface-2-solid) 92%,white 8%),var(--surface-solid)); }
+.beast-heatpump-card.is-heating { --pump-color:#ff9b54; color:var(--ink); }.beast-heatpump-card.is-cooling { --pump-color:#42c8ff; color:var(--ink); }.beast-heatpump-card.is-fan,.beast-heatpump-card.is-fan_only { --pump-color:#34dfb2; color:var(--ink); }.beast-heatpump-card.is-off { --pump-color:var(--ink-faint); color:var(--ink); }
+.beast-heatpump-head { display:grid; grid-template-columns:40px minmax(0,1fr) auto 38px; align-items:center; gap:9px; }
+.beast-heatpump-head > i { width:40px; height:40px; display:grid; place-items:center; border-radius:12px; color:var(--pump-color); background:color-mix(in srgb,var(--pump-color) 13%,var(--surface-solid)); box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--pump-color) 17%,transparent); }
+.beast-heatpump-head strong { max-width:none; margin:1px 0 0; font-size:16px; }
+.beast-heatpump-head > span { padding:0; color:var(--pump-color) !important; background:none !important; font-size:10px; }
+.beast-heatpump-head > span b { width:7px; height:7px; border-radius:50%; background:currentColor; box-shadow:0 0 9px currentColor; }
+.beast-heatpump-head > button { width:38px; height:38px; display:grid; place-items:center; border:1px solid var(--border-strong); border-radius:11px; color:var(--ink-muted); background:var(--surface-solid); }
+.beast-heatpump-head > button.is-on { color:var(--pump-color); border-color:color-mix(in srgb,var(--pump-color) 44%,var(--border)); background:color-mix(in srgb,var(--pump-color) 11%,var(--surface-solid)); box-shadow:0 0 16px color-mix(in srgb,var(--pump-color) 17%,transparent); }
+.beast-heatpump-main-control { min-height:0; display:grid; grid-template-columns:minmax(0,1fr) 78px; align-items:center; gap:10px; }
+.beast-heatpump-temperature { min-height:78px; display:grid; grid-template-columns:minmax(76px,.65fr) minmax(150px,1.35fr); align-items:center; gap:8px; padding:10px 11px; }
+.beast-heatpump-temperature > span small,.beast-heatpump-temperature .beast-stepper-value small { color:var(--ink-faint); font-size:9px; text-transform:uppercase; letter-spacing:.045em; }
+.beast-heatpump-temperature > span strong { margin-top:3px; font-size:clamp(2rem,10cqi,2.8rem); line-height:.95; }
+.beast-heatpump-temperature .beast-stepper { grid-template-columns:38px minmax(60px,1fr) 38px; gap:5px; }
+.beast-heatpump-temperature .beast-transport-btn { width:38px; height:38px; min-width:38px; border-radius:10px; }
+.beast-heatpump-temperature .beast-stepper-value { text-align:center; }
+.beast-heatpump-temperature .beast-stepper-value strong { display:block; margin-top:3px; color:var(--ink); font-size:clamp(1.25rem,6cqi,1.65rem); line-height:1; }
+.beast-heatpump-visual { position:relative; min-height:0; width:74px; aspect-ratio:1; place-self:center; display:grid; place-items:center; border:1px solid color-mix(in srgb,var(--pump-color) 32%,var(--border)); border-radius:50%; color:var(--pump-color); background:radial-gradient(circle,color-mix(in srgb,var(--pump-color) 15%,var(--surface-solid)),var(--surface-solid) 68%); box-shadow:0 0 24px color-mix(in srgb,var(--pump-color) 15%,transparent); overflow:visible; }
+.beast-heatpump-visual::after { display:none; }
+.beast-heatpump-visual > span { width:auto; height:auto; border:0; border-radius:0; color:inherit; background:none; box-shadow:none; z-index:2; }
+.beast-heatpump-visual > span svg { width:30px; height:30px; }
+.beast-heatpump-visual i { position:absolute; width:auto; height:auto; inset:9%; border:1px solid currentColor; border-radius:50%; background:none; opacity:0; transform:none; animation:beast-heatpump-ring 2.4s ease-out infinite; }
+.beast-heatpump-visual i:nth-of-type(2) { animation-delay:.8s; }.beast-heatpump-visual i:nth-of-type(3) { animation-delay:1.6s; }
+.beast-heatpump-card:is(.is-heating,.is-cooling,.is-fan,.is-fan_only) .beast-heatpump-visual > span svg { animation:beast-heatpump-spin 3.2s linear infinite; }
+.beast-heatpump-card:is(.is-off,.is-idle) .beast-heatpump-visual i { display:none; }
+.beast-heatpump-modes { display:flex; padding:3px; overflow-x:auto; scrollbar-width:none; }
+.beast-heatpump-modes button { min-width:58px; min-height:36px; flex:1 0 auto; }
+.beast-heatpump-modes button.is-active { color:#071016; background:var(--pump-color); box-shadow:0 5px 15px color-mix(in srgb,var(--pump-color) 20%,transparent); }
+.beast-heatpump-options { grid-template-columns:repeat(auto-fit,minmax(92px,1fr)); gap:6px; }
+.beast-heatpump-select > span { color:var(--ink-faint); font-size:9px; text-transform:uppercase; letter-spacing:.04em; }
+.beast-heatpump-select select { min-height:38px; border-radius:10px; }
+@keyframes beast-heatpump-spin { to { transform:rotate(360deg); } }
+@keyframes beast-heatpump-ring { 0% { transform:scale(.55); opacity:.5; } 75%,100% { transform:scale(1.18); opacity:0; } }
+@container (max-width:330px) { .beast-heatpump-main-control { grid-template-columns:1fr; }.beast-heatpump-visual { display:none; }.beast-heatpump-temperature { grid-template-columns:minmax(72px,.6fr) minmax(150px,1.4fr); }.beast-heatpump-head { grid-template-columns:minmax(0,1fr) auto; }.beast-heatpump-head > i,.beast-heatpump-head > span { display:none; } }
+@media (prefers-reduced-motion:reduce) { .beast-heatpump-visual > span svg,.beast-heatpump-visual i { animation:none !important; } }
+
 .beast-heating-side-card { overflow:hidden; border-radius:18px; background:linear-gradient(155deg,var(--surface-2-solid),var(--surface-solid)),var(--surface-2); box-shadow:0 14px 32px rgba(0,0,0,.07); }
 .beast-dantherm-card { flex:1 1 auto; padding:14px; }
 .beast-dantherm-air > div { position:relative; overflow:hidden; border:1px solid var(--border); border-radius:13px; }

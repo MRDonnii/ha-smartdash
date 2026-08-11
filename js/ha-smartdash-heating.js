@@ -68,6 +68,17 @@
     `;
   }
 
+  function climateOptionLabel(option) {
+    const labels = {
+      off: "Slukket", heat: "Varme", cool: "Køl", heat_cool: "Auto", auto: "Auto",
+      dry: "Affugt", fan_only: "Blæser", fan: "Blæser", none: "Ingen", low: "Lav",
+      medium_low: "Mellem-lav", medium: "Mellem", medium_high: "Mellem-høj", high: "Høj",
+      quiet: "Stille", manual: "Manuel", full_swing: "Fuld bevægelse"
+    };
+    const key = String(option || "").toLowerCase().replaceAll("-", "_").replaceAll(" ", "_");
+    return labels[key] || String(option || "").replaceAll("_", " ").replaceAll("-", " ");
+  }
+
   function optionSelect(entityId, property, service, label) {
     const s = BeastHaSocket.getState(entityId);
     const options = s?.attributes?.[`${property}s`] || [];
@@ -77,7 +88,7 @@
       <label class="beast-heatpump-select">
         <span>${label}</span>
         <select data-climate-select="${entityId}" data-service="${service}" data-field="${property}">
-          ${options.map((option) => `<option value="${escapeHtml(option)}"${option === current ? " selected" : ""}>${escapeHtml(option)}</option>`).join("")}
+          ${options.map((option) => `<option value="${escapeHtml(option)}"${option === current ? " selected" : ""}>${escapeHtml(climateOptionLabel(option))}</option>`).join("")}
         </select>
       </label>
     `;
@@ -88,35 +99,34 @@
     const current = s && Number.isFinite(Number(s.attributes.current_temperature)) ? Number(s.attributes.current_temperature).toFixed(1) : "–";
     const target = s && Number.isFinite(Number(s.attributes.temperature)) ? Number(s.attributes.temperature) : null;
     const action = s?.attributes?.hvac_action || s?.state || "off";
-    const preset = s?.attributes?.preset_mode || "auto";
     const modes = s?.attributes?.hvac_modes || ["off", "heat", "cool", "heat_cool"];
-    const modeLabels = { off: "Fra", heat: "Varme", cool: "Køl", heat_cool: "Auto" };
     const pumpName = String(pump.label || pump.id).replace(/^varmepumpe\s+/i, "").replace(/^qlima\s+/i, "");
     const statusLabel = action === "heating" ? "Varmer" : action === "cooling" ? "Køler" : s?.state === "off" ? "Slukket" : "Klar";
     const statusIcon = action === "heating" ? "bolt" : action === "cooling" ? "droplet" : "wind";
     return `
       <article class="beast-heatpump-card is-${escapeHtml(action)}">
         <div class="beast-heatpump-head">
+          <i>${BeastCore.icon(statusIcon, { size: 20 })}</i>
           <div><small>Varmepumpe</small><strong>${escapeHtml(pumpName)}</strong></div>
-          <span>${BeastCore.icon(statusIcon, { size: 15 })}${statusLabel}</span>
+          <span><b></b>${statusLabel}</span>
+          <button type="button" data-pump-power data-entity="${pump.id}" aria-label="${s?.state === "off" ? "Tænd" : "Sluk"} ${escapeHtml(pumpName)}" class="${s?.state === "off" ? "" : "is-on"}">${BeastCore.icon("power", { size: 18 })}</button>
         </div>
-        <div class="beast-heatpump-visual" aria-hidden="true"><span>${BeastCore.icon("wind", { size: 28 })}</span><i></i><i></i><i></i></div>
-        <div class="beast-heatpump-temperature">
-          <span><small>Rum</small><strong>${current}°</strong></span>
-          <div class="beast-stepper">
-            <button type="button" class="beast-transport-btn" data-action="pump-temp-down" data-entity="${pump.id}" aria-label="Sænk måltemperatur">${BeastCore.icon("minus", { size: 18 })}</button>
-            <span class="beast-stepper-value"><small>Mål</small>${target !== null ? `${target.toFixed(1)}°` : "–"}</span>
-            <button type="button" class="beast-transport-btn" data-action="pump-temp-up" data-entity="${pump.id}" aria-label="Hæv måltemperatur">${BeastCore.icon("plus", { size: 18 })}</button>
+        <div class="beast-heatpump-main-control">
+          <div class="beast-heatpump-temperature">
+            <span><small>Rumtemperatur</small><strong>${current}°</strong></span>
+            <div class="beast-stepper">
+              <button type="button" class="beast-transport-btn" data-action="pump-temp-down" data-entity="${pump.id}" aria-label="Sænk måltemperatur">${BeastCore.icon("minus", { size: 19 })}</button>
+              <span class="beast-stepper-value"><small>Måltemperatur</small><strong>${target !== null ? `${target.toFixed(1)}°` : "–"}</strong></span>
+              <button type="button" class="beast-transport-btn" data-action="pump-temp-up" data-entity="${pump.id}" aria-label="Hæv måltemperatur">${BeastCore.icon("plus", { size: 19 })}</button>
+            </div>
           </div>
+          <div class="beast-heatpump-visual" aria-hidden="true"><span>${BeastCore.icon("fan", { size: 30 })}</span><i></i><i></i><i></i></div>
         </div>
         <div class="beast-heatpump-modes">
-          ${modes.map((mode) => `<button type="button" class="${s?.state === mode ? "is-active" : ""}" data-pump-mode="${mode}" data-entity="${pump.id}">${modeLabels[mode] || mode}</button>`).join("")}
+          ${modes.map((mode) => `<button type="button" class="${s?.state === mode ? "is-active" : ""}" data-pump-mode="${mode}" data-entity="${pump.id}">${escapeHtml(climateOptionLabel(mode))}</button>`).join("")}
         </div>
         <div class="beast-heatpump-options">
-          <div class="beast-heatpump-presets">
-            <button type="button" class="${preset === "auto" ? "is-active" : ""}" data-preset="auto" data-entity="${pump.id}">Automatik</button>
-            <button type="button" class="${preset === "manual" ? "is-active" : ""}" data-preset="manual" data-entity="${pump.id}">Manuel</button>
-          </div>
+          ${optionSelect(pump.id, "preset_mode", "set_preset_mode", "Program")}
           ${optionSelect(pump.unit, "fan_mode", "set_fan_mode", "Blæser")}
           ${optionSelect(pump.unit, "swing_mode", "set_swing_mode", "Retning")}
         </div>
@@ -196,12 +206,21 @@
       btn.addEventListener("click", () => {
         const s = BeastHaSocket.getState(btn.dataset.entity);
         const current = Number.isFinite(Number(s?.attributes?.temperature)) ? Number(s.attributes.temperature) : 22;
-        const temperature = current + (btn.dataset.action === "pump-temp-up" ? 0.5 : -0.5);
+        const step = Number(s?.attributes?.target_temp_step) || 0.5;
+        const min = Number.isFinite(Number(s?.attributes?.min_temp)) ? Number(s.attributes.min_temp) : -Infinity;
+        const max = Number.isFinite(Number(s?.attributes?.max_temp)) ? Number(s.attributes.max_temp) : Infinity;
+        const temperature = Math.min(max, Math.max(min, current + (btn.dataset.action === "pump-temp-up" ? step : -step)));
         callService("climate", "set_temperature", btn.dataset.entity, { temperature }).then(() => window.setTimeout(render, 400));
       });
     });
     containerEl.querySelectorAll("[data-pump-mode]").forEach((btn) => btn.addEventListener("click", () => {
       callService("climate", "set_hvac_mode", btn.dataset.entity, { hvac_mode: btn.dataset.pumpMode }).then(() => window.setTimeout(render, 400));
+    }));
+    containerEl.querySelectorAll("[data-pump-power]").forEach((btn) => btn.addEventListener("click", () => {
+      const state = BeastHaSocket.getState(btn.dataset.entity);
+      const modes = Array.isArray(state?.attributes?.hvac_modes) ? state.attributes.hvac_modes : [];
+      const nextMode = state?.state === "off" ? (modes.find((mode) => mode === "heat") || modes.find((mode) => mode !== "off")) : "off";
+      if (nextMode) callService("climate", "set_hvac_mode", btn.dataset.entity, { hvac_mode: nextMode }).then(() => window.setTimeout(render, 400));
     }));
     containerEl.querySelectorAll("[data-preset]").forEach((btn) => btn.addEventListener("click", () => {
       callService("climate", "set_preset_mode", btn.dataset.entity, { preset_mode: btn.dataset.preset }).then(() => window.setTimeout(render, 400));
