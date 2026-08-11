@@ -1,5 +1,13 @@
 [
   {
+    "version": "20260811-123",
+    "tag": "v0.7.45",
+    "date": "2026-08-11",
+    "changes": [
+      "The thermostat area now uses one vertical column, with all room cards sharing the available height evenly while retaining the existing compact controls."
+    ]
+  },
+  {
     "version": "20260811-122",
     "tag": "v0.7.44",
     "date": "2026-08-11",
