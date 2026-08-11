@@ -1,5 +1,17 @@
 [
   {
+    "version": "20260811-119",
+    "tag": "v0.7.41",
+    "date": "2026-08-11",
+    "changes": [
+      "The Heating page is now a complete workspace with heat consumption, 24-hour history charts and room comfort controls in the main area.",
+      "Room thermostats now use smaller comfort cards at the top of the main area, with consumption statistics and history charts placed directly below them.",
+      "Heat pumps now share a dedicated operations column with Dantherm ventilation and district-heating status, keeping all mechanical controls together.",
+      "Administration can separately select current heating power, today's heating energy and monthly heating energy sensors, while existing district-heating sensors remain automatic fallbacks.",
+      "Heating statistics include live power, daily and monthly consumption, Dantherm CO2 and heat-recovery values with responsive layouts for desktop, tablet and mobile."
+    ]
+  },
+  {
     "version": "20260811-118",
     "tag": "v0.7.40",
     "date": "2026-08-11",

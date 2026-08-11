@@ -6,6 +6,9 @@
   let DANTHERM = {};
   let HAS_VENTILATION = false;
   let HAS_DISTRICT = false;
+  let ANALYTICS = {};
+  let heatingHistory = {};
+  let historyLoading = false;
 
   let containerEl = null;
 
@@ -19,6 +22,11 @@
     ["supply", "return", "cooling", "power", "energyToday", "energyMonth", "flow", "alarm"].forEach((key, index) => {
       DISTRICT[key] = district[index] || null;
     });
+    ANALYTICS = {
+      power: config.heatPowerSensor || DISTRICT.power || null,
+      today: config.heatEnergyTodaySensor || DISTRICT.energyToday || null,
+      month: config.heatEnergyMonthSensor || DISTRICT.energyMonth || null
+    };
     const ventilation = Array.isArray(config.ventilationSensors) ? config.ventilationSensors : [];
     HAS_VENTILATION = ventilation.some(Boolean);
     ["mode", "co2", "supplyTemp", "extractTemp", "recovery", "supplyFan", "extractFan", "filterLife", "filterAlarm", "bypass"].forEach((key, index) => {
@@ -43,6 +51,58 @@
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ entity_id: entityId, ...data })
     }).catch((error) => BeastCore.log(`Varme: kommando fejlede (${error.message}).`));
+  }
+
+  function stateValue(id, decimals = 1) {
+    const state = BeastHaSocket.getState(id);
+    const value = Number(state?.state);
+    return { value: Number.isFinite(value) ? value : null, unit: state?.attributes?.unit_of_measurement || "", text: Number.isFinite(value) ? value.toFixed(decimals) : "–" };
+  }
+
+  function historyPath(values, width = 540, height = 118) {
+    if (!Array.isArray(values) || values.length < 2) return "";
+    const min = Math.min(...values), max = Math.max(...values), span = Math.max(.001, max - min);
+    return values.map((value, index) => `${index ? "L" : "M"}${(index / (values.length - 1) * width).toFixed(1)},${(height - ((value - min) / span) * (height - 12) - 6).toFixed(1)}`).join(" ");
+  }
+
+  function analyticsMarkup() {
+    const power = stateValue(ANALYTICS.power, 1), today = stateValue(ANALYTICS.today, 1), month = stateValue(ANALYTICS.month, 1);
+    const powerSeries = heatingHistory[ANALYTICS.power] || [];
+    const co2Series = heatingHistory[DANTHERM.co2] || [];
+    const chart = (series, label, colorClass) => `<div class="beast-heating-chart ${colorClass}"><div><span>${label}</span><small>${series.length ? "Seneste 24 timer" : historyLoading ? "Henter historik…" : "Ingen historik"}</small></div><svg viewBox="0 0 540 118" preserveAspectRatio="none" aria-label="${label}">${series.length > 1 ? `<path class="area" d="${historyPath(series)} L540,118 L0,118 Z"></path><path class="line" d="${historyPath(series)}"></path>` : ""}</svg></div>`;
+    return `<section class="beast-heating-analytics">
+      <div class="beast-heating-analytics-head"><div><small>Forbrug og indeklima</small><strong>Varme de seneste 24 timer</strong></div><span>${BeastCore.icon("bolt", { size:20 })} Live fra Home Assistant</span></div>
+      <div class="beast-heating-kpis">
+        <article><small>Effekt nu</small><strong>${power.text}<em>${escapeHtml(power.unit)}</em></strong><span>${ANALYTICS.power ? BeastEntityPicker.friendlyName(ANALYTICS.power) : "Vælg sensor i Admin"}</span></article>
+        <article><small>Forbrug i dag</small><strong>${today.text}<em>${escapeHtml(today.unit)}</em></strong><span>Akkumuleret siden midnat</span></article>
+        <article><small>Denne måned</small><strong>${month.text}<em>${escapeHtml(month.unit)}</em></strong><span>Samlet varmeenergi</span></article>
+        <article><small>Dantherm CO₂</small><strong>${num(DANTHERM.co2, 0)}<em>ppm</em></strong><span>${num(DANTHERM.recovery, 0)}% genvinding</span></article>
+      </div>
+      <div class="beast-heating-chart-grid">${chart(powerSeries, "Varmeeffekt", "is-heat")}${chart(co2Series, "CO₂ og luftkvalitet", "is-air")}</div>
+    </section>`;
+  }
+
+  async function loadHeatingHistory() {
+    if (historyLoading) return;
+    const ids = [...new Set([ANALYTICS.power, DANTHERM.co2].filter(Boolean))];
+    if (!ids.length) return;
+    historyLoading = true;
+    render();
+    const start = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+    try {
+      const payload = await BeastAuth.haFetch(`/api/history/period/${start}?filter_entity_id=${encodeURIComponent(ids.join(","))}&minimal_response`);
+      ids.forEach((id) => { heatingHistory[id] = []; });
+      (Array.isArray(payload) ? payload : []).forEach((rows) => {
+        const id = rows?.[0]?.entity_id;
+        if (!id || !ids.includes(id)) return;
+        heatingHistory[id] = rows.map((row) => Number(row.state)).filter(Number.isFinite);
+      });
+    } catch (error) {
+      BeastCore.log(`Varme: kunne ikke hente historik (${error.message}).`);
+    } finally {
+      historyLoading = false;
+      render();
+    }
   }
 
   function buildRoomCard(room) {
@@ -151,8 +211,7 @@
     const extractFan = Number(BeastHaSocket.getState(DANTHERM.extractFan)?.state);
     const ventilationActive = (Number.isFinite(supplyFan) && supplyFan > 0) || (Number.isFinite(extractFan) && extractFan > 0);
     const districtPower = Number(BeastHaSocket.getState(DISTRICT.power)?.state);
-    const districtPlacement = (BeastConfig.get("pageLayouts.heating.heatingLayout.districtPlacement") || BeastConfig.get("panels.heating.districtPlacement")) === "pumps" ? "pumps" : "sidebar";
-    const districtMarkup = HAS_DISTRICT ? `<section class="beast-heating-side-card beast-district-compact${districtPlacement === "pumps" ? " is-by-pumps" : ""}${Number.isFinite(districtPower) && districtPower > 0.05 ? " is-flowing" : ""}">
+    const districtMarkup = HAS_DISTRICT ? `<section class="beast-heating-side-card beast-district-compact${Number.isFinite(districtPower) && districtPower > 0.05 ? " is-flowing" : ""}">
       <div class="beast-heating-side-head"><span>Fjernvarme</span><small class="${alarmOk ? "is-ok" : "is-warning"}">${escapeHtml(alarm?.state || "–")}</small></div>
       <div class="beast-district-flow"><span><small>Fremløb</small><strong>${num(DISTRICT.supply)}°</strong></span><i></i><span><small>Retur</small><strong>${num(DISTRICT.return)}°</strong></span></div>
       <div class="beast-district-meta"><span>Afkøling ${num(DISTRICT.cooling)}°</span><span>${num(DISTRICT.power, 1)} kW</span><span>${num(DISTRICT.energyToday, 1)} kWh i dag</span></div>
@@ -172,10 +231,11 @@
           <div class="beast-heating-edit-actions"><button type="button" class="beast-heating-display-btn" id="beastHeatingDisplayEdit" aria-label="Rediger kortvisning" title="Kortvisning">${BeastCore.icon("grid", { size: 19 })}</button><button type="button" class="beast-page-edit-trigger beast-heating-layout-btn" id="beastHeatingLayoutEdit" aria-label="Flyt og tilpas varmesiden" title="Flyt og tilpas">⋮</button></div>
         </div>
         <div class="beast-heating-room-grid">${ROOMS.map(buildRoomCard).join("")}</div>
-        <div class="beast-heating-pumps-head"><span>Varmepumper</span><small>Temperatur · drift · blæser · retning</small></div>
-        <div class="beast-heatpump-grid">${HEAT_PUMPS.map(buildHeatPumpCard).join("")}${districtPlacement === "pumps" ? districtMarkup : ""}</div>
+        ${analyticsMarkup()}
       </div>
       <aside class="beast-heating-sidebar">
+        <div class="beast-heating-pumps-head"><span>Varmepumper</span><small>Komplet styring</small></div>
+        <div class="beast-heatpump-grid">${HEAT_PUMPS.map(buildHeatPumpCard).join("")}</div>
         ${HAS_VENTILATION ? `<section class="beast-heating-side-card beast-dantherm-card${ventilationActive ? " is-running" : ""}">
           <div class="beast-heating-side-head"><span>Dantherm ventilation</span><small>${escapeHtml(BeastHaSocket.getState(DANTHERM.mode)?.state || "–")}</small></div>
           <div class="beast-dantherm-air">
@@ -190,7 +250,7 @@
             <span><small>Bypass</small><strong>${BeastHaSocket.getState(DANTHERM.bypass)?.state === "on" ? "Åben" : "Lukket"}</strong></span>
           </div>
         </section>` : ""}
-        ${districtPlacement === "sidebar" ? districtMarkup : ""}
+        ${districtMarkup}
       </aside>
     `;
     wireHeatingLayout();
@@ -242,11 +302,11 @@
     const hidden = new Set(Array.isArray(layout.hidden) ? layout.hidden : []);
     if (!HAS_VENTILATION) hidden.add("dantherm");
     if (!HAS_DISTRICT) hidden.add("district");
-    const selectors = { rooms: ".beast-heating-room-grid", pumps: ".beast-heating-pumps-head, .beast-heatpump-grid", dantherm: ".beast-dantherm-card", district: ".beast-district-compact" };
+    const selectors = { analytics: ".beast-heating-analytics", rooms: ".beast-heating-room-grid", pumps: ".beast-heating-pumps-head, .beast-heatpump-grid", dantherm: ".beast-dantherm-card", district: ".beast-district-compact" };
     Object.entries(selectors).forEach(([id, selector]) => containerEl.querySelectorAll(selector).forEach((el) => el.classList.toggle("is-layout-hidden", hidden.has(id))));
     BeastNativePageEditor.mount({ section:"heating", label:"Varme", root:()=>containerEl, host:()=>containerEl, trigger:"#beastHeatingLayoutEdit", cards:()=>[
-      { id:"main", label:"Komfortzoner og varmepumper", selector:".beast-heating-main", titleSelector:".beast-heating-hero h2", enabled:!hidden.has("rooms") || !hidden.has("pumps"), desktop:{x:1,y:1,w:9,h:12} },
-      { id:"sidebar", label:"Ventilation og fjernvarme", selector:".beast-heating-sidebar", enabled:!hidden.has("dantherm") || !hidden.has("district"), desktop:{x:10,y:1,w:3,h:12} }
+      { id:"main", label:"Forbrug og termostater", selector:".beast-heating-main", titleSelector:".beast-heating-hero h2", enabled:!hidden.has("analytics") || !hidden.has("rooms"), desktop:{x:1,y:1,w:8,h:12} },
+      { id:"sidebar", label:"Varmepumper og Dantherm", selector:".beast-heating-sidebar", enabled:!hidden.has("pumps") || !hidden.has("dantherm") || !hidden.has("district"), desktop:{x:9,y:1,w:4,h:12} }
     ] });
     document.getElementById("beastHeatingDisplayEdit")?.addEventListener("click", () => openHeatingLayout(layout));
   }
@@ -254,7 +314,7 @@
   function openHeatingLayout(layout) {
     document.getElementById("beastHeatingLayoutEditor")?.remove();
     const hidden = new Set(Array.isArray(layout.hidden) ? layout.hidden : []);
-    const items = [["rooms", "Komfortzoner"], ["pumps", "Varmepumper"], ["dantherm", "Dantherm ventilation"], ["district", "Fjernvarme"]];
+    const items = [["analytics", "Forbrug og grafer"], ["rooms", "Komfortzoner"], ["pumps", "Varmepumper"], ["dantherm", "Dantherm ventilation"], ["district", "Fjernvarme"]];
     const overlay = document.createElement("div"); overlay.id = "beastHeatingLayoutEditor"; overlay.className = "beast-modal-overlay";
     overlay.innerHTML = `<div class="beast-modal beast-heating-layout-modal"><div class="beast-modal-header"><h3>Rediger kortvisning</h3><button type="button" class="beast-modal-close" data-close>×</button></div><div class="beast-modal-body"><div class="beast-heating-layout-list">${items.map(([id,label]) => `<label><input type="checkbox" data-heating-section="${id}" ${hidden.has(id) ? "" : "checked"}><strong>${label}</strong></label>`).join("")}</div><div class="beast-heating-layout-selects"><label>Termostatkort<select data-room-density><option value="spacious"${layout.roomDensity === "compact" ? "" : " selected"}>Store og tydelige</option><option value="compact"${layout.roomDensity === "compact" ? " selected" : ""}>Kompakte</option></select></label><label>Varmepumpekort<select data-pump-density><option value="compact"${layout.pumpDensity === "roomy" ? "" : " selected"}>Kompakte</option><option value="roomy"${layout.pumpDensity === "roomy" ? " selected" : ""}>Rummelige med animation</option></select></label><label>Placering af fjernvarme<select data-district-placement><option value="sidebar"${layout.districtPlacement === "pumps" ? "" : " selected"}>Højre side</option><option value="pumps"${layout.districtPlacement === "pumps" ? " selected" : ""}>Ved varmepumper</option></select></label></div><button type="button" class="beast-btn beast-btn-primary" data-save-heating-layout>Gem kortvisning</button></div></div>`;
     document.body.appendChild(overlay);
@@ -277,6 +337,9 @@
     [...Object.values(DISTRICT), ...Object.values(DANTHERM), ...ROOMS.map((r) => r.id), ...HEAT_PUMPS.flatMap((p) => [p.id, p.unit]), AUTOMATION_ID].forEach((id) => {
       BeastHaSocket.subscribeEntity(id, debouncedRender);
     });
+    [ANALYTICS.power, ANALYTICS.today, ANALYTICS.month].filter(Boolean).forEach((id) => BeastHaSocket.subscribeEntity(id, debouncedRender));
+    render();
+    loadHeatingHistory();
   }
 
   BeastCore.registerPanel("heating", "beastHeatingZone", init);
