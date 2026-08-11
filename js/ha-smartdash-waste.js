@@ -7,9 +7,9 @@
   let calendarRequest = 0;
   let selectedCalendarDay = "all";
   // One card per configured schedule calendar (e.g. one per child) -- each
-  // navigates its own day independently, so this is keyed by entity_id
+  // navigates its own week independently, so this is keyed by entity_id
   // rather than a single shared value.
-  let scheduleDayOffsets = {};
+  let scheduleWeekOffsets = {};
   let scheduleRequestId = 0;
 
   // Slugifies an entity_id into something safe to use in a DOM id/selector
@@ -61,6 +61,22 @@
   const SCHEDULE_SUBJECT_PLACEHOLDERS = ["2-lærer", "klpæd"];
   function isPlaceholderSubject(code) {
     return SCHEDULE_SUBJECT_PLACEHOLDERS.includes(String(code || "").trim().toLowerCase());
+  }
+
+  // A subject's color must stay the same everywhere it appears (both
+  // children's cards, every week), but different schools/installs will
+  // have entirely different subject codes -- so this hashes the subject's
+  // real name into a fixed palette instead of hardcoding this family's own
+  // subjects, which keeps it working for anyone else's timetable too.
+  const SCHEDULE_SUBJECT_PALETTE = [
+    "#1f7a5c", "#2f5f9f", "#9f3450", "#9f7d1f",
+    "#1f8f9f", "#6f3f9f", "#b0601f", "#3f7a3f"
+  ];
+  function scheduleSubjectColor(code) {
+    const label = (scheduleSubjectLabel(code) || "?").toLowerCase();
+    let hash = 0;
+    for (let i = 0; i < label.length; i++) hash = (hash * 31 + label.charCodeAt(i)) >>> 0;
+    return SCHEDULE_SUBJECT_PALETTE[hash % SCHEDULE_SUBJECT_PALETTE.length];
   }
 
   // Multiple teachers/roles can cover the exact same period (co-teaching,
@@ -178,13 +194,20 @@
     }).join("");
   }
 
-  async function loadScheduleDay(entityId, dayOffset) {
+  // Monday of the target week, weekOffset weeks from the current one.
+  function scheduleWeekStart(weekOffset) {
     const day = new Date();
     day.setHours(0, 0, 0, 0);
-    day.setDate(day.getDate() + dayOffset);
-    const start = new Date(day);
-    const end = new Date(day);
-    end.setDate(end.getDate() + 1);
+    const dow = day.getDay(); // 0=Sun..6=Sat
+    const mondayDelta = dow === 0 ? -6 : 1 - dow;
+    day.setDate(day.getDate() + mondayDelta + weekOffset * 7);
+    return day;
+  }
+
+  async function loadScheduleWeek(entityId, weekOffset) {
+    const start = scheduleWeekStart(weekOffset);
+    const end = new Date(start);
+    end.setDate(end.getDate() + 5); // Monday through end of Friday
     try {
       const events = await BeastAuth.haFetch(`/api/calendars/${entityId}?start=${start.toISOString()}&end=${end.toISOString()}`);
       return mergeScheduleEvents(events || []);
@@ -193,32 +216,69 @@
     }
   }
 
-  function renderScheduleRows(rows, locale) {
-    if (!rows.length) return `<div class="beast-calendar-empty">${BeastCore.icon("calendar", { size: 26 })}<strong>Ingen timer</strong></div>`;
-    return rows.map((row) => {
-      const time = row.start && row.start.length > 10
-        ? new Date(row.start).toLocaleTimeString(locale, { hour: "2-digit", minute: "2-digit" })
-        : "";
-      const teacherText = row.teachers.map((teacher) => {
-        const isSub = /^vikar/i.test(teacher);
-        const clean = teacher.replace(/^vikar:?\s*/i, "");
-        return isSub ? `<em class="is-substitute">VIKAR: ${escapeHtml(clean)}</em>` : escapeHtml(teacher);
-      }).join(" + ");
-      return `<article class="beast-schedule-row">
-        <time>${escapeHtml(time)}</time>
-        <div><strong>${escapeHtml(scheduleSubjectLabel(row.subject) || "Ukendt fag")}</strong>${teacherText ? `<span>${teacherText}</span>` : ""}</div>
-        ${row.location ? `<b>${escapeHtml(row.location)}</b>` : ""}
-      </article>`;
-    }).join("");
+  function scheduleTimeKey(iso) {
+    const d = new Date(iso);
+    return `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
   }
 
-  function scheduleDayLabel(dayOffset, locale) {
-    if (dayOffset === 0) return "I dag";
-    if (dayOffset === 1) return "I morgen";
-    if (dayOffset === -1) return "I går";
-    const day = new Date();
-    day.setDate(day.getDate() + dayOffset);
-    return day.toLocaleDateString(locale, { weekday: "long", day: "numeric", month: "short" });
+  function scheduleDayKey(date) {
+    return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
+  }
+
+  // Weekday columns x time-of-day rows -- rows are the distinct start times
+  // actually seen this week (school periods are fixed, but a half-day or a
+  // cancelled first period shouldn't invent an empty row that never occurs).
+  function renderScheduleWeekGrid(rows, weekStart, locale) {
+    if (!rows.length) return `<div class="beast-calendar-empty">${BeastCore.icon("calendar", { size: 26 })}<strong>Ingen timer denne uge</strong></div>`;
+
+    const days = Array.from({ length: 5 }, (_, i) => { const d = new Date(weekStart); d.setDate(d.getDate() + i); return d; });
+    const dayKeys = days.map(scheduleDayKey);
+
+    const slotMap = new Map();
+    rows.forEach((row) => {
+      const key = scheduleTimeKey(row.start);
+      if (!slotMap.has(key)) slotMap.set(key, { startKey: key, endKey: scheduleTimeKey(row.end) });
+    });
+    const slots = Array.from(slotMap.values()).sort((a, b) => a.startKey.localeCompare(b.startKey));
+
+    const cellIndex = new Map();
+    rows.forEach((row) => {
+      cellIndex.set(`${scheduleDayKey(new Date(row.start))}|${scheduleTimeKey(row.start)}`, row);
+    });
+
+    const headerCells = days.map((d) => `<div class="beast-schedule-week-head"><small>${escapeHtml(d.toLocaleDateString(locale, { weekday: "short" }))}</small><strong>${d.getDate()}/${d.getMonth() + 1}</strong></div>`).join("");
+
+    const bodyRows = slots.map((slot) => {
+      const timeCell = `<div class="beast-schedule-week-time">${escapeHtml(slot.startKey)}<small>${escapeHtml(slot.endKey)}</small></div>`;
+      const dayCells = dayKeys.map((key) => {
+        const row = cellIndex.get(`${key}|${slot.startKey}`);
+        if (!row) return `<div class="beast-schedule-week-cell is-empty"></div>`;
+        const teacherText = row.teachers.map((teacher) => {
+          const isSub = /^vikar/i.test(teacher);
+          const clean = teacher.replace(/^vikar:?\s*/i, "");
+          return isSub ? `<em class="is-substitute">VIKAR: ${escapeHtml(clean)}</em>` : escapeHtml(teacher);
+        }).join(" + ");
+        return `<div class="beast-schedule-week-cell" style="--subject-color:${scheduleSubjectColor(row.subject)}">
+          <strong>${escapeHtml(scheduleSubjectLabel(row.subject) || "Ukendt fag")}</strong>
+          ${row.location ? `<b>${escapeHtml(row.location)}</b>` : ""}
+          ${teacherText ? `<span>${teacherText}</span>` : ""}
+        </div>`;
+      }).join("");
+      return `<div class="beast-schedule-week-row">${timeCell}${dayCells}</div>`;
+    }).join("");
+
+    return `<div class="beast-schedule-week-grid">
+      <div class="beast-schedule-week-row beast-schedule-week-header"><div class="beast-schedule-week-time"></div>${headerCells}</div>
+      ${bodyRows}
+    </div>`;
+  }
+
+  function scheduleWeekLabel(weekOffset, weekStart, locale) {
+    if (weekOffset === 0) return "Denne uge";
+    if (weekOffset === 1) return "Næste uge";
+    if (weekOffset === -1) return "Sidste uge";
+    const end = new Date(weekStart); end.setDate(end.getDate() + 4);
+    return `${weekStart.toLocaleDateString(locale, { day: "numeric", month: "short" })} – ${end.toLocaleDateString(locale, { day: "numeric", month: "short" })}`;
   }
 
   async function renderScheduleCard(entityId) {
@@ -226,18 +286,19 @@
     const host = document.getElementById(`beastSchedule-${slug}`);
     if (!host) return;
     const requestId = ++scheduleRequestId;
-    const dayOffset = scheduleDayOffsets[entityId] || 0;
+    const weekOffset = scheduleWeekOffsets[entityId] || 0;
     const locale = window.HASmartdashI18n?.locale || "da-DK";
+    const weekStart = scheduleWeekStart(weekOffset);
     host.innerHTML = `<p class="beast-music-empty">Henter…</p>`;
-    const rows = await loadScheduleDay(entityId, dayOffset);
+    const rows = await loadScheduleWeek(entityId, weekOffset);
     if (requestId !== scheduleRequestId) return;
     host.innerHTML = `
       <div class="beast-schedule-nav">
-        <button type="button" class="beast-schedule-nav-btn is-prev" data-schedule-prev="${escapeHtml(entityId)}" aria-label="Forrige dag">${BeastCore.icon("chevron-right", { size: 16 })}</button>
-        <strong>${escapeHtml(scheduleDayLabel(dayOffset, locale))}</strong>
-        <button type="button" class="beast-schedule-nav-btn" data-schedule-next="${escapeHtml(entityId)}" aria-label="Næste dag">${BeastCore.icon("chevron-right", { size: 16 })}</button>
+        <button type="button" class="beast-schedule-nav-btn is-prev" data-schedule-prev="${escapeHtml(entityId)}" aria-label="Forrige uge">${BeastCore.icon("chevron-right", { size: 16 })}</button>
+        <strong>${escapeHtml(scheduleWeekLabel(weekOffset, weekStart, locale))}</strong>
+        <button type="button" class="beast-schedule-nav-btn" data-schedule-next="${escapeHtml(entityId)}" aria-label="Næste uge">${BeastCore.icon("chevron-right", { size: 16 })}</button>
       </div>
-      <div class="beast-schedule-rows">${renderScheduleRows(rows, locale)}</div>
+      ${renderScheduleWeekGrid(rows, weekStart, locale)}
     `;
   }
 
@@ -368,7 +429,7 @@
         const nextBtn = event.target.closest("[data-schedule-next]");
         const entityId = prevBtn?.dataset.schedulePrev || nextBtn?.dataset.scheduleNext;
         if (!entityId) return;
-        scheduleDayOffsets[entityId] = (scheduleDayOffsets[entityId] || 0) + (prevBtn ? -1 : 1);
+        scheduleWeekOffsets[entityId] = (scheduleWeekOffsets[entityId] || 0) + (prevBtn ? -1 : 1);
         renderScheduleCard(entityId);
       });
     });
@@ -378,10 +439,14 @@
     const layout = BeastConfig.get("pageLayouts.waste.calendarLayout") || {};
     const hidden = new Set(Array.isArray(layout.hidden) ? layout.hidden : []);
     containerEl.querySelectorAll("[data-calendar-section]").forEach((el) => el.classList.toggle("is-layout-hidden", hidden.has(el.dataset.calendarSection)));
+    // One card per configured schedule calendar, stacked in the narrow
+    // column Affald used to occupy -- scales to however many are
+    // configured (one per child). The week grid inside scrolls if it
+    // doesn't fit the card's own height, so the narrow column stays
+    // readable without needing extra width. Kommende aftaler keeps its
+    // original spot; only Affald relocates to a full-width row at the
+    // bottom.
     BeastNativePageEditor.mount({ section:"waste", label:"Kalender", root:()=>containerEl, host:()=>containerEl, trigger:"#beastCalendarLayoutEdit", cards:()=>[
-      // One card per configured schedule calendar, stacked in the column
-      // Affald used to occupy -- scales to however many are configured
-      // (one per child), not fixed to any specific number.
       ...scheduleCalendarIds().map((entityId, index) => {
         const id = `schedule-${scheduleCardSlug(entityId)}`;
         return { id, label: `Skema · ${scheduleCardLabel(entityId)}`, selector: `[data-calendar-section="${id}"]`, titleSelector: "h2", enabled: !hidden.has(id), desktop: { x: 1, y: 1 + index * 6, w: 4, h: 6 } };
@@ -405,6 +470,32 @@
     });
   }
 
+  // A dashboard that already had a saved Kalender layout before schedule
+  // calendars existed keeps its old "waste"/"events" desktop positions
+  // forever (the native editor always prefers a saved position over a
+  // fresh default) -- so the moment schedule calendars are configured for
+  // the first time, this stacks them below the old cards instead of
+  // leaving them overlapping. Only touches a saved position that still
+  // exactly matches the pre-feature default -- a real sign it was never
+  // customized -- and only runs once, the moment schedule-* cards are
+  // still absent from the saved layout.
+  const LEGACY_WASTE_DESKTOP = { x: 1, y: 1, w: 5, h: 12 };
+  function migrateWasteLayoutForSchedule() {
+    if (!scheduleCalendarIds().length) return;
+    const path = window.BeastNativePageEditor?.storagePath?.("waste") || "pageLayouts.waste.nativeCards";
+    const saved = BeastConfig.get(path);
+    if (!Array.isArray(saved) || !saved.length) return;
+    if (saved.some((card) => String(card.id || "").startsWith("schedule-"))) return;
+    const wasteCard = saved.find((card) => card.id === "waste");
+    const d = wasteCard?.desktop || {};
+    const isLegacy = d.x === LEGACY_WASTE_DESKTOP.x && d.y === LEGACY_WASTE_DESKTOP.y && d.w === LEGACY_WASTE_DESKTOP.w && d.h === LEGACY_WASTE_DESKTOP.h;
+    if (!isLegacy) return;
+    wasteCard.desktop = { x: 1, y: 13, w: 12, h: 4 };
+    const eventsCard = saved.find((card) => card.id === "events");
+    if (eventsCard) eventsCard.desktop = { x: 5, y: 1, w: 8, h: 12 };
+    BeastConfig.set(path, saved);
+  }
+
   function init(root) {
     containerEl = root;
     containerEl.classList.add("beast-waste-panel");
@@ -413,6 +504,7 @@
       BeastCore.wireNotConfiguredLinks(containerEl);
       return;
     }
+    migrateWasteLayoutForSchedule();
     containerEl.innerHTML = `<p class="beast-music-empty">Henter…</p>`;
     const stableRender = BeastCore.stableUpdater(containerEl, render, 500);
 
