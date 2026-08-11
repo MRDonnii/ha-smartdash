@@ -200,7 +200,10 @@ function setupDataQuality() {
 }
 
 function showDoorbellView() {
-  if (!featureEnabled("eventFocus")) return;
+  // Doorbell camera focus is configured independently under Kiosk &
+  // doorbell. It must not be disabled by the generic eventFocus switch,
+  // which only controls the smaller alarm/pool/car/printer event banners.
+  if (!DOORBELL_BINARY_ID() && !DOORBELL_EVENT_ID()) return;
   const now = Date.now();
   if (now - lastDoorbellAt < 5000) return;
   lastDoorbellAt = now;
