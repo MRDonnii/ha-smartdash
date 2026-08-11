@@ -1,5 +1,13 @@
 [
   {
+    "version": "20260811-180",
+    "tag": "v0.7.102",
+    "date": "2026-08-11",
+    "changes": [
+      { "da": "Rettet at Varme-sidens tre paneler kunne overlappe hinanden på tablet-brede skærme efter sidste rettelse -- de stables nu korrekt uden at ligge oveni hinanden.", "en": "Fixed Heating's three panels potentially overlapping each other on tablet-width screens after the previous fix -- they now stack correctly without landing on top of each other." }
+    ]
+  },
+  {
     "version": "20260811-179",
     "tag": "v0.7.101",
     "date": "2026-08-11",
