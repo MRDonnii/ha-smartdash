@@ -176,6 +176,7 @@ const BeastCore = (() => {
     play: '<polygon points="6 3 20 12 6 21 6 3" fill="currentColor" stroke="none"/>',
     pause: '<rect x="6" y="4" width="4" height="16" rx="1" fill="currentColor" stroke="none"/><rect x="14" y="4" width="4" height="16" rx="1" fill="currentColor" stroke="none"/>',
     power: '<path d="M18.36 6.64a9 9 0 1 1-12.73 0"/><line x1="12" y1="2" x2="12" y2="12"/>',
+    fan: '<path d="M12 11C8.3 9.4 8.5 3 12 3s3.7 6.4 0 8Z" fill="currentColor" stroke="none"/><path d="M13 12c1.6-3.7 8-3.5 8 0s-6.4 3.7-8 0Z" fill="currentColor" stroke="none"/><path d="M12 13c3.7 1.6 3.5 8 0 8s-3.7-6.4 0-8Z" fill="currentColor" stroke="none"/><path d="M11 12c-1.6 3.7-8 3.5-8 0s6.4-3.7 8 0Z" fill="currentColor" stroke="none"/><circle cx="12" cy="12" r="2" fill="var(--surface-solid,#111827)" stroke="currentColor"/>',
     "skip-back": '<polygon points="19 20 9 12 19 4 19 20" fill="currentColor" stroke="none"/><line x1="5" y1="19" x2="5" y2="5"/>',
     "skip-forward": '<polygon points="5 4 15 12 5 20 5 4" fill="currentColor" stroke="none"/><line x1="19" y1="5" x2="19" y2="19"/>',
     volume: '<polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5" fill="currentColor" stroke="none"/><path d="M16.5 8.5a5 5 0 0 1 0 7M19.5 5.5a9 9 0 0 1 0 13"/>',

@@ -1,5 +1,14 @@
 [
   {
+    "version": "20260811-113",
+    "tag": "v0.7.35",
+    "date": "2026-08-11",
+    "changes": [
+      "The Install new version button at the top of the Updates page is connected to the shared install handler again after being moved outside the old version-history container.",
+      "The front-page heat-pump card now has a balanced control layout with localized states, animated fan and airflow feedback, heating/cooling mode colors and reduced-motion support instead of a large unused center area."
+    ]
+  },
+  {
     "version": "20260811-112",
     "tag": "v0.7.34",
     "date": "2026-08-11",
