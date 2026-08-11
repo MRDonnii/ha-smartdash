@@ -774,7 +774,7 @@
 .beast-player-destinations {
   grid-column: 3;
   grid-row: 1;
-  min-width: 104px;
+  min-width: 156px;
   display: flex;
   justify-content: flex-end;
   align-items: center;
@@ -837,6 +837,12 @@
 .beast-player-popover-feedback { margin:9px 2px 0; color:var(--ink-muted); font-size:var(--text-xs); }
 .beast-player-popover-feedback.is-success { color:var(--status-ok); }
 .beast-player-popover-feedback.is-error { color:var(--status-danger); }
+.beast-volume-popover { width:min(330px, calc(100% - 8px)); overflow:visible; }
+.beast-volume-popover-mute { width:100%; min-height:52px; margin-bottom:10px; display:flex; align-items:center; justify-content:center; gap:9px; border:1px solid var(--border); border-radius:var(--radius-md); color:var(--ink); background:var(--surface-2-solid); font:800 var(--text-sm) var(--font-sans); cursor:pointer; }
+.beast-volume-popover-buttons { width:100%; display:grid; grid-template-columns:88px minmax(90px,1fr) 88px; align-items:center; gap:10px; }
+.beast-volume-popover-buttons button { width:88px; height:72px; border:1px solid var(--border-strong); border-radius:var(--radius-md); color:var(--ink); background:var(--surface-2-solid); font:700 2rem var(--font-sans); cursor:pointer; }
+.beast-volume-popover-buttons button:hover { border-color:var(--accent-border); background:var(--accent-music-soft); }
+.beast-volume-popover-buttons output { color:var(--ink); font:900 1.65rem var(--font-sans); text-align:center; font-variant-numeric:tabular-nums; }
 .beast-now-playing-album {
   display: flex;
   align-items: baseline;
@@ -927,7 +933,7 @@
   .beast-player-dock { grid-template-columns: auto minmax(0, 1fr); }
   .beast-player-dock .beast-transport-row { grid-column: 1; }
   .beast-player-dock .beast-volume-row { display: none; }
-  .beast-player-destinations { grid-column: 2; }
+  .beast-player-destinations { grid-column: 2; min-width:156px; }
 }
 
 .beast-music-library-head .beast-music-search-row { width: min(520px, 58%); background: var(--surface-solid); }
