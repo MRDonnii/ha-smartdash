@@ -315,11 +315,13 @@
     if (!cardsOverride) {
       const visible = cards.filter((card) => card.enabled !== false && containerEl.querySelector(selectors[card.kind || card.type || card.id])).map((card) => ({ ...card, desktop:{ ...(card.desktop || {}) } }));
       if (visible.length < cards.length && visible.length) {
-        const columns = visible.length === 1 ? 1 : (visible.length <= 3 ? visible.length : 2);
-        const width = 12 / columns;
-        const rows = Math.ceil(visible.length / columns);
-        const height = Math.max(2, Math.floor(7 / rows));
-        visible.forEach((card,index) => { card.desktop = { ...card.desktop, x:(index % columns) * width + 1, y:2 + Math.floor(index / columns) * height, w:width, h:height }; });
+        const baseHeight = Math.max(1, Math.floor(7 / visible.length));
+        let nextY = 2;
+        visible.forEach((card,index) => {
+          const height = index === visible.length - 1 ? 9 - nextY : baseHeight;
+          card.desktop = { ...card.desktop, x:1, y:nextY, w:12, h:Math.max(1,height) };
+          nextY += height;
+        });
         runtimeCards = visible;
       }
     }

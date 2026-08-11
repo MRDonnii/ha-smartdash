@@ -158,8 +158,13 @@
         card.kind === "security-entries" ? (ENTRY_POINTS.length || getOpeningSensors().length) : ALARM_PANELS.length
       )).map((card) => ({ ...card, desktop:{ ...(card.desktop || {}) } }));
       if (visible.length < cards.length) {
-        const width = visible.length === 1 ? 12 : 6;
-        visible.forEach((card,index) => { card.desktop = { ...card.desktop, x:index * width + 1, y:1, w:width, h:7 }; });
+        const baseHeight = Math.max(1, Math.floor(7 / Math.max(1,visible.length)));
+        let nextY = 1;
+        visible.forEach((card,index) => {
+          const height = index === visible.length - 1 ? 8 - nextY : baseHeight;
+          card.desktop = { ...card.desktop, x:1, y:nextY, w:12, h:Math.max(1,height) };
+          nextY += height;
+        });
         runtimeCards = visible;
       }
     }
