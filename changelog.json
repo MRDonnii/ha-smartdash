@@ -1,5 +1,13 @@
 [
   {
+    "version": "20260811-172",
+    "tag": "v0.7.94",
+    "date": "2026-08-11",
+    "changes": [
+      { "da": "Administrationsknappen forkorter nu automatisk teksten til Admin, når sidepanelet ikke har plads til den fulde tekst.", "en": "The Administration button now automatically shortens its label to Admin when the sidebar does not have room for the full text." }
+    ]
+  },
+  {
     "version": "20260811-171",
     "tag": "v0.7.93",
     "date": "2026-08-11",
