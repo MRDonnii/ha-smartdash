@@ -708,6 +708,37 @@ function renderLoginScreen(root, message) {
     }
   });
   card.appendChild(form);
+  const tokenDetails = BeastCore.el("details", "beast-login-details");
+  tokenDetails.innerHTML = `<summary>Log ind med token</summary><form class="beast-login-form beast-token-login-form"><label>Long-Lived Access Token<textarea rows="4" autocomplete="off" spellcheck="false" placeholder="Indsæt token fra din Home Assistant-profil" required></textarea></label><small>Tokenet gemmes kun i denne browser og medtages aldrig i fejlloggen.</small><button type="submit" class="beast-btn beast-btn-primary">Kontrollér token og log ind</button></form>`;
+  tokenDetails.querySelector("form").addEventListener("submit", async (event) => {
+    event.preventDefault();
+    if (!addressInput.reportValidity()) return;
+    BeastAuth.setHaBaseUrl(addressInput.value.trim());
+    const button = event.currentTarget.querySelector("button");
+    button.disabled = true;
+    button.textContent = "Kontrollerer token…";
+    try {
+      await BeastAuth.loginWithToken(event.currentTarget.querySelector("textarea").value);
+      window.location.reload();
+    } catch (error) {
+      renderLoginScreen(root, error.userMessage || "Token-login mislykkedes.");
+    }
+  });
+  card.appendChild(tokenDetails);
+  const diagnostics = BeastAuth.getDiagnostics();
+  const diagnosticDetails = BeastCore.el("details", "beast-login-details beast-login-diagnostics");
+  if (diagnostics.length) diagnosticDetails.open = true;
+  diagnosticDetails.innerHTML = `<summary>Fejllog og forbindelsesdetaljer</summary><pre>${overviewEscape(diagnostics.length ? JSON.stringify(diagnostics, null, 2) : "Ingen loginfejl registreret i denne browserfane.")}</pre><div><button type="button" class="beast-btn" data-copy-login-log>Kopiér fejllog</button><button type="button" class="beast-btn" data-clear-login-log>Ryd log</button></div>`;
+  diagnosticDetails.querySelector("[data-copy-login-log]").addEventListener("click", async () => {
+    const text = diagnosticDetails.querySelector("pre").textContent;
+    if (navigator.clipboard?.writeText) await navigator.clipboard.writeText(text);
+    else window.prompt("Kopiér fejlloggen:", text);
+  });
+  diagnosticDetails.querySelector("[data-clear-login-log]").addEventListener("click", () => {
+    BeastAuth.clearDiagnostics();
+    renderLoginScreen(root, message);
+  });
+  card.appendChild(diagnosticDetails);
   screen.appendChild(card);
   root.appendChild(screen);
 }

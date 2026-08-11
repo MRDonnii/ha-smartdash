@@ -26,6 +26,8 @@ Den [produktionslignende showcase](demo/showcase.html) gengiver dashboardets lay
 
 ## Hurtig installation
 
+Den komplette vejledning med Unraid/Docker, Home Assistant `trusted_proxies`, ændringsbekræftelse, token-login, fejllog og recovery findes i [Komplet installation](docs/INSTALLATION.da.md).
+
 1. Hent projektet og læg indholdet i webserverens rodmappe.
 2. Aktivér PHP 8+ og giv webserveren skriverettighed til `data/`.
 3. Kør `sh deploy/setup-smartdash.sh`. Førstegangsopsætningen spørger efter HA-adressen, webroden og den aktive Nginx-serverfil. Den tager backup, genererer proxyen, validerer Nginx, genindlæser den og tester loginruten.

@@ -103,7 +103,8 @@
       { key: "waterTemp", label: "Vandtemperatur", type: "single", domain: "sensor", hints: ["pool", "bassin"], filterHints: true }, { key: "pumpSwitch", label: "Poolpumpe", type: "single", domain: "switch", hints: ["pool", "pumpe"], filterHints: true },
       { key: "pumpStatus", label: "Pumpens driftstatus", type: "single", domain: "sensor", hints: ["pool", "pumpe"], filterHints: true }, { key: "runtime", label: "Køretid i dag", type: "single", domain: "sensor", hints: ["pool", "pumpe"], filterHints: true },
       { key: "personInWater", label: "Person i vandet", type: "single", domain: "binary_sensor", hints: ["pool", "bassin"], filterHints: true }, { key: "automationToggle", label: "Poolautomatik", type: "single", domain: "input_boolean", hints: ["pool", "bassin"], filterHints: true },
-      { key: "cameraStream", label: "go2rtc streamnavn", type: "text", placeholder: "Terrasse_syd" }
+      { key: "cameraEntity", label: "Poolkamera", type: "single", domain: "camera", hints: ["pool", "terrasse", "have"] },
+      { key: "cameraStream", label: "go2rtc streamnavn (kun fallback)", type: "text", placeholder: "Terrasse_syd" }
     ]},
     { id: "robots", title: "Robotter", description: "Vælg blot robot-entities. HA Smartdash finder automatisk batteri, kort, knapper, sensorer og indstillinger, som den valgte robots HA-device eksponerer. Listen kan være tom eller indeholde vilkårligt mange robotter og modeller.", fields: [
       { key: "vacuums", label: "Robotstøvsugere", type: "multi", domain: "vacuum" },
@@ -124,6 +125,7 @@
       { key: "stopButton", label: "Stopknap", type: "single", domain: "button" }, { key: "traySensors", label: "AMS-bakker", type: "multi", domain: "sensor", hints: ["bambu", "tray"] },
       { key: "activeTray", label: "Aktiv AMS-bakke", type: "single", domain: "sensor" }, { key: "amsHumidity", label: "AMS-fugtighed", type: "single", domain: "sensor" },
       { key: "totalUsage", label: "Samlet driftstid", type: "single", domain: "sensor" },
+      { key: "cameraDisplay", label: "Kameravisning", type: "select", choices: [["printer", "Kun printerens eget kamera"], ["live", "Kun ekstra livekamera"], ["both", "Begge kameraer"]] },
       { key: "liveCamera", label: "Livekamera (vælg fra kameraer)", type: "single", domain: "camera" },
       { key: "liveStream", label: "go2rtc streamnavn (kun hvis kameraet ikke kan vælges ovenfor)", type: "text", placeholder: "3dprinter" }
     ]},
@@ -309,7 +311,8 @@
     checkListSources.set(id, items);
     if (!checkListSelections.has(id)) checkListSelections.set(id, new Set(selectedIds));
     return `
-      <input class="admin-filter" type="search" placeholder="Søg…" data-filter-list="${id}">
+      <div class="admin-picker-meta" data-picker-meta="${id}"><span>${items.length} muligheder</span><strong>${selectedIds.length} valgt</strong></div>
+      <input class="admin-filter" type="search" placeholder="Søg på navn, entity-id eller enhed…" data-filter-list="${id}">
       <div class="admin-check-list" id="${id}">
         ${renderCheckListRows(id)}
       </div>`;
@@ -319,13 +322,18 @@
     const items = checkListSources.get(id) || [];
     const selected = checkListSelections.get(id) || new Set();
     const normalizedQuery = query.trim().toLowerCase();
+    const searchText = (item) => {
+      const meta = BeastRegistry.getEntityMeta(item.id);
+      const device = meta?.deviceId ? BeastRegistry.getDevice(meta.deviceId) : null;
+      return `${item.name} ${item.id} ${device?.name || ""} ${meta?.platform || ""}`.toLowerCase();
+    };
     const matches = normalizedQuery
-      ? items.filter((item) => `${item.name} ${item.id}`.toLowerCase().includes(normalizedQuery))
+      ? items.filter((item) => searchText(item).includes(normalizedQuery))
       : items;
     const visible = [];
     const added = new Set();
     items.filter((item) => selected.has(item.id)).forEach((item) => {
-      if (!normalizedQuery || `${item.name} ${item.id}`.toLowerCase().includes(normalizedQuery)) {
+      if (!normalizedQuery || searchText(item).includes(normalizedQuery)) {
         visible.push(item);
         added.add(item.id);
       }
@@ -338,11 +346,16 @@
       return visible.length >= CHECK_LIST_RENDER_LIMIT;
     });
     if (!visible.length) return `<div class="admin-empty">Ingen matchende enheder fundet.</div>`;
-    const rows = visible.map((item) => `
-      <label class="admin-check" data-search="${escapeHtml(`${item.name} ${item.id}`.toLowerCase())}">
+    const rows = visible.map((item) => {
+      const meta = BeastRegistry.getEntityMeta(item.id);
+      const device = meta?.deviceId ? BeastRegistry.getDevice(meta.deviceId) : null;
+      const context = [device?.name, meta?.platform].filter(Boolean).join(" · ");
+      return `
+      <label class="admin-check" data-search="${escapeHtml(searchText(item))}">
         <input type="checkbox" value="${escapeHtml(item.id)}"${selected.has(item.id) ? " checked" : ""}>
-        <span><strong>${escapeHtml(item.name)}</strong><small>${escapeHtml(item.id)}</small></span>
-      </label>`).join("");
+        <span><strong>${escapeHtml(item.name)}</strong><small>${escapeHtml(context ? `${context} · ${item.id}` : item.id)}</small></span>
+      </label>`;
+    }).join("");
     const remaining = Math.max(0, matches.length - visible.length);
     return `${rows}${remaining ? `<div class="admin-list-hint">Skriv i søgefeltet for at finde de øvrige ${remaining} entities.</div>` : ""}`;
   }
@@ -350,17 +363,25 @@
   function renderSelectOptions(id, selected, query = "") {
     const items = selectSources.get(id) || [];
     const normalizedQuery = query.trim().toLowerCase();
+    const itemText = (item) => {
+      const meta = BeastRegistry.getEntityMeta(item.id);
+      const device = meta?.deviceId ? BeastRegistry.getDevice(meta.deviceId) : null;
+      return `${item.name} ${item.id} ${device?.name || ""} ${meta?.platform || ""}`.toLowerCase();
+    };
     const matches = normalizedQuery
-      ? items.filter((item) => `${item.name} ${item.id}`.toLowerCase().includes(normalizedQuery))
+      ? items.filter((item) => itemText(item).includes(normalizedQuery))
       : items;
     const visible = matches.slice(0, CHECK_LIST_RENDER_LIMIT);
     if (selected && !visible.some((item) => item.id === selected)) {
       const selectedItem = items.find((item) => item.id === selected);
       if (selectedItem) visible.unshift(selectedItem);
     }
-    return `<option value=""${selected ? "" : " selected"}>— Ikke valgt —</option>${visible.map((item) =>
-      `<option value="${escapeHtml(item.id)}"${item.id === selected ? " selected" : ""}>${escapeHtml(item.name)} — ${escapeHtml(item.id)}</option>`
-    ).join("")}`;
+    return `<option value=""${selected ? "" : " selected"}>— Ikke valgt —</option>${visible.map((item) => {
+      const meta = BeastRegistry.getEntityMeta(item.id);
+      const device = meta?.deviceId ? BeastRegistry.getDevice(meta.deviceId) : null;
+      const context = device?.name ? ` · ${device.name}` : "";
+      return `<option value="${escapeHtml(item.id)}"${item.id === selected ? " selected" : ""}>${escapeHtml(item.name)}${escapeHtml(context)} — ${escapeHtml(item.id)}</option>`;
+    }).join("")}`;
   }
 
   function entityPreviewHtml(id, entityId) {
@@ -452,12 +473,73 @@
     entityFieldBaseSources.set(id, base);
     const scopedItems = scope?.selectedDeviceId ? scopedEntityItems(id, scope.selectedDeviceId) : items;
     selectSources.set(id, scopedItems);
+    const selectedName = selected ? BeastEntityPicker.friendlyName(selected) : "Ikke valgt";
     return `
       ${renderEntityDeviceScope(id, scope)}
-      <input class="admin-filter" type="search" placeholder="Søg i ${escapeHtml(field.label.toLowerCase())}…" data-filter-select="${id}">
-      <select id="${id}" size="8">
+      <div class="admin-picker-meta" data-picker-meta="${id}"><span>${scopedItems.length} ${escapeHtml(field.domain || "")} entities</span><strong>${escapeHtml(selectedName)}</strong></div>
+      <input class="admin-filter" type="search" placeholder="Søg på navn, entity-id eller enhed…" data-filter-select="${id}">
+      <select id="${id}" size="6">
         ${renderSelectOptions(id, selected)}
       </select>${entityPreviewHtml(id, selected)}`;
+  }
+
+  const ROOM_EXTRA_DOMAINS = new Set(["light", "climate", "sensor", "binary_sensor", "cover", "lock", "switch", "fan", "media_player", "input_boolean", "input_select", "automation", "valve", "vacuum"]);
+
+  function roomMappingId(areaId, suffix) {
+    return `admin_rooms_map_${String(areaId).replace(/[^a-z0-9_-]/gi, "_")}_${suffix}`;
+  }
+
+  function roomSensorItems(areaId, deviceClass, selected) {
+    const items = Array.from(BeastHaSocket.getAllStates().entries())
+      .filter(([entityId, state]) => entityId.startsWith("sensor.") && Number.isFinite(Number(state?.state)))
+      .map(([entityId, state]) => {
+        const meta = BeastRegistry.getEntityMeta(entityId);
+        let score = state?.attributes?.device_class === deviceClass ? 20 : 0;
+        if (meta?.areaId === areaId) score += 10;
+        if (entityId === selected) score += 100;
+        return { id: entityId, name: BeastEntityPicker.friendlyName(entityId), score };
+      })
+      .sort((a, b) => b.score - a.score || a.name.localeCompare(b.name, "da"));
+    if (selected && !items.some((item) => item.id === selected)) items.unshift({ id: selected, name: BeastEntityPicker.friendlyName(selected), score: 100 });
+    return items;
+  }
+
+  function roomExtraEntityItems(areaId, selectedIds) {
+    const selected = new Set(selectedIds || []);
+    return Array.from(BeastHaSocket.getAllStates().keys())
+      .filter((entityId) => ROOM_EXTRA_DOMAINS.has(entityId.split(".")[0]))
+      .map((entityId) => ({
+        id: entityId,
+        name: BeastEntityPicker.friendlyName(entityId),
+        score: selected.has(entityId) ? 100 : BeastRegistry.getEntityMeta(entityId)?.areaId === areaId ? 20 : 0
+      }))
+      .sort((a, b) => b.score - a.score || a.name.localeCompare(b.name, "da"));
+  }
+
+  function roomSinglePicker(id, items, selected, label) {
+    selectSources.set(id, items);
+    return `<div class="admin-room-map-field"><span>${escapeHtml(label)}</span><div class="admin-picker-meta" data-picker-meta="${id}"><span>${items.length} sensors</span><strong>${escapeHtml(selected ? BeastEntityPicker.friendlyName(selected) : "Automatisk")}</strong></div><input class="admin-filter" type="search" placeholder="Søg på navn, entity-id eller enhed…" data-filter-select="${id}"><select id="${id}" size="5">${renderSelectOptions(id, selected)}</select></div>`;
+  }
+
+  function renderRoomsEntityMappings(current) {
+    const areaIds = Array.isArray(current.areaIds) ? current.areaIds : [];
+    if (!areaIds.length) return `<div class="admin-room-mappings"><div class="admin-card-head"><div><h2>Entities pr. rum</h2><p>Vælg og gem først mindst ét synligt HA-område.</p></div></div></div>`;
+    const rows = areaIds.map((areaId) => {
+      const area = BeastRegistry.getArea(areaId);
+      if (!area) return "";
+      const climate = Array.isArray(current.climateSensors?.[areaId]) ? current.climateSensors[areaId] : [];
+      const extras = Array.isArray(current.entityOverrides?.[areaId]) ? current.entityOverrides[areaId] : [];
+      const tempId = roomMappingId(areaId, "temperature");
+      const humidityId = roomMappingId(areaId, "humidity");
+      const extrasId = roomMappingId(areaId, "extras");
+      const extraItems = roomExtraEntityItems(areaId, extras);
+      checkListSources.set(extrasId, extraItems);
+      checkListSelections.set(extrasId, new Set(extras));
+      const assignedCount = BeastRegistry.getAreaEntityIds(areaId).length;
+      const extrasPicker = `<div class="admin-picker-meta" data-picker-meta="${extrasId}"><span>${extraItems.length} muligheder</span><strong>${extras.length} valgt</strong></div><input class="admin-filter" type="search" placeholder="Søg på navn, entity-id eller enhed…" data-filter-list="${extrasId}"><div class="admin-check-list" id="${extrasId}">${renderCheckListRows(extrasId)}</div>`;
+      return `<article class="admin-room-mapping" data-room-mapping="${escapeHtml(areaId)}" data-temp-picker="${tempId}" data-humidity-picker="${humidityId}" data-extras-picker="${extrasId}"><header><div><h3>${escapeHtml(area.name || areaId)}</h3><p>${assignedCount} entities er allerede tilknyttet området i Home Assistant.</p></div><span>${extras.length} ekstra</span></header><div class="admin-room-map-sensors">${roomSinglePicker(tempId, roomSensorItems(areaId, "temperature", climate[0]), climate[0], "Temperatursensor")}${roomSinglePicker(humidityId, roomSensorItems(areaId, "humidity", climate[1]), climate[1], "Fugtighedssensor")}</div><div class="admin-room-map-extras"><span>Ekstra entities uden for HA-rummet</span><p>Disse lægges oven i de entities, som allerede er placeret i rummet i Home Assistant.</p>${extrasPicker}</div></article>`;
+    }).join("");
+    return `<div class="admin-room-mappings"><div class="admin-card-head"><div><h2>Entities pr. rum</h2><p>Automatiske HA-entities og valg herunder bruges sammen. Temperatur og fugtighed kan tilsidesættes særskilt.</p></div><button type="button" class="beast-btn" data-refresh-rooms>Genindlæs rum fra Home Assistant</button></div><div class="admin-room-mapping-grid">${rows}</div><span class="admin-save-state" data-refresh-rooms-state></span></div>`;
   }
 
   function getMqttConfig() {
@@ -657,8 +739,9 @@
           <div class="admin-card-head"><div><h2>${escapeHtml(panel.title)}</h2><p>${escapeHtml(panel.description)}</p></div></div>
           ${panel.fields.some((field) => field.type === "device") ? `<div class="admin-scope-banner">Vælg først den konkrete enhed og gem. Derefter viser felterne kun entities, som HA har knyttet til den valgte enhed.</div>` : ""}
           <div class="admin-grid">
-            ${panel.fields.map((field) => `<div class="admin-field"><span>${escapeHtml(field.label)}</span>${renderField(panel, field, current)}</div>`).join("")}
+            ${panel.fields.map((field) => `<div class="admin-field"><span class="admin-field-heading"><b>${escapeHtml(field.label)}</b>${field.domain ? `<em>${escapeHtml(field.domain)}</em>` : ""}</span>${renderField(panel, field, current)}</div>`).join("")}
           </div>
+          ${panel.id === "rooms" ? renderRoomsEntityMappings(current) : ""}
           <div class="admin-actions"><button class="admin-save" type="button" data-save-panel="${panel.id}">Gem ${escapeHtml(panel.title)}</button><span class="admin-save-state" data-save-state="${panel.id}"></span></div>
         </div>
       </section>`;
@@ -1585,6 +1668,23 @@
         patch[field.key] = document.getElementById(id)?.value.trim() || null;
       }
     });
+    if (panel.id === "rooms") {
+      const current = BeastConfig.get("panels.rooms") || {};
+      const climateSensors = { ...(current.climateSensors || {}) };
+      const entityOverrides = { ...(current.entityOverrides || {}) };
+      document.querySelectorAll("[data-room-mapping]").forEach((row) => {
+        const areaId = row.dataset.roomMapping;
+        const temperature = document.getElementById(row.dataset.tempPicker)?.value || null;
+        const humidity = document.getElementById(row.dataset.humidityPicker)?.value || null;
+        const extras = Array.from(checkListSelections.get(row.dataset.extrasPicker) || []);
+        if (temperature || humidity) climateSensors[areaId] = [temperature, humidity];
+        else delete climateSensors[areaId];
+        if (extras.length) entityOverrides[areaId] = extras;
+        else delete entityOverrides[areaId];
+      });
+      patch.climateSensors = climateSensors;
+      patch.entityOverrides = entityOverrides;
+    }
     return patch;
   }
 
@@ -1731,7 +1831,11 @@
         option.hidden = outsideSearch || outsideLikely;
       });
     }));
-    document.querySelectorAll("select[id]").forEach((select) => select.addEventListener("change", () => updateEntityPreview(select.id, select.value)));
+    document.querySelectorAll("select[id]").forEach((select) => select.addEventListener("change", () => {
+      updateEntityPreview(select.id, select.value);
+      const meta = document.querySelector(`[data-picker-meta="${select.id}"] strong`);
+      if (meta) meta.textContent = select.value ? BeastEntityPicker.friendlyName(select.value) : "Ikke valgt";
+    }));
     document.querySelectorAll("[data-overview-type]").forEach((select) => select.addEventListener("change", () => { const custom = select.closest("[data-overview-card]").querySelector(".admin-overview-custom"); custom.hidden = select.value !== "custom"; }));
     document.querySelectorAll("[data-filter-overview-device]").forEach((input) => input.addEventListener("input", () => { const select = document.getElementById(input.dataset.filterOverviewDevice), query = input.value.trim().toLowerCase(); Array.from(select.options).forEach((option,index) => { option.hidden = Boolean(index && query && !option.dataset.search.includes(query)); }); }));
     document.querySelectorAll("[data-overview-device]").forEach((deviceSelect) => deviceSelect.addEventListener("change", () => {
@@ -1789,6 +1893,27 @@
       } catch (error) {
         button.disabled = false;
         if (state) state.textContent = `Opdatering fejlede: ${error.message}`;
+      }
+    });
+    document.querySelector("[data-refresh-rooms]")?.addEventListener("click", async (event) => {
+      if (hasUnsavedPanelChanges && !window.confirm("Ikke-gemte valg på siden bliver nulstillet. Genindlæs rum alligevel?")) return;
+      const button = event.currentTarget;
+      const state = document.querySelector("[data-refresh-rooms-state]");
+      button.disabled = true;
+      if (state) state.textContent = "Henter rum, områder og entities…";
+      try {
+        await BeastHaSocket.refreshSnapshot();
+        await BeastRegistry.refresh();
+        entityCandidateCache.clear();
+        checkListSources.clear();
+        checkListSelections.clear();
+        selectSources.clear();
+        entityFieldBaseSources.clear();
+        hasUnsavedPanelChanges = false;
+        renderShell();
+      } catch (error) {
+        button.disabled = false;
+        if (state) state.textContent = `Genindlæsning fejlede: ${error.message}`;
       }
     });
     document.getElementById("adminFaviconUrl")?.addEventListener("input", (event) => {
@@ -2164,6 +2289,8 @@
     const selected = checkListSelections.get(list.id);
     if (checkbox.checked) selected.add(checkbox.value);
     else selected.delete(checkbox.value);
+    const meta = document.querySelector(`[data-picker-meta="${list.id}"] strong`);
+    if (meta) meta.textContent = `${selected.size} valgt`;
   }
   document.addEventListener("click", (event) => {
     const addBtn = event.target.closest("[data-add-group]");
@@ -2187,7 +2314,9 @@
   });
 
   function renderLogin(message) {
-    root.innerHTML = `<div class="admin-login"><div class="admin-login-card"><div class="admin-login-logo">${brandLogoMarkup("login")}</div><small>Administration</small><h1>Forbind Home Assistant</h1><p>${escapeHtml(message || "Admin bruger din Home Assistant-login til at hente områder og entities. Login-oplysninger gemmes kun i browseren.")}</p><form id="adminLoginForm"><input type="url" id="adminHaUrl" value="${escapeHtml(BeastAuth.getHaBaseUrl() || `${window.location.origin}/ha`)}" placeholder="Home Assistant-adresse" required><button type="submit">Log ind med Home Assistant</button></form></div></div>`;
+    const diagnostics = BeastAuth.getDiagnostics();
+    const diagnosticText = diagnostics.length ? JSON.stringify(diagnostics, null, 2) : "Ingen loginfejl registreret i denne browserfane.";
+    root.innerHTML = `<div class="admin-login"><div class="admin-login-card"><div class="admin-login-logo">${brandLogoMarkup("login")}</div><small>Administration</small><h1>Forbind Home Assistant</h1><p class="admin-login-message">${escapeHtml(message || "Vælg almindeligt Home Assistant-login eller brug et Long-Lived Access Token. Oplysninger gemmes kun i denne browser.")}</p><form id="adminLoginForm"><input type="url" id="adminHaUrl" value="${escapeHtml(BeastAuth.getHaBaseUrl() || `${window.location.origin}/ha`)}" placeholder="Home Assistant-adresse" required><button type="submit">Log ind med Home Assistant</button></form><details class="admin-token-login"><summary>Log ind med token</summary><form id="adminTokenLoginForm"><label>Long-Lived Access Token<textarea id="adminHaToken" rows="4" autocomplete="off" spellcheck="false" placeholder="Indsæt token fra din Home Assistant-profil" required></textarea></label><small>Tokenet valideres mod Home Assistant og gemmes kun lokalt i browseren. Det vises aldrig i fejlloggen.</small><button type="submit">Kontrollér token og log ind</button></form></details><details class="admin-login-diagnostics"${diagnostics.length ? " open" : ""}><summary>Fejllog og forbindelsesdetaljer</summary><pre id="adminLoginDiagnosticText">${escapeHtml(diagnosticText)}</pre><div><button type="button" id="adminCopyLoginDiagnostics">Kopiér fejllog</button><button type="button" id="adminClearLoginDiagnostics">Ryd log</button></div></details></div></div>`;
     document.getElementById("adminLoginForm").addEventListener("submit", async (event) => {
       event.preventDefault();
       BeastAuth.setHaBaseUrl(document.getElementById("adminHaUrl").value);
@@ -2199,6 +2328,30 @@
       } catch (error) {
         renderLogin(error.userMessage || "Kunne ikke kontrollere Home Assistant-forbindelsen.");
       }
+    });
+    document.getElementById("adminTokenLoginForm").addEventListener("submit", async (event) => {
+      event.preventDefault();
+      const address = document.getElementById("adminHaUrl");
+      if (!address.reportValidity()) return;
+      BeastAuth.setHaBaseUrl(address.value);
+      const button = event.currentTarget.querySelector("button[type=submit]");
+      button.disabled = true;
+      button.textContent = "Kontrollerer token…";
+      try {
+        await BeastAuth.loginWithToken(document.getElementById("adminHaToken").value);
+        window.location.reload();
+      } catch (error) {
+        renderLogin(error.userMessage || "Token-login mislykkedes.");
+      }
+    });
+    document.getElementById("adminCopyLoginDiagnostics").addEventListener("click", async () => {
+      const text = document.getElementById("adminLoginDiagnosticText").textContent;
+      if (navigator.clipboard?.writeText) await navigator.clipboard.writeText(text);
+      else window.prompt("Kopiér fejlloggen:", text);
+    });
+    document.getElementById("adminClearLoginDiagnostics").addEventListener("click", () => {
+      BeastAuth.clearDiagnostics();
+      renderLogin(message);
     });
   }
 

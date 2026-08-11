@@ -63,15 +63,20 @@
   }
 
   function roomEntityIds(areaId, domain) {
-    const configured = ROOM_POPUP_ENTITIES[areaId];
-    const source = configured ? configured.filter((entityId) => entityId.startsWith(`${domain}.`)) : BeastRegistry.getAreaEntityIds(areaId, domain);
+    const configured = Array.isArray(ROOM_POPUP_ENTITIES[areaId]) ? ROOM_POPUP_ENTITIES[areaId] : [];
+    // Manual room entities supplement HA's own area assignment. This lets a
+    // user expose a useful control in a room without moving the underlying
+    // device in HA or losing everything HA already assigned automatically.
+    const source = [...new Set([
+      ...BeastRegistry.getAreaEntityIds(areaId, domain),
+      ...configured.filter((entityId) => entityId.startsWith(`${domain}.`))
+    ])];
     return source.filter((entityId) => {
       const meta = BeastRegistry.getEntityMeta(entityId);
       const state = BeastHaSocket.getState(entityId);
       const text = `${entityId} ${meta?.platform || ""} ${meta?.name || ""} ${meta?.originalName || ""} ${state?.attributes?.friendly_name || ""}`.toLowerCase();
       if (text.includes("unifi") || text.includes("protect")) return false;
       if (domain === "climate" && !text.includes("better_thermostat") && !text.includes("better thermostat")) return false;
-      if (ROOM_POPUP_ENTITIES[areaId] && !ROOM_POPUP_ENTITIES[areaId].includes(entityId)) return false;
       return true;
     });
   }
@@ -92,19 +97,41 @@
     return Number.isFinite(value) ? value : null;
   }
 
+  function discoveredClimateSensor(areaId, deviceClass) {
+    const candidates = BeastRegistry.getAreaEntityIds(areaId, "sensor").map((entityId) => {
+      const state = BeastHaSocket.getState(entityId);
+      const stateDeviceClass = state?.attributes?.device_class;
+      const unit = String(state?.attributes?.unit_of_measurement || "").toLowerCase();
+      const unitMatches = deviceClass === "temperature" ? ["°c", "°f"].includes(unit) : unit === "%";
+      if (stateDeviceClass !== deviceClass && !unitMatches) return null;
+      const value = Number(state?.state);
+      if (!Number.isFinite(value)) return null;
+      const name = String(state?.attributes?.friendly_name || entityId).toLowerCase();
+      let score = stateDeviceClass === deviceClass ? 10 : 0;
+      if (name.includes(deviceClass === "temperature" ? "temperatur" : "fugt")) score += 2;
+      if (!name.includes("battery") && !name.includes("batteri")) score += 1;
+      return { entityId, score };
+    }).filter(Boolean);
+    candidates.sort((a, b) => b.score - a.score || a.entityId.localeCompare(b.entityId));
+    return candidates[0]?.entityId || null;
+  }
+
   function roomClimate(areaId, climateIds) {
     const configured = ROOM_CLIMATE_SENSORS[areaId] || [];
     let temperature = sensorNumber(configured[0]);
     let humidity = sensorNumber(configured[1]);
 
+    const area = BeastRegistry.getArea(areaId);
+    if (temperature === null && area?.temperature_entity_id) temperature = sensorNumber(area.temperature_entity_id);
+    if (humidity === null && area?.humidity_entity_id) humidity = sensorNumber(area.humidity_entity_id);
+
+    if (temperature === null) temperature = sensorNumber(discoveredClimateSensor(areaId, "temperature"));
+    if (humidity === null) humidity = sensorNumber(discoveredClimateSensor(areaId, "humidity"));
+
     if (temperature === null && climateIds.length) {
       const value = Number(BeastHaSocket.getState(climateIds[0])?.attributes?.current_temperature);
       if (Number.isFinite(value)) temperature = value;
     }
-
-    const area = BeastRegistry.getArea(areaId);
-    if (temperature === null && area?.temperature_entity_id) temperature = sensorNumber(area.temperature_entity_id);
-    if (humidity === null && area?.humidity_entity_id) humidity = sensorNumber(area.humidity_entity_id);
 
     return {
       temperatureLabel: temperature === null ? "–" : `${temperature.toFixed(1)}°`,
@@ -557,7 +584,7 @@
     });
   }
 
-  const ROOM_RELEVANT_DOMAINS = ["light", "climate", "binary_sensor", "cover", "lock", "switch"];
+  const ROOM_RELEVANT_DOMAINS = ["light", "climate", "sensor", "binary_sensor", "cover", "lock", "switch"];
 
   function init(root) {
     const roomConfig = BeastConfig.get("panels.rooms") || {};
@@ -582,6 +609,7 @@
     ROOM_RELEVANT_DOMAINS.forEach((domain) => {
       BeastHaSocket.subscribeDomain(domain, debouncedRender);
     });
+    document.addEventListener("beast:registry-updated", debouncedRender);
   }
 
   BeastCore.registerPanel("rooms", "beastRoomsZone", init);

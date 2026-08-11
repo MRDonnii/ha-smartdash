@@ -1,5 +1,23 @@
 [
   {
+    "version": "20260811-110",
+    "tag": "v0.7.32",
+    "date": "2026-08-11",
+    "changes": [
+      "The pre-login screen now offers both normal Home Assistant OAuth and Long-Lived Access Token authentication.",
+      "Token authentication is validated against the Home Assistant API before being stored, remains browser-local and never appears in diagnostics.",
+      "A pre-login diagnostics panel records the failing phase, safe error code, HTTP status, proxy path and configured HA address without recording credentials.",
+      "Login diagnostics can be copied or cleared before Administration access, making failed fresh installations supportable without entering the dashboard.",
+      "Long-Lived Access Tokens remain usable without OAuth refresh-token exchange while all existing authenticated API and WebSocket consumers continue through the same /ha/ proxy.",
+      "A complete installation guide now covers Nginx/PHP, Docker and Unraid, valid host and CIDR proxy entries, Home Assistant change confirmation, both login methods, pre-login diagnostics, recovery, updates and security.",
+      "Pool setup now accepts a Home Assistant camera entity and resolves its live stream through the shared camera system, while retaining the manual go2rtc stream name as a fallback.",
+      "Entity selection is easier to scan with domain badges, selected and available counts, shorter lists, device and integration context, and search across friendly names, entity IDs, devices and platforms.",
+      "3D Printer camera display can now show only the printer's own camera, only an extra live camera or both; a single camera expands to fill the complete camera card.",
+      "Room cards now discover temperature and humidity sensors assigned to each HA area, subscribe to sensor updates and refresh area registry assignments in the background so newly moved sensors appear without recreating rooms.",
+      "Every configured room now has its own entity editor for temperature, humidity and additional controls outside the HA area; manual additions supplement automatic HA assignments, and a dedicated room refresh reloads states and registries immediately."
+    ]
+  },
+  {
     "version": "20260811-109",
     "tag": "v0.7.31",
     "date": "2026-08-11",

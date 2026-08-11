@@ -32,7 +32,7 @@ const BeastConfig = (() => {
     rooms: { areaIds: [], climateSensors: {}, entityOverrides: {} },
     pool: {
       waterTemp: null, pumpSwitch: null, pumpStatus: null, runtime: null,
-      personInWater: null, automationToggle: null, cameraStream: null
+      personInWater: null, automationToggle: null, cameraEntity: null, cameraStream: null
     },
     car: {
       sourceDevice: null, battery: null, range: null, shiftState: null, chargerPower: null,
@@ -50,7 +50,7 @@ const BeastConfig = (() => {
       sourceDevice: null, statusSensor: null, stageSensor: null, progressSensor: null, remainingSensor: null,
       nozzleTemp: null, nozzleTarget: null, bedTemp: null, bedTarget: null, currentLayer: null, totalLayers: null,
       taskName: null, cameraImage: null, pauseButton: null, resumeButton: null, stopButton: null,
-      activeTray: null, traySensors: [], amsHumidity: null, totalUsage: null, liveStream: null, liveCamera: null
+      activeTray: null, traySensors: [], amsHumidity: null, totalUsage: null, cameraDisplay: "both", liveStream: null, liveCamera: null
     },
     robots: {
       vacuums: [], mowers: [], roomSelectors: [], leonoraImage: null, poulImage: null

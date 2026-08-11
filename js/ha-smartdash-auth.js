@@ -2,6 +2,7 @@ const BeastAuth = (() => {
   const HA_PROXY_PATH = "/ha";
   const OAUTH_STORAGE_KEY = "beast_panel_ha_oauth_v1";
   const AUTH_PENDING_KEY = "beast_panel_ha_auth_pending_v1";
+  const AUTH_DIAGNOSTICS_KEY = "beast_panel_ha_auth_diagnostics_v1";
   // Kept separate from BeastConfig on purpose: login has to work before any
   // HA connection exists to load registries/entities from, so this can't
   // depend on anything that itself needs a live HA session.
@@ -35,6 +36,34 @@ const BeastAuth = (() => {
 
   function saveOAuthConfig(config) {
     localStorage.setItem(OAUTH_STORAGE_KEY, JSON.stringify(config));
+  }
+
+  function loadDiagnostics() {
+    try {
+      const entries = JSON.parse(sessionStorage.getItem(AUTH_DIAGNOSTICS_KEY) || "[]");
+      return Array.isArray(entries) ? entries.slice(-20) : [];
+    } catch (error) {
+      return [];
+    }
+  }
+
+  function recordDiagnostic(entry) {
+    const safe = {
+      time: new Date().toISOString(),
+      phase: String(entry.phase || "login"),
+      code: String(entry.code || "unknown"),
+      status: Number(entry.status || 0),
+      proxyPath: `${window.location.origin}${HA_PROXY_PATH}`,
+      haAddress: getHaBaseUrl()
+    };
+    const entries = [...loadDiagnostics(), safe].slice(-20);
+    sessionStorage.setItem(AUTH_DIAGNOSTICS_KEY, JSON.stringify(entries));
+    window.dispatchEvent(new CustomEvent("beast:authdiagnostic", { detail: safe }));
+    return safe;
+  }
+
+  function clearDiagnostics() {
+    sessionStorage.removeItem(AUTH_DIAGNOSTICS_KEY);
   }
 
   function clearOAuthConfig() {
@@ -74,23 +103,67 @@ const BeastAuth = (() => {
         cache: "no-store"
       });
     } catch (error) {
-      return { ok: false, code: "network-error", status: 0 };
+      const result = { ok: false, code: "network-error", status: 0 };
+      recordDiagnostic({ phase: "proxy-check", ...result });
+      return result;
     }
 
-    if (response.status === 400) return { ok: false, code: "ha-rejected-proxy", status: response.status };
-    if ([404, 405].includes(response.status)) return { ok: false, code: "route-missing", status: response.status };
-    if ([502, 503, 504].includes(response.status)) return { ok: false, code: "upstream-unavailable", status: response.status };
-    if (!response.ok) return { ok: false, code: "proxy-error", status: response.status };
+    let failure = null;
+    if (response.status === 400) failure = { ok: false, code: "ha-rejected-proxy", status: response.status };
+    else if ([404, 405].includes(response.status)) failure = { ok: false, code: "route-missing", status: response.status };
+    else if ([502, 503, 504].includes(response.status)) failure = { ok: false, code: "upstream-unavailable", status: response.status };
+    else if (!response.ok) failure = { ok: false, code: "proxy-error", status: response.status };
+    if (failure) {
+      recordDiagnostic({ phase: "proxy-check", ...failure });
+      return failure;
+    }
 
     const contentType = String(response.headers.get("content-type") || "").toLowerCase();
-    if (!contentType.includes("application/json")) return { ok: false, code: "invalid-response", status: response.status };
+    if (!contentType.includes("application/json")) {
+      const result = { ok: false, code: "invalid-response", status: response.status };
+      recordDiagnostic({ phase: "proxy-check", ...result });
+      return result;
+    }
     try {
       const payload = await response.json();
-      if (!Array.isArray(payload?.providers)) return { ok: false, code: "invalid-response", status: response.status };
+      if (!Array.isArray(payload?.providers)) {
+        const result = { ok: false, code: "invalid-response", status: response.status };
+        recordDiagnostic({ phase: "proxy-check", ...result });
+        return result;
+      }
       return { ok: true, code: "ok", status: response.status };
     } catch (error) {
-      return { ok: false, code: "invalid-response", status: response.status };
+      const result = { ok: false, code: "invalid-response", status: response.status };
+      recordDiagnostic({ phase: "proxy-check", ...result });
+      return result;
     }
+  }
+
+  async function loginWithToken(token) {
+    const accessToken = String(token || "").trim();
+    if (!accessToken) throw Object.assign(new Error("HA_TOKEN_MISSING"), { userMessage: "Indsæt et Home Assistant Long-Lived Access Token." });
+    let response;
+    try {
+      response = await fetch(`${HA_PROXY_PATH}/api/`, {
+        method: "GET",
+        headers: { Accept: "application/json", Authorization: `Bearer ${accessToken}` },
+        cache: "no-store"
+      });
+    } catch (error) {
+      recordDiagnostic({ phase: "token-login", code: "network-error", status: 0 });
+      throw Object.assign(new Error("HA_TOKEN_NETWORK"), { userMessage: "Kunne ikke nå Home Assistant gennem /ha/-proxyen." });
+    }
+    if (!response.ok) {
+      const code = response.status === 401 ? "token-rejected" : response.status === 400 ? "ha-rejected-proxy" : "token-validation-failed";
+      recordDiagnostic({ phase: "token-login", code, status: response.status });
+      const message = response.status === 401
+        ? "Home Assistant afviste tokenet (HTTP 401). Opret et nyt Long-Lived Access Token og prøv igen."
+        : proxyErrorMessage({ code, status: response.status });
+      throw Object.assign(new Error(`HA_TOKEN_${response.status}`), { userMessage: message });
+    }
+    oauthConfig = { accessToken, refreshToken: "", expiresAt: 0, clientId: "", mode: "token" };
+    saveOAuthConfig(oauthConfig);
+    return true;
   }
 
   function buildClientId() {
@@ -155,10 +228,17 @@ const BeastAuth = (() => {
     sessionStorage.removeItem(AUTH_PENDING_KEY);
     clearAuthQueryParams();
 
-    if (!pendingRaw) return { type: "error", message: "Login-sessionen mangler. Prøv igen." };
+    if (!pendingRaw) {
+      recordDiagnostic({ phase: "oauth-callback", code: "missing-session", status: 0 });
+      return { type: "error", message: "Login-sessionen mangler. Prøv igen." };
+    }
     const pending = JSON.parse(pendingRaw);
-    if (params.get("state") !== pending.state) return { type: "error", message: "Login blev afvist (state matcher ikke)." };
+    if (params.get("state") !== pending.state) {
+      recordDiagnostic({ phase: "oauth-callback", code: "state-mismatch", status: 0 });
+      return { type: "error", message: "Login blev afvist (state matcher ikke)." };
+    }
     if (params.has("error")) {
+      recordDiagnostic({ phase: "oauth-callback", code: params.get("error") || "oauth-error", status: 0 });
       return { type: "error", message: `Login blev afbrudt: ${params.get("error_description") || params.get("error")}` };
     }
 
@@ -174,6 +254,7 @@ const BeastAuth = (() => {
       return { type: "success" };
     } catch (error) {
       const status = Number(String(error.message || "").match(/HA_AUTH_(\d+)/)?.[1] || 0);
+      recordDiagnostic({ phase: "oauth-token-exchange", code: status ? `http-${status}` : "network-error", status });
       if (status === 400) return { type: "error", message: proxyErrorMessage({ code: "ha-rejected-proxy", status }) };
       if ([404, 405].includes(status)) return { type: "error", message: proxyErrorMessage({ code: "route-missing", status }) };
       if ([502, 503, 504].includes(status)) return { type: "error", message: proxyErrorMessage({ code: "upstream-unavailable", status }) };
@@ -183,6 +264,7 @@ const BeastAuth = (() => {
 
   async function refreshAccessToken(forceRefresh = false) {
     if (!hasSession()) throw new Error("HA_AUTH_MISSING");
+    if (oauthConfig.mode === "token" && oauthConfig.accessToken) return oauthConfig.accessToken;
 
     const expiresSoon = !oauthConfig.expiresAt || Date.now() >= (Number(oauthConfig.expiresAt) - 60000);
     if (!forceRefresh && oauthConfig.accessToken && !expiresSoon) {
@@ -278,6 +360,7 @@ const BeastAuth = (() => {
     setHaBaseUrl,
     hasSession,
     checkProxy,
+    loginWithToken,
     prepareLogin,
     startLogin,
     handleAuthCallback,
@@ -285,6 +368,8 @@ const BeastAuth = (() => {
     haFetch,
     haFetchBlob,
     setAuthedImageSrc,
+    getDiagnostics: loadDiagnostics,
+    clearDiagnostics,
     logout
   };
 })();
