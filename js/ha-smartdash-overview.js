@@ -1911,7 +1911,43 @@
       const target = Number(state?.attributes?.temperature);
       const value = isHeatPump && Number.isFinite(current) ? `${current.toFixed(1)}°` : (unavailable ? "Ikke tilgængelig" : `${state.state}${definition.suffix}`);
       const detail = isHeatPump ? `${state?.attributes?.hvac_action || state?.state || "–"}${Number.isFinite(target) ? ` · Mål ${target.toFixed(1)}°` : ""}` : (state?.attributes?.friendly_name || definition.detail);
-      host.innerHTML = `<div class="beast-ov-generic-content"><span>${BeastCore.icon(definition.icon,{size:31})}</span><small>${escapeHtml(label)}</small><strong>${escapeHtml(value)}</strong><em>${escapeHtml(detail)}</em></div>`;
+      if (isHeatPump && state) {
+        const attributes = state.attributes || {};
+        const modes = Array.isArray(attributes.hvac_modes) ? attributes.hvac_modes : [];
+        const fanModes = Array.isArray(attributes.fan_modes) ? attributes.fan_modes : [];
+        const presetModes = Array.isArray(attributes.preset_modes) ? attributes.preset_modes : [];
+        const swingModes = Array.isArray(attributes.swing_modes) ? attributes.swing_modes : [];
+        const modeLabels = { off:"Fra", heat:"Varme", cool:"Køl", heat_cool:"Auto", auto:"Auto", dry:"Affugt", fan_only:"Blæser" };
+        const select = (kind, title, options, selected) => options.length ? `<label><span>${title}</span><select data-heatpump-select="${kind}">${options.map((option) => `<option value="${escapeHtml(option)}"${option === selected ? " selected" : ""}>${escapeHtml(modeLabels[option] || option)}</option>`).join("")}</select></label>` : "";
+        host.innerHTML = `<div class="beast-ov-heatpump" data-heatpump-entity="${escapeHtml(definition.entity)}">
+          <div class="beast-ov-heatpump-head"><span>${BeastCore.icon(attributes.hvac_action === "heating" ? "bolt" : attributes.hvac_action === "cooling" ? "droplet" : "wind", { size:22 })}</span><div><small>${escapeHtml(label)}</small><strong>${escapeHtml(attributes.friendly_name || definition.label)}</strong></div><button type="button" data-heatpump-power aria-label="${state.state === "off" ? "Tænd varmepumpe" : "Sluk varmepumpe"}" class="${state.state === "off" ? "" : "is-on"}">${BeastCore.icon("power", { size:18 })}</button></div>
+          <div class="beast-ov-heatpump-reading"><span><small>Rum</small><strong>${escapeHtml(value)}</strong></span><div class="beast-ov-heatpump-target"><button type="button" data-heatpump-temperature="down" aria-label="Sænk måltemperatur">${BeastCore.icon("minus", { size:17 })}</button><span><small>Mål</small><strong>${Number.isFinite(target) ? `${target.toFixed(1)}°` : "–"}</strong></span><button type="button" data-heatpump-temperature="up" aria-label="Hæv måltemperatur">${BeastCore.icon("plus", { size:17 })}</button></div><em>${escapeHtml(attributes.hvac_action || state.state || "–")}</em></div>
+          ${modes.length ? `<div class="beast-ov-heatpump-modes">${modes.map((mode) => `<button type="button" data-heatpump-mode="${escapeHtml(mode)}" class="${state.state === mode ? "is-active" : ""}">${escapeHtml(modeLabels[mode] || mode)}</button>`).join("")}</div>` : ""}
+          <div class="beast-ov-heatpump-options">${select("fan_mode", "Blæser", fanModes, attributes.fan_mode)}${select("preset_mode", "Program", presetModes, attributes.preset_mode)}${select("swing_mode", "Retning", swingModes, attributes.swing_mode)}</div>
+        </div>`;
+        host.querySelectorAll("button,select").forEach((control) => control.addEventListener("click", (event) => event.stopPropagation()));
+        host.querySelector("[data-heatpump-power]")?.addEventListener("click", () => {
+          const nextMode = state.state === "off" ? (modes.includes("heat") ? "heat" : modes.find((mode) => mode !== "off")) : "off";
+          if (nextMode) callService("climate", "set_hvac_mode", definition.entity, { hvac_mode:nextMode });
+        });
+        host.querySelectorAll("[data-heatpump-temperature]").forEach((button) => button.addEventListener("click", () => {
+          if (!Number.isFinite(target)) return;
+          const step = Number(attributes.target_temp_step) || 0.5;
+          const min = Number.isFinite(Number(attributes.min_temp)) ? Number(attributes.min_temp) : -Infinity;
+          const max = Number.isFinite(Number(attributes.max_temp)) ? Number(attributes.max_temp) : Infinity;
+          const temperature = Math.min(max, Math.max(min, target + (button.dataset.heatpumpTemperature === "up" ? step : -step)));
+          callService("climate", "set_temperature", definition.entity, { temperature });
+        }));
+        host.querySelectorAll("[data-heatpump-mode]").forEach((button) => button.addEventListener("click", () => callService("climate", "set_hvac_mode", definition.entity, { hvac_mode:button.dataset.heatpumpMode })));
+        host.querySelectorAll("[data-heatpump-select]").forEach((selectEl) => selectEl.addEventListener("change", (event) => {
+          event.stopPropagation();
+          const field = selectEl.dataset.heatpumpSelect;
+          const service = { fan_mode:"set_fan_mode", preset_mode:"set_preset_mode", swing_mode:"set_swing_mode" }[field];
+          if (service) callService("climate", service, definition.entity, { [field]:selectEl.value });
+        }));
+      } else {
+        host.innerHTML = `<div class="beast-ov-generic-content"><span>${BeastCore.icon(definition.icon,{size:31})}</span><small>${escapeHtml(label)}</small><strong>${escapeHtml(value)}</strong><em>${escapeHtml(detail)}</em></div>`;
+      }
       card.classList.toggle("is-unavailable", unavailable);
     });
   }

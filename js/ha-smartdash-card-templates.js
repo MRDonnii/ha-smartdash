@@ -34,6 +34,7 @@ window.BeastCardTemplates = (() => {
     { id: "overview-weather", category: "Oversigt", title: "Vejrkort", description: "Kompakt kopi af vejret på forsiden", type: "stat", icon: "cloud", domains: ["weather", "sensor"], size: { w: 4, h: 1 } },
     { id: "overview-security", category: "Oversigt", title: "Sikkerhedsoverblik", description: "Kopi af sikkerhedsstatus fra forsiden", type: "stat", icon: "shield", domains: ["alarm_control_panel", "binary_sensor", "lock", "sensor"], size: { w: 4, h: 1 } },
     { id: "overview-energy", category: "Oversigt", title: "Energioverblik", description: "Kopi af forsidens energikort", type: "graph", icon: "bolt", domains: ["sensor"], size: { w: 6, h: 2 } },
+    { id: "overview-heatpump", category: "Oversigt", title: "Varmepumpe med fuld styring", description: "Temperatur, driftstilstand, blæser, program og retning direkte på forsiden", type: "heatpump", icon: "wind", domains: ["climate"], size: { w: 5, h: 2 } },
     { id: "room-card", category: "Rum", title: "Rumkort", description: "Byg et ekstra rumkort med egen måling", type: "stat", icon: "home", domains: ["sensor", "climate", "binary_sensor"], size: { w: 4, h: 1 } },
     { id: "heatpump-card", category: "Varme", title: "Varmepumpe", description: "Kopi af varmepumpekortets styring", type: "toggle", icon: "wind", domains: ["climate", "switch"], size: { w: 4, h: 1 } },
     { id: "dantherm-card", category: "Varme", title: "Dantherm ventilation", description: "Kopi til Dantherm-måling eller styring", type: "stat", icon: "wind", domains: ["sensor", "fan"], size: { w: 4, h: 1 } },
@@ -61,6 +62,7 @@ window.BeastCardTemplates = (() => {
   ];
   const FIELD_SCHEMAS = {
     "overview-energy": [["power","Forbrug nu",["sensor"]],["price","Elpris nu",["sensor"]],["today","Forbrug i dag",["sensor"]],["cost","Pris i dag",["sensor"]]],
+    "overview-heatpump": [["climate","Varmepumpe",["climate"]]],
     "room-card": [["temperature","Temperatur",["sensor","climate"]],["humidity","Luftfugtighed",["sensor"]],["presence","Tilstedeværelse",["binary_sensor"]],["light","Lysgruppe",["light"]]],
     "climate-control": [["climate","Termostat",["climate"]],["temperature","Rumtemperatur",["sensor"]],["humidity","Luftfugtighed",["sensor"]]],
     "heatpump-card": [["climate","Varmepumpe",["climate"]],["temperature","Rumtemperatur",["sensor"]],["power","Effekt",["sensor"]]],

@@ -1,5 +1,14 @@
 [
   {
+    "version": "20260811-112",
+    "tag": "v0.7.34",
+    "date": "2026-08-11",
+    "changes": [
+      "The front-page heat-pump template now provides full control of target temperature, power, HVAC mode, fan, preset and swing directly from every capability exposed by the selected Home Assistant climate entity.",
+      "Front-page calendar rows now keep the date on the left and align the event title to the right with protected space between them, preventing the two texts from colliding."
+    ]
+  },
+  {
     "version": "20260811-111",
     "tag": "v0.7.33",
     "date": "2026-08-11",
