@@ -1,5 +1,16 @@
 [
   {
+    "version": "20260811-144",
+    "tag": "v0.7.66",
+    "date": "2026-08-11",
+    "changes": [
+      { "da": "Specialsiderne tilpasser nu automatisk kortenes størrelse, når et kort mangler eller er slået fra, så tomme områder bliver udfyldt uden at ændre brugerens gemte layout.", "en": "Specialized pages now resize cards automatically when a card is unavailable or disabled, filling empty areas without changing the user's saved layout." },
+      { "da": "Kalender-siden skjuler nu AULA-, aftale- og affaldsområder, der ikke har en konfigureret datakilde, og lader de resterende kort bruge pladsen.", "en": "The Calendar page now hides AULA, event, and waste regions that have no configured data source and lets the remaining cards use the space." },
+      { "da": "Energi og Sikkerhed fordeler nu også automatisk pladsen mellem de kort, der faktisk har tilgængelige datakilder.", "en": "Energy and Security now also distribute space automatically between cards that actually have available data sources." },
+      { "da": "Når en datakilde senere sættes op igen, vender det oprindelige gemte kortlayout automatisk tilbage.", "en": "When a data source is configured again later, the original saved card layout returns automatically." }
+    ]
+  },
+  {
     "version": "20260811-143",
     "tag": "v0.7.65",
     "date": "2026-08-11",
