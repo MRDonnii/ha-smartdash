@@ -1,5 +1,14 @@
 [
   {
+    "version": "20260811-150",
+    "tag": "v0.7.72",
+    "date": "2026-08-11",
+    "changes": [
+      { "da": "Rettet en JavaScript-fejl i forsidens varmepumpekort, som stoppede redigeringstilstanden før flytte-, størrelse- og indstillingsknapperne blev oprettet.", "en": "Fixed a JavaScript error in the Overview heat pump card that stopped edit mode before the move, resize, and settings controls were created." },
+      { "da": "Dynamiske tekster i varmepumpekortet følger nu dashboardets valgte sprog uden at afbryde rendering.", "en": "Dynamic heat pump card text now follows the dashboard language without interrupting rendering." }
+    ]
+  },
+  {
     "version": "20260811-149",
     "tag": "v0.7.71",
     "date": "2026-08-11",
