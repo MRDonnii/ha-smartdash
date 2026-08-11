@@ -3375,4 +3375,29 @@
     min-height:0 !important;
     align-self:stretch;
   }
+  .beast-heating-panel > .beast-heating-main.beast-native-layout-card {
+    display:flex !important;
+    flex-direction:column;
+  }
+  .beast-heating-main .beast-heating-hero { flex:0 0 auto; }
+  .beast-heating-main .beast-heating-room-grid { height:auto; min-height:0; flex:1 1 0; }
+  .beast-heating-main .beast-heating-room-card {
+    display:grid;
+    grid-template-columns:minmax(0,1fr) minmax(170px,.85fr);
+    grid-template-rows:auto minmax(0,1fr);
+    align-items:center;
+    column-gap:10px;
+    row-gap:2px;
+    padding:6px 9px;
+    overflow:hidden;
+  }
+  .beast-heating-main .beast-heating-room-head { grid-column:1/-1; min-height:18px; }
+  .beast-heating-main .beast-heating-room-reading { grid-column:1; min-height:0; }
+  .beast-heating-main .beast-heating-room-reading span small { display:none; }
+  .beast-heating-main .beast-heating-room-current { font-size:clamp(1.35rem,1.45vw,1.75rem); }
+  .beast-heating-main .beast-heating-room-reading i { width:28px; height:28px; }
+  .beast-heating-main .beast-heating-room-card .beast-stepper { grid-column:2; grid-row:2; grid-template-columns:30px minmax(68px,1fr) 30px; align-self:center; gap:4px; }
+  .beast-heating-main .beast-heating-room-card .beast-stepper .beast-transport-btn { width:30px; height:30px; min-width:30px; }
+  .beast-heating-main .beast-heating-room-card .beast-stepper-value small { font-size:7px; }
+  .beast-heating-main .beast-heating-room-card .beast-stepper-value strong { font-size:13px; }
 }
