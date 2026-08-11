@@ -1,5 +1,14 @@
 [
   {
+    "version": "20260811-149",
+    "tag": "v0.7.71",
+    "date": "2026-08-11",
+    "changes": [
+      { "da": "Rettet at redigering af forsiden kunne vise de stiplede kortrammer uden flytte-, størrelses- og indstillingsknapper på installationer med ældre cachede editorfiler.", "en": "Fixed Overview editing showing dashed card outlines without move, resize, and settings controls on installations with older cached editor assets." },
+      { "da": "Forsidens editor-JavaScript og CSS bruger nu samme build-baserede cache-id, og releasekontrollen forhindrer fremover en udgivelse med blandede editorversioner.", "en": "The Overview editor JavaScript and CSS now use the same build-based cache ID, and the release check prevents future releases with mixed editor versions." }
+    ]
+  },
+  {
     "version": "20260811-148",
     "tag": "v0.7.70",
     "date": "2026-08-11",

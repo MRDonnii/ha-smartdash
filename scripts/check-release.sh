@@ -26,8 +26,12 @@ if (!/^\d{8}-\d+$/.test(latest.version || "")) throw new Error("Latest changelog
 for (const html of [index, beast]) {
   if (meta(html, "beast-release-tag") !== latest.tag) throw new Error("HTML release tag does not match the latest changelog tag.");
   if (meta(html, "beast-build") !== latest.version) throw new Error("HTML build ID does not match the latest changelog version.");
-  const miscCacheId = html.match(/ha-smartdash-misc\.css\?v=([^"']+)/)?.[1];
-  if (miscCacheId !== latest.version) throw new Error("ha-smartdash-misc.css cache ID must match the release build ID.");
+  const releaseAssets = ["ha-smartdash-misc.css", "ha-smartdash-overview.css", "ha-smartdash-card-editor.js", "ha-smartdash-overview.js"];
+  for (const asset of releaseAssets) {
+    const escaped = asset.replaceAll(".", "\\.");
+    const cacheId = html.match(new RegExp(`${escaped}\\?v=([^\"']+)`))?.[1];
+    if (cacheId !== latest.version) throw new Error(`${asset} cache ID must match the release build ID.`);
+  }
 }
 if (!Array.isArray(latest.changes) || !latest.changes.length || latest.changes.some((item) => !String(item?.da || "").trim() || !String(item?.en || "").trim())) {
   throw new Error("Every latest changelog change must contain non-empty da and en text.");

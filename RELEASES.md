@@ -38,6 +38,9 @@ Every release must update all of these values in the same commit:
 4. Every changed browser-loaded CSS or JavaScript file must receive a new
    query-string cache ID in both HTML entry points that load it. Prefer the
    release build ID, for example `?v=20260811-148`.
+   The automated release check always enforces this for the shared misc CSS
+   and the complete Overview editor bundle (Overview CSS, card editor JS and
+   Overview JS), because mixing these files can hide editing controls.
 
 `beast-release-tag` and `changelog.json.tag` must equal the Git tag exactly.
 The two HTML files must contain identical release tags and build IDs.
