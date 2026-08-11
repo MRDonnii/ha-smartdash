@@ -79,10 +79,12 @@
     PRINTER_BANNER_CAMERA_ID = bannerSettings.printerCameraOverride || null;
     AULA_MESSAGE_ID = app.aulaMessageSensor || null;
     AULA_LESSON_MINUTES = Math.max(1, Number(bannerSettings.aulaLessonMinutes) || 10);
+    const hasHeatSource = Boolean(energy.heatPowerSensor || energy.heatEnergySensor);
+    const hasWaterSource = Boolean(energy.waterUsageSensor || energy.waterFlowSensor);
     UTILITY_VIEWS = {
       electric: { label: "El", current: energy.powerSensor, today: energy.totalEnergySensor, history: energy.powerSensor, mode: "average", unit: "W", todayUnit: "kWh" },
-      ...(energy.showHeatOnOverview !== false ? { heat: { label: "Varme", current: energy.heatPowerSensor, today: energy.heatEnergySensor, history: energy.heatEnergySensor, mode: "delta", unit: "kW", todayUnit: "kWh" } } : {}),
-      ...(energy.showWaterOnOverview !== false ? { water: { label: "Vand", current: energy.waterUsageSensor, today: energy.waterFlowSensor, history: energy.waterUsageSensor, mode: "delta", unit: "m³", todayUnit: "L/h" } } : {})
+      ...(energy.showHeatOnOverview !== false && hasHeatSource ? { heat: { label: "Varme", current: energy.heatPowerSensor, today: energy.heatEnergySensor, history: energy.heatEnergySensor, mode: "delta", unit: "kW", todayUnit: "kWh" } } : {}),
+      ...(energy.showWaterOnOverview !== false && hasWaterSource ? { water: { label: "Vand", current: energy.waterUsageSensor, today: energy.waterFlowSensor, history: energy.waterUsageSensor, mode: "delta", unit: "m³", todayUnit: "L/h" } } : {})
     };
     if (!UTILITY_VIEWS[utilityView]) utilityView = "electric";
   }

@@ -1,5 +1,14 @@
 [
   {
+    "version": "20260811-153",
+    "tag": "v0.7.75",
+    "date": "2026-08-11",
+    "changes": [
+      { "da": "Forsidens energigraf skjuler nu automatisk knapperne Varme og Vand, når de tilhørende sensorer ikke er konfigureret.", "en": "The Overview energy chart now automatically hides the Heat and Water buttons when their corresponding sensors are not configured." },
+      { "da": "El forbliver standardvisningen, og tomme grafindstillinger kan ikke længere vælges.", "en": "Electricity remains the default view, and empty chart configurations can no longer be selected." }
+    ]
+  },
+  {
     "version": "20260811-152",
     "tag": "v0.7.74",
     "date": "2026-08-11",
