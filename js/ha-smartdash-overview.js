@@ -1,4 +1,11 @@
 (function () {
+  // Dynamic strings in interactive cards need an explicit language choice;
+  // the global DOM translator only handles completed static markup. Keep
+  // this local helper aligned with the Calendar and Administration modules.
+  function t(da, en) {
+    return BeastLocalSettings.get("language", "en") === "da" ? da : en;
+  }
+
   let WEATHER_ENTITY_ID = null;
   let POWER_ENTITY_ID = null;
   let PRICE_ENTITY_ID = null;
