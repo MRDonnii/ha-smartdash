@@ -343,6 +343,26 @@
     const visibleGroupCount = stereoGroupInfo(activePlayer.entity_id)?.speakers || new Set([...nativeGroupIds, ...linkedPlayerIds(groupLeaderId)]).size;
     const english = window.HASmartdashI18n?.language === "en";
     const playerCountLabel = `${visibleGroupCount} ${english ? (visibleGroupCount === 1 ? "player" : "players") : (visibleGroupCount === 1 ? "afspiller" : "afspillere")}`;
+    const nativeMemberIds = new Set(nativeGroupIds);
+    const linkedMemberIds = linkedPlayerIds(groupLeaderId);
+    const groupRows = players.map((player) => {
+      const isLeader = player.entity_id === groupLeaderId;
+      const grouped = isLeader || nativeMemberIds.has(player.entity_id) || linkedMemberIds.has(player.entity_id);
+      return `<label class="beast-player-popover-row${isLeader ? " is-leader" : ""}">
+        <input type="checkbox" data-group-player="${escapeHtml(player.entity_id)}" ${grouped ? "checked" : ""} ${isLeader ? "disabled" : ""}>
+        <span><strong>${escapeHtml(player.attributes.friendly_name || player.entity_id)}</strong><small>${isLeader ? (english ? "Group leader" : "Gruppeleder") : (grouped ? (english ? "In group" : "I gruppen") : (english ? "Available" : "TilgÃ¦ngelig"))}</small></span>
+      </label>`;
+    }).join("");
+    const playerRows = players.map((player) => {
+      const selected = player.entity_id === activePlayer.entity_id;
+      const volume = Number.isFinite(Number(player.attributes.volume_level)) ? `${Math.round(Number(player.attributes.volume_level) * 100)}%` : "--";
+      const status = player.state === "playing" ? (english ? "Playing" : "Afspiller") : player.state === "paused" ? (english ? "Paused" : "PÃ¥ pause") : (english ? "Ready" : "Klar");
+      return `<button type="button" class="beast-player-popover-card${selected ? " is-selected" : ""}" data-select-player="${escapeHtml(player.entity_id)}">
+        <span class="beast-player-popover-icon">${BeastCore.icon("music", { size: 19 })}</span>
+        <span><strong>${escapeHtml(player.attributes.friendly_name || player.entity_id)}</strong><small>${status}</small></span>
+        <em>${volume}</em>${selected ? BeastCore.icon("check", { size: 18 }) : ""}
+      </button>`;
+    }).join("");
 
     containerEl.innerHTML = `
       <button type="button" class="beast-page-edit-trigger" id="beastMusicLayoutEdit" aria-label="Rediger musiklayout">⋮</button><div class="beast-music-dashboard">
@@ -384,10 +404,23 @@
                       <button type="button" data-volume-step="5" aria-label="Skru op">+</button>
                     </div>
                   </div>
-                  <button type="button" class="beast-player-output" id="beastPlayerOutputBtn" aria-label="${english ? "Select player" : "Vælg afspiller"}">
-                    <span>${BeastCore.icon("volume", { size: 21 })}</span>
-                    <span><small>${playerCountLabel}</small><strong>${escapeHtml(attrs.friendly_name || activePlayer.entity_id)}</strong></span>
-                  </button>
+                  <div class="beast-player-destinations">
+                    <button type="button" class="beast-player-destination" id="beastPlayerGroupBtn" aria-label="${playerCountLabel}" title="${playerCountLabel}">
+                      ${BeastCore.icon("volume", { size: 20 })}<small>${visibleGroupCount}</small>
+                    </button>
+                    <button type="button" class="beast-player-destination" id="beastPlayerOutputBtn" aria-label="${english ? "Select player" : "Vælg afspiller"}" title="${english ? "Select player" : "Vælg afspiller"}">
+                      ${BeastCore.icon("music", { size: 20 })}
+                    </button>
+                  </div>
+                </div>
+                <div class="beast-player-popover" id="beastGroupPopover" hidden>
+                  <header><strong>${english ? "Devices in group" : "Enheder i gruppen"}</strong><button type="button" data-close-player-popover aria-label="${english ? "Close" : "Luk"}">Ã—</button></header>
+                  <div class="beast-player-popover-list">${groupRows}</div>
+                </div>
+                <div class="beast-player-popover" id="beastPlayerPopover" hidden>
+                  <header><strong>${english ? "Players" : "Afspillere"}</strong><button type="button" data-close-player-popover aria-label="${english ? "Close" : "Luk"}">Ã—</button></header>
+                  <label class="beast-player-popover-search">${BeastCore.icon("search", { size: 17 })}<input type="search" id="beastPlayerPopoverSearch" placeholder="${english ? "Search players" : "SÃ¸g efter afspillere"}"></label>
+                  <div class="beast-player-popover-list" id="beastPlayerPopoverList">${playerRows}</div>
                 </div>
                 <div class="beast-progress-row">
                   <span id="beastProgressElapsed">--:--</span>
@@ -415,6 +448,7 @@
     renderPlayerChips(players, activePlayer);
     renderGroupVolume(players, activePlayer);
     wireSpeakerToggle();
+    wirePlayerPopovers(players, activePlayer);
     wireGroupControls(players, activePlayer);
     updateNowPlayingArt(attrs.entity_picture);
     updateProgressState(activePlayer);
@@ -759,7 +793,6 @@
 
   function wireSpeakerToggle() {
     const toggle = document.getElementById("beastSpeakerToggle");
-    const outputButton = document.getElementById("beastPlayerOutputBtn");
     const drawer = document.getElementById("beastSpeakerDrawer");
     const actions = containerEl.querySelector(".beast-music-group-actions");
     if (!toggle || !drawer) return;
@@ -770,7 +803,48 @@
       actions?.classList.toggle("is-collapsed", !speakerPanelOpen);
     };
     toggle.addEventListener("click", setOpen);
-    outputButton?.addEventListener("click", setOpen);
+  }
+
+  function wirePlayerPopovers(players, activePlayer) {
+    const groupButton = document.getElementById("beastPlayerGroupBtn");
+    const outputButton = document.getElementById("beastPlayerOutputBtn");
+    const groupPopover = document.getElementById("beastGroupPopover");
+    const playerPopover = document.getElementById("beastPlayerPopover");
+    if (!groupButton || !outputButton || !groupPopover || !playerPopover) return;
+
+    const closeAll = () => {
+      groupPopover.hidden = true;
+      playerPopover.hidden = true;
+      groupButton.classList.remove("is-active");
+      outputButton.classList.remove("is-active");
+    };
+    const togglePopover = (popover, button) => {
+      const open = popover.hidden;
+      closeAll();
+      popover.hidden = !open;
+      button.classList.toggle("is-active", open);
+      if (open && popover === playerPopover) document.getElementById("beastPlayerPopoverSearch")?.focus();
+    };
+
+    groupButton.addEventListener("click", (event) => { event.stopPropagation(); togglePopover(groupPopover, groupButton); });
+    outputButton.addEventListener("click", (event) => { event.stopPropagation(); togglePopover(playerPopover, outputButton); });
+    containerEl.querySelectorAll("[data-close-player-popover]").forEach((button) => button.addEventListener("click", closeAll));
+    containerEl.querySelectorAll("[data-select-player]").forEach((button) => button.addEventListener("click", () => selectPlayer(button.dataset.selectPlayer)));
+    containerEl.querySelectorAll("[data-group-player]").forEach((checkbox) => checkbox.addEventListener("change", () => {
+      const player = players.find((item) => item.entity_id === checkbox.dataset.groupPlayer);
+      if (!player || player.entity_id === activePlayer.entity_id) return;
+      checkbox.disabled = true;
+      changeSpeakerGroup(players, activePlayer, player, checkbox.checked, checkbox);
+    }));
+    document.getElementById("beastPlayerPopoverSearch")?.addEventListener("input", (event) => {
+      const query = event.currentTarget.value.trim().toLocaleLowerCase();
+      containerEl.querySelectorAll("[data-select-player]").forEach((button) => {
+        button.hidden = Boolean(query) && !button.textContent.toLocaleLowerCase().includes(query);
+      });
+    });
+    containerEl.querySelector(".beast-now-playing")?.addEventListener("click", (event) => {
+      if (!event.target.closest(".beast-player-popover, .beast-player-destinations")) closeAll();
+    });
   }
 
   function wireGroupControls(players, activePlayer) {
