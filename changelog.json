@@ -1,5 +1,14 @@
 [
   {
+    "version": "20260811-154",
+    "tag": "v0.7.76",
+    "date": "2026-08-11",
+    "changes": [
+      { "da": "Rettet at Energi-siden kunne åbne med sammenpressede og overlappende kort, indtil redigeringstilstanden blev aktiveret.", "en": "Fixed the Energy page opening with compressed and overlapping cards until edit mode was activated." },
+      { "da": "Det adaptive energilayout vurderer nu kun kortene i den aktive fane, så kort fra fanen Nu ikke fejlagtigt behandles som manglende på Overblik og omvendt.", "en": "The adaptive Energy layout now evaluates only cards in the active view, so cards from Now are not incorrectly treated as missing on Overview and vice versa." }
+    ]
+  },
+  {
     "version": "20260811-153",
     "tag": "v0.7.75",
     "date": "2026-08-11",

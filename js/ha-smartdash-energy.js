@@ -313,8 +313,16 @@
     const cards = cardsOverride || energyNativeCards();
     let runtimeCards = cards;
     if (!cardsOverride) {
-      const visible = cards.filter((card) => card.enabled !== false && containerEl.querySelector(selectors[card.kind || card.type || card.id])).map((card) => ({ ...card, desktop:{ ...(card.desktop || {}) } }));
-      if (visible.length < cards.length && visible.length) {
+      // Overview and Now share one persisted card model, but only one set is
+      // rendered at a time. Cards belonging to the inactive view are not
+      // "missing" and must not trigger the adaptive full-width stack.
+      const activeKinds = energyView === "now"
+        ? new Set(["energy-now-summary", "energy-devices"])
+        : new Set(["energy-summary", "energy-recommendation", "energy-price-chart", "energy-usage-chart"]);
+      const activeCards = cards.filter((card) => activeKinds.has(card.kind || card.type || card.id));
+      const visible = activeCards.filter((card) => card.enabled !== false && containerEl.querySelector(selectors[card.kind || card.type || card.id])).map((card) => ({ ...card, desktop:{ ...(card.desktop || {}) } }));
+      runtimeCards = visible;
+      if (visible.length < activeCards.length && visible.length) {
         const baseHeight = Math.max(1, Math.floor(7 / visible.length));
         let nextY = 2;
         visible.forEach((card,index) => {
