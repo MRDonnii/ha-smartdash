@@ -1,5 +1,14 @@
 [
   {
+    "version": "20260811-164",
+    "tag": "v0.7.86",
+    "date": "2026-08-11",
+    "changes": [
+      { "da": "Musikafspillerens betjening har nu separate Music Assistant-inspirerede menuer til valg af aktiv afspiller og styring af gruppens enheder, uden ændringer af cover, titel eller kunstner.", "en": "The Music player controls now have separate Music Assistant-inspired menus for selecting the active player and managing grouped devices, without changing the cover, title, or artist area." },
+      { "da": "Skoleskemaet bruger mindre plads i kortets top og skjuler lokalenummeret, så fag og læreroplysninger får mere plads.", "en": "The school schedule uses less space at the top of the card and hides room numbers, giving subjects and teacher details more room." }
+    ]
+  },
+  {
     "version": "20260811-163",
     "tag": "v0.7.85",
     "date": "2026-08-11",

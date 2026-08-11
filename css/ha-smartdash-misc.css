@@ -3030,6 +3030,9 @@
 
 /* Skema (AULA school schedule) card -- js/ha-smartdash-waste.js */
 .beast-schedule-body { position:relative; z-index:1; display:flex; flex-direction:column; gap:12px; min-height:0; flex:1; overflow:hidden; }
+[data-calendar-section^="schedule-"] .beast-calendar-section-head { min-height:44px; margin-bottom:8px; }
+[data-calendar-section^="schedule-"] .beast-calendar-section-head > span { width:40px; height:40px; border-radius:12px; }
+[data-calendar-section^="schedule-"] .beast-calendar-section-head h2 { font-size:clamp(1.18rem,1.4vw,1.55rem); }
 .beast-schedule-nav { display:flex; align-items:center; justify-content:space-between; gap:10px; }
 .beast-schedule-nav strong { color:var(--ink); font-size:var(--text-sm); text-transform:capitalize; }
 .beast-schedule-nav-btn { width:36px; height:36px; flex:0 0 auto; display:grid; place-items:center; border:1px solid var(--border-strong); border-radius:50%; background:var(--surface-solid); color:var(--ink-muted); }
@@ -3045,10 +3048,9 @@
 .beast-schedule-week-cell { display:flex; min-height:0; flex-direction:column; gap:2px; padding:7px 9px; border-radius:10px; border:1px solid color-mix(in srgb,var(--subject-color) 55%,transparent); background:color-mix(in srgb,var(--subject-color) 80%,var(--surface-solid) 20%); color:#fff; }
 .beast-schedule-week-cell.is-empty { min-height:0; border:1px dashed var(--border); background:transparent; }
 .beast-schedule-week-cell strong { overflow:hidden; font-size:12px; font-weight:800; line-height:1.15; white-space:nowrap; text-overflow:ellipsis; }
-.beast-schedule-week-cell b { align-self:flex-start; padding:1px 5px; border-radius:5px; background:rgba(255,255,255,.2); font-size:9px; font-weight:800; text-transform:uppercase; }
 .beast-schedule-week-cell span { overflow:hidden; color:rgba(255,255,255,.88); font-size:10px; line-height:1.15; white-space:nowrap; text-overflow:ellipsis; }
 .beast-schedule-week-cell span em.is-substitute { color:#ffd76b; font-style:normal; font-weight:700; }
-@media (min-width:1400px) and (min-height:1200px) { .beast-schedule-week-time { font-size:11px; } .beast-schedule-week-cell { padding:9px 11px; } .beast-schedule-week-cell strong { font-size:13px; } .beast-schedule-week-cell span,.beast-schedule-week-cell b { font-size:11px; } }
+@media (min-width:1400px) and (min-height:1200px) { .beast-schedule-week-time { font-size:11px; } .beast-schedule-week-cell { padding:9px 11px; } .beast-schedule-week-cell strong { font-size:13px; } .beast-schedule-week-cell span { font-size:11px; } }
 @media (max-width:1050px) { .beast-waste-panel { grid-template-columns:minmax(280px,4fr) minmax(0,8fr); } .beast-calendar-event { grid-template-columns:90px 4px minmax(0,1fr) auto auto; } }
 @media (max-width:760px) { .beast-waste-panel { grid-template-columns:minmax(0,1fr); overflow:auto; } .beast-waste-section { min-height:520px; } .beast-calendar-section-head > time { display:none; } }
 

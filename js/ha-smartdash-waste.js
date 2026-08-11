@@ -262,7 +262,6 @@
         }).join(" + ");
         return `<div class="beast-schedule-week-cell" style="--subject-color:${scheduleSubjectColor(row.subject)}">
           <strong>${escapeHtml(scheduleSubjectLabel(row.subject) || t("Ukendt fag", "Unknown subject"))}</strong>
-          ${row.location ? `<b>${escapeHtml(row.location)}</b>` : ""}
           ${teacherText ? `<span>${teacherText}</span>` : ""}
         </div>`;
       }).join("");
