@@ -46,6 +46,53 @@ const BeastAuth = (() => {
     return Boolean(oauthConfig && String(oauthConfig.refreshToken || oauthConfig.accessToken || "").trim());
   }
 
+  function proxyErrorMessage(result) {
+    if (result.code === "ha-rejected-proxy") {
+      return "Home Assistant afviste Nginx-proxyen (HTTP 400). Tilføj Nginx-serverens eller container-netværkets IP under http.trusted_proxies i Home Assistant configuration.yaml, aktivér use_x_forwarded_for, og genstart Home Assistant.";
+    }
+    if (result.code === "route-missing") {
+      return `Home Assistant-proxyen /ha/ er ikke aktiv i Nginx (HTTP ${result.status}). Kontrollér at location /ha/ findes i den aktive serverblok.`;
+    }
+    if (result.code === "upstream-unavailable") {
+      return `Nginx kan ikke nå Home Assistant gennem /ha/ (HTTP ${result.status}). Kontrollér Home Assistant-IP, port 8123 og proxy_pass.`;
+    }
+    if (result.code === "invalid-response") {
+      return "Adressen /ha/ returnerer Smartdash/HTML i stedet for Home Assistant. Nginx location /ha/ mangler eller bliver tilsidesat af location /.";
+    }
+    if (result.code === "network-error") {
+      return "Smartdash kunne ikke kontrollere Home Assistant-proxyen. Kontrollér Nginx og netværksforbindelsen til serveren.";
+    }
+    return `Home Assistant-proxyen svarede ikke korrekt${result.status ? ` (HTTP ${result.status})` : ""}.`;
+  }
+
+  async function checkProxy() {
+    let response;
+    try {
+      response = await fetch(`${HA_PROXY_PATH}/auth/providers`, {
+        method: "GET",
+        headers: { Accept: "application/json" },
+        cache: "no-store"
+      });
+    } catch (error) {
+      return { ok: false, code: "network-error", status: 0 };
+    }
+
+    if (response.status === 400) return { ok: false, code: "ha-rejected-proxy", status: response.status };
+    if ([404, 405].includes(response.status)) return { ok: false, code: "route-missing", status: response.status };
+    if ([502, 503, 504].includes(response.status)) return { ok: false, code: "upstream-unavailable", status: response.status };
+    if (!response.ok) return { ok: false, code: "proxy-error", status: response.status };
+
+    const contentType = String(response.headers.get("content-type") || "").toLowerCase();
+    if (!contentType.includes("application/json")) return { ok: false, code: "invalid-response", status: response.status };
+    try {
+      const payload = await response.json();
+      if (!Array.isArray(payload?.providers)) return { ok: false, code: "invalid-response", status: response.status };
+      return { ok: true, code: "ok", status: response.status };
+    } catch (error) {
+      return { ok: false, code: "invalid-response", status: response.status };
+    }
+  }
+
   function buildClientId() {
     return `${window.location.origin}${window.location.pathname}`;
   }
@@ -66,6 +113,17 @@ const BeastAuth = (() => {
     const prompt = options.forceLogin ? "&prompt=login" : "";
     const authorizeUrl = `${baseUrl}/auth/authorize?client_id=${encodeURIComponent(clientId)}&redirect_uri=${encodeURIComponent(redirectUri)}&state=${encodeURIComponent(authState)}&response_type=code${prompt}`;
     window.location.assign(authorizeUrl);
+  }
+
+  async function prepareLogin(options = {}) {
+    const result = await checkProxy();
+    if (!result.ok) {
+      const error = new Error(`HA_PROXY_${result.code.toUpperCase().replace(/-/g, "_")}`);
+      error.userMessage = proxyErrorMessage(result);
+      error.proxyResult = result;
+      throw error;
+    }
+    startLogin(options);
   }
 
   function clearAuthQueryParams() {
@@ -115,7 +173,11 @@ const BeastAuth = (() => {
       saveOAuthConfig(oauthConfig);
       return { type: "success" };
     } catch (error) {
-      return { type: "error", message: "Kunne ikke fuldføre login. Prøv igen." };
+      const status = Number(String(error.message || "").match(/HA_AUTH_(\d+)/)?.[1] || 0);
+      if (status === 400) return { type: "error", message: proxyErrorMessage({ code: "ha-rejected-proxy", status }) };
+      if ([404, 405].includes(status)) return { type: "error", message: proxyErrorMessage({ code: "route-missing", status }) };
+      if ([502, 503, 504].includes(status)) return { type: "error", message: proxyErrorMessage({ code: "upstream-unavailable", status }) };
+      return { type: "error", message: "Kunne ikke fuldføre login. Kontrollér Home Assistant-proxyen /ha/ og prøv igen." };
     }
   }
 
@@ -215,6 +277,8 @@ const BeastAuth = (() => {
     getHaBaseUrl,
     setHaBaseUrl,
     hasSession,
+    checkProxy,
+    prepareLogin,
     startLogin,
     handleAuthCallback,
     refreshAccessToken,

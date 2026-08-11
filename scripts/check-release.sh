@@ -3,6 +3,9 @@ set -eu
 
 ROOT=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
 
+sh -n "$ROOT/deploy/check-install.sh"
+sh -n "$ROOT/deploy/setup-smartdash.sh"
+
 NODE_BIN=${NODE_BIN:-node}
 PHP_BIN=${PHP_BIN:-php}
 
