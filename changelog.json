@@ -1,5 +1,14 @@
 [
   {
+    "version": "20260811-176",
+    "tag": "v0.7.98",
+    "date": "2026-08-11",
+    "changes": [
+      { "da": "Rettet at dashboardet ikke skalerede korrekt ned på tablets med en skærmbredde omkring 1180-1200px (fx iPad Pro 11\"): Energi, Bil, Robotter, Printer, Musik og Skema-siden kunne blive skåret af eller ikke passe til skærmen i liggende format.", "en": "Fixed the dashboard not scaling down correctly on tablets with a screen width around 1180-1200px (e.g. iPad Pro 11\"): Energy, Car, Robots, Printer, Music, and the Schedule page could get cut off or not fit the screen in landscape." },
+      { "da": "Rettet at Musik-siden aldrig kunne scrolle, uanset skærmstørrelse, hvis indholdet var højere end pladsen.", "en": "Fixed the Music page never being able to scroll, regardless of screen size, when its content was taller than the available space." }
+    ]
+  },
+  {
     "version": "20260811-175",
     "tag": "v0.7.97",
     "date": "2026-08-11",

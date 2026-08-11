@@ -929,11 +929,16 @@
 }
 .beast-speaker-drawer.is-open + .beast-now-playing .beast-player-dock + .beast-progress-row { display: none; }
 
-@media (max-width: 1180px) {
+@media (max-width: 1200px) {
   .beast-player-dock { grid-template-columns: auto minmax(0, 1fr); }
   .beast-player-dock .beast-transport-row { grid-column: 1; }
   .beast-player-dock .beast-volume-row { display: none; }
   .beast-player-destinations { grid-column: 2; min-width:156px; }
+  /* The base panel clips overflow to contain its own ::before glow --
+     harmless on the wide reference layout, but a genuine clipping bug on
+     any narrower screen where the dashboard's fixed-width columns don't
+     all fit: content just vanished instead of scrolling. */
+  .beast-music-panel { overflow-y: auto; overflow-x: hidden; }
 }
 
 .beast-music-library-head .beast-music-search-row { width: min(520px, 58%); background: var(--surface-solid); }
@@ -1086,7 +1091,7 @@
   }
   .beast-speaker-drawer.is-open + .beast-now-playing .beast-now-playing-cover { width:168px; height:168px; }
 }
-@media (max-width: 1180px) {
+@media (max-width: 1200px) {
   .beast-music-dashboard .beast-music-tile {
     flex-basis: calc((100% - 36px) / 4);
     width: calc((100% - 36px) / 4);
