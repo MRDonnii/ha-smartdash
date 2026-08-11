@@ -1,5 +1,13 @@
 [
   {
+    "version": "20260811-121",
+    "tag": "v0.7.43",
+    "date": "2026-08-11",
+    "changes": [
+      "The desktop Heating workspace now uses the actual dynamic viewport height, giving its history charts a definite remaining area to fill all the way to the bottom of the screen."
+    ]
+  },
+  {
     "version": "20260811-120",
     "tag": "v0.7.42",
     "date": "2026-08-11",
