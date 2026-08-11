@@ -86,6 +86,8 @@
   let pendingUnlockTimerId = null;
   let dailyForecast = [];
   let hourlyForecast = [];
+  let weatherForecastLoading = false;
+  let weatherForecastLoaded = false;
   let utilityView = "electric";
   let utilityHistory = [];
   let utilityHistoryLoading = false;
@@ -934,11 +936,9 @@
   function overviewCardEditorOnAfterRender(cards) {
     const anchor = zoneEl.querySelector("#beastOvClockMusic");
     zoneEl.querySelector(".beast-ov-camera-header")?.remove();
-    if (cards.some((card) => card.type === "cameras")) {
-      const menuWrap = document.createElement("div");
-      menuWrap.innerHTML = window.overviewCameraMenuMarkup(true);
-      zoneEl.insertBefore(menuWrap.firstElementChild, anchor);
-    }
+    const menuWrap = document.createElement("div");
+    menuWrap.innerHTML = window.overviewCameraMenuMarkup(cards.some((card) => card.type === "cameras"));
+    zoneEl.insertBefore(menuWrap.firstElementChild, anchor);
     renderAll();
     wireOverviewChrome();
   }
@@ -1098,7 +1098,7 @@
               <b>${Number.isFinite(Number(entry.temperature)) ? Math.round(Number(entry.temperature)) + "°" : "–"}</b>
               <small>${Number.isFinite(rain) ? Math.round(rain) + "%" : ""}</small>
             </div>`;
-          }).join("") || `<i>Henter timevejret…</i>`}
+          }).join("") || `<i>${weatherForecastLoading ? "Henter timevejret…" : "Timeprognosen er ikke tilgængelig"}</i>`}
         </div>
         <div class="beast-ov-week-title"><span>Næste 7 dage</span><small>${getSunSummary()}</small></div>
         <div class="beast-ov-week">
@@ -1113,33 +1113,42 @@
               <div><b>${Number.isFinite(Number(entry.temperature)) ? Math.round(Number(entry.temperature)) + "°" : "–"}</b><small>${Number.isFinite(Number(entry.templow)) ? Math.round(Number(entry.templow)) + "°" : "–"}</small></div>
               <em>${Number.isFinite(rain) ? Math.round(rain) + "%" : "–"}</em>
             </div>`;
-          }).join("") || `<span class="beast-ov-week-empty">${dailyForecast.length ? "Ingen gyldige vejrdata" : "Henter ugeudsigten fra Home Assistant…"}</span>`}
+          }).join("") || `<span class="beast-ov-week-empty">${weatherForecastLoading || !weatherForecastLoaded ? "Henter ugeudsigten fra Home Assistant…" : "Ugeprognosen er ikke tilgængelig"}</span>`}
         </div>
       </div>
     `;
   }
 
   async function loadWeatherForecast() {
-    try {
-      const fetchForecast = (type) => BeastAuth.haFetch("/api/services/weather/get_forecasts?return_response", {
+    if (!WEATHER_ENTITY_ID || weatherForecastLoading) return;
+    weatherForecastLoading = true;
+    renderWeather();
+    const fetchForecast = async (type) => {
+      const result = await BeastAuth.haFetch("/api/services/weather/get_forecasts?return_response", {
         method: "POST", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ entity_id: WEATHER_ENTITY_ID, type })
       });
-      const [dailyResult, hourlyResult] = await Promise.all([fetchForecast("daily"), fetchForecast("hourly")]);
-      const extract = (result) => {
-        const response = result?.service_response || result;
-        const entityResult = response?.[WEATHER_ENTITY_ID] || response;
-        return Array.isArray(entityResult?.forecast) ? entityResult.forecast : [];
-      };
-      dailyForecast = extract(dailyResult);
-      hourlyForecast = extract(hourlyResult);
-      renderWeather();
-    } catch (error) {
+      const response = result?.service_response || result;
+      const entityResult = response?.[WEATHER_ENTITY_ID] || response;
+      return Array.isArray(entityResult?.forecast) ? entityResult.forecast : [];
+    };
+    const [hourlyResult, dailyResult] = await Promise.allSettled([
+      fetchForecast("hourly"),
+      fetchForecast("daily")
+    ]);
+    hourlyForecast = hourlyResult.status === "fulfilled" ? hourlyResult.value : [];
+    if (dailyResult.status === "fulfilled") {
+      dailyForecast = dailyResult.value;
+    } else {
       const fallback = BeastHaSocket.getState(WEATHER_ENTITY_ID)?.attributes?.forecast;
       dailyForecast = Array.isArray(fallback) ? fallback : [];
-      BeastCore.log(`Oversigt: kunne ikke hente ugevejr (${error.message}).`);
-      renderWeather();
     }
+    [hourlyResult, dailyResult].forEach((result, index) => {
+      if (result.status === "rejected") BeastCore.log(`Oversigt: kunne ikke hente ${index === 0 ? "timevejr" : "ugevejr"} (${result.reason?.message || "ukendt fejl"}).`);
+    });
+    weatherForecastLoading = false;
+    weatherForecastLoaded = true;
+    renderWeather();
   }
 
   function getSunSummary() {

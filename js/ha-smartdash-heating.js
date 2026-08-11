@@ -58,10 +58,10 @@
           <span class="beast-heating-room-name">${escapeHtml(room.label)}</span>
           <span class="beast-room-badge${on ? " is-active" : ""}">${on ? (heating ? "Varmer" : "Tændt") : "Slukket"}</span>
         </div>
-        <div class="beast-heating-room-reading"><span class="beast-heating-room-current">${current}°</span><i aria-hidden="true">${BeastCore.icon(heating ? "bolt" : "thermometer", { size: 17 })}</i></div>
+        <div class="beast-heating-room-reading"><span><small>Rumtemperatur</small><strong class="beast-heating-room-current">${current}°</strong></span><i aria-hidden="true">${BeastCore.icon(heating ? "bolt" : "thermometer", { size: 19 })}</i></div>
         <div class="beast-stepper">
           <button type="button" class="beast-transport-btn" data-action="heat-down" data-entity="${room.id}" aria-label="Sænk temperaturen i ${escapeHtml(room.label)}">${BeastCore.icon("minus", { size: 16 })}</button>
-          <span class="beast-stepper-value">${target !== null ? `${target}°` : "–"}</span>
+          <span class="beast-stepper-value"><small>Måltemperatur</small><strong>${target !== null ? `${target}°` : "–"}</strong></span>
           <button type="button" class="beast-transport-btn" data-action="heat-up" data-entity="${room.id}" aria-label="Hæv temperaturen i ${escapeHtml(room.label)}">${BeastCore.icon("plus", { size: 16 })}</button>
         </div>
       </div>
@@ -136,6 +136,9 @@
 
   function render() {
     if (!containerEl) return;
+    const heatingLayout = BeastConfig.get("pageLayouts.heating.heatingLayout") || {};
+    containerEl.classList.toggle("is-room-compact", heatingLayout.roomDensity === "compact");
+    containerEl.classList.toggle("is-pump-roomy", heatingLayout.pumpDensity === "roomy");
     const alarm = BeastHaSocket.getState(DISTRICT.alarm);
     const alarmOk = alarm && alarm.state === "OK";
     const automation = BeastHaSocket.getState(AUTOMATION_ID);
@@ -166,7 +169,7 @@
           <button type="button" class="beast-heating-auto${automationOn ? " is-on" : ""}" id="beastHeatingAutoBtn">
             ${BeastCore.icon("bolt", { size: 20 })}<span><small>Automatisk styring</small><strong>${automationOn ? "Aktiv" : "Slået fra"}</strong></span>
           </button>
-          <button type="button" class="beast-page-edit-trigger beast-heating-layout-btn" id="beastHeatingLayoutEdit" aria-label="Rediger varmelayout">⋮</button>
+          <div class="beast-heating-edit-actions"><button type="button" class="beast-heating-display-btn" id="beastHeatingDisplayEdit" aria-label="Rediger kortvisning" title="Kortvisning">${BeastCore.icon("grid", { size: 19 })}</button><button type="button" class="beast-page-edit-trigger beast-heating-layout-btn" id="beastHeatingLayoutEdit" aria-label="Flyt og tilpas varmesiden" title="Flyt og tilpas">⋮</button></div>
         </div>
         <div class="beast-heating-room-grid">${ROOMS.map(buildRoomCard).join("")}</div>
         <div class="beast-heating-pumps-head"><span>Varmepumper</span><small>Temperatur · drift · blæser · retning</small></div>
@@ -245,6 +248,7 @@
       { id:"main", label:"Komfortzoner og varmepumper", selector:".beast-heating-main", titleSelector:".beast-heating-hero h2", enabled:!hidden.has("rooms") || !hidden.has("pumps"), desktop:{x:1,y:1,w:9,h:12} },
       { id:"sidebar", label:"Ventilation og fjernvarme", selector:".beast-heating-sidebar", enabled:!hidden.has("dantherm") || !hidden.has("district"), desktop:{x:10,y:1,w:3,h:12} }
     ] });
+    document.getElementById("beastHeatingDisplayEdit")?.addEventListener("click", () => openHeatingLayout(layout));
   }
 
   function openHeatingLayout(layout) {
@@ -252,13 +256,13 @@
     const hidden = new Set(Array.isArray(layout.hidden) ? layout.hidden : []);
     const items = [["rooms", "Komfortzoner"], ["pumps", "Varmepumper"], ["dantherm", "Dantherm ventilation"], ["district", "Fjernvarme"]];
     const overlay = document.createElement("div"); overlay.id = "beastHeatingLayoutEditor"; overlay.className = "beast-modal-overlay";
-    overlay.innerHTML = `<div class="beast-modal beast-heating-layout-modal"><div class="beast-modal-header"><h3>Rediger varmelayout</h3><button type="button" class="beast-modal-close" data-close>×</button></div><div class="beast-modal-body"><div class="beast-heating-layout-list">${items.map(([id,label]) => `<label><input type="checkbox" data-heating-section="${id}" ${hidden.has(id) ? "" : "checked"}><strong>${label}</strong></label>`).join("")}</div><label class="beast-heating-placement">Placering af fjernvarme<select data-district-placement><option value="sidebar"${layout.districtPlacement === "pumps" ? "" : " selected"}>Højre side</option><option value="pumps"${layout.districtPlacement === "pumps" ? " selected" : ""}>Ved varmepumper</option></select></label><button type="button" class="beast-btn beast-btn-primary" data-save-heating-layout>Gem layout</button></div></div>`;
+    overlay.innerHTML = `<div class="beast-modal beast-heating-layout-modal"><div class="beast-modal-header"><h3>Rediger kortvisning</h3><button type="button" class="beast-modal-close" data-close>×</button></div><div class="beast-modal-body"><div class="beast-heating-layout-list">${items.map(([id,label]) => `<label><input type="checkbox" data-heating-section="${id}" ${hidden.has(id) ? "" : "checked"}><strong>${label}</strong></label>`).join("")}</div><div class="beast-heating-layout-selects"><label>Termostatkort<select data-room-density><option value="spacious"${layout.roomDensity === "compact" ? "" : " selected"}>Store og tydelige</option><option value="compact"${layout.roomDensity === "compact" ? " selected" : ""}>Kompakte</option></select></label><label>Varmepumpekort<select data-pump-density><option value="compact"${layout.pumpDensity === "roomy" ? "" : " selected"}>Kompakte</option><option value="roomy"${layout.pumpDensity === "roomy" ? " selected" : ""}>Rummelige med animation</option></select></label><label>Placering af fjernvarme<select data-district-placement><option value="sidebar"${layout.districtPlacement === "pumps" ? "" : " selected"}>Højre side</option><option value="pumps"${layout.districtPlacement === "pumps" ? " selected" : ""}>Ved varmepumper</option></select></label></div><button type="button" class="beast-btn beast-btn-primary" data-save-heating-layout>Gem kortvisning</button></div></div>`;
     document.body.appendChild(overlay);
     overlay.addEventListener("click", (event) => {
       if (event.target === overlay || event.target.closest("[data-close]")) return overlay.remove();
       if (!event.target.closest("[data-save-heating-layout]")) return;
       const nextHidden = items.filter(([id]) => !overlay.querySelector(`[data-heating-section="${id}"]`).checked).map(([id]) => id);
-      BeastConfig.set("pageLayouts.heating.heatingLayout", { ...layout, hidden: nextHidden, districtPlacement: overlay.querySelector("[data-district-placement]").value }); overlay.remove(); render();
+      BeastConfig.set("pageLayouts.heating.heatingLayout", { ...layout, hidden: nextHidden, roomDensity: overlay.querySelector("[data-room-density]").value, pumpDensity: overlay.querySelector("[data-pump-density]").value, districtPlacement: overlay.querySelector("[data-district-placement]").value }); overlay.remove(); render();
     });
   }
 

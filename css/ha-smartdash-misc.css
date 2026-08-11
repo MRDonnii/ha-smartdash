@@ -2576,7 +2576,7 @@
   grid-template-columns: minmax(0, 3.05fr) minmax(300px, 1fr);
   gap: 14px;
 }
-.beast-heating-main { grid-template-rows: auto 138px auto minmax(0, 1fr); gap: 10px; }
+.beast-heating-main { grid-template-rows:auto minmax(250px,1.35fr) auto minmax(185px,.65fr); gap:10px; }
 .beast-heating-sidebar { gap: 12px; }
 .beast-heating-hero {
   min-height: 72px;
@@ -2586,34 +2586,50 @@
 .beast-heating-hero h2 { font-size: clamp(1.8rem, 2.4vw, 2.6rem); letter-spacing: -.035em; }
 .beast-heating-hero p { font-size: 12px; }
 .beast-heating-auto { min-width: 190px; min-height: 54px; padding: 8px 14px; border-radius: 15px; cursor: pointer; }
+.beast-heating-edit-actions { display:flex; align-items:center; gap:4px; }
+.beast-heating-display-btn { width:42px; height:42px; display:grid; place-items:center; border:1px solid var(--border); border-radius:12px; color:var(--ink-muted); background:var(--surface-solid); }
+.beast-heating-display-btn:hover { color:var(--accent); border-color:var(--accent-border); background:var(--accent-soft); }
 .beast-heating-auto.is-on svg { animation: beast-heating-bolt 2.2s ease-in-out infinite; }
 @keyframes beast-heating-bolt { 0%,100% { transform:scale(1); filter:drop-shadow(0 0 0 transparent); } 50% { transform:scale(1.12); filter:drop-shadow(0 0 7px currentColor); } }
 
 .beast-heating-room-grid {
   min-height: 0;
-  grid-template-columns: repeat(7, minmax(0, 1fr));
-  grid-template-rows: minmax(0, 1fr);
+  grid-template-columns:repeat(4,minmax(0,1fr));
+  grid-template-rows:repeat(2,minmax(0,1fr));
+  grid-auto-rows:minmax(122px,1fr);
   gap: 7px;
 }
 .beast-heating-room-card {
   min-width: 0;
-  padding: 10px;
-  gap: 5px;
+  padding:13px 14px;
+  gap:8px;
   border-radius: 16px;
-  background: linear-gradient(160deg, color-mix(in srgb, var(--surface-2-solid) 94%, white 6%), var(--surface-2-solid)), var(--surface-2);
-  box-shadow: 0 8px 24px rgba(0,0,0,.06);
+  background:radial-gradient(circle at 90% 76%,color-mix(in srgb,var(--accent-energy) 7%,transparent),transparent 32%),linear-gradient(155deg,color-mix(in srgb,var(--surface-2-solid) 92%,white 8%),var(--surface-solid));
+  box-shadow:0 12px 28px rgba(0,0,0,.07);
 }
 .beast-heating-room-card.is-off { opacity: .72; }
 .beast-heating-room-head { gap: 5px; }
-.beast-heating-room-name { min-width: 0; overflow: hidden; font-size: 12px; text-overflow: ellipsis; white-space: nowrap; }
-.beast-heating-room-card .beast-room-badge { flex: 0 0 auto; padding: 3px 6px; font-size: 9px; }
+.beast-heating-room-name { min-width:0; overflow:hidden; font-size:14px; text-overflow:ellipsis; white-space:nowrap; }
+.beast-heating-room-card .beast-room-badge { flex:0 0 auto; padding:4px 8px; font-size:9px; }
 .beast-heating-room-reading { display:flex; align-items:center; justify-content:space-between; gap:6px; color:var(--ink); }
-.beast-heating-room-reading i { width:28px; height:28px; display:grid; place-items:center; border-radius:9px; color:var(--ink-faint); background:var(--surface-solid); }
+.beast-heating-room-reading span small { display:block; margin-bottom:3px; color:var(--ink-faint); font-size:9px; letter-spacing:.04em; text-transform:uppercase; }
+.beast-heating-room-reading i { width:38px; height:38px; display:grid; place-items:center; border-radius:11px; color:var(--ink-faint); background:var(--surface-solid); }
 .beast-heating-room-card.is-heating .beast-heating-room-reading i { color:#ff9f43; background:rgba(255,159,67,.13); animation:beast-heat-breathe 2.4s ease-in-out infinite; }
-.beast-heating-room-current { font-size: clamp(1.5rem, 1.8vw, 2rem); line-height:1; }
-.beast-heating-room-card .beast-stepper { width:100%; display:grid; grid-template-columns:34px minmax(0,1fr) 34px; gap:3px; align-items:center; }
-.beast-heating-room-card .beast-stepper .beast-transport-btn { width:34px; height:34px; min-width:34px; }
+.beast-heating-room-current { display:block; font-size:clamp(1.85rem,2.2vw,2.5rem); line-height:.95; }
+.beast-heating-room-card .beast-stepper { width:100%; display:grid; grid-template-columns:38px minmax(0,1fr) 38px; gap:5px; align-items:center; }
+.beast-heating-room-card .beast-stepper .beast-transport-btn { width:38px; height:38px; min-width:38px; border-radius:10px; }
 .beast-heating-room-card .beast-stepper-value { font-size:12px; text-align:center; }
+.beast-heating-room-card .beast-stepper-value small,.beast-heating-room-card .beast-stepper-value strong { display:block; }
+.beast-heating-room-card .beast-stepper-value small { color:var(--ink-faint); font-size:8px; letter-spacing:.035em; text-transform:uppercase; }
+.beast-heating-room-card .beast-stepper-value strong { margin-top:2px; color:var(--ink); font-size:15px; }
+.beast-heating-panel.is-room-compact .beast-heating-room-grid { grid-template-columns:repeat(7,minmax(0,1fr)); grid-template-rows:minmax(0,1fr); }
+.beast-heating-panel.is-room-compact .beast-heating-room-card { padding:9px; gap:4px; }
+.beast-heating-panel.is-room-compact .beast-heating-room-name { font-size:11px; }
+.beast-heating-panel.is-room-compact .beast-heating-room-reading span small { display:none; }
+.beast-heating-panel.is-room-compact .beast-heating-room-current { font-size:1.65rem; }
+.beast-heating-panel.is-room-compact .beast-heating-room-reading i { width:28px; height:28px; }
+.beast-heating-panel.is-room-compact .beast-heating-room-card .beast-stepper { grid-template-columns:32px minmax(0,1fr) 32px; gap:3px; }
+.beast-heating-panel.is-room-compact .beast-heating-room-card .beast-stepper .beast-transport-btn { width:32px; height:32px; min-width:32px; }
 
 .beast-heating-pumps-head { min-height:24px; padding-inline:2px; }
 .beast-heating-pumps-head span { display:flex; align-items:center; gap:7px; font-size:14px; }
@@ -2690,6 +2706,11 @@
 .beast-heatpump-options { grid-template-columns:repeat(auto-fit,minmax(92px,1fr)); gap:6px; }
 .beast-heatpump-select > span { color:var(--ink-faint); font-size:9px; text-transform:uppercase; letter-spacing:.04em; }
 .beast-heatpump-select select { min-height:38px; border-radius:10px; }
+.beast-heating-panel:not(.is-pump-roomy) .beast-heatpump-card { grid-template-rows:auto auto auto auto; padding:10px; gap:6px; }
+.beast-heating-panel:not(.is-pump-roomy) .beast-heatpump-main-control { grid-template-columns:1fr; }
+.beast-heating-panel:not(.is-pump-roomy) .beast-heatpump-visual { display:none; }
+.beast-heating-panel:not(.is-pump-roomy) .beast-heatpump-temperature { min-height:66px; padding:7px 9px; }
+.beast-heating-panel:not(.is-pump-roomy) .beast-heatpump-options select { min-height:34px; }
 @keyframes beast-heatpump-spin { to { transform:rotate(360deg); } }
 @keyframes beast-heatpump-ring { 0% { transform:scale(.55); opacity:.5; } 75%,100% { transform:scale(1.18); opacity:0; } }
 @container (max-width:330px) { .beast-heatpump-main-control { grid-template-columns:1fr; }.beast-heatpump-visual { display:none; }.beast-heatpump-temperature { grid-template-columns:minmax(72px,.6fr) minmax(150px,1.4fr); }.beast-heatpump-head { grid-template-columns:minmax(0,1fr) auto; }.beast-heatpump-head > i,.beast-heatpump-head > span { display:none; } }
@@ -3082,6 +3103,10 @@
 .beast-heating-layout-list { display: grid; gap: 10px; margin-bottom: 18px; }
 .beast-heating-layout-list label { display: flex; align-items: center; gap: 12px; min-height: 56px; padding: 10px 14px; border: 1px solid var(--border); border-radius: var(--radius-md); background: var(--surface-2); }
 .beast-heating-layout-list input { width: 24px; height: 24px; accent-color: var(--accent); }
+.beast-heating-layout-selects { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:10px; margin:0 0 18px; }
+.beast-heating-layout-selects label { min-width:0; display:grid; gap:7px; color:var(--ink-muted); font-size:11px; font-weight:750; }
+.beast-heating-layout-selects select { width:100%; min-height:44px; padding:0 10px; border:1px solid var(--border); border-radius:11px; color:var(--ink); background:var(--surface-solid); }
+@media (max-width:680px) { .beast-heating-layout-selects { grid-template-columns:1fr; } }
 .beast-pool-panel .is-layout-hidden { display: none !important; }
 .beast-pool-layout-btn { width: 44px; height: 44px; border: 0; background: transparent; color: var(--ink-muted); font-size: 28px; }
 .beast-pool-layout-modal { width: min(760px, calc(100vw - 28px)); max-width:760px; }

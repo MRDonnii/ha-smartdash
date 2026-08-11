@@ -804,9 +804,8 @@ function renderOverviewSection() {
 // in the same screen corner regardless of where the cameras card is placed
 // or resized, and the picture underneath can use the card's full space.
 function overviewCameraMenuMarkup(hasCameras) {
-  if (!hasCameras) return "";
   return `<div class="beast-ov-camera-actions" hidden>
-      <button type="button" id="beastOvCameraPicker">Vælg kameraer</button>
+      ${hasCameras ? `<button type="button" id="beastOvCameraPicker">Vælg kameraer</button>` : ""}
       <button type="button" id="beastOvEdit">Rediger forsiden</button>
       <button type="button" id="beastOvStartScreensaver">Start pauseskærm</button>
     </div>`;
