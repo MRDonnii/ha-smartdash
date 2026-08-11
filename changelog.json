@@ -1,5 +1,13 @@
 [
   {
+    "version": "20260811-177",
+    "tag": "v0.7.99",
+    "date": "2026-08-11",
+    "changes": [
+      { "da": "Rettet tilbage: siderne på tablets i det 1180-1200px-brede interval beholder nu igen den samme kortopstilling som på en stor skærm, i stedet for at blive lagt om til én smal kolonne. Den forrige rettelse ændrede designet i stedet for bare at skalere det ned, hvilket ikke var meningen.", "en": "Reverted: pages on tablets in the 1180-1200px-wide range now again keep the same card layout as on a large screen, instead of being reflowed into a single narrow column. The previous fix changed the design instead of just scaling it down, which was not the intent." }
+    ]
+  },
+  {
     "version": "20260811-176",
     "tag": "v0.7.98",
     "date": "2026-08-11",
