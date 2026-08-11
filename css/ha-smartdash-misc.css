@@ -3361,3 +3361,18 @@
   .beast-native-layout-card { grid-column: 1 !important; grid-row: auto !important; min-height: calc(var(--native-h) * 54px); }
   .beast-native-settings-list article > div { grid-template-columns: repeat(2,minmax(0,1fr)); }
 }
+
+/* Heating's three cockpit columns are also native-editor cards. The shared
+   editor intentionally gives ordinary cards height:auto, but these columns
+   must stretch to their complete 12-row grid area for the equal thermostat
+   flex distribution to have a definite height. Keep this after the shared
+   native-card rule so the specialised full-height contract wins. */
+@media (min-width:1181px) {
+  .beast-heating-panel > .beast-heating-main.beast-native-layout-card,
+  .beast-heating-panel > .beast-heating-sidebar.beast-native-layout-card,
+  .beast-heating-panel > .beast-heating-insights.beast-native-layout-card {
+    height:100% !important;
+    min-height:0 !important;
+    align-self:stretch;
+  }
+}
