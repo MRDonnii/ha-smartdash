@@ -70,9 +70,10 @@
     PRINTER_BANNER_CAMERA_ID = bannerSettings.printerCameraOverride || null;
     UTILITY_VIEWS = {
       electric: { label: "El", current: energy.powerSensor, today: energy.totalEnergySensor, history: energy.powerSensor, mode: "average", unit: "W", todayUnit: "kWh" },
-      heat: { label: "Varme", current: energy.heatPowerSensor, today: energy.heatEnergySensor, history: energy.heatEnergySensor, mode: "delta", unit: "kW", todayUnit: "kWh" },
-      water: { label: "Vand", current: energy.waterUsageSensor, today: energy.waterFlowSensor, history: energy.waterUsageSensor, mode: "delta", unit: "m³", todayUnit: "L/h" }
+      ...(energy.showHeatOnOverview !== false ? { heat: { label: "Varme", current: energy.heatPowerSensor, today: energy.heatEnergySensor, history: energy.heatEnergySensor, mode: "delta", unit: "kW", todayUnit: "kWh" } } : {}),
+      ...(energy.showWaterOnOverview !== false ? { water: { label: "Vand", current: energy.waterUsageSensor, today: energy.waterFlowSensor, history: energy.waterUsageSensor, mode: "delta", unit: "m³", todayUnit: "L/h" } } : {})
     };
+    if (!UTILITY_VIEWS[utilityView]) utilityView = "electric";
   }
 
   let zoneEl = null;
@@ -1917,17 +1918,28 @@
         const fanModes = Array.isArray(attributes.fan_modes) ? attributes.fan_modes : [];
         const presetModes = Array.isArray(attributes.preset_modes) ? attributes.preset_modes : [];
         const swingModes = Array.isArray(attributes.swing_modes) ? attributes.swing_modes : [];
-        const modeLabels = { off:"Slukket", heat:"Varme", heating:"Varmer", cool:"Køl", cooling:"Køler", heat_cool:"Auto", auto:"Auto", dry:"Affugt", drying:"Affugter", fan_only:"Blæser", fan:"Blæser", idle:"Klar" };
-        const modeLabel = (option) => modeLabels[String(option || "").toLowerCase()] || String(option || "").replaceAll("_", " ");
+        const modeLabels = {
+          off:t("Slukket", "Off"), heat:t("Varme", "Heat"), heating:t("Varmer", "Heating"),
+          cool:t("Køl", "Cool"), cooling:t("Køler", "Cooling"), heat_cool:"Auto", auto:"Auto",
+          dry:t("Affugt", "Dry"), drying:t("Affugter", "Drying"), fan_only:t("Blæser", "Fan"),
+          fan:t("Blæser", "Fan"), idle:t("Klar", "Ready"), none:t("Ingen", "None"),
+          low:t("Lav", "Low"), medium_low:t("Mellem-lav", "Medium low"), medium:t("Mellem", "Medium"),
+          medium_high:t("Mellem-høj", "Medium high"), high:t("Høj", "High"), quiet:t("Stille", "Quiet"),
+          turbo:"Turbo", manual:t("Manuel", "Manual"), full_swing:t("Fuld bevægelse", "Full swing")
+        };
+        const modeLabel = (option) => {
+          const key = String(option || "").toLowerCase().replaceAll("-", "_").replaceAll(" ", "_");
+          return modeLabels[key] || String(option || "").replaceAll("_", " ").replaceAll("-", " ");
+        };
         const action = String(attributes.hvac_action || state.state || "off").toLowerCase();
         const activeMode = String(state.state || "off").toLowerCase();
         const visualMode = action.includes("heat") ? "heating" : action.includes("cool") ? "cooling" : action.includes("fan") ? "fan" : action === "off" ? "off" : "idle";
         const select = (kind, title, options, selected) => options.length ? `<label><span>${title}</span><select data-heatpump-select="${kind}">${options.map((option) => `<option value="${escapeHtml(option)}"${option === selected ? " selected" : ""}>${escapeHtml(modeLabel(option))}</option>`).join("")}</select></label>` : "";
         host.innerHTML = `<div class="beast-ov-heatpump is-${visualMode}" data-heatpump-entity="${escapeHtml(definition.entity)}">
-          <div class="beast-ov-heatpump-head"><span>${BeastCore.icon(visualMode === "heating" ? "bolt" : visualMode === "cooling" ? "droplet" : "wind", { size:22 })}</span><div><small>${escapeHtml(label)}</small><strong>${escapeHtml(attributes.friendly_name || definition.label)}</strong></div><div class="beast-ov-heatpump-state"><i></i><b>${escapeHtml(modeLabel(action))}</b></div><button type="button" data-heatpump-power aria-label="${activeMode === "off" ? "Tænd varmepumpe" : "Sluk varmepumpe"}" class="${activeMode === "off" ? "" : "is-on"}">${BeastCore.icon("power", { size:18 })}</button></div>
-          <div class="beast-ov-heatpump-main"><div class="beast-ov-heatpump-reading"><span><small>Rum</small><strong>${escapeHtml(value)}</strong></span><div class="beast-ov-heatpump-target"><button type="button" data-heatpump-temperature="down" aria-label="Sænk måltemperatur">${BeastCore.icon("minus", { size:17 })}</button><span><small>Mål</small><strong>${Number.isFinite(target) ? `${target.toFixed(1)}°` : "–"}</strong></span><button type="button" data-heatpump-temperature="up" aria-label="Hæv måltemperatur">${BeastCore.icon("plus", { size:17 })}</button></div></div><div class="beast-ov-heatpump-visual" aria-hidden="true"><span>${BeastCore.icon("fan", { size:34 })}</span><i></i><i></i><i></i></div></div>
+          <div class="beast-ov-heatpump-head"><span>${BeastCore.icon(visualMode === "heating" ? "bolt" : visualMode === "cooling" ? "droplet" : "wind", { size:22 })}</span><div><small>${escapeHtml(label)}</small><strong>${escapeHtml(attributes.friendly_name || definition.label)}</strong></div><div class="beast-ov-heatpump-state"><i></i><b>${escapeHtml(modeLabel(action))}</b></div><button type="button" data-heatpump-power aria-label="${activeMode === "off" ? t("Tænd varmepumpe", "Turn on heat pump") : t("Sluk varmepumpe", "Turn off heat pump")}" class="${activeMode === "off" ? "" : "is-on"}">${BeastCore.icon("power", { size:18 })}</button></div>
+          <div class="beast-ov-heatpump-main"><div class="beast-ov-heatpump-reading"><span><small>${t("Rumtemperatur", "Room temperature")}</small><strong>${escapeHtml(value)}</strong></span><div class="beast-ov-heatpump-target"><button type="button" data-heatpump-temperature="down" aria-label="${t("Sænk måltemperatur", "Lower target temperature")}">${BeastCore.icon("minus", { size:19 })}</button><span><small>${t("Måltemperatur", "Target temperature")}</small><strong>${Number.isFinite(target) ? `${target.toFixed(1)}°` : "–"}</strong></span><button type="button" data-heatpump-temperature="up" aria-label="${t("Hæv måltemperatur", "Raise target temperature")}">${BeastCore.icon("plus", { size:19 })}</button></div></div><div class="beast-ov-heatpump-visual" aria-hidden="true"><span>${BeastCore.icon("fan", { size:34 })}</span><i></i><i></i><i></i></div></div>
           ${modes.length ? `<div class="beast-ov-heatpump-modes">${modes.map((mode) => `<button type="button" data-heatpump-mode="${escapeHtml(mode)}" class="${activeMode === String(mode).toLowerCase() ? "is-active" : ""}">${escapeHtml(modeLabel(mode))}</button>`).join("")}</div>` : ""}
-          <div class="beast-ov-heatpump-options">${select("fan_mode", "Blæser", fanModes, attributes.fan_mode)}${select("preset_mode", "Program", presetModes, attributes.preset_mode)}${select("swing_mode", "Retning", swingModes, attributes.swing_mode)}</div>
+          <div class="beast-ov-heatpump-options">${select("fan_mode", t("Blæser", "Fan"), fanModes, attributes.fan_mode)}${select("preset_mode", t("Program", "Preset"), presetModes, attributes.preset_mode)}${select("swing_mode", t("Retning", "Direction"), swingModes, attributes.swing_mode)}</div>
         </div>`;
         host.querySelectorAll("button,select").forEach((control) => control.addEventListener("click", (event) => event.stopPropagation()));
         host.querySelector("[data-heatpump-power]")?.addEventListener("click", () => {

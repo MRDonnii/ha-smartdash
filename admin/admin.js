@@ -140,8 +140,10 @@
       { key: "nowUnmeasuredSensor", label: "\"Nu\" · umålt forbrug (valgfri)", type: "single", domain: "sensor", hints: ["umalt", "unmeasured"] },
       { key: "heatPowerSensor", label: "Varmeeffekt til forsiden (valgfri)", type: "single", domain: "sensor" },
       { key: "heatEnergySensor", label: "Varmeenergi i dag (valgfri)", type: "single", domain: "sensor" },
+      { key: "showHeatOnOverview", label: "Vis Varme-graf på forsiden", type: "boolean" },
       { key: "waterUsageSensor", label: "Vandforbrug i dag (valgfri)", type: "single", domain: "sensor" },
       { key: "waterFlowSensor", label: "Vandflow nu (valgfri)", type: "single", domain: "sensor" },
+      { key: "showWaterOnOverview", label: "Vis Vand-graf på forsiden", type: "boolean" },
       { key: "nowGroups", label: "\"Nu\"-visning · grupper pr. el-kreds", type: "groups" }
     ]}
   ];
@@ -1176,7 +1178,7 @@
     return String(left || "").localeCompare(String(right || ""), undefined, { numeric: true });
   }
 
-  async function loadUpdatesSettings() {
+  async function loadUpdatesSettings(forceGithubRefresh = false) {
     const tile = document.getElementById("adminCurrentVersionTile");
     const changelogEl = document.getElementById("adminChangelogList");
     const installLatestEl = document.getElementById("adminInstallLatest");
@@ -1188,7 +1190,7 @@
       const [versionsRes, changelogRes, githubRes] = await Promise.all([
         fetch("/api/versions.php", { cache: "no-store" }),
         fetch(`/changelog.json?_=${Date.now()}`, { cache: "no-store" }),
-        fetch("/api/update.php", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "check" }) }).catch(() => null)
+        fetch("/api/update.php", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "check", force: Boolean(forceGithubRefresh) }) }).catch(() => null)
       ]);
       if (!versionsRes.ok) throw new Error(`HTTP ${versionsRes.status}`);
       const versionsPayload = await versionsRes.json();
@@ -1747,8 +1749,8 @@
       overviewVisualPreviewTimerId = window.setInterval(updateVisualOverviewPreviewLiveBits, 1000);
     }
     document.querySelector("[data-reload-backups]")?.addEventListener("click", loadBackupSettings);
-    document.querySelector("[data-reload-versions]")?.addEventListener("click", loadUpdatesSettings);
-    document.querySelector("[data-check-updates]")?.addEventListener("click", loadUpdatesSettings);
+    document.querySelector("[data-reload-versions]")?.addEventListener("click", () => loadUpdatesSettings(true));
+    document.querySelector("[data-check-updates]")?.addEventListener("click", () => loadUpdatesSettings(true));
     document.getElementById("adminUpdateSkipNote")?.addEventListener("click", async (event) => {
       if (!event.target.closest("#adminClearUpdateSkip")) return;
       await fetch("/api/update.php", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "clearSkip" }) }).catch(() => {});
