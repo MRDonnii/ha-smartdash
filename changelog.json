@@ -1,5 +1,13 @@
 [
   {
+    "version": "20260811-173",
+    "tag": "v0.7.95",
+    "date": "2026-08-11",
+    "changes": [
+      { "da": "Teksten på Rediger-knappen har fået korrekt linjehøjde og bundplads, så bogstaver med underlængde ikke længere bliver beskåret.", "en": "The Edit button label now has the correct line height and bottom spacing, preventing letters with descenders from being clipped." }
+    ]
+  },
+  {
     "version": "20260811-172",
     "tag": "v0.7.94",
     "date": "2026-08-11",

@@ -211,7 +211,7 @@ body::after {
 .beast-rail-page-edit:hover { border-color: color-mix(in srgb, var(--accent-a) 58%, var(--border)); background: color-mix(in srgb, var(--accent-a) 16%, var(--panel)); }
 .beast-rail-page-edit:active { transform: scale(.97); }
 .beast-rail-page-edit-icon { width: 30px; height: 30px; display: grid; place-items: center; justify-self: center; border-radius: 9px; color: #fff; background: linear-gradient(135deg, var(--accent-a), var(--accent-b)); box-shadow: 0 5px 13px color-mix(in srgb, var(--accent-a) 28%, transparent); }
-.beast-rail-page-edit-label { width: 100%; min-width: 0; overflow: hidden; white-space: nowrap; text-align: center; }
+.beast-rail-page-edit-label { width: 100%; min-width: 0; overflow: hidden; padding-bottom: 1px; line-height: 1.25; white-space: nowrap; text-align: center; }
 
 .beast-rail-btn,
 a.beast-rail-btn,
