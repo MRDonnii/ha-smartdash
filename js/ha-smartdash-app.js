@@ -867,7 +867,7 @@ function renderAppShell(root) {
     </button>
   `).join("");
   const adminItem = visibleRailItems.find((item) => item.id === "settings");
-  const adminRailHtml = adminItem ? `<a href="/admin/" class="beast-rail-btn beast-rail-admin">${BeastCore.icon(adminItem.icon, { size: 24 })}<span>${adminItem.label}</span></a>` : "";
+  const adminRailHtml = adminItem ? `<a href="/admin/" class="beast-rail-btn beast-rail-admin">${BeastCore.icon(adminItem.icon, { size: 24 })}<span class="beast-rail-admin-label"><span class="beast-rail-admin-label-full">${adminItem.label}</span><span class="beast-rail-admin-label-short">Admin</span></span></a>` : "";
 
   const sectionsHtml = visibleRailItems.filter((item) => item.id !== "settings").map((item) => `
     <div class="beast-section" data-section="${item.id}">
