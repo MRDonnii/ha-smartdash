@@ -102,6 +102,31 @@ function snapshotVersion($root, $snapshotsDir, $versionedPaths, $version) {
   return true;
 }
 
+function removeSnapshotTree($path) {
+  if (!file_exists($path)) return;
+  if (is_dir($path) && !is_link($path)) {
+    foreach (scandir($path) as $item) {
+      if ($item === "." || $item === "..") continue;
+      removeSnapshotTree($path . "/" . $item);
+    }
+    @rmdir($path);
+  } else {
+    @unlink($path);
+  }
+}
+
+function pruneSnapshots($snapshotsDir, $keepCount, $protectedVersions = []) {
+  $entries = [];
+  foreach (scandir($snapshotsDir) as $name) {
+    if ($name === "." || $name === ".." || !isSafeVersion($name) || !is_dir($snapshotsDir . "/" . $name)) continue;
+    $entries[] = $name;
+  }
+  usort($entries, function ($a, $b) { return compareBuildIds($b, $a); });
+  $keep = array_fill_keys(array_slice($entries, 0, max(1, (int) $keepCount)), true);
+  foreach ($protectedVersions as $version) if (isSafeVersion($version)) $keep[$version] = true;
+  foreach ($entries as $name) if (!isset($keep[$name])) removeSnapshotTree($snapshotsDir . "/" . $name);
+}
+
 function listSnapshots($snapshotsDir, $changelog) {
   $changelogByVersion = [];
   foreach ($changelog as $entry) {
@@ -130,6 +155,7 @@ $current = currentBuildId($root);
 $method = $_SERVER["REQUEST_METHOD"];
 
 if ($method === "GET") {
+  pruneSnapshots($snapshotsDir, 25, [$current]);
   echo json_encode([
     "currentVersion" => $current,
     "currentTag" => releaseTag($root . "/beast.html"),
@@ -147,6 +173,7 @@ $action = $body["action"] ?? "";
 
 if ($action === "snapshot") {
   $ok = snapshotVersion($root, $snapshotsDir, $versionedPaths, $current);
+  pruneSnapshots($snapshotsDir, 25, [$current]);
   echo json_encode(["success" => $ok, "version" => $current]);
   exit;
 }
