@@ -451,8 +451,8 @@
         const id = `schedule-${scheduleCardSlug(entityId)}`;
         return { id, label: `${t("Skema", "Schedule")} · ${scheduleCardLabel(entityId)}`, selector: `[data-calendar-section="${id}"]`, titleSelector: "h2", enabled: !hidden.has(id), desktop: { x: 1, y: 1 + index * 12, w: 8, h: 12 } };
       }),
-      { id:"waste", label:t("Affald og afhentning", "Waste and collections"), selector:'[data-calendar-section="waste"]', titleSelector:"h2", enabled:!hidden.has("waste"), desktop:{x:9,y:13,w:4,h:6}, options:{rows:cardRows("waste",3)}, controls:[{key:"rows",label:t("Antal viste rækker", "Visible rows"),min:1,max:30,default:3}] },
-      { id:"events", label:t("Kommende kalenderaftaler", "Upcoming calendar events"), selector:'[data-calendar-section="events"]', titleSelector:"h2", enabled:!hidden.has("events"), desktop:{x:9,y:1,w:4,h:12}, options:{rows:cardRows("events",12)}, controls:[{key:"rows",label:t("Antal viste rækker", "Visible rows"),min:1,max:30,default:12}] }
+      { id:"waste", label:t("Affald og afhentning", "Waste and collections"), selector:'[data-calendar-section="waste"]', titleSelector:"h2", available:()=>wasteSensorIds().length > 0, enabled:!hidden.has("waste"), desktop:{x:9,y:13,w:4,h:6}, options:{rows:cardRows("waste",3)}, controls:[{key:"rows",label:t("Antal viste rækker", "Visible rows"),min:1,max:30,default:3}] },
+      { id:"events", label:t("Kommende kalenderaftaler", "Upcoming calendar events"), selector:'[data-calendar-section="events"]', titleSelector:"h2", available:()=>calendarEntityIds().length > 0, enabled:!hidden.has("events"), desktop:{x:9,y:1,w:4,h:12}, options:{rows:cardRows("events",12)}, controls:[{key:"rows",label:t("Antal viste rækker", "Visible rows"),min:1,max:30,default:12}] }
     ], onSave:()=>render() });
   }
 

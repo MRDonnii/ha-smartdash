@@ -310,8 +310,21 @@
     };
     containerEl.querySelectorAll(":scope > .beast-energy-native-clone").forEach((element) => element.remove());
     containerEl.classList.add("has-native-layout");
+    const cards = cardsOverride || energyNativeCards();
+    let runtimeCards = cards;
+    if (!cardsOverride) {
+      const visible = cards.filter((card) => card.enabled !== false && containerEl.querySelector(selectors[card.kind || card.type || card.id])).map((card) => ({ ...card, desktop:{ ...(card.desktop || {}) } }));
+      if (visible.length < cards.length && visible.length) {
+        const columns = visible.length === 1 ? 1 : (visible.length <= 3 ? visible.length : 2);
+        const width = 12 / columns;
+        const rows = Math.ceil(visible.length / columns);
+        const height = Math.max(2, Math.floor(7 / rows));
+        visible.forEach((card,index) => { card.desktop = { ...card.desktop, x:(index % columns) * width + 1, y:2 + Math.floor(index / columns) * height, w:width, h:height }; });
+        runtimeCards = visible;
+      }
+    }
     const usedKinds = new Set();
-    (cardsOverride || energyNativeCards()).forEach((card, index) => {
+    cards.forEach((card, index) => {
       const kind = card.kind || card.type || card.id;
       const source = containerEl.querySelector(selectors[kind]);
       let element = source;
@@ -322,16 +335,18 @@
         containerEl.appendChild(element);
       }
       if (!element) return;
+      const runtimeCard = runtimeCards.find((item) => item.id === card.id);
+      const desktop = runtimeCard?.desktop || card.desktop;
       usedKinds.add(kind);
       element.classList.add("beast-energy-native-card");
       element.dataset.energyNativeCard = card.id;
       element.dataset.energyNativeKind = kind;
       element.style.setProperty("--energy-native-order", String(index));
-      element.style.setProperty("--energy-native-w", String(Math.max(1, Math.min(12, Number(card.desktop?.w) || 12))));
-      element.style.setProperty("--energy-native-h", String(Math.max(1, Math.min(8, Number(card.desktop?.h) || 1))));
-      element.style.setProperty("--energy-native-x", String(Math.max(1, Math.min(12, Number(card.desktop?.x) || 1))));
-      element.style.setProperty("--energy-native-y", String(Math.max(2, Number(card.desktop?.y) || 2)));
-      element.classList.toggle("is-layout-hidden", card.enabled === false);
+      element.style.setProperty("--energy-native-w", String(Math.max(1, Math.min(12, Number(desktop?.w) || 12))));
+      element.style.setProperty("--energy-native-h", String(Math.max(1, Math.min(8, Number(desktop?.h) || 1))));
+      element.style.setProperty("--energy-native-x", String(Math.max(1, Math.min(12, Number(desktop?.x) || 1))));
+      element.style.setProperty("--energy-native-y", String(Math.max(2, Number(desktop?.y) || 2)));
+      element.classList.toggle("is-layout-hidden", !runtimeCard);
       const title = element.querySelector(".beast-panel-title"); if (title && card.label) title.textContent = card.label;
     });
   }
