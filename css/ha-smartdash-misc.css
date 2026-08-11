@@ -2743,6 +2743,54 @@
   .beast-heating-panel * { animation:none !important; }
 }
 
+/* Heating workspace: consumption and comfort on the main canvas; all
+   mechanical systems (heat pumps, Dantherm and district heating) share the
+   right operations column. */
+.beast-heating-panel { grid-template-columns:minmax(0,2fr) minmax(360px,.92fr); overflow-y:auto; align-items:start; }
+.beast-heating-main { min-height:100%; display:grid; grid-template-rows:auto auto auto; align-content:start; gap:10px; }
+.beast-heating-sidebar { min-height:100%; overflow:visible; }
+.beast-heating-sidebar .beast-heatpump-grid { height:auto; grid-template-columns:minmax(0,1fr); grid-auto-rows:auto; }
+.beast-heating-sidebar .beast-heatpump-card { height:auto; min-height:0; }
+.beast-heating-sidebar .beast-heating-pumps-head { padding:2px 4px; }
+.beast-heating-analytics { padding:14px; border:1px solid var(--border); border-radius:20px; background:linear-gradient(150deg,color-mix(in srgb,var(--surface-2-solid) 94%,white 6%),var(--surface-solid)); box-shadow:0 16px 38px rgba(0,0,0,.08); }
+.beast-heating-analytics-head { display:flex; align-items:center; justify-content:space-between; gap:14px; margin-bottom:10px; }
+.beast-heating-analytics-head small,.beast-heating-analytics-head strong { display:block; }
+.beast-heating-analytics-head small { color:var(--accent-energy); font-size:9px; font-weight:800; letter-spacing:.1em; text-transform:uppercase; }
+.beast-heating-analytics-head strong { margin-top:2px; font-size:17px; }
+.beast-heating-analytics-head > span { display:flex; align-items:center; gap:6px; color:var(--ink-muted); font-size:10px; }
+.beast-heating-kpis { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:8px; }
+.beast-heating-kpis article { min-width:0; padding:10px 11px; border:1px solid var(--border); border-radius:14px; background:color-mix(in srgb,var(--surface-solid) 82%,transparent); }
+.beast-heating-kpis small,.beast-heating-kpis span { display:block; overflow:hidden; color:var(--ink-faint); font-size:9px; text-overflow:ellipsis; white-space:nowrap; }
+.beast-heating-kpis strong { display:block; margin:5px 0 3px; font-size:clamp(1.25rem,2vw,1.75rem); line-height:1; }
+.beast-heating-kpis strong em { margin-left:4px; color:var(--ink-muted); font-size:10px; font-style:normal; }
+.beast-heating-chart-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:8px; margin-top:8px; }
+.beast-heating-chart { min-width:0; padding:9px 10px 5px; overflow:hidden; border:1px solid var(--border); border-radius:14px; background:rgba(0,0,0,.08); }
+.beast-heating-chart > div { display:flex; justify-content:space-between; gap:8px; font-size:10px; font-weight:750; }
+.beast-heating-chart > div small { color:var(--ink-faint); font-weight:600; }
+.beast-heating-chart svg { width:100%; height:82px; margin-top:4px; overflow:visible; }
+.beast-heating-chart path.line { fill:none; stroke:var(--chart-color); stroke-width:3; vector-effect:non-scaling-stroke; filter:drop-shadow(0 0 5px var(--chart-color)); }
+.beast-heating-chart path.area { fill:color-mix(in srgb,var(--chart-color) 18%,transparent); stroke:none; }
+.beast-heating-chart.is-heat { --chart-color:#ffad47; }.beast-heating-chart.is-air { --chart-color:#42c8ff; }
+.beast-heating-main .beast-heating-room-grid { min-height:0; grid-template-rows:repeat(2,minmax(112px,auto)); grid-auto-rows:minmax(112px,auto); gap:7px; }
+.beast-heating-main .beast-heating-room-card { min-height:112px; padding:9px 11px; gap:5px; }
+.beast-heating-main .beast-heating-room-current { font-size:clamp(1.55rem,1.8vw,2rem); }
+.beast-heating-main .beast-heating-room-reading i { width:32px; height:32px; }
+.beast-heating-main .beast-heating-room-card .beast-stepper { grid-template-columns:34px minmax(0,1fr) 34px; }
+.beast-heating-main .beast-heating-room-card .beast-stepper .beast-transport-btn { width:34px; height:34px; min-width:34px; }
+
+@media (max-width:1180px) {
+  .beast-heating-panel { grid-template-columns:minmax(0,1fr) !important; overflow-y:auto !important; }
+  .beast-heating-sidebar { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); }
+  .beast-heating-sidebar .beast-heating-pumps-head { grid-column:1/-1; }
+  .beast-heating-sidebar .beast-heatpump-grid { grid-template-columns:repeat(2,minmax(0,1fr)); grid-column:1/-1; }
+}
+@media (max-width:720px) {
+  .beast-heating-kpis,.beast-heating-chart-grid,.beast-heating-sidebar,.beast-heating-sidebar .beast-heatpump-grid { grid-template-columns:minmax(0,1fr); }
+  .beast-heating-kpis { grid-template-columns:repeat(2,minmax(0,1fr)); }
+  .beast-heating-sidebar .beast-heating-pumps-head,.beast-heating-sidebar .beast-heatpump-grid { grid-column:auto; }
+  .beast-heating-analytics-head { align-items:flex-start; flex-direction:column; }
+}
+
 /* Full-screen compositions for secondary control views */
 .beast-waste-panel {
   display: grid;

@@ -81,6 +81,9 @@
       { key: "rooms", label: "Rumtermostater", type: "multi", domain: "climate" },
       { key: "heatPumps", label: "Varmepumper", type: "multi", domain: "climate" },
       { key: "automation", label: "Automatisk varmestyring", type: "single", domain: "input_boolean", hints: ["varme", "heat", "calefa"], filterHints: true },
+      { key: "heatPowerSensor", label: "Aktuel varmeeffekt", type: "single", domain: "sensor", hints: ["varme", "heat", "power", "effekt", "kamstrup"], filterHints: true },
+      { key: "heatEnergyTodaySensor", label: "Varmeforbrug i dag", type: "single", domain: "sensor", hints: ["varme", "heat", "energy", "energi", "today", "dag"], filterHints: true },
+      { key: "heatEnergyMonthSensor", label: "Varmeforbrug denne måned", type: "single", domain: "sensor", hints: ["varme", "heat", "energy", "energi", "month", "måned"], filterHints: true },
       { key: "districtSensors", label: "Fjernvarme-sensorer", type: "multi", domain: "sensor", hints: ["kamstrup", "multical"], filterHints: true },
       { key: "districtPlacement", label: "Placering af fjernvarme", type: "select", choices: [["sidebar", "Højre side"], ["pumps", "Ved varmepumper"]] },
       { key: "ventilationSensors", label: "Dantherm-sensorer", type: "multi", domain: "sensor", hints: ["dantherm", "hch5"], filterHints: true }
