@@ -453,13 +453,13 @@
       return `<select id="${fieldId(panel.id, field.key)}">${(field.choices || []).map(([value, label]) => `<option value="${escapeHtml(value)}"${selected === value ? " selected" : ""}>${escapeHtml(label)}</option>`).join("")}</select>`;
     }
     if (field.type === "areas") {
-      const available = baseCandidates(field);
-      const ids = Array.isArray(selected) ? selected : (field.defaultAllWhenUnset ? available.map((item) => item.id) : []);
+      const ids = Array.isArray(selected) ? selected : [];
       const areas = BeastRegistry.getAllAreas().map((area) => ({ id: area.area_id, name: area.name || area.area_id }));
       return renderCheckList(panel, field, ids, areas);
     }
     if (field.type === "multi") {
-      const ids = Array.isArray(selected) ? selected : [];
+      const available = baseCandidates(field);
+      const ids = Array.isArray(selected) ? selected : (field.defaultAllWhenUnset ? available.map((item) => item.id) : []);
       const id = fieldId(panel.id, field.key);
       const scope = entityDeviceScope(panel, field, ids);
       const base = available;
