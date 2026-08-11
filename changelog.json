@@ -1,5 +1,14 @@
 [
   {
+    "version": "20260811-171",
+    "tag": "v0.7.93",
+    "date": "2026-08-11",
+    "changes": [
+      { "da": "Pool-feltet i Ur og kalender-kortet bruger nu den korte tekst Temperatur og holder værdi og titel adskilt ved smalle opløsninger.", "en": "The Pool tile in the Clock and calendar card now uses the shorter Temperature label and keeps its value separate from the title at narrow resolutions." },
+      { "da": "De to hurtigfelter i Ur og kalender-kortet skifter nu til et mere luftigt layout på kiosk-skærme, så teksten ikke overlapper.", "en": "The two quick tiles in the Clock and calendar card now use a cleaner kiosk layout that prevents text overlap." }
+    ]
+  },
+  {
     "version": "20260811-170",
     "tag": "v0.7.92",
     "date": "2026-08-11",
