@@ -1,5 +1,13 @@
 [
   {
+    "version": "20260811-115",
+    "tag": "v0.7.37",
+    "date": "2026-08-11",
+    "changes": [
+      "The four bundled robot card images now use visually equivalent, right-sized WebP assets, reducing their combined release size from 6.8 MB to under 100 KB."
+    ]
+  },
+  {
     "version": "20260811-114",
     "tag": "v0.7.36",
     "date": "2026-08-11",

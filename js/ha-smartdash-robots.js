@@ -244,7 +244,7 @@
           <div><small>${escapeHtml(model)}</small><strong class="beast-robot-name">${escapeHtml(name)}</strong></div>
           ${visible.status ? statusPill(robotId) : ""}
         </div>
-        <div class="beast-robot-media">${card.imageUrl ? `<img data-robot-url="${escapeHtml(card.imageUrl)}" alt="${escapeHtml(name)}">` : card.bindings?.media || IDS.leonoraImage ? `<img data-robot-image="${escapeHtml(card.bindings?.media || IDS.leonoraImage)}" alt="${escapeHtml(name)}">` : `<picture><img class="beast-robot-theme-image is-dark" src="./assets/robots/leonora-roomba-860.png" alt="${escapeHtml(name)}"><img class="beast-robot-theme-image is-light" src="./assets/robots/leonora-roomba-860-light.png" alt=""></picture>`}</div>
+        <div class="beast-robot-media">${card.imageUrl ? `<img data-robot-url="${escapeHtml(card.imageUrl)}" alt="${escapeHtml(name)}">` : card.bindings?.media || IDS.leonoraImage ? `<img data-robot-image="${escapeHtml(card.bindings?.media || IDS.leonoraImage)}" alt="${escapeHtml(name)}">` : `<picture><img class="beast-robot-theme-image is-dark" src="./assets/robots/leonora-roomba-860.webp" alt="${escapeHtml(name)}"><img class="beast-robot-theme-image is-light" src="./assets/robots/leonora-roomba-860-light.webp" alt=""></picture>`}</div>
         ${visible.facts ? `<div class="beast-robot-facts">
           ${visible.battery ? battery(robotId, batteryId) : ""}
           <span>${BeastCore.icon("grid", { size: 15 })} Beholder ${value(binId, "off") === "on" ? "fuld" : "klar"}</span>
@@ -324,7 +324,7 @@
           <div><small>${escapeHtml(model)}</small><strong class="beast-robot-name">${escapeHtml(name)}</strong></div>
           ${visible.status ? statusPill(robotId) : ""}
         </div>
-        <div class="beast-robot-media">${card.imageUrl ? `<img data-robot-url="${escapeHtml(card.imageUrl)}" alt="${escapeHtml(name)}">` : card.bindings?.media || IDS.poulImage ? `<img data-robot-image="${escapeHtml(card.bindings?.media || IDS.poulImage)}" alt="${escapeHtml(name)}">` : `<picture><img class="beast-robot-theme-image is-dark" src="./assets/robots/poul-landroid-m500-plus.png" alt="${escapeHtml(name)}"><img class="beast-robot-theme-image is-light" src="./assets/robots/poul-landroid-m500-plus-light.png" alt=""></picture>`}</div>
+        <div class="beast-robot-media">${card.imageUrl ? `<img data-robot-url="${escapeHtml(card.imageUrl)}" alt="${escapeHtml(name)}">` : card.bindings?.media || IDS.poulImage ? `<img data-robot-image="${escapeHtml(card.bindings?.media || IDS.poulImage)}" alt="${escapeHtml(name)}">` : `<picture><img class="beast-robot-theme-image is-dark" src="./assets/robots/poul-landroid-m500-plus.webp" alt="${escapeHtml(name)}"><img class="beast-robot-theme-image is-light" src="./assets/robots/poul-landroid-m500-plus-light.webp" alt=""></picture>`}</div>
         ${visible.facts ? `<div class="beast-robot-facts">
           ${visible.battery ? battery(robotId, card.bindings?.battery || IDS.poulBattery) : ""}
           <span>${BeastCore.icon("robot", { size: 15 })} ${value(IDS.poulOnline, "off") === "on" ? "Forbundet" : "Offline"}</span>
