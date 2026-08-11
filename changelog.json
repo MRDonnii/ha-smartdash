@@ -1,5 +1,14 @@
 [
   {
+    "version": "20260811-145",
+    "tag": "v0.7.67",
+    "date": "2026-08-11",
+    "changes": [
+      { "da": "Når kort mangler eller er slået fra, står de resterende kort nu i en lodret stak med fuld bredde i stedet for at blive fordelt side om side.", "en": "When cards are unavailable or disabled, the remaining cards now form a full-width vertical stack instead of being distributed side by side." },
+      { "da": "Staklayoutet bruges ens på specialsiderne, Energi og Sikkerhed uden at overskrive brugerens gemte layout.", "en": "The stacked layout is used consistently across specialized pages, Energy, and Security without overwriting the user's saved layout." }
+    ]
+  },
+  {
     "version": "20260811-144",
     "tag": "v0.7.66",
     "date": "2026-08-11",

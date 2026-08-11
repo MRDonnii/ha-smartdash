@@ -54,51 +54,23 @@ window.BeastNativePageEditor = (() => {
 
     // Saved coordinates remain the user's source of truth. When a card is
     // unavailable at runtime (missing integration/entity, or deliberately
-    // hidden), expand the remaining rectangles into the vacant grid cells
-    // without writing those temporary coordinates back to configuration.
-    // This keeps every specialised page composed and full instead of leaving
-    // holes, while restoring the exact saved layout when the card returns.
+    // hidden), stack the remaining cards at full width without writing those
+    // temporary coordinates back to configuration. A vertical stack stays
+    // predictable across pages and restores the exact saved layout when the
+    // card returns.
     function adaptiveLayout(list) {
       const visible = list.filter(isAvailable).map((card) => ({ ...card, desktop:{ ...(card.desktop || {}) } }));
       const configured = list.filter((card) => card.enabled !== false);
       if (!visible.length) return [];
       if (visible.length === list.length && list.every((card) => elementFor(card))) return list;
-      if (visible.length === 1) {
-        visible[0].desktop = { ...visible[0].desktop, x:1, y:1, w:12, h:Math.max(12, clamp(visible[0].desktop.h,1,24)) };
-        return visible;
-      }
       const totalRows = Math.max(12, ...configured.map((card) => clamp(card.desktop?.y,1,40) + clamp(card.desktop?.h,1,24) - 1));
-      const occupied = () => {
-        const cells = new Set();
-        visible.forEach((card) => {
-          const d = card.desktop;
-          for (let y=d.y; y<d.y+d.h; y++) for (let x=d.x; x<d.x+d.w; x++) cells.add(`${x}:${y}`);
-        });
-        return cells;
-      };
-      const canGrow = (card, direction, cells) => {
-        const d = card.desktop;
-        const targets = [];
-        if (direction === "left" && d.x > 1) for (let y=d.y; y<d.y+d.h; y++) targets.push(`${d.x-1}:${y}`);
-        if (direction === "right" && d.x+d.w-1 < 12) for (let y=d.y; y<d.y+d.h; y++) targets.push(`${d.x+d.w}:${y}`);
-        if (direction === "up" && d.y > 1) for (let x=d.x; x<d.x+d.w; x++) targets.push(`${x}:${d.y-1}`);
-        if (direction === "down" && d.y+d.h-1 < totalRows) for (let x=d.x; x<d.x+d.w; x++) targets.push(`${x}:${d.y+d.h}`);
-        return targets.length && targets.every((key) => !cells.has(key));
-      };
-      const grow = (card, direction) => {
-        if (direction === "left") { card.desktop.x--; card.desktop.w++; }
-        if (direction === "right") card.desktop.w++;
-        if (direction === "up") { card.desktop.y--; card.desktop.h++; }
-        if (direction === "down") card.desktop.h++;
-      };
-      let changed = true, guard = 0;
-      while (changed && guard++ < 80) {
-        changed = false;
-        ["left","right","up","down"].forEach((direction) => visible.forEach((card) => {
-          const cells = occupied();
-          if (canGrow(card,direction,cells)) { grow(card,direction); changed = true; }
-        }));
-      }
+      const baseHeight = Math.floor(totalRows / visible.length);
+      let nextY = 1;
+      visible.forEach((card,index) => {
+        const height = index === visible.length - 1 ? totalRows - nextY + 1 : baseHeight;
+        card.desktop = { ...card.desktop, x:1, y:nextY, w:12, h:Math.max(1,height) };
+        nextY += height;
+      });
       return visible;
     }
 
