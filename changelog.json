@@ -1,5 +1,13 @@
 [
   {
+    "version": "20260811-129",
+    "tag": "v0.7.51",
+    "date": "2026-08-11",
+    "changes": [
+      "Active heating now animates as a full-width flame strip along the bottom of thermostat and heat-pump cards; active cooling uses a moving frost effect in the same area."
+    ]
+  },
+  {
     "version": "20260811-128",
     "tag": "v0.7.50",
     "date": "2026-08-11",
