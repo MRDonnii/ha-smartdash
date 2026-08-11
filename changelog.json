@@ -1,5 +1,14 @@
 [
   {
+    "version": "20260811-181",
+    "tag": "v0.7.103",
+    "date": "2026-08-11",
+    "changes": [
+      { "da": "Rettet at afspilningsknapperne i musikafspilleren kunne overlappe eller forsvinde ud af kortet på tablet-brede skærme -- de skalerer nu ned og ombrydes i stedet for at flyde over kanten, og afspiller-kortet fik lidt mere plads på bibliotekets bekostning.", "en": "Fixed the music player's playback buttons potentially overlapping or running off the card on tablet-width screens -- they now scale down and wrap instead of overflowing, and the player card got a bit more width at the library's expense." },
+      { "da": "Rettet at den kompakte afspiller-visning (når højttalermenuen er åben) havde overlappende tekst og en afspilningsknap der stak ud over kanten -- forhåndsvisningen er nu fuld bredde uden overlap.", "en": "Fixed the compact player view (when the speaker menu is open) having overlapping text and a playback button running past the edge -- the preview is now full width with no overlap." }
+    ]
+  },
+  {
     "version": "20260811-180",
     "tag": "v0.7.102",
     "date": "2026-08-11",

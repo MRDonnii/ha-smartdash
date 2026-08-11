@@ -601,6 +601,37 @@ html, body, .beast-app { width: 100%; height: 100%; height: 100dvh; }
   }
   .beast-heating-room-grid { grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)) !important; }
   .beast-heating-main { grid-template-rows: auto auto !important; }
+
+  /* The player card's fixed-width dock buttons (transport row + volume/
+     group/output destinations) and the collapsed "now playing" preview
+     (shown while the speaker drawer is open) don't fit a 1/3-width card at
+     this size, clipping a button or overflowing text. Give the player a
+     bit more width at the library's expense, and let the button rows wrap
+     and shrink instead of overflowing. */
+  .beast-music-dashboard > .beast-music-control.beast-native-layout-card { grid-column: 1 / 6 !important; }
+  .beast-music-dashboard > .beast-music-library.beast-native-layout-card { grid-column: 6 / 13 !important; }
+  .beast-player-dock {
+    grid-template-columns: minmax(0, 1fr) !important;
+    grid-template-rows: auto auto !important;
+    row-gap: 6px;
+  }
+  .beast-player-dock .beast-transport-row { grid-column: 1; grid-row: 1; justify-self: center; }
+  .beast-player-dock .beast-player-destinations { grid-column: 1; grid-row: 2; min-width: 0; justify-content: center; }
+  .beast-speaker-drawer.is-open + .beast-now-playing {
+    flex: none !important;
+    height: auto !important;
+    min-height: 0 !important;
+    grid-template-columns: minmax(0, 1fr) !important;
+    grid-template-rows: auto auto !important;
+    padding: 14px !important;
+  }
+  .beast-speaker-drawer.is-open + .beast-now-playing .beast-now-playing-cover { display: none; }
+  .beast-speaker-drawer.is-open + .beast-now-playing .beast-player-dock {
+    position: static !important;
+    left: auto; right: auto; bottom: auto;
+    width: 100% !important;
+    margin-top: 8px;
+  }
 }
 
 /* One editor dock for every page editor (overview/custom cards, native
