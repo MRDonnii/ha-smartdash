@@ -1,5 +1,14 @@
 [
   {
+    "version": "20260811-142",
+    "tag": "v0.7.64",
+    "date": "2026-08-11",
+    "changes": [
+      { "da": "Skoleskemaet viser nu hele ugens lektioner uden intern scrolling. Skemakortet bruger mere af kalenderens hÃ¸jde, og lektionerne tilpasser sig automatisk den tilgÃ¦ngelige plads.", "en": "The school schedule now shows the entire week's lessons without internal scrolling. The schedule card uses more of the Calendar page height, and lessons automatically fit the available space." },
+      { "da": "Eksisterende urÃ¸rte v0.7.63-standardlayouts udvides automatisk, mens skemakort som brugeren selv har Ã¦ndret stÃ¸rrelse pÃ¥ bevares.", "en": "Existing untouched v0.7.63 default layouts expand automatically, while schedule cards resized by the user are preserved." }
+    ]
+  },
+  {
     "version": "20260811-141",
     "tag": "v0.7.63",
     "date": "2026-08-11",
