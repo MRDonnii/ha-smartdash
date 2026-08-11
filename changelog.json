@@ -1,5 +1,15 @@
 [
   {
+    "version": "20260811-122",
+    "tag": "v0.7.44",
+    "date": "2026-08-11",
+    "changes": [
+      "The Heating workspace now uses three dedicated full-height columns for thermostats, heat-pump controls, and statistics plus technical systems.",
+      "Thermostats use a compact two-column comfort grid, heat pumps retain complete controls in the centre, and consumption charts, Dantherm and district heating share the insight column.",
+      "The native page editor now treats all three Heating columns as independent movable and resizable sections."
+    ]
+  },
+  {
     "version": "20260811-121",
     "tag": "v0.7.43",
     "date": "2026-08-11",
