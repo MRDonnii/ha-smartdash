@@ -225,7 +225,7 @@ This repository is an evolving personal project, not an official Home Assistant 
 
 ## Languages and release notes
 
-English is the repository and changelog language. Use the **EN / DA** control in the dashboard to store an interface language choice in the current browser. Danish documentation is available in [README.da.md](README.da.md).
+English is the repository and GitHub release language. The in-dashboard changelog contains both English and Danish and follows the selected interface language. Use the **EN / DA** control in the dashboard to store an interface language choice in the current browser. Danish documentation is available in [README.da.md](README.da.md). Release naming and publishing must follow [RELEASES.md](RELEASES.md).
 
 ## License and third-party assets
 
