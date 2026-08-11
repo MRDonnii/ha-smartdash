@@ -1,5 +1,14 @@
 [
   {
+    "version": "20260811-158",
+    "tag": "v0.7.80",
+    "date": "2026-08-11",
+    "changes": [
+      { "da": "Musiksidens afspiller har fået en ny samlet bundlinje inspireret af Music Assistants nye design med tydelig central afspilningsknap.", "en": "The Music page player now has a unified bottom control bar inspired by Music Assistant's new design, with a prominent central playback button." },
+      { "da": "Forrige, play/pause, næste, lydstyrke og valg af afspiller er samlet i én rolig kontrollinje, mens tidslinjen ligger langs bunden.", "en": "Previous, play/pause, next, volume, and player selection are combined in one clean control row, with the progress timeline along the bottom." }
+    ]
+  },
+  {
     "version": "20260811-157",
     "tag": "v0.7.79",
     "date": "2026-08-11",

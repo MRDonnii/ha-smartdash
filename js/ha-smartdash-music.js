@@ -335,6 +335,8 @@
     const nativeGroupIds = playerGroupIds(players, activePlayer);
     const groupLeaderId = nativeGroupIds[0] || activePlayer.entity_id;
     const visibleGroupCount = stereoGroupInfo(activePlayer.entity_id)?.speakers || new Set([...nativeGroupIds, ...linkedPlayerIds(groupLeaderId)]).size;
+    const english = window.HASmartdashI18n?.language === "en";
+    const playerCountLabel = `${visibleGroupCount} ${english ? (visibleGroupCount === 1 ? "player" : "players") : (visibleGroupCount === 1 ? "afspiller" : "afspillere")}`;
 
     containerEl.innerHTML = `
       <button type="button" class="beast-page-edit-trigger" id="beastMusicLayoutEdit" aria-label="Rediger musiklayout">⋮</button><div class="beast-music-dashboard">
@@ -362,25 +364,30 @@
                 <div class="beast-now-playing-title" id="beastNowPlayingTitle">${attrs.media_title ? escapeHtml(attrs.media_title) : "Ingen afspilning"}</div>
                 <div class="beast-now-playing-artist" id="beastNowPlayingArtist">${escapeHtml(attrs.media_artist || "Vælg musik fra biblioteket")}</div>
                 <div class="beast-now-playing-album" id="beastNowPlayingAlbum">${attrs.media_album_name ? `<strong>${escapeHtml(attrs.media_album_name)}</strong><span>Album · ${escapeHtml(attrs.media_artist || "Ukendt kunstner")}</span>` : `<strong>Musikbibliotek</strong><span>Vælg et album, en playliste eller en radiostation</span>`}</div>
+                <div class="beast-player-dock">
+                  <div class="beast-transport-row">
+                    <button type="button" class="beast-transport-btn" id="beastPrevBtn" aria-label="Forrige">${BeastCore.icon("skip-back", { size: 22 })}</button>
+                    <button type="button" class="beast-transport-btn beast-play-btn" id="beastPlayBtn" aria-label="${playing ? "Pause" : "Afspil"}">${BeastCore.icon(playing ? "pause" : "play", { size: 27 })}</button>
+                    <button type="button" class="beast-transport-btn" id="beastNextBtn" aria-label="Næste">${BeastCore.icon("skip-forward", { size: 22 })}</button>
+                  </div>
+                  <div class="beast-volume-row">
+                    <button type="button" class="beast-mute-btn" id="beastMuteBtn" aria-label="Slå lyd fra">${BeastCore.icon(attrs.is_volume_muted ? "volume-mute" : "volume", { size: 21 })}</button>
+                    <div class="beast-volume-buttons">
+                      <button type="button" data-volume-step="-5" aria-label="Skru ned">−</button>
+                      <output id="beastVolumeOutput">${Math.round((Number(attrs.volume_level) || 0) * 100)}%</output>
+                      <button type="button" data-volume-step="5" aria-label="Skru op">+</button>
+                    </div>
+                  </div>
+                  <button type="button" class="beast-player-output" id="beastPlayerOutputBtn" aria-label="${english ? "Select player" : "Vælg afspiller"}">
+                    <span>${BeastCore.icon("volume", { size: 21 })}</span>
+                    <span><small>${playerCountLabel}</small><strong>${escapeHtml(attrs.friendly_name || activePlayer.entity_id)}</strong></span>
+                  </button>
+                </div>
                 <div class="beast-progress-row">
                   <span id="beastProgressElapsed">--:--</span>
                   <div class="beast-progress-track"><div class="beast-progress-fill" id="beastProgressFill"></div></div>
                   <span id="beastProgressDuration">--:--</span>
                 </div>
-                <div class="beast-transport-row">
-                  <button type="button" class="beast-transport-btn" id="beastPrevBtn" aria-label="Forrige">${BeastCore.icon("skip-back", { size: 22 })}</button>
-                  <button type="button" class="beast-transport-btn beast-play-btn" id="beastPlayBtn" aria-label="${playing ? "Pause" : "Afspil"}">${BeastCore.icon(playing ? "pause" : "play", { size: 27 })}</button>
-                  <button type="button" class="beast-transport-btn" id="beastNextBtn" aria-label="Næste">${BeastCore.icon("skip-forward", { size: 22 })}</button>
-                </div>
-              <div class="beast-volume-row">
-                <button type="button" class="beast-mute-btn" id="beastMuteBtn" aria-label="Slå lyd fra">${BeastCore.icon(attrs.is_volume_muted ? "volume-mute" : "volume", { size: 21 })}</button>
-                <span class="beast-volume-label">Lydstyrke</span>
-                <div class="beast-volume-buttons">
-                  <button type="button" data-volume-step="-5" aria-label="Skru ned">−</button>
-                  <output id="beastVolumeOutput">${Math.round((Number(attrs.volume_level) || 0) * 100)}%</output>
-                  <button type="button" data-volume-step="5" aria-label="Skru op">+</button>
-                </div>
-              </div>
             </div>
           </div>
         </aside>
@@ -746,15 +753,18 @@
 
   function wireSpeakerToggle() {
     const toggle = document.getElementById("beastSpeakerToggle");
+    const outputButton = document.getElementById("beastPlayerOutputBtn");
     const drawer = document.getElementById("beastSpeakerDrawer");
     const actions = containerEl.querySelector(".beast-music-group-actions");
     if (!toggle || !drawer) return;
-    toggle.addEventListener("click", () => {
+    const setOpen = () => {
       speakerPanelOpen = !speakerPanelOpen;
       toggle.setAttribute("aria-expanded", String(speakerPanelOpen));
       drawer.classList.toggle("is-open", speakerPanelOpen);
       actions?.classList.toggle("is-collapsed", !speakerPanelOpen);
-    });
+    };
+    toggle.addEventListener("click", setOpen);
+    outputButton?.addEventListener("click", setOpen);
   }
 
   function wireGroupControls(players, activePlayer) {
