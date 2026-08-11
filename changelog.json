@@ -1,5 +1,14 @@
 [
   {
+    "version": "20260811-151",
+    "tag": "v0.7.73",
+    "date": "2026-08-11",
+    "changes": [
+      { "da": "Varmepumpekortet viser nu den aktuelle rumtemperatur øverst til venstre med temperaturstyringen placeret nedenunder i fuld bredde.", "en": "The heat pump card now shows the current room temperature at the upper left with the temperature control placed below at full width." },
+      { "da": "Temperaturstyringen har fået et tydeligere samlet kontrolfelt og tilpasser sig automatisk smallere kort.", "en": "The temperature control now has a clearer unified control surface and adapts automatically to narrower cards." }
+    ]
+  },
+  {
     "version": "20260811-150",
     "tag": "v0.7.72",
     "date": "2026-08-11",
