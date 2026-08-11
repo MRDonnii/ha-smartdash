@@ -1,5 +1,14 @@
 [
   {
+    "version": "20260811-179",
+    "tag": "v0.7.101",
+    "date": "2026-08-11",
+    "changes": [
+      { "da": "Varme viser nu Termostater, Varmepumper og Statistik i fuld bredde, én ad gangen (scroll ned mellem dem), i stedet for tre smalle kolonner ved siden af hinanden på tablet-brede skærme -- ingenting behøver længere skrumpe nær så meget.", "en": "Heating now shows Thermostats, Heat pumps, and Statistics at full width, one at a time (scroll down between them), instead of three narrow side-by-side columns on tablet-width screens -- nothing needs to shrink nearly as much anymore." },
+      { "da": "Rettet at afspilningsknappen kunne overlappe teksten i musikafspillerens kompakte visning, når højttalermenuen var åben.", "en": "Fixed the playback button potentially overlapping text in the music player's compact view when the speaker menu was open." }
+    ]
+  },
+  {
     "version": "20260811-178",
     "tag": "v0.7.100",
     "date": "2026-08-11",

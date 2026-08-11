@@ -913,7 +913,7 @@
   align-self: start;
   margin-top: 0;
 }
-.beast-speaker-drawer.is-open + .beast-now-playing .beast-now-playing-body { align-self:start; height:auto; gap:8px; }
+.beast-speaker-drawer.is-open + .beast-now-playing .beast-now-playing-body { align-self:start; height:auto; max-height:100%; gap:8px; padding-bottom:76px; overflow:hidden; }
 .beast-speaker-drawer.is-open + .beast-now-playing .beast-now-playing-album { display: none; }
 .beast-speaker-drawer.is-open + .beast-now-playing .beast-now-playing-title { font-size: 1.45rem; }
 .beast-speaker-drawer.is-open + .beast-now-playing .beast-transport-btn { width: 48px; height: 48px; }
