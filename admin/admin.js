@@ -57,10 +57,10 @@
     { id: "weather", title: "Vejr", description: "Vejrudsigt og aktuelle vejrdata.", fields: [
       { key: "entity", label: "Vejr-entity", type: "single", domain: "weather" }
     ]},
-    { id: "waste", title: "Kalender & affald", description: "Kalendere og affaldssensorer. Om de vises på forsiden styres under Forside.", fields: [
-      { key: "calendars", label: "Kalendere (bruges også af forsidens \"Næste aftaler\" -- tomt viser alle kalendere)", type: "multi", domain: "calendar" },
-      { key: "sensors", label: "Affaldssensorer", type: "multi", domain: "sensor", hints: ["affald", "waste", "trash", "bin"] },
-      { key: "scheduleCalendars", label: "Skoleskema-kalendere (ét kort pr. valgt kalender, fx AULA)", type: "multi", domain: "calendar", hints: ["skole", "skema", "aula"] }
+    { id: "waste", title: t("Kalender & affald", "Calendar & waste"), description: t("Kalendere og affaldssensorer. Om de vises på forsiden styres under Forside.", "Calendars and waste sensors. Front-page visibility is controlled under Overview."), fields: [
+      { key: "calendars", label: t("Kalendere (bruges også af forsidens \"Næste aftaler\" -- tomt viser alle kalendere)", "Calendars (also used by the overview's \"Next events\" -- empty shows every calendar)"), type: "multi", domain: "calendar" },
+      { key: "sensors", label: t("Affaldssensorer", "Waste sensors"), type: "multi", domain: "sensor", hints: ["affald", "waste", "trash", "bin"] },
+      { key: "scheduleCalendars", label: t("Skoleskema-kalendere (ét kort pr. valgt kalender, fx AULA)", "School schedule calendars (one card per selected calendar, e.g. AULA)"), type: "multi", domain: "calendar", hints: ["skole", "skema", "aula"] }
     ]},
     { id: "music", title: "Musik", description: "Music Assistant-integration til bibliotek og søgning.", fields: [
       { key: "configEntryId", label: "Music Assistant config entry-id", type: "text", placeholder: "fx 01KK8RSBAW369PSMQMG6CE5HGB" }
@@ -1114,24 +1114,24 @@
   function renderUpdatesView() {
     const currentUpdateChannel = BeastConfig.get("updateChannel") === "beta" ? "beta" : "stable";
     return `<section class="admin-view${activeView === "updates" ? " is-active" : ""}" data-admin-view="updates">
-      <div class="admin-card"><div class="admin-card-head"><div><h2>Denne installation</h2><p>Versionen der kører lige nu, og hvad der senest er ændret.</p></div><div style="display:flex; align-items:center; gap:10px;"><div class="admin-channel-switch" role="group" aria-label="Opdateringskanal"><button type="button" class="admin-channel-btn${currentUpdateChannel === "stable" ? " is-active" : ""}" data-update-channel="stable">Stable</button><button type="button" class="admin-channel-btn${currentUpdateChannel === "beta" ? " is-active" : ""}" data-update-channel="beta">Beta</button></div><button type="button" class="beast-btn" data-check-updates>Tjek for opdateringer</button></div></div>
-        <div class="beast-stat-grid">${BeastCore.statTile({ icon: "sparkles", label: "Nuværende version", value: "Henter…", meta: "…", id: "adminCurrentVersionTile" })}</div>
-        <div class="admin-update-status" id="adminUpdateStatus" data-state="checking"><span class="admin-update-status-dot"></span><span id="adminUpdateStatusText">Tjekker…</span></div>
+      <div class="admin-card"><div class="admin-card-head"><div><h2>${t("Denne installation", "This installation")}</h2><p>${t("Versionen der kører lige nu, og hvad der senest er ændret.", "The version currently running and its latest changes.")}</p></div><div style="display:flex; align-items:center; gap:10px;"><div class="admin-channel-switch" role="group" aria-label="${t("Opdateringskanal", "Update channel")}"><button type="button" class="admin-channel-btn${currentUpdateChannel === "stable" ? " is-active" : ""}" data-update-channel="stable">Stable</button><button type="button" class="admin-channel-btn${currentUpdateChannel === "beta" ? " is-active" : ""}" data-update-channel="beta">Beta</button></div><button type="button" class="beast-btn" data-check-updates>${t("Tjek for opdateringer", "Check for updates")}</button></div></div>
+        <div class="beast-stat-grid">${BeastCore.statTile({ icon: "sparkles", label: t("Nuværende version", "Current version"), value: t("Henter…", "Loading…"), meta: "…", id: "adminCurrentVersionTile" })}</div>
+        <div class="admin-update-status" id="adminUpdateStatus" data-state="checking"><span class="admin-update-status-dot"></span><span id="adminUpdateStatusText">${t("Tjekker…", "Checking…")}</span></div>
         ${currentUpdateChannel === "beta" ? `<p class="admin-field-hint" style="margin:8px 0 0;">${t("Du følger Beta-kanalen — kan indeholde ændringer der endnu ikke er færdigtestede.", "You're following the Beta channel -- may include changes that haven't finished testing yet.")}</p>` : ""}
-        <div id="adminInstallLatest" class="admin-install-latest-slot"><p class="admin-empty">Henter…</p></div>
+        <div id="adminInstallLatest" class="admin-install-latest-slot"><p class="admin-empty">${t("Henter…", "Loading…")}</p></div>
         <div id="adminUpdateSkipNote"></div>
         <details class="admin-changelog-details">
           <summary>${t("Vis ændringer og release notes", "Show changes and release notes")}</summary>
-          <div class="admin-changelog-list" id="adminChangelogList"><p class="admin-empty">Henter ændringslog…</p></div>
+          <div class="admin-changelog-list" id="adminChangelogList"><p class="admin-empty">${t("Henter ændringslog…", "Loading changelog…")}</p></div>
         </details>
       </div>
-      <div class="admin-card"><div class="admin-card-head"><div><h2>Versionshistorik</h2><p>Du kan altid installere den nyeste version, eller vælge en ældre at gendanne. Den nuværende version gemmes altid først, så det kan fortrydes.</p></div><button type="button" class="beast-btn" data-reload-versions>Opdatér liste</button></div>
+      <div class="admin-card"><div class="admin-card-head"><div><h2>${t("Versionshistorik", "Version history")}</h2><p>${t("Du kan altid installere den nyeste version, eller vælge en ældre at gendanne. Den nuværende version gemmes altid først, så det kan fortrydes.", "You can always install the latest version or restore an older one. The current version is saved first so the change can be undone.")}</p></div><button type="button" class="beast-btn" data-reload-versions>${t("Opdatér liste", "Refresh list")}</button></div>
         <div id="adminVersionSection">
           <div class="admin-old-versions">
-            <span class="admin-field-label">Tidligere versioner</span>
+            <span class="admin-field-label">${t("Tidligere versioner", "Previous versions")}</span>
             <div class="admin-old-versions-row">
-              <select id="adminOldVersionSelect" disabled><option value="">Henter…</option></select>
-              <button type="button" class="beast-btn" id="adminOldVersionRestoreBtn" data-rollback-version="" data-is-newer="false" data-is-latest="false" disabled>Gendan valgte version</button>
+              <select id="adminOldVersionSelect" disabled><option value="">${t("Henter…", "Loading…")}</option></select>
+              <button type="button" class="beast-btn" id="adminOldVersionRestoreBtn" data-rollback-version="" data-is-newer="false" data-is-latest="false" disabled>${t("Gendan valgte version", "Restore selected version")}</button>
             </div>
           </div>
           <div class="admin-old-versions admin-manual-install">
@@ -1793,7 +1793,10 @@
         const channel = button.dataset.updateChannel === "beta" ? "beta" : "stable";
         if (channel === (BeastConfig.get("updateChannel") === "beta" ? "beta" : "stable")) return;
         if (channel === "beta") {
-          const accepted = window.confirm("Beta-kanalen henter udgivelser der endnu ikke er markeret stabile. De kan indeholde ændringer der ikke er færdigtestede.\n\nDenne installation vil fremover selv opdage og installere Beta-udgivelser, både her og i baggrunden.\n\nAccepterer du det, og vil du skifte til Beta?");
+          const accepted = window.confirm(t(
+            "Beta-kanalen henter udgivelser der endnu ikke er markeret stabile. De kan indeholde ændringer der ikke er færdigtestede.\n\nDenne installation vil fremover selv opdage og installere Beta-udgivelser, både her og i baggrunden.\n\nAccepterer du det, og vil du skifte til Beta?",
+            "The Beta channel installs releases that have not yet been marked stable. They may contain changes that have not finished testing.\n\nThis installation will discover and install Beta releases here and in the background.\n\nDo you accept this and want to switch to Beta?"
+          ));
           if (!accepted) return;
         }
         await BeastConfig.set("updateChannel", channel);

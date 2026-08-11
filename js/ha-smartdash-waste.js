@@ -1,4 +1,5 @@
 (function () {
+  function t(da, en) { return BeastLocalSettings.get("language", "en") === "da" ? da : en; }
   function wasteSensorIds() { return BeastConfig.get("panels.waste.sensors") || []; }
   function calendarEntityIds() { return BeastConfig.get("panels.waste.calendars") || []; }
   function scheduleCalendarIds() { return BeastConfig.get("panels.waste.scheduleCalendars") || []; }
@@ -10,7 +11,7 @@
   // navigates its own week independently, so this is keyed by entity_id
   // rather than a single shared value.
   let scheduleWeekOffsets = {};
-  let scheduleRequestId = 0;
+  let scheduleRequestIds = {};
 
   // Slugifies an entity_id into something safe to use in a DOM id/selector
   // (data-calendar-section="schedule-..."). Not meant to be reversed --
@@ -44,12 +45,13 @@
   // codes not in this list, e.g. an unlabelled block code, are shown as-is
   // rather than guessed).
   const SCHEDULE_SUBJECT_NAMES = {
-    idr: "Idræt", mat: "Matematik", dan: "Dansk", mus: "Musik",
-    kri: "Kristendomskundskab", "n/t": "Natur/teknologi"
+    idr: ["Idræt", "Physical education"], mat: ["Matematik", "Mathematics"], dan: ["Dansk", "Danish"], mus: ["Musik", "Music"],
+    kri: ["Kristendomskundskab", "Religious education"], "n/t": ["Natur/teknologi", "Science and technology"]
   };
   function scheduleSubjectLabel(code) {
     const raw = String(code || "").trim();
-    return SCHEDULE_SUBJECT_NAMES[raw.toLowerCase()] || raw;
+    const names = SCHEDULE_SUBJECT_NAMES[raw.toLowerCase()];
+    return names ? t(names[0], names[1]) : raw;
   }
 
   // "2-lærer" (co-teacher) and "Klpæd" (class pedagogue) are AULA's way of
@@ -73,7 +75,7 @@
     "#1f8f9f", "#6f3f9f", "#b0601f", "#3f7a3f"
   ];
   function scheduleSubjectColor(code) {
-    const label = (scheduleSubjectLabel(code) || "?").toLowerCase();
+    const label = (String(code || "").trim() || "?").toLowerCase();
     let hash = 0;
     for (let i = 0; i < label.length; i++) hash = (hash * 31 + label.charCodeAt(i)) >>> 0;
     return SCHEDULE_SUBJECT_PALETTE[hash % SCHEDULE_SUBJECT_PALETTE.length];
@@ -102,7 +104,7 @@
           end: group.end,
           location: primary?.location || group.parts.find((part) => part.location)?.location || "",
           subject: primary?.subject || "",
-          teachers: group.parts.map((part) => part.teacher).filter(Boolean)
+          teachers: [...new Set(group.parts.map((part) => part.teacher).filter(Boolean))]
         };
       });
   }
@@ -181,14 +183,14 @@
       }))
       .sort((a, b) => a.days - b.days);
 
-    if (!items.length) return `<p class="beast-music-empty">Ingen affaldsdata.</p>`;
+    if (!items.length) return `<p class="beast-music-empty">${t("Ingen affaldsdata.", "No collection data.")}</p>`;
 
-    const visibleItems = items.slice(0, cardRows("waste", 6));
+    const visibleItems = items.slice(0, cardRows("waste", 3));
     return visibleItems.map((item, index) => {
-      const when = item.days === 0 ? "I dag" : item.days === 1 ? "I morgen" : `Om ${item.days} dage`;
+      const when = item.days === 0 ? t("I dag", "Today") : item.days === 1 ? t("I morgen", "Tomorrow") : t(`Om ${item.days} dage`, `In ${item.days} days`);
       return `<article class="beast-calendar-waste-item${index === 0 ? " is-next" : ""}">
         <span class="beast-calendar-waste-icon">${BeastCore.icon("calendar", { size:index === 0 ? 26 : 21 })}</span>
-        <div><small>${index === 0 ? "Næste afhentning" : escapeHtml(item.dateLabel || "Planlagt")}</small><strong>${escapeHtml(item.name || "Affald")}</strong>${index === 0 && item.dateLabel ? `<em>${escapeHtml(item.dateLabel)}</em>` : ""}</div>
+        <div><small>${index === 0 ? t("Næste afhentning", "Next collection") : escapeHtml(item.dateLabel || t("Planlagt", "Scheduled"))}</small><strong>${escapeHtml(item.name || t("Affald", "Waste"))}</strong>${index === 0 && item.dateLabel ? `<em>${escapeHtml(item.dateLabel)}</em>` : ""}</div>
         <b>${escapeHtml(when)}</b>
       </article>`;
     }).join("");
@@ -229,7 +231,7 @@
   // actually seen this week (school periods are fixed, but a half-day or a
   // cancelled first period shouldn't invent an empty row that never occurs).
   function renderScheduleWeekGrid(rows, weekStart, locale) {
-    if (!rows.length) return `<div class="beast-calendar-empty">${BeastCore.icon("calendar", { size: 26 })}<strong>Ingen timer denne uge</strong></div>`;
+    if (!rows.length) return `<div class="beast-calendar-empty">${BeastCore.icon("calendar", { size: 26 })}<strong>${t("Ingen timer denne uge", "No lessons this week")}</strong></div>`;
 
     const days = Array.from({ length: 5 }, (_, i) => { const d = new Date(weekStart); d.setDate(d.getDate() + i); return d; });
     const dayKeys = days.map(scheduleDayKey);
@@ -256,10 +258,10 @@
         const teacherText = row.teachers.map((teacher) => {
           const isSub = /^vikar/i.test(teacher);
           const clean = teacher.replace(/^vikar:?\s*/i, "");
-          return isSub ? `<em class="is-substitute">VIKAR: ${escapeHtml(clean)}</em>` : escapeHtml(teacher);
+          return isSub ? `<em class="is-substitute">${t("VIKAR", "SUBSTITUTE")}: ${escapeHtml(clean)}</em>` : escapeHtml(teacher);
         }).join(" + ");
         return `<div class="beast-schedule-week-cell" style="--subject-color:${scheduleSubjectColor(row.subject)}">
-          <strong>${escapeHtml(scheduleSubjectLabel(row.subject) || "Ukendt fag")}</strong>
+          <strong>${escapeHtml(scheduleSubjectLabel(row.subject) || t("Ukendt fag", "Unknown subject"))}</strong>
           ${row.location ? `<b>${escapeHtml(row.location)}</b>` : ""}
           ${teacherText ? `<span>${teacherText}</span>` : ""}
         </div>`;
@@ -274,9 +276,9 @@
   }
 
   function scheduleWeekLabel(weekOffset, weekStart, locale) {
-    if (weekOffset === 0) return "Denne uge";
-    if (weekOffset === 1) return "Næste uge";
-    if (weekOffset === -1) return "Sidste uge";
+    if (weekOffset === 0) return t("Denne uge", "This week");
+    if (weekOffset === 1) return t("Næste uge", "Next week");
+    if (weekOffset === -1) return t("Sidste uge", "Previous week");
     const end = new Date(weekStart); end.setDate(end.getDate() + 4);
     return `${weekStart.toLocaleDateString(locale, { day: "numeric", month: "short" })} – ${end.toLocaleDateString(locale, { day: "numeric", month: "short" })}`;
   }
@@ -285,18 +287,19 @@
     const slug = scheduleCardSlug(entityId);
     const host = document.getElementById(`beastSchedule-${slug}`);
     if (!host) return;
-    const requestId = ++scheduleRequestId;
+    const requestId = (scheduleRequestIds[entityId] || 0) + 1;
+    scheduleRequestIds[entityId] = requestId;
     const weekOffset = scheduleWeekOffsets[entityId] || 0;
     const locale = window.HASmartdashI18n?.locale || "da-DK";
     const weekStart = scheduleWeekStart(weekOffset);
-    host.innerHTML = `<p class="beast-music-empty">Henter…</p>`;
+    host.innerHTML = `<p class="beast-music-empty">${t("Henter…", "Loading…")}</p>`;
     const rows = await loadScheduleWeek(entityId, weekOffset);
-    if (requestId !== scheduleRequestId) return;
+    if (requestId !== scheduleRequestIds[entityId]) return;
     host.innerHTML = `
       <div class="beast-schedule-nav">
-        <button type="button" class="beast-schedule-nav-btn is-prev" data-schedule-prev="${escapeHtml(entityId)}" aria-label="Forrige uge">${BeastCore.icon("chevron-right", { size: 16 })}</button>
+        <button type="button" class="beast-schedule-nav-btn is-prev" data-schedule-prev="${escapeHtml(entityId)}" aria-label="${t("Forrige uge", "Previous week")}">${BeastCore.icon("chevron-right", { size: 16 })}</button>
         <strong>${escapeHtml(scheduleWeekLabel(weekOffset, weekStart, locale))}</strong>
-        <button type="button" class="beast-schedule-nav-btn" data-schedule-next="${escapeHtml(entityId)}" aria-label="Næste uge">${BeastCore.icon("chevron-right", { size: 16 })}</button>
+        <button type="button" class="beast-schedule-nav-btn" data-schedule-next="${escapeHtml(entityId)}" aria-label="${t("Næste uge", "Next week")}">${BeastCore.icon("chevron-right", { size: 16 })}</button>
       </div>
       ${renderScheduleWeekGrid(rows, weekStart, locale)}
     `;
@@ -359,29 +362,29 @@
       return { day, key, count, offset };
     });
     if (selectedCalendarDay !== "all" && !days.some((item) => item.key === selectedCalendarDay)) selectedCalendarDay = "all";
-    const dayStrip = `<button type="button" class="beast-calendar-day is-all${selectedCalendarDay === "all" ? " is-selected" : ""}" data-calendar-day="all" aria-pressed="${selectedCalendarDay === "all"}"><small>Vis</small><strong>Alle</strong><span>${events.length} aftaler</span></button>${days.map(({day,key,count,offset}) => `<button type="button" class="beast-calendar-day${offset === 0 ? " is-today" : ""}${count ? " has-events" : ""}${selectedCalendarDay === key ? " is-selected" : ""}" data-calendar-day="${key}" aria-pressed="${selectedCalendarDay === key}"><small>${day.toLocaleDateString(locale,{weekday:"short"}).replace(".","")}</small><strong>${day.getDate()}</strong>${weatherBadge(forecastForDay(weather, day), true)}<i>${count || ""}</i></button>`).join("")}`;
+    const dayStrip = `<button type="button" class="beast-calendar-day is-all${selectedCalendarDay === "all" ? " is-selected" : ""}" data-calendar-day="all" aria-pressed="${selectedCalendarDay === "all"}"><small>${t("Vis", "Show")}</small><strong>${t("Alle", "All")}</strong><span>${events.length} ${t("aftaler", "events")}</span></button>${days.map(({day,key,count,offset}) => `<button type="button" class="beast-calendar-day${offset === 0 ? " is-today" : ""}${count ? " has-events" : ""}${selectedCalendarDay === key ? " is-selected" : ""}" data-calendar-day="${key}" aria-pressed="${selectedCalendarDay === key}"><small>${day.toLocaleDateString(locale,{weekday:"short"}).replace(".","")}</small><strong>${day.getDate()}</strong>${weatherBadge(forecastForDay(weather, day), true)}<i>${count || ""}</i></button>`).join("")}`;
     const visibleEvents = (selectedCalendarDay === "all" ? events : events.filter((event) => eventDayKey(event) === selectedCalendarDay)).slice(0, cardRows("events", 12));
     const selectedDay = days.find((item) => item.key === selectedCalendarDay)?.day;
     const emptyDetail = selectedDay
-      ? `Ingen aftaler ${selectedDay.toLocaleDateString(locale, { weekday:"long", day:"numeric", month:"long" })}.`
-      : "Ingen kommende begivenheder de næste 14 dage.";
+      ? t(`Ingen aftaler ${selectedDay.toLocaleDateString(locale, { weekday:"long", day:"numeric", month:"long" })}.`, `No events ${selectedDay.toLocaleDateString(locale, { weekday:"long", day:"numeric", month:"long" })}.`)
+      : t("Ingen kommende begivenheder de næste 14 dage.", "No upcoming events in the next 14 days.");
     const agenda = visibleEvents.map((event, index) => {
       const calendar = BeastHaSocket.getState(event.calendarId);
-      const calendarName = calendar?.attributes?.friendly_name || event.calendarId?.replace("calendar.", "") || "Kalender";
+      const calendarName = calendar?.attributes?.friendly_name || event.calendarId?.replace("calendar.", "") || t("Kalender", "Calendar");
       const start = event.start?.dateTime || event.start?.date;
       const date = new Date(start);
       const allDay = !event.start?.dateTime;
       const day = date.toLocaleDateString(locale, { weekday:"short", day:"numeric", month:"short" });
-      const time = allDay ? "Hele dagen" : date.toLocaleTimeString(locale, { hour:"2-digit", minute:"2-digit" });
+      const time = allDay ? t("Hele dagen", "All day") : date.toLocaleTimeString(locale, { hour:"2-digit", minute:"2-digit" });
       const eventWeather = forecastForEvent(weather, event);
       return `<article class="beast-calendar-event${index === 0 ? " is-next" : ""}">
         <time><strong>${escapeHtml(day.replace(".",""))}</strong><span>${escapeHtml(time)}</span></time>
         <i aria-hidden="true"></i>
-        <div><strong>${escapeHtml(event.summary || "Uden titel")}</strong><span>${escapeHtml(calendarName)}</span></div>
+        <div><strong>${escapeHtml(event.summary || t("Uden titel", "Untitled"))}</strong><span>${escapeHtml(calendarName)}</span></div>
         ${weatherBadge(eventWeather)}
-        ${index === 0 ? `<b>Næste</b>` : ""}
+        ${index === 0 ? `<b>${t("Næste", "Next")}</b>` : ""}
       </article>`;
-    }).join("") || `<div class="beast-calendar-empty">${BeastCore.icon("calendar", { size:30 })}<strong>Kalenderen er fri</strong><span>${escapeHtml(emptyDetail)}</span></div>`;
+    }).join("") || `<div class="beast-calendar-empty">${BeastCore.icon("calendar", { size:30 })}<strong>${t("Kalenderen er fri", "Calendar is clear")}</strong><span>${escapeHtml(emptyDetail)}</span></div>`;
     host.innerHTML = `<div class="beast-calendar-week">${dayStrip}</div><div class="beast-calendar-agenda">${agenda}</div>`;
     host.querySelector(".beast-calendar-week")?.addEventListener("click", (event) => {
       const button = event.target.closest("[data-calendar-day]");
@@ -397,20 +400,20 @@
     const scheduleSections = scheduleIds.map((entityId) => {
       const slug = scheduleCardSlug(entityId);
       return `<section class="beast-waste-section" data-calendar-section="schedule-${slug}">
-        <header class="beast-calendar-section-head"><span>${BeastCore.icon("calendar", { size:22 })}</span><div><small>Skoleskema</small><h2>${escapeHtml(scheduleCardLabel(entityId))}</h2></div></header>
-        <div class="beast-schedule-body" id="beastSchedule-${slug}"><p class="beast-music-empty">Henter…</p></div>
+        <header class="beast-calendar-section-head"><span>${BeastCore.icon("calendar", { size:22 })}</span><div><small>${t("Skoleskema", "School schedule")}</small><h2>${escapeHtml(scheduleCardLabel(entityId))}</h2></div></header>
+        <div class="beast-schedule-body" id="beastSchedule-${slug}"><p class="beast-music-empty">${t("Henter…", "Loading…")}</p></div>
       </section>`;
     }).join("");
     containerEl.innerHTML = `
-      <button type="button" class="beast-page-edit-trigger" id="beastCalendarLayoutEdit" aria-label="Rediger kalenderlayout">⋮</button>
+      <button type="button" class="beast-page-edit-trigger" id="beastCalendarLayoutEdit" aria-label="${t("Rediger kalenderlayout", "Edit calendar layout")}">⋮</button>
       ${scheduleSections}
       <section class="beast-waste-section" data-calendar-section="waste">
-        <header class="beast-calendar-section-head"><span>${BeastCore.icon("calendar", { size:22 })}</span><div><small>Husets afhentninger</small><h2>Affald</h2></div></header>
-        <div class="beast-calendar-waste-list" style="--calendar-item-rows:${Math.max(1, Math.min(cardRows("waste", 6), wasteSensorIds().length || 1))}">${buildWasteMarkup()}</div>
+        <header class="beast-calendar-section-head"><span>${BeastCore.icon("calendar", { size:22 })}</span><div><small>${t("Husets afhentninger", "Household collections")}</small><h2>${t("Affald", "Waste")}</h2></div></header>
+        <div class="beast-calendar-waste-list" style="--calendar-item-rows:${Math.max(1, Math.min(cardRows("waste", 3), wasteSensorIds().length || 1))}">${buildWasteMarkup()}</div>
       </section>
       <section class="beast-waste-section" data-calendar-section="events">
-        <header class="beast-calendar-section-head"><span>${BeastCore.icon("calendar", { size:22 })}</span><div><small>De næste 14 dage</small><h2>Kommende aftaler</h2></div><time>${new Date().toLocaleDateString(window.HASmartdashI18n?.locale || "da-DK", { weekday:"long", day:"numeric", month:"long" })}</time></header>
-        <div class="beast-calendar-events" id="beastCalendarEvents"><p class="beast-music-empty">Henter…</p></div>
+        <header class="beast-calendar-section-head"><span>${BeastCore.icon("calendar", { size:22 })}</span><div><small>${t("De næste 14 dage", "Next 14 days")}</small><h2>${t("Kommende aftaler", "Upcoming events")}</h2></div><time>${new Date().toLocaleDateString(window.HASmartdashI18n?.locale || "da-DK", { weekday:"long", day:"numeric", month:"long" })}</time></header>
+        <div class="beast-calendar-events" id="beastCalendarEvents"><p class="beast-music-empty">${t("Henter…", "Loading…")}</p></div>
       </section>
     `;
     wireCalendarLayout();
@@ -439,28 +442,25 @@
     const layout = BeastConfig.get("pageLayouts.waste.calendarLayout") || {};
     const hidden = new Set(Array.isArray(layout.hidden) ? layout.hidden : []);
     containerEl.querySelectorAll("[data-calendar-section]").forEach((el) => el.classList.toggle("is-layout-hidden", hidden.has(el.dataset.calendarSection)));
-    // One card per configured schedule calendar, stacked in the narrow
-    // column Affald used to occupy -- scales to however many are
-    // configured (one per child). The week grid inside scrolls if it
-    // doesn't fit the card's own height, so the narrow column stays
-    // readable without needing extra width. Kommende aftaler keeps its
-    // original spot; only Affald relocates to a full-width row at the
-    // bottom.
-    BeastNativePageEditor.mount({ section:"waste", label:"Kalender", root:()=>containerEl, host:()=>containerEl, trigger:"#beastCalendarLayoutEdit", cards:()=>[
+    // School schedules are the primary calendar content and therefore use
+    // the wide column. Upcoming events and the less important collection
+    // summary share the compact side column. Additional school calendars
+    // stack below the first one without changing the side-column hierarchy.
+    BeastNativePageEditor.mount({ section:"waste", label:t("Kalender", "Calendar"), root:()=>containerEl, host:()=>containerEl, trigger:"#beastCalendarLayoutEdit", cards:()=>[
       ...scheduleCalendarIds().map((entityId, index) => {
         const id = `schedule-${scheduleCardSlug(entityId)}`;
-        return { id, label: `Skema · ${scheduleCardLabel(entityId)}`, selector: `[data-calendar-section="${id}"]`, titleSelector: "h2", enabled: !hidden.has(id), desktop: { x: 1, y: 1 + index * 6, w: 4, h: 6 } };
+        return { id, label: `${t("Skema", "Schedule")} · ${scheduleCardLabel(entityId)}`, selector: `[data-calendar-section="${id}"]`, titleSelector: "h2", enabled: !hidden.has(id), desktop: { x: 1, y: 1 + index * 8, w: 8, h: 8 } };
       }),
-      { id:"waste", label:"Affald og afhentning", selector:'[data-calendar-section="waste"]', titleSelector:"h2", enabled:!hidden.has("waste"), desktop:{x:1,y:13,w:12,h:4}, options:{rows:cardRows("waste",6)}, controls:[{key:"rows",label:"Antal viste rækker",min:1,max:30,default:6}] },
-      { id:"events", label:"Kommende kalenderaftaler", selector:'[data-calendar-section="events"]', titleSelector:"h2", enabled:!hidden.has("events"), desktop:{x:5,y:1,w:8,h:12}, options:{rows:cardRows("events",12)}, controls:[{key:"rows",label:"Antal viste rækker",min:1,max:30,default:12}] }
+      { id:"waste", label:t("Affald og afhentning", "Waste and collections"), selector:'[data-calendar-section="waste"]', titleSelector:"h2", enabled:!hidden.has("waste"), desktop:{x:9,y:13,w:4,h:3}, options:{rows:cardRows("waste",3)}, controls:[{key:"rows",label:t("Antal viste rækker", "Visible rows"),min:1,max:30,default:3}] },
+      { id:"events", label:t("Kommende kalenderaftaler", "Upcoming calendar events"), selector:'[data-calendar-section="events"]', titleSelector:"h2", enabled:!hidden.has("events"), desktop:{x:9,y:1,w:4,h:12}, options:{rows:cardRows("events",12)}, controls:[{key:"rows",label:t("Antal viste rækker", "Visible rows"),min:1,max:30,default:12}] }
     ], onSave:()=>render() });
   }
 
   function openCalendarLayout(layout) {
     const hidden = new Set(Array.isArray(layout.hidden) ? layout.hidden : []);
-    const items = [["waste", "Affald og afhentning"], ["events", "Kommende kalenderaftaler"]];
+    const items = [["waste", t("Affald og afhentning", "Waste and collections")], ["events", t("Kommende kalenderaftaler", "Upcoming calendar events")]];
     const overlay = document.createElement("div"); overlay.className = "beast-modal-overlay";
-    overlay.innerHTML = `<div class="beast-modal beast-calendar-layout-modal"><div class="beast-modal-header"><h3>Rediger kalenderlayout</h3><button type="button" class="beast-modal-close" data-close>×</button></div><div class="beast-modal-body"><div class="beast-calendar-layout-list">${items.map(([id,label]) => `<label><input type="checkbox" data-calendar-layout-section="${id}" ${hidden.has(id) ? "" : "checked"}><strong>${label}</strong></label>`).join("")}</div><button type="button" class="beast-btn beast-btn-primary" data-save-calendar-layout>Gem layout</button></div></div>`;
+    overlay.innerHTML = `<div class="beast-modal beast-calendar-layout-modal"><div class="beast-modal-header"><h3>${t("Rediger kalenderlayout", "Edit calendar layout")}</h3><button type="button" class="beast-modal-close" data-close>×</button></div><div class="beast-modal-body"><div class="beast-calendar-layout-list">${items.map(([id,label]) => `<label><input type="checkbox" data-calendar-layout-section="${id}" ${hidden.has(id) ? "" : "checked"}><strong>${label}</strong></label>`).join("")}</div><button type="button" class="beast-btn beast-btn-primary" data-save-calendar-layout>${t("Gem layout", "Save layout")}</button></div></div>`;
     document.body.appendChild(overlay);
     overlay.addEventListener("click", (event) => {
       if (event.target === overlay || event.target.closest("[data-close]")) return overlay.remove();
@@ -496,16 +496,44 @@
     BeastConfig.set(path, saved);
   }
 
+  // v0.7.61 introduced schedule cards in a narrow four-column stack and
+  // placed waste across the full page. Migrate only those exact defaults;
+  // user-arranged cards keep their saved positions unchanged.
+  function migrateCalendarLayoutToScheduleFirst() {
+    const path = window.BeastNativePageEditor?.storagePath?.("waste") || "pageLayouts.waste.nativeCards";
+    const saved = BeastConfig.get(path);
+    if (!Array.isArray(saved) || !saved.length) return;
+    let changed = false;
+    saved.filter((card) => String(card.id || "").startsWith("schedule-")).forEach((card, index) => {
+      const d = card.desktop || {};
+      if (d.x === 1 && d.y === 1 + index * 6 && d.w === 4 && d.h === 6) {
+        card.desktop = { x: 1, y: 1 + index * 8, w: 8, h: 8 }; changed = true;
+      }
+    });
+    const events = saved.find((card) => card.id === "events");
+    if (events?.desktop?.x === 5 && events.desktop.y === 1 && events.desktop.w === 8 && events.desktop.h === 12) {
+      events.desktop = { x: 9, y: 1, w: 4, h: 12 }; changed = true;
+    }
+    const waste = saved.find((card) => card.id === "waste");
+    if (waste?.desktop?.x === 1 && waste.desktop.y === 13 && waste.desktop.w === 12 && waste.desktop.h === 4) {
+      waste.desktop = { x: 9, y: 13, w: 4, h: 3 };
+      if (!waste.options || Number(waste.options.rows) === 6) waste.options = { ...(waste.options || {}), rows: 3 };
+      changed = true;
+    }
+    if (changed) BeastConfig.set(path, saved);
+  }
+
   function init(root) {
     containerEl = root;
     containerEl.classList.add("beast-waste-panel");
     if (!wasteSensorIds().length && !calendarEntityIds().length && !scheduleCalendarIds().length) {
-      containerEl.innerHTML = BeastCore.notConfiguredMarkup("Affald & kalender", "Vælg affaldssensorer og/eller kalendere i Administration for at aktivere dette panel.");
+      containerEl.innerHTML = BeastCore.notConfiguredMarkup(t("Affald & kalender", "Waste & calendar"), t("Vælg affaldssensorer og/eller kalendere i Administration for at aktivere dette panel.", "Select waste sensors and/or calendars in Administration to enable this panel."));
       BeastCore.wireNotConfiguredLinks(containerEl);
       return;
     }
     migrateWasteLayoutForSchedule();
-    containerEl.innerHTML = `<p class="beast-music-empty">Henter…</p>`;
+    migrateCalendarLayoutToScheduleFirst();
+    containerEl.innerHTML = `<p class="beast-music-empty">${t("Henter…", "Loading…")}</p>`;
     const stableRender = BeastCore.stableUpdater(containerEl, render, 500);
 
     BeastHaSocket.onStatusChange((status) => { if (status === "connected") render(); });
