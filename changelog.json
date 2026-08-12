@@ -1,5 +1,13 @@
 [
   {
+    "version": "20260811-183",
+    "tag": "v0.7.105",
+    "date": "2026-08-12",
+    "changes": [
+      { "da": "Dørkamera-visningen kan nu enten lukke automatisk efter et selvvalgt antal minutter, eller blive stående indtil man selv lukker den -- indstilles under Admin -> Kiosk & dørklokke.", "en": "The doorbell camera view can now either close automatically after a chosen number of minutes, or stay open until manually closed -- configurable under Admin -> Kiosk & doorbell." }
+    ]
+  },
+  {
     "version": "20260811-182",
     "tag": "v0.7.104",
     "date": "2026-08-11",

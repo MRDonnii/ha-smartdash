@@ -163,6 +163,7 @@ button { cursor: pointer; }
 .admin-card-head p { margin: 6px 0 0; color: var(--ink-muted); font-size: 14px; }
 .admin-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
 .admin-field { display: grid; gap: 8px; min-width: 0; }
+.admin-field.is-hidden { display: none; }
 .admin-field > span { color: var(--ink-muted); font-size: 12px; font-weight: 800; }
 .admin-field-heading { display:flex; align-items:center; justify-content:space-between; gap:8px; }
 .admin-field-heading b { min-width:0; color:var(--ink-muted); font-size:12px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }

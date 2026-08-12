@@ -59,7 +59,10 @@ function parseTimeToMinutes(value, fallbackMinutes) {
 function KIOSK_SCREEN_ENTITY_ID() { return BeastLocalSettings.get("kioskScreenLight", BeastConfig.get("appEntities.kioskScreenLight")); }
 function DOORBELL_BINARY_ID() { return BeastConfig.get("appEntities.doorbellBinarySensor"); }
 function DOORBELL_EVENT_ID() { return BeastConfig.get("appEntities.doorbellEvent"); }
-const DOORBELL_VIEW_MS = 3 * 60 * 1000;
+// Default matches the dashboard's original fixed behavior; both the mode
+// and the minute count are configurable under Admin -> Kiosk & dørklokke.
+function DOORBELL_VIEW_MODE() { return BeastConfig.get("appEntities.doorbellViewMode") === "manual" ? "manual" : "timeout"; }
+function DOORBELL_VIEW_MS() { return Math.max(1, Math.min(60, Number(BeastConfig.get("appEntities.doorbellViewMinutes")) || 3)) * 60 * 1000; }
 let lastUserActivityAt = Date.now();
 let buildCheckTimerId = null;
 let cameraHealthTimerId = null;
@@ -229,7 +232,7 @@ function showDoorbellView() {
   fallbackImage?.addEventListener("error", () => BeastAuth.setAuthedImageSrc(fallbackImage, fallbackImage.dataset.doorbellPicture), { once:true });
   document.body.classList.add("beast-doorbell-active");
   overlay.querySelector(".beast-doorbell-close")?.addEventListener("click", (event) => { event.stopPropagation(); closeDoorbellView(); });
-  doorbellTimerId = window.setTimeout(closeDoorbellView, DOORBELL_VIEW_MS);
+  if (DOORBELL_VIEW_MODE() !== "manual") doorbellTimerId = window.setTimeout(closeDoorbellView, DOORBELL_VIEW_MS());
 }
 
 function handleDoorbellBinary() {

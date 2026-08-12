@@ -841,6 +841,13 @@
             <label class="admin-field"><span>Dørklokke (binary_sensor)</span>${BeastEntityPicker.selectHtml({ id: "adminDoorbellBinary", domain: "binary_sensor", keywordHints: ["doorbell", "dørklokke", "ring"], selected: BeastConfig.get("appEntities.doorbellBinarySensor") })}</label>
             <label class="admin-field"><span>Dørklokke (event, valgfri)</span>${BeastEntityPicker.selectHtml({ id: "adminDoorbellEvent", domain: "event", keywordHints: ["doorbell", "dørklokke", "ring"], selected: BeastConfig.get("appEntities.doorbellEvent") })}</label>
             <label class="admin-field"><span>Dørkamera (valgfri)</span>${BeastEntityPicker.selectHtml({ id: "adminDoorbellCamera", domain: "camera", keywordHints: ["doorbell", "dørklokke", "front", "hoveddor", "fordor"], selected: BeastConfig.get("appEntities.doorbellCamera") })}</label>
+            <label class="admin-field"><span>Dørkamera-visning lukker</span>
+              <select id="adminDoorbellViewMode">
+                <option value="timeout" ${BeastConfig.get("appEntities.doorbellViewMode") !== "manual" ? "selected" : ""}>Automatisk efter et antal minutter</option>
+                <option value="manual" ${BeastConfig.get("appEntities.doorbellViewMode") === "manual" ? "selected" : ""}>Kun når jeg selv lukker den</option>
+              </select>
+            </label>
+            <label class="admin-field" id="adminDoorbellViewMinutesField"><span>Antal minutter før automatisk luk</span><input type="number" id="adminDoorbellViewMinutes" min="1" max="60" value="${Number(BeastConfig.get("appEntities.doorbellViewMinutes")) || 3}"></label>
           </div>
           <div class="admin-actions"><button class="admin-save" type="button" data-save-app-entities>Gem kiosk & dørklokke</button><span class="admin-save-state" data-save-state="appEntities"></span></div>
         </div>
@@ -2140,13 +2147,20 @@
         if (state) state.textContent = `Gemt: ${result.filename} · ${result.target}`;
       } catch (error) { if (state) state.textContent = "Backup mislykkedes"; }
     });
+    const doorbellViewModeSelect = document.getElementById("adminDoorbellViewMode");
+    const doorbellViewMinutesField = document.getElementById("adminDoorbellViewMinutesField");
+    const syncDoorbellViewMinutesField = () => doorbellViewMinutesField?.classList.toggle("is-hidden", doorbellViewModeSelect?.value === "manual");
+    syncDoorbellViewMinutesField();
+    doorbellViewModeSelect?.addEventListener("change", syncDoorbellViewMinutesField);
     document.querySelector("[data-save-app-entities]")?.addEventListener("click", (event) => save(event.currentTarget, "appEntities", async () => {
       BeastLocalSettings.set("kioskScreenLight", document.getElementById("adminKioskLight").value || null);
       return BeastConfig.set("appEntities", {
         ...BeastConfig.get("appEntities"),
         doorbellBinarySensor: document.getElementById("adminDoorbellBinary").value || null,
         doorbellEvent: document.getElementById("adminDoorbellEvent").value || null,
-        doorbellCamera: document.getElementById("adminDoorbellCamera").value || null
+        doorbellCamera: document.getElementById("adminDoorbellCamera").value || null,
+        doorbellViewMode: document.getElementById("adminDoorbellViewMode").value === "manual" ? "manual" : "timeout",
+        doorbellViewMinutes: Math.max(1, Math.min(60, Number(document.getElementById("adminDoorbellViewMinutes").value) || 3))
       });
     }));
     document.querySelectorAll("[data-save-panel]").forEach((button) => button.addEventListener("click", async () => {
