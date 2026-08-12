@@ -1,5 +1,13 @@
 [
   {
+    "version": "20260811-184",
+    "tag": "v0.7.106",
+    "date": "2026-08-12",
+    "changes": [
+      { "da": "Skærm-overlay-indstillinger (dørkamera-visning, flydende musikafspiller) er samlet under Admin -> Advarsler i stedet for at være spredt ud over flere sider -- inklusiv en ny til/fra-knap for den flydende musikafspiller på forsiden.", "en": "Screen-overlay settings (doorbell camera view, floating music player) are now gathered under Admin -> Alerts instead of being spread across several pages -- including a new on/off toggle for the front-page floating music player." }
+    ]
+  },
+  {
     "version": "20260811-183",
     "tag": "v0.7.105",
     "date": "2026-08-12",

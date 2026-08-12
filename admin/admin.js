@@ -835,19 +835,12 @@
         </div>
         ${renderFeaturePanel()}
         <div class="admin-card">
-          <div class="admin-card-head"><div><h2>Kiosk & dørklokke</h2><p>Valgfrit — styrer skærm-sluk om natten og et automatisk dørkamera-overlay.</p></div></div>
+          <div class="admin-card-head"><div><h2>Kiosk & dørklokke</h2><p>Valgfrit — styrer skærm-sluk om natten og hvilke entities dørkamera-overlayet bruger. Selve visningens opførsel (hvornår den lukker) findes under Advarsler.</p></div></div>
           <div class="admin-grid">
             <label class="admin-field"><span>Kiosk-skærm (lokal på denne maskine)</span>${BeastEntityPicker.selectHtml({ id: "adminKioskLight", domain: "light", keywordHints: ["kiosk", "screen", "skaerm", "tablet"], selected: BeastLocalSettings.get("kioskScreenLight", BeastConfig.get("appEntities.kioskScreenLight")) })}</label>
             <label class="admin-field"><span>Dørklokke (binary_sensor)</span>${BeastEntityPicker.selectHtml({ id: "adminDoorbellBinary", domain: "binary_sensor", keywordHints: ["doorbell", "dørklokke", "ring"], selected: BeastConfig.get("appEntities.doorbellBinarySensor") })}</label>
             <label class="admin-field"><span>Dørklokke (event, valgfri)</span>${BeastEntityPicker.selectHtml({ id: "adminDoorbellEvent", domain: "event", keywordHints: ["doorbell", "dørklokke", "ring"], selected: BeastConfig.get("appEntities.doorbellEvent") })}</label>
             <label class="admin-field"><span>Dørkamera (valgfri)</span>${BeastEntityPicker.selectHtml({ id: "adminDoorbellCamera", domain: "camera", keywordHints: ["doorbell", "dørklokke", "front", "hoveddor", "fordor"], selected: BeastConfig.get("appEntities.doorbellCamera") })}</label>
-            <label class="admin-field"><span>Dørkamera-visning lukker</span>
-              <select id="adminDoorbellViewMode">
-                <option value="timeout" ${BeastConfig.get("appEntities.doorbellViewMode") !== "manual" ? "selected" : ""}>Automatisk efter et antal minutter</option>
-                <option value="manual" ${BeastConfig.get("appEntities.doorbellViewMode") === "manual" ? "selected" : ""}>Kun når jeg selv lukker den</option>
-              </select>
-            </label>
-            <label class="admin-field" id="adminDoorbellViewMinutesField"><span>Antal minutter før automatisk luk</span><input type="number" id="adminDoorbellViewMinutes" min="1" max="60" value="${Number(BeastConfig.get("appEntities.doorbellViewMinutes")) || 3}"></label>
           </div>
           <div class="admin-actions"><button class="admin-save" type="button" data-save-app-entities>Gem kiosk & dørklokke</button><span class="admin-save-state" data-save-state="appEntities"></span></div>
         </div>
@@ -1360,18 +1353,12 @@
   }
 
   function renderSettingsView() {
-    const floatingPlayerOn = isFloatingPlayerEnabled();
     return `
       <section class="admin-view${activeView === "settings" ? " is-active" : ""}" data-admin-view="settings">
-        <div class="admin-settings-intro"><div><h2>Denne enhed</h2><p>Maskinspecifik adfærd for netop denne kiosk eller browser. Visuelle valg (tema, farver, stil) findes under Tema og design.</p></div></div>
+        <div class="admin-settings-intro"><div><h2>Denne enhed</h2><p>Maskinspecifik adfærd for netop denne kiosk eller browser. Visuelle valg (tema, farver, stil) findes under Tema og design. Skærm-overlays (dørkamera, flydende afspiller) findes under Advarsler.</p></div></div>
         <div class="admin-card admin-settings-group"><div class="admin-card-head"><div><h2>Dashboard på denne skærm</h2><p>Forbindelsesstatus og elementer, som kun påvirker den aktuelle kiosk eller browser.</p></div></div><div class="beast-stat-grid">
           ${BeastCore.statTile({ icon: "check", label: "HA-forbindelse", value: CONN_STATUS_LABELS[currentConnState] || currentConnState, id: "adminConnTile" })}
           ${BeastCore.statTile({ icon: "grid", label: "Entities i cache", value: String(BeastHaSocket.getAllStates().size), id: "adminCountTile" })}
-          ${BeastCore.statTile({
-            icon: "music", label: "Flydende afspiller", value: floatingPlayerOn ? "Vises på forsiden" : "Skjult",
-            id: "adminFloatingPlayerTile",
-            extra: `<div class="beast-stat-tile-actions"><button type="button" class="beast-security-action-btn${floatingPlayerOn ? " is-disarm" : ""}" id="adminFloatingPlayerBtn">${floatingPlayerOn ? "Slå fra" : "Slå til"}</button></div>`
-          })}
         </div></div>
         <div class="admin-card admin-settings-group"><div class="admin-card-head"><div><h2>Kioskintegration</h2><p>Avanceret MQTT-styring og enhedskommandoer. Kan ignoreres på almindelige tablets.</p></div></div>${renderMqttPanel()}</div>
         <div class="admin-card admin-settings-group admin-diagnostics"><div class="admin-card-head"><div><h2>Diagnostik og session</h2><p>Seneste lokale hændelser samt mulighed for at logge Home Assistant-sessionen ud.</p></div></div><details><summary>Vis teknisk log</summary><pre class="beast-debug-log" id="adminDebugLog"></pre></details><button type="button" class="beast-btn" id="adminLogout">Log ud</button></div>
@@ -1554,6 +1541,7 @@
     const printer = BeastConfig.get("panels.printer") || {};
     const security = BeastConfig.get("panels.security") || {};
     const printerConfigured = Boolean(printer.statusSensor);
+    const floatingPlayerOn = isFloatingPlayerEnabled();
     const doorsConfigured = Boolean((security.locks || []).length || (security.openingSensors || []).length);
     return `<section class="admin-view${activeView === "advarsler" ? " is-active" : ""}" data-admin-view="advarsler">
       <div class="admin-settings-intro"><div><h2>${t("Advarsler", "Alerts")}</h2><p>${t("Samlet sted for dashboardets banner-advarsler. Flere kan være synlige på samme tid, hver kan trækkes rundt på skærmen og huskes hver for sig.", "One place for the dashboard's banner alerts. Several can be visible at once, each can be dragged around the screen and remembers its own position.")}</p></div></div>
@@ -1622,6 +1610,18 @@
         <label><span>${t("Advar før lektion (minutter)", "Warn before lesson (minutes)")}</span><input type="number" min="1" max="60" id="adminAdvarslerAulaMinutes" value="${Number(banners.aulaLessonMinutes) || 10}"></label>
         <label><span>${t("AULA besked-sensor (valgfri)", "AULA message sensor (optional)")}</span>${BeastEntityPicker.selectHtml({ id: "adminAdvarslerAulaMessage", domain: "binary_sensor", keywordHints: ["aula", "besked", "message"], selected: app.aulaMessageSensor })}</label>
         <p class="admin-field-hint">${t("Kræver mindst én skoleskema-kalender valgt under Kalender & affald.", "Requires at least one schedule calendar picked under Calendar & waste.")}</p>
+      </div></div>
+      <div class="admin-card admin-settings-group"><div class="admin-card-head"><div><h2>${t("Dørkamera-visning", "Doorbell camera view")}</h2><p>${t("Fuldskærmsvisning når der ringes på. Kamera og dørklokke-sensor vælges under Kiosk & dørklokke.", "Full-screen view when the doorbell rings. The camera and doorbell sensor are picked under Kiosk & doorbell.")}</p></div></div><div class="beast-mqtt-config">
+        <label><span>${t("Lukker", "Closes")}</span>
+          <select id="adminAdvarslerDoorbellMode">
+            <option value="timeout" ${app.doorbellViewMode !== "manual" ? "selected" : ""}>${t("Automatisk efter et antal minutter", "Automatically after a number of minutes")}</option>
+            <option value="manual" ${app.doorbellViewMode === "manual" ? "selected" : ""}>${t("Kun når jeg selv lukker den", "Only when I close it myself")}</option>
+          </select>
+        </label>
+        <label class="admin-field" id="adminAdvarslerDoorbellMinutesField"><span>${t("Antal minutter før automatisk luk", "Minutes before it closes automatically")}</span><input type="number" min="1" max="60" id="adminAdvarslerDoorbellMinutes" value="${Number(app.doorbellViewMinutes) || 3}"></label>
+      </div></div>
+      <div class="admin-card admin-settings-group"><div class="admin-card-head"><div><h2>${t("Flydende musikafspiller", "Floating music player")}</h2><p>${t("Viser en lille afspiller-boks på forsiden mens der spilles musik. Gælder kun denne enhed/browser, ikke andre kiosker.", "Shows a small player box on the front page while music is playing. Applies only to this device/browser, not other kiosks.")}</p></div></div><div class="beast-mqtt-config">
+        <div class="beast-stat-tile-actions"><button type="button" class="beast-security-action-btn${floatingPlayerOn ? " is-disarm" : ""}" id="adminAdvarslerFloatingPlayerBtn">${floatingPlayerOn ? t("Slå fra på denne enhed", "Turn off on this device") : t("Slå til på denne enhed", "Turn on on this device")}</button></div>
       </div></div>
       <div class="admin-actions"><button type="button" class="beast-btn beast-btn-primary" id="adminAdvarslerSave">${t("Gem advarsler", "Save alerts")}</button><span class="admin-save-state" data-save-state="advarsler"></span></div>
     </section>`;
@@ -2147,8 +2147,8 @@
         if (state) state.textContent = `Gemt: ${result.filename} · ${result.target}`;
       } catch (error) { if (state) state.textContent = "Backup mislykkedes"; }
     });
-    const doorbellViewModeSelect = document.getElementById("adminDoorbellViewMode");
-    const doorbellViewMinutesField = document.getElementById("adminDoorbellViewMinutesField");
+    const doorbellViewModeSelect = document.getElementById("adminAdvarslerDoorbellMode");
+    const doorbellViewMinutesField = document.getElementById("adminAdvarslerDoorbellMinutesField");
     const syncDoorbellViewMinutesField = () => doorbellViewMinutesField?.classList.toggle("is-hidden", doorbellViewModeSelect?.value === "manual");
     syncDoorbellViewMinutesField();
     doorbellViewModeSelect?.addEventListener("change", syncDoorbellViewMinutesField);
@@ -2158,9 +2158,7 @@
         ...BeastConfig.get("appEntities"),
         doorbellBinarySensor: document.getElementById("adminDoorbellBinary").value || null,
         doorbellEvent: document.getElementById("adminDoorbellEvent").value || null,
-        doorbellCamera: document.getElementById("adminDoorbellCamera").value || null,
-        doorbellViewMode: document.getElementById("adminDoorbellViewMode").value === "manual" ? "manual" : "timeout",
-        doorbellViewMinutes: Math.max(1, Math.min(60, Number(document.getElementById("adminDoorbellViewMinutes").value) || 3))
+        doorbellCamera: document.getElementById("adminDoorbellCamera").value || null
       });
     }));
     document.querySelectorAll("[data-save-panel]").forEach((button) => button.addEventListener("click", async () => {
@@ -2186,7 +2184,7 @@
       if (output) output.textContent = `${value}%`;
       window.BeastTheme?.setCardOpacity(value);
     });
-    document.getElementById("adminFloatingPlayerBtn")?.addEventListener("click", () => {
+    document.getElementById("adminAdvarslerFloatingPlayerBtn")?.addEventListener("click", () => {
       const floatingPlayerOn = isFloatingPlayerEnabled();
       setFloatingPlayerEnabled(!floatingPlayerOn);
       renderShell();
@@ -2301,7 +2299,9 @@
         mailImage: document.getElementById("adminAdvarslerMailImage").value || null,
         mailImageCarport: document.getElementById("adminAdvarslerMailImageCarport").value || null,
         mailImageForhaven: document.getElementById("adminAdvarslerMailImageForhaven").value || null,
-        aulaMessageSensor: document.getElementById("adminAdvarslerAulaMessage").value || null
+        aulaMessageSensor: document.getElementById("adminAdvarslerAulaMessage").value || null,
+        doorbellViewMode: document.getElementById("adminAdvarslerDoorbellMode").value === "manual" ? "manual" : "timeout",
+        doorbellViewMinutes: Math.max(1, Math.min(60, Number(document.getElementById("adminAdvarslerDoorbellMinutes").value) || 3))
       };
       const banners = {
         ...(BeastConfig.get("banners") || {}),
