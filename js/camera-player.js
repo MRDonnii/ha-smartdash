@@ -5,7 +5,7 @@ let GO2RTC_BASE_URL = params.get("base") || "";
 const source = params.get("src") || "";
 const useSub = params.get("sub") === "1";
 const allowAudio = params.get("audio") === "1";
-const transport = params.get("transport") || "auto";
+const transport = params.get("transport") || "webrtc";
 const fit = params.get("fit") === "cover" ? "cover" : "contain";
 const position = params.get("position") || "center";
 const resolvedSrc = useSub && !source.endsWith("_sub") ? `${source}_sub` : source;
@@ -19,7 +19,7 @@ let reconnectTimer = null;
 let lastVideoTime = -1;
 let lastVideoProgressAt = 0;
 let reconnectAttempts = 0;
-let activeMode = transport === "mse" ? "mse" : "mse,webrtc";
+let activeMode = transport === "mse" ? "mse" : "webrtc";
 
 document.body.classList.add(`position-${position}`);
 
@@ -125,10 +125,11 @@ function reconnect() {
 }
 
 function recoverStalledStream() {
-  // High-bitrate streams can exhaust an MSE SourceBuffer in Chromium.
-  // Let go2rtc negotiate WebRTC as well instead of repeating MSE forever.
-  if (activeMode === "mse") activeMode = "webrtc,mse";
-  postHealth(activeMode.startsWith("webrtc") ? "transport-fallback" : "stalled");
+  // Keep one transport active at a time. Parallel MSE and WebRTC can
+  // compete for a high-bitrate stream and cause a reconnect loop.
+  // Explicit legacy MSE players move to WebRTC after their first stall.
+  if (activeMode === "mse") activeMode = "webrtc";
+  postHealth("stalled");
   reconnect();
 }
 
