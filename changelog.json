@@ -1,12 +1,14 @@
 [
   {
-    "version": "20260812-73",
-    "tag": "v0.7.110-beta.1",
+    "version": "20260812-74",
+    "tag": "v0.7.110-beta.2",
     "date": "2026-08-12",
     "changes": [
+      "Installering af beta-versioner virker nu igen: prerelease-tags som v0.7.110-beta.2 og build-ID’er som 20260812-73 bliver ikke længere afvist med \"invalid_tag\".",
+      "The beta install flow now works again: prerelease tags like v0.7.110-beta.2 and build IDs like 20260812-73 are no longer rejected with \"invalid_tag\".",
       "Vejr gendanner nu automatisk efter Home Assistant-genstart eller kortvarig utilgængelighed, så panelet ikke bliver blankt eller låst i fejltillstand.",
-      "Der er nu en global \"Genindlæs dashboard\"-handling, som tvinger HA-forbindelsen til at genoprette sig og derefter forsøger at hente nye data uden at spamme browseren.",
       "Weather now self-recovers after Home Assistant restarts or brief unavailability so the panel does not get stuck blank or broken.",
+      "Der er nu en global \"Genindlæs dashboard\"-handling, som tvinger HA-forbindelsen til at genoprette sig og derefter forsøger at hente nye data uden at spamme browseren.",
       "A new global \"Reload dashboard\" action forces the HA socket to reconnect and then refreshes the app without spamming the browser."
     ]
   },

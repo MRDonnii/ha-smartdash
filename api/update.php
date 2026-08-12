@@ -59,7 +59,39 @@ function skippedBuildId($dataDir) {
 }
 
 function isSafeTag($tag) {
-  return is_string($tag) && preg_match('/^v?[0-9]+\.[0-9]+\.[0-9]+$/', $tag);
+  if (!is_string($tag)) return false;
+  $tag = trim($tag);
+  return preg_match('/^v?[0-9]+\.[0-9]+\.[0-9]+(?:-[A-Za-z0-9.-]+)?$/', $tag)
+    || preg_match('/^[0-9]{8}-[0-9]+$/', $tag);
+}
+
+function resolveInstallTag($githubRepo, $requestedTag, &$error = null) {
+  $tag = trim((string) $requestedTag);
+  if ($tag === "") return null;
+
+  if (preg_match('/^v?[0-9]+\.[0-9]+\.[0-9]+(?:-[A-Za-z0-9.-]+)?$/', $tag)) return $tag;
+  if (!preg_match('/^[0-9]{8}-[0-9]+$/', $tag)) {
+    $error = "invalid_tag";
+    return null;
+  }
+
+  $body = httpGet("https://api.github.com/repos/$githubRepo/releases", $error);
+  if ($body === null) return null;
+  $releases = json_decode($body, true);
+  if (!is_array($releases)) {
+    $error = "Unexpected GitHub API response";
+    return null;
+  }
+
+  foreach ($releases as $release) {
+    $candidateTag = $release["tag_name"] ?? null;
+    if (!$candidateTag) continue;
+    $remoteBuild = fetchRemoteBuildId($githubRepo, $candidateTag, $ignoredError);
+    if ($remoteBuild === $tag) return $candidateTag;
+  }
+
+  $error = "No GitHub release matches build ID $tag";
+  return null;
 }
 
 function copyRecursive($src, $dst) {
@@ -285,12 +317,18 @@ if ($action === "install") {
   $error = null;
 
   $tag = $body["tag"] ?? null;
-  if ($tag !== null && !isSafeTag($tag)) { http_response_code(400); echo json_encode(["error" => "invalid_tag"]); exit; }
+  $resolvedTag = resolveInstallTag($githubRepo, $tag, $error);
+  if ($resolvedTag === null && $tag !== null) {
+    http_response_code(400);
+    echo json_encode(["error" => $error ?: "invalid_tag"]);
+    exit;
+  }
   if ($tag === null) {
     $release = fetchLatestRelease($githubRepo, $error);
     if ($release === null) { http_response_code(502); echo json_encode(["error" => "github_unreachable", "message" => $error]); exit; }
-    $tag = $release["tag_name"];
+    $resolvedTag = $release["tag_name"];
   }
+  $tag = $resolvedTag;
 
   $zipPath = sys_get_temp_dir() . "/ha-smartdash-update-" . uniqid() . ".zip";
   $extractDir = sys_get_temp_dir() . "/ha-smartdash-extract-" . uniqid();
