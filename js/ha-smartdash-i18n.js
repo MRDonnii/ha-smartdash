@@ -197,7 +197,7 @@
   };
   const dashboardEn = {
     "Oversigt": "Overview", "Kalender": "Calendar", "Sider": "Pages", "Dansk": "Danish",
-    "Rediger side": "Edit page", "Tilpas side": "Fit page", "Rediger forsiden": "Edit overview",
+    "Rediger side": "Edit page", "Tilpas side": "Fit page", "Genindlæs dashboard": "Reload dashboard", "Genstart siden og alle forbindelser": "Restart the page and all connections", "Rediger forsiden": "Edit overview",
     "Nulstil layout": "Reset layout", "Kun dette view og denne skærmstørrelse": "Only this view and this screen size",
     "Nulstil layoutet for dette view på denne skærmstørrelse?": "Reset the layout for this view at this screen size?",
     "Flyt, ændr og tilføj kort": "Move, resize, and add cards", "Fordel kortene til denne skærm": "Fit cards to this screen",

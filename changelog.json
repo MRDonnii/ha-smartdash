@@ -1,5 +1,14 @@
 [
   {
+    "version": "20260812-2",
+    "tag": "v0.7.112",
+    "date": "2026-08-12",
+    "changes": [
+      { "da": "High-kvalitet på livekameraer genopretter nu forbindelsen med automatisk MSE/WebRTC-forhandling i stedet for at gentage en fastlåst MSE-forbindelse.", "en": "High-quality live cameras now recover with automatic MSE/WebRTC negotiation instead of repeatedly retrying a stalled MSE connection." },
+      { "da": "Sidemenuen har nu en Genindlæs dashboard-knap, som genstarter siden og alle dashboardets forbindelser.", "en": "The page action menu now includes a Reload dashboard button that restarts the page and all dashboard connections." }
+    ]
+  },
+  {
     "version": "20260812-1",
     "tag": "v0.7.107",
     "date": "2026-08-12",
