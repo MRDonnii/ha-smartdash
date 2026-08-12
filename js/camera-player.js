@@ -19,6 +19,7 @@ let reconnectTimer = null;
 let lastVideoTime = -1;
 let lastVideoProgressAt = 0;
 let reconnectAttempts = 0;
+let activeMode = transport === "mse" ? "mse" : "mse,webrtc";
 
 document.body.classList.add(`position-${position}`);
 
@@ -62,7 +63,7 @@ function configureVideo(video) {
 class BeastCameraStream extends VideoRTC {
   constructor() {
     super();
-    this.mode = transport === "mse" ? "mse" : "mse,webrtc";
+    this.mode = activeMode;
     this.media = allowAudio ? "video,audio" : "video";
     this.background = true;
   }
@@ -95,6 +96,7 @@ function connect() {
   connected = true;
   streamReady = false;
   document.body.classList.remove("ready");
+  stream.mode = activeMode;
   refreshPoster();
   stream.src = `${GO2RTC_BASE_URL}/api/ws?src=${encodeURIComponent(resolvedSrc)}`;
   postHealth("connecting");
@@ -120,6 +122,14 @@ function reconnect() {
   const delay = Math.min(2500, 180 + reconnectAttempts * 320);
   reconnectAttempts += 1;
   reconnectTimer = window.setTimeout(() => { reconnectTimer = null; connect(); }, delay);
+}
+
+function recoverStalledStream() {
+  // High-bitrate streams can exhaust an MSE SourceBuffer in Chromium.
+  // Let go2rtc negotiate WebRTC as well instead of repeating MSE forever.
+  if (activeMode === "mse") activeMode = "webrtc,mse";
+  postHealth(activeMode.startsWith("webrtc") ? "transport-fallback" : "stalled");
+  reconnect();
 }
 
 function shouldStartImmediately() {
@@ -163,8 +173,7 @@ async function initPlayer() {
       lastVideoProgressAt = Date.now();
       postHealth("playing");
     } else if (lastVideoProgressAt && Date.now() - lastVideoProgressAt > 12000) {
-      postHealth("stalled");
-      reconnect();
+      recoverStalledStream();
     }
   }, 5000);
   if (shouldStartImmediately()) connect();
