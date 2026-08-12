@@ -472,6 +472,12 @@
     getTopCameras: (n) => discoverCameras().slice(0, n),
     resolveCamera: (entityId) => cameraInfoFor(entityId),
     resolveGroup: (entityIdOrSlug) => { const slug = cameraIdentity(entityIdOrSlug || "").slug; return discoverCameras().find((camera) => camera.slug === slug) || null; },
+    selectCamera: (slug) => {
+      if (!discoverCameras().some((camera) => camera.slug === slug)) return false;
+      featuredSlug = slug;
+      render();
+      return true;
+    },
     snapshotUrl,
     swapSnapshot,
     setQuality: (slug, quality) => setCameraQuality(discoverCameras().find((camera) => camera.slug === slug), quality),
