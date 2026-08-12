@@ -30,7 +30,21 @@ const MOUNTED_SECTION_ZONES = {
   printer: "beastPrinterZone"
 };
 
-const AUTO_RETURN_TO_OVERVIEW_MS = 3 * 60 * 1000;
+// Default matches the dashboard's original fixed behavior (always on,
+// 3 minutes, back to Oversigt); all three are configurable under
+// Admin -> Advarsler.
+function AUTO_RETURN_ENABLED() { return BeastConfig.get("appEntities.autoReturnEnabled") !== false; }
+function AUTO_RETURN_SECTION() { return BeastConfig.get("appEntities.autoReturnSection") || "overview"; }
+function AUTO_RETURN_MS() { return Math.max(1, Math.min(60, Number(BeastConfig.get("appEntities.autoReturnMinutes")) || 3)) * 60 * 1000; }
+function AUTO_RETURN_SCHEDULE_OK() {
+  if (BeastConfig.get("appEntities.autoReturnScheduleEnabled") !== true) return true;
+  const minutes = new Date().getHours() * 60 + new Date().getMinutes();
+  const start = parseTimeToMinutes(BeastConfig.get("appEntities.autoReturnScheduleStart"), 8 * 60);
+  const end = parseTimeToMinutes(BeastConfig.get("appEntities.autoReturnScheduleEnd"), 22 * 60);
+  if (start === end) return true;
+  if (start > end) return minutes >= start || minutes < end;
+  return minutes >= start && minutes < end;
+}
 // Checks GitHub Releases for a new build. Safe to poll fairly often
 // despite GitHub's unauthenticated 60 requests/hour-per-IP limit (shared
 // by every kiosk and admin tab on this network): api/update.php caches
@@ -214,7 +228,12 @@ function showDoorbellView() {
   hideAmbientMode();
   window.clearTimeout(ambientModeTimerId);
   window.clearTimeout(screenOffTimerId);
-  document.getElementById("beastDoorbellView")?.remove();
+  // A ring while the view is already open just extends the close timer --
+  // rebuilding the overlay from scratch on every repeat ring tore down and
+  // restarted the camera stream each time, which looked like flicker.
+  window.clearTimeout(doorbellTimerId);
+  if (DOORBELL_VIEW_MODE() !== "manual") doorbellTimerId = window.setTimeout(closeDoorbellView, DOORBELL_VIEW_MS());
+  if (document.getElementById("beastDoorbellView")) return;
   const overlay = document.createElement("div");
   overlay.id = "beastDoorbellView";
   overlay.className = "beast-doorbell-view";
@@ -232,7 +251,6 @@ function showDoorbellView() {
   fallbackImage?.addEventListener("error", () => BeastAuth.setAuthedImageSrc(fallbackImage, fallbackImage.dataset.doorbellPicture), { once:true });
   document.body.classList.add("beast-doorbell-active");
   overlay.querySelector(".beast-doorbell-close")?.addEventListener("click", (event) => { event.stopPropagation(); closeDoorbellView(); });
-  if (DOORBELL_VIEW_MODE() !== "manual") doorbellTimerId = window.setTimeout(closeDoorbellView, DOORBELL_VIEW_MS());
 }
 
 function handleDoorbellBinary() {
@@ -921,7 +939,14 @@ function renderAppShell(root) {
   window.BeastScreenLock?.init();
   lastDoorbellBinaryState = BeastHaSocket.getState(DOORBELL_BINARY_ID())?.state || null;
   if (DOORBELL_BINARY_ID()) BeastHaSocket.subscribeEntity(DOORBELL_BINARY_ID(), handleDoorbellBinary);
-  if (DOORBELL_EVENT_ID()) BeastHaSocket.subscribeEntity(DOORBELL_EVENT_ID(), showDoorbellView);
+  // HA event entities also emit a state change when they briefly go
+  // "unavailable" (integration restart, connectivity blip) -- reacting to
+  // every update instead of only genuine rings opened the view for those
+  // too, and since they're spaced well past the 5s re-trigger guard below,
+  // each one re-armed its own close timer on top of whatever was pending.
+  if (DOORBELL_EVENT_ID()) BeastHaSocket.subscribeEntity(DOORBELL_EVENT_ID(), (entityId, nextState) => {
+    if (nextState?.attributes?.event_type === "ring") showDoorbellView();
+  });
 }
 
 function applyDashboardBranding() {
@@ -941,8 +966,8 @@ function setupNavigation() {
 
   function scheduleAutoReturn() {
     window.clearTimeout(autoReturnTimerId);
-    if (document.hidden || activeSectionId === "overview") return;
-    autoReturnTimerId = window.setTimeout(() => activate("overview"), AUTO_RETURN_TO_OVERVIEW_MS);
+    if (!AUTO_RETURN_ENABLED() || !AUTO_RETURN_SCHEDULE_OK() || document.hidden || activeSectionId === AUTO_RETURN_SECTION()) return;
+    autoReturnTimerId = window.setTimeout(() => activate(AUTO_RETURN_SECTION()), AUTO_RETURN_MS());
   }
 
   function activate(sectionId) {

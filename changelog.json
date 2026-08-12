@@ -1,5 +1,28 @@
 [
   {
+    "version": "20260813-1",
+    "tag": "v0.7.115",
+    "date": "2026-08-13",
+    "changes": [
+      {
+        "da": "Rettet dørkamera-visningen så gentagne ringninger, mens den allerede er åben, forlænger luk-timeren i stedet for at genopbygge visningen og genstarte kamerastrømmen forfra.",
+        "en": "Fixed the doorbell camera view so repeated rings while it is already open extend the close timer instead of rebuilding the view and restarting the camera stream from scratch."
+      },
+      {
+        "da": "Rettet at falske tilstandsændringer (fx en kortvarig \"utilgængelig\") på dørklokkens event-entity kunne åbne dørkamera-visningen og sætte urelaterede luk-timere i gang oveni hinanden -- kun rigtige ringninger åbner nu visningen.",
+        "en": "Fixed spurious state changes (e.g. a brief \"unavailable\") on the doorbell event entity being able to open the doorbell camera view and stack unrelated close timers on top of each other -- only genuine rings now open the view."
+      },
+      {
+        "da": "Auto-retur til forsiden er nu konfigurerbar: til/fra, hvilken side der returneres til, antal minutter uden aktivitet, og et valgfrit tidsrum hvor det er aktivt (fx kun i dagtimerne).",
+        "en": "Auto-return to the front page is now configurable: on/off, which page it returns to, minutes of inactivity, and an optional time window when it is active (e.g. daytime only)."
+      },
+      {
+        "da": "Administration er omorganiseret så indstillinger matcher deres kategori: Advarsler indeholder nu kun banner-advarsler, dørkamera- og auto-retur-indstillinger er samlet under Forbindelser & kiosk, og den flydende musikafspiller er flyttet til Denne enhed.",
+        "en": "Administration has been reorganized so settings match their category: Alerts now only contains banner alerts, doorbell view and auto-return settings are grouped under Connections & kiosk, and the floating music player moved to This device."
+      }
+    ]
+  },
+  {
     "version": "20260812-4",
     "tag": "v0.7.114",
     "date": "2026-08-12",
