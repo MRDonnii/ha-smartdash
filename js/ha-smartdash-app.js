@@ -221,7 +221,7 @@ function showDoorbellView() {
   const camera = doorbellCameraStream();
   const useStream = camera && window.BeastCameras?.hasGo2rtc?.() && (camera.resolvedStreamName || camera.streamName);
   const cameraMarkup = useStream
-    ? `<iframe src="./camera-player.html?v=14&src=${encodeURIComponent(camera.resolvedStreamName || camera.streamName)}" title="Fordør livekamera" frameborder="0" allow="autoplay"></iframe>`
+    ? `<iframe src="./camera-player.html?v=16&transport=webrtc&src=${encodeURIComponent(camera.resolvedStreamName || camera.streamName)}" title="Fordør livekamera" frameborder="0" allow="autoplay"></iframe>`
     : camera?.haStreamUrl
       ? `<img class="beast-doorbell-ha-camera" src="${camera.haStreamUrl}" data-doorbell-picture="${camera.entityPicture || ""}" alt="Fordør livekamera">`
       : `<img class="beast-doorbell-ha-camera" data-doorbell-picture="${camera?.entityPicture || ""}" alt="Fordør kamera">`;
@@ -337,7 +337,7 @@ function ambientCameraMarkup(config) {
     const camera = window.BeastCameras?.resolveCamera?.(id);
     if (!camera) return "";
     if (window.BeastCameras?.hasGo2rtc?.() && camera.streamName) {
-      const src = `./camera-player.html?v=12&transport=mse&src=${encodeURIComponent(camera.resolvedStreamName || camera.streamName)}`;
+      const src = `./camera-player.html?v=16&transport=webrtc&src=${encodeURIComponent(camera.resolvedStreamName || camera.streamName)}`;
       return `<div class="beast-ambient-camera-tile"><iframe class="beast-ambient-camera-tile-frame" src="${src}" allow="autoplay"></iframe></div>`;
     }
     if (camera.haStreamUrl) {
@@ -1051,7 +1051,7 @@ function mountPageActionMenus() {
       : trigger;
     const menu = document.createElement("div"); menu.id = "beastPageActionMenu"; menu.className = "beast-page-action-menu";
     const isOverview = section.dataset.section === "overview";
-    menu.innerHTML = `<button type="button" data-page-action="edit"><i>${BeastCore.icon("settings",{size:21})}</i><span><strong>Rediger side</strong><small>Flyt, ændr og tilføj kort</small></span></button><button type="button" data-page-action="fit"><i>${BeastCore.icon("grid",{size:21})}</i><span><strong>Tilpas side</strong><small>Fordel kortene til denne skærm</small></span></button>${isOverview ? `<button type="button" data-page-action="cameras"><i>${BeastCore.icon("camera",{size:21})}</i><span><strong>Vælg kameraer</strong><small>Vælg hvilke kameraer der vises på forsiden</small></span></button><button type="button" data-page-action="screensaver"><i>${BeastCore.icon("moon",{size:21})}</i><span><strong>Start pauseskærm</strong><small>Vis nattens pauseskærm med det samme</small></span></button>` : ""}`;
+    menu.innerHTML = `<button type="button" data-page-action="edit"><i>${BeastCore.icon("settings",{size:21})}</i><span><strong>Rediger side</strong><small>Flyt, ændr og tilføj kort</small></span></button><button type="button" data-page-action="fit"><i>${BeastCore.icon("grid",{size:21})}</i><span><strong>Tilpas side</strong><small>Fordel kortene til denne skærm</small></span></button>${isOverview ? `<button type="button" data-page-action="cameras"><i>${BeastCore.icon("camera",{size:21})}</i><span><strong>Vælg kameraer</strong><small>Vælg hvilke kameraer der vises på forsiden</small></span></button><button type="button" data-page-action="screensaver"><i>${BeastCore.icon("moon",{size:21})}</i><span><strong>Start pauseskærm</strong><small>Vis nattens pauseskærm med det samme</small></span></button>` : ""}<button type="button" data-page-action="reload"><i>${BeastCore.icon("refresh",{size:21})}</i><span><strong>Genindlæs dashboard</strong><small>Genstart siden og alle forbindelser</small></span></button>`;
     document.body.appendChild(menu);
     const triggerRect = trigger.getBoundingClientRect();
     const menuRect = menu.getBoundingClientRect();
@@ -1067,6 +1067,12 @@ function mountPageActionMenus() {
     menu.querySelector('[data-page-action="fit"]').addEventListener("click", async (actionEvent) => { const button=actionEvent.currentTarget; button.disabled=true; button.classList.add("is-busy"); await window.BeastPageEditor?.fit?.(section.dataset.section); close(); });
     menu.querySelector('[data-page-action="cameras"]')?.addEventListener("click", () => { close(); document.getElementById("beastOvCameraPicker")?.click(); });
     menu.querySelector('[data-page-action="screensaver"]')?.addEventListener("click", () => { close(); document.getElementById("beastOvStartScreensaver")?.click(); });
+    menu.querySelector('[data-page-action="reload"]').addEventListener("click", () => {
+      close();
+      const nextUrl = new URL(window.location.href);
+      nextUrl.searchParams.set("dashboardReload", String(Date.now()));
+      window.location.replace(nextUrl.href);
+    });
   }, true);
 }
 

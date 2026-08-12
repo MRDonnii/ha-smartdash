@@ -100,7 +100,7 @@
     const cameraMarkup = POOL_CAMERA
       ? window.BeastCameras.sharedCameraMarkup(POOL_CAMERA, { className: "beast-pool-shared-camera", label: false, motion: false })
       : POOL_CAMERA_STREAM
-        ? `<iframe src="./camera-player.html?v=14&transport=mse&src=${encodeURIComponent(POOL_CAMERA_STREAM)}" title="Pool livekamera" frameborder="0" allow="autoplay"></iframe>`
+        ? `<iframe src="./camera-player.html?v=16&transport=webrtc&src=${encodeURIComponent(POOL_CAMERA_STREAM)}" title="Pool livekamera" frameborder="0" allow="autoplay"></iframe>`
         : `<div class="beast-pool-camera-empty">Vælg et kamera under Administration → Pool</div>`;
 
     if (containerEl.querySelector(".beast-pool-dashboard")) {

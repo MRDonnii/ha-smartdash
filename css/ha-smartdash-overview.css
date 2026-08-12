@@ -823,6 +823,7 @@
 }
 
 .beast-ov-camera-thumb {
+  cursor: pointer;
   position: relative;
   height: 100%;
   width: 100%;
@@ -833,6 +834,8 @@
   overflow: hidden;
   background: #000;
 }
+.beast-ov-camera-thumb:focus-visible { outline: 2px solid var(--accent-a); outline-offset: 2px; }
+.beast-ov-camera-thumb .beast-shared-camera-live { pointer-events: none; }
 .beast-ov-camera-thumb .beast-overview-camera-render { position: absolute; inset: 0; }
 .beast-ov-camera-thumb .beast-shared-camera-label { font-size: 12px; min-height: 40px; padding: 14px 10px 7px; }
 .beast-ov-camera-thumb .beast-camera-quality-menu { top: 8px; right: 8px; }
