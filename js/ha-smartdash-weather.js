@@ -11,6 +11,9 @@
   let daily = [];
   let radarLayer = "precipitation";
   let location = null;
+  let retryTimerId = null;
+  let loadInFlight = false;
+  let lastKnownReady = 0;
 
   function number(value, suffix = "", digits = 0) {
     const parsed = Number(value);
@@ -91,11 +94,6 @@
     </section>`;
   }
 
-  // Every panel section is its own <section>, so on data updates we can swap
-  // just that section's markup instead of rebuilding the whole page — the
-  // radar section holds a live embedded iframe (Windy/Blitzortung) that must
-  // never be touched by unrelated updates (e.g. the weather entity ticking
-  // its temperature), or it reloads and loses the user's pan/zoom/timeline.
   function render() {
     if (!rootEl) return;
     if (!rootEl.querySelector(".beast-weather-dashboard")) {
@@ -112,9 +110,12 @@
       wireWeatherLayout();
       return;
     }
-    rootEl.querySelector(".beast-weather-current").outerHTML = currentMarkup();
-    rootEl.querySelector(".beast-weather-hourly").outerHTML = hourlyMarkup();
-    rootEl.querySelector(".beast-weather-week").outerHTML = dailyMarkup();
+    const current = rootEl.querySelector(".beast-weather-current");
+    const hourlySection = rootEl.querySelector(".beast-weather-hourly");
+    const weekly = rootEl.querySelector(".beast-weather-week");
+    if (current) current.outerHTML = currentMarkup();
+    if (hourlySection) hourlySection.outerHTML = hourlyMarkup();
+    if (weekly) weekly.outerHTML = dailyMarkup();
     wireWeatherLayout();
   }
 
@@ -183,8 +184,17 @@
     map.innerHTML = `<iframe class="beast-radar-iframe" data-layer="${radarLayer}" src="${src}" loading="lazy" referrerpolicy="no-referrer-when-downgrade" allow="geolocation" allowfullscreen></iframe>`;
   }
 
+  function scheduleRetry(delay = 5000) {
+    window.clearTimeout(retryTimerId);
+    retryTimerId = window.setTimeout(() => {
+      retryTimerId = null;
+      load();
+    }, delay);
+  }
+
   async function load() {
-    if (!weatherEntityId()) return;
+    if (!weatherEntityId() || loadInFlight) return;
+    loadInFlight = true;
     const jobs = [
       forecast("hourly").then((items) => { hourly = items; }),
       forecast("daily").then((items) => { daily = items; }),
@@ -192,9 +202,19 @@
         location = { latitude: Number(config.latitude), longitude: Number(config.longitude) };
       })
     ];
-    await Promise.allSettled(jobs);
+    const results = await Promise.allSettled(jobs);
+    loadInFlight = false;
+    const weatherState = BeastHaSocket.getState(weatherEntityId());
+    const ready = results.every((result) => result.status === "fulfilled") && Boolean(weatherState);
+    if (ready) {
+      lastKnownReady = Date.now();
+      render();
+      drawRadar();
+      return;
+    }
     render();
     drawRadar();
+    scheduleRetry(lastKnownReady ? 12000 : 5000);
   }
 
   function init(root) {
@@ -207,14 +227,13 @@
     }
     render();
     load();
-    // render() at mount only has whatever's already cached — if the panel is
-    // opened before the initial get_states snapshot lands (or before the
-    // weather entity's first state arrives), "current conditions" renders
-    // empty and previously had nothing to wake it back up, since a weather
-    // condition can go a long time between state_changed events. Re-render
-    // once the socket confirms the snapshot is actually in.
-    BeastHaSocket.onStatusChange((status) => { if (status === "connected") render(); });
-    BeastHaSocket.subscribeEntity(weatherEntityId(), BeastCore.stableUpdater(rootEl, render, 800));
+    BeastHaSocket.onStatusChange((status) => {
+      if (status === "connected") load();
+      else if (status === "connecting") scheduleRetry(4000);
+    });
+    BeastHaSocket.subscribeEntity(weatherEntityId(), BeastCore.stableUpdater(rootEl, () => {
+      load();
+    }, 800));
   }
 
   BeastCore.registerPanel("weather", "beastWeatherZone", init);
