@@ -1,10 +1,9 @@
 (function () {
   function weatherEntityId() { return BeastConfig.get("panels.weather.entity"); }
   const RADAR_LAYERS = [
-    { id: "precipitation", label: "Nedbør", icon: "cloud-rain", source: "Windy.com", overlay: "radar" },
+    { id: "precipitation", label: "Nedbør & Lyn", icon: "cloud-rain", source: "Windy.com", overlay: "radar" },
     { id: "satellite", label: "Sky", icon: "cloud", source: "Windy.com", overlay: "satellite" },
-    { id: "wind", label: "Vind", icon: "wind", source: "Windy.com", overlay: "wind" },
-    { id: "lightning", label: "Lyn", icon: "bolt", source: "Blitzortung.org", overlay: null }
+    { id: "wind", label: "Vind", icon: "wind", source: "Windy.com", overlay: "wind" }
   ];
 
   let rootEl = null;
@@ -170,32 +169,11 @@
     return `https://embed.windy.com/embed.html?${params.toString()}`;
   }
 
-  // Same embed params as the "Lyn" tab already configured in the real HA
-  // dashboard (energi-overblik → Vejret): Cookies=0/Advertisment=0 strip the
-  // consent banner and ads, and the #zoom/lat/lon hash centers on home.
-  function blitzortungEmbedUrl() {
-    const params = new URLSearchParams({
-      interactive: "1",
-      NavigationControl: "1",
-      FullScreenControl: "0",
-      Cookies: "0",
-      InfoDiv: "0",
-      MenuButtonDiv: "0",
-      ScaleControl: "0",
-      LinksCheckboxChecked: "1",
-      LinksRangeValue: "10",
-      MapStyle: "2",
-      MapStyleRangeValue: "10",
-      Advertisment: "0"
-    });
-    return `https://map.blitzortung.org/index.php?${params.toString()}#7/${location.latitude.toFixed(3)}/${location.longitude.toFixed(3)}`;
-  }
-
   function drawRadar() {
     const map = document.getElementById("beastRadarMap");
     if (!map) return;
     const layer = RADAR_LAYERS.find((l) => l.id === radarLayer);
-    const src = location ? (layer.overlay ? windyEmbedUrl(layer.overlay) : blitzortungEmbedUrl()) : null;
+    const src = location ? windyEmbedUrl(layer.overlay) : null;
     if (!src) {
       map.innerHTML = `<div class="beast-radar-empty">${BeastCore.icon("cloud-rain", { size: 30 })}<strong>Henter kortdata…</strong><span>Venter på husets placering fra Home Assistant.</span></div>`;
       return;

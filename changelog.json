@@ -1,5 +1,13 @@
 [
   {
+    "version": "20260812-2",
+    "tag": "v0.7.108",
+    "date": "2026-08-12",
+    "changes": [
+      { "da": "I Vejr-radar er den første fane omdøbt til \"Nedbør & Lyn\", fordi den allerede inkluderer lyn, og den separate \"Lyn\"-fane er fjernet.", "en": "In Weather radar, the first tab has been renamed to \"Precipitation & Lightning\" because it already includes lightning, and the separate \"Lightning\" tab has been removed." }
+    ]
+  },
+  {
     "version": "20260812-1",
     "tag": "v0.7.107",
     "date": "2026-08-12",
