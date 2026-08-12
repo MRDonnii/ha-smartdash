@@ -205,7 +205,8 @@
     const hidden = new Set(Array.isArray(layout.hidden) ? layout.hidden : []);
     const selectors = { rooms: ".beast-heating-room-grid", pumps: ".beast-heating-pumps-head, .beast-heatpump-grid", dantherm: ".beast-dantherm-card", district: ".beast-district-compact" };
     Object.entries(selectors).forEach(([id, selector]) => containerEl.querySelectorAll(selector).forEach((el) => el.classList.toggle("is-layout-hidden", hidden.has(id))));
-    containerEl.querySelector("#beastHeatingLayoutEdit")?.addEventListener("click", () => openHeatingLayout(layout));
+    const button = containerEl.querySelector("#beastHeatingLayoutEdit");
+    if (button && !button.dataset.pageEditActionBound) window.BeastPageActions?.attach(button, () => openHeatingLayout(layout));
   }
 
   function openHeatingLayout(layout) {

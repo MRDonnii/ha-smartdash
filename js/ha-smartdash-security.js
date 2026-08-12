@@ -192,7 +192,8 @@
       const element = containerEl.querySelector(`.beast-security-${name}`);
       if (element) element.classList.toggle("is-layout-hidden", hiddenSections.has(name));
     });
-    containerEl.querySelector("#beastSecurityLayoutEdit")?.addEventListener("click", openSecurityLayoutEditor);
+    const button = containerEl.querySelector("#beastSecurityLayoutEdit");
+    if (button && !button.dataset.pageEditActionBound) window.BeastPageActions?.attach(button, openSecurityLayoutEditor);
 
     containerEl.querySelectorAll("[data-action='toggle-lock']").forEach((btn) => {
       btn.addEventListener("click", () => {

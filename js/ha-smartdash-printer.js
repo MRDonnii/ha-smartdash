@@ -20,7 +20,7 @@
 
   function savedCards() {
     const cards = BeastConfig.get("pageLayouts.printer.cards");
-    return Array.isArray(cards) && cards.length ? cards : defaultCards();
+    return Array.isArray(cards) ? cards : defaultCards();
   }
 
   function cardSize(card) {
@@ -458,7 +458,8 @@
       configureCard: configurePrinterCard,
       onAfterRender: () => wireCards()
     });
-    document.getElementById("beastPrinterEdit")?.addEventListener("click", () => pageEditor.enter());
+    const button = document.getElementById("beastPrinterEdit");
+    if (button && !button.dataset.pageEditActionBound) window.BeastPageActions?.attach(button, () => pageEditor.enter());
     render();
 
     BeastHaSocket.onStatusChange((status) => { if (status === "connected") render(); });

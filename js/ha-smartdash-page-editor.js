@@ -2,6 +2,61 @@
 // renderer. It keeps the existing specialised view intact and adds a
 // configurable layer of entity cards below it. The same editor is used by
 // every page, so drag/resize/search/save behaviour stays consistent.
+window.BeastPageActions = (() => {
+  function closeAll() {
+    document.querySelectorAll(".beast-page-edit-menu").forEach((menu) => {
+      menu.hidden = true;
+      const trigger = menu.parentElement?.querySelector(".beast-page-edit-trigger");
+      if (trigger) trigger.setAttribute("aria-expanded", "false");
+    });
+  }
+
+  function attach(trigger, editAction) {
+    if (!trigger || trigger.dataset.pageEditActionBound === "true") return;
+    trigger.dataset.pageEditActionBound = "true";
+    const menu = document.createElement("div");
+    menu.className = "beast-page-edit-menu";
+    menu.hidden = true;
+    menu.innerHTML = `
+      <button type="button" data-page-edit-action="refresh">${BeastCore.icon("refresh", { size: 16 })}<span>Genindlæs dashboard</span></button>
+      <button type="button" data-page-edit-action="edit">${BeastCore.icon("settings", { size: 16 })}<span>Rediger siden</span></button>
+    `;
+    trigger.parentElement?.appendChild(menu);
+    trigger.setAttribute("aria-expanded", "false");
+    trigger.addEventListener("click", (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      const isOpen = !menu.hidden;
+      closeAll();
+      if (isOpen) return;
+      menu.hidden = false;
+      trigger.setAttribute("aria-expanded", "true");
+    });
+    menu.addEventListener("click", (event) => {
+      const action = event.target.closest("[data-page-edit-action]");
+      if (!action) return;
+      event.stopPropagation();
+      closeAll();
+      const nextAction = action.dataset.pageEditAction;
+      if (nextAction === "refresh") {
+        window.triggerGlobalDashboardRefresh?.();
+        return;
+      }
+      if (nextAction === "edit") {
+        editAction?.();
+      }
+    });
+  }
+
+  document.addEventListener("click", (event) => {
+    if (event.target.closest(".beast-page-edit-trigger")) return;
+    if (event.target.closest(".beast-page-edit-menu")) return;
+    closeAll();
+  }, true);
+
+  return { attach, closeAll };
+})();
+
 window.BeastPageEditor = (() => {
   const EXCLUDED = new Set(["overview", "robots", "printer", "settings"]);
   const LABELS = {
@@ -77,7 +132,7 @@ window.BeastPageEditor = (() => {
       allEntities: BeastCardEditor.allEntities, entityPickerTypes: ["stat", "toggle", "graph", "camera", "media", "calendar", "custom"], editLabel: `Redigerer ${LABELS[section] || section}`,
       configureCard: (card, commit) => configureCard(card, commit, section), onAfterRender: () => BeastStandardCards.wire(grid)
     });
-    host.querySelector(".beast-page-edit-trigger").addEventListener("click", () => editor.enter());
+    window.BeastPageActions?.attach(host.querySelector(".beast-page-edit-trigger"), () => editor.enter());
     // Page modules may repaint their zone when HA state changes. Reattach the
     // editor host after such a repaint without touching the page's own cards.
     const observer = new MutationObserver(() => {

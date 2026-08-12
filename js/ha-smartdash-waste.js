@@ -96,7 +96,8 @@
     const layout = BeastConfig.get("pageLayouts.waste.calendarLayout") || {};
     const hidden = new Set(Array.isArray(layout.hidden) ? layout.hidden : []);
     containerEl.querySelectorAll("[data-calendar-section]").forEach((el) => el.classList.toggle("is-layout-hidden", hidden.has(el.dataset.calendarSection)));
-    containerEl.querySelector("#beastCalendarLayoutEdit")?.addEventListener("click", () => openCalendarLayout(layout));
+    const button = containerEl.querySelector("#beastCalendarLayoutEdit");
+    if (button && !button.dataset.pageEditActionBound) window.BeastPageActions?.attach(button, () => openCalendarLayout(layout));
   }
 
   function openCalendarLayout(layout) {

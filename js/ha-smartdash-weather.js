@@ -1,17 +1,19 @@
 (function () {
   function weatherEntityId() { return BeastConfig.get("panels.weather.entity"); }
   const RADAR_LAYERS = [
-    { id: "precipitation", label: "Nedbør", icon: "cloud-rain", source: "Windy.com", overlay: "radar" },
+    { id: "precipitation", label: "Nedbør & Lyn", icon: "cloud-rain", source: "Windy.com", overlay: "radar" },
     { id: "satellite", label: "Sky", icon: "cloud", source: "Windy.com", overlay: "satellite" },
-    { id: "wind", label: "Vind", icon: "wind", source: "Windy.com", overlay: "wind" },
-    { id: "lightning", label: "Lyn", icon: "bolt", source: "Blitzortung.org", overlay: null }
+    { id: "wind", label: "Vind", icon: "wind", source: "Windy.com", overlay: "wind" }
   ];
+  const WEATHER_RETRY_DELAYS_MS = [5000, 10000, 20000, 30000];
 
   let rootEl = null;
   let hourly = [];
   let daily = [];
   let radarLayer = "precipitation";
   let location = null;
+  let weatherRetryTimerId = null;
+  let weatherRetryAttempt = 0;
 
   function number(value, suffix = "", digits = 0) {
     const parsed = Number(value);
@@ -90,6 +92,45 @@
     </section>`;
   }
 
+  function recoverPlaceholderMarkup(message, detail) {
+    return `
+      <button type="button" class="beast-page-edit-trigger" id="beastWeatherLayoutEdit" aria-label="Rediger vejrlayout">⋮</button>
+      <div class="beast-weather-dashboard beast-weather-recovering">
+        <div class="beast-weather-left">
+          <section class="beast-weather-current">
+            <div class="beast-weather-current-main">
+              <span class="beast-weather-current-icon">${BeastCore.icon("cloud", { size: 58 })}</span>
+              <div>
+                <small>Vejr</small>
+                <strong>${message}</strong>
+                <span>${detail}</span>
+              </div>
+            </div>
+          </section>
+          <section class="beast-weather-hourly"><header><strong>Næste 12 timer</strong><small>Temperatur · nedbør · vind</small></header><div><p>${detail}</p></div></section>
+        </div>
+        ${radarMarkup()}
+        <section class="beast-weather-week"><header><strong>De næste 7 dage</strong><small>Dag / nat og risiko for regn</small></header><div><p>${detail}</p></div></section>
+      </div>
+    `;
+  }
+
+  function renderRecoveringState(message = "Genopretter vejrudsigten…", detail = "Home Assistant er ved at komme tilbage.") {
+    if (!rootEl) return;
+    rootEl.innerHTML = recoverPlaceholderMarkup(message, detail);
+    rootEl.querySelectorAll("[data-layer]").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        if (btn.dataset.layer === radarLayer) return;
+        radarLayer = btn.dataset.layer;
+        updateRadarTabs();
+        drawRadar();
+      });
+    });
+    updateRadarTabs();
+    drawRadar();
+    wireWeatherLayout();
+  }
+
   // Every panel section is its own <section>, so on data updates we can swap
   // just that section's markup instead of rebuilding the whole page — the
   // radar section holds a live embedded iframe (Windy/Blitzortung) that must
@@ -97,6 +138,12 @@
   // its temperature), or it reloads and loses the user's pan/zoom/timeline.
   function render() {
     if (!rootEl) return;
+    const state = BeastHaSocket.getState(weatherEntityId());
+    const hasUsableState = !!state && !["unknown", "unavailable", "none", "offline"].includes(String(state.state || "").trim().toLowerCase());
+    if (!hasUsableState && !hourly.length && !daily.length) {
+      renderRecoveringState("Genopretter vejrudsigten…", "Home Assistant er ved at komme tilbage.");
+      return;
+    }
     if (!rootEl.querySelector(".beast-weather-dashboard")) {
       rootEl.innerHTML = `<button type="button" class="beast-page-edit-trigger" id="beastWeatherLayoutEdit" aria-label="Rediger vejrlayout">⋮</button><div class="beast-weather-dashboard"><div class="beast-weather-left">${currentMarkup()}${hourlyMarkup()}</div>${radarMarkup()}${dailyMarkup()}</div>`;
       rootEl.querySelectorAll("[data-layer]").forEach((btn) => {
@@ -123,7 +170,7 @@
     const selectors = { current: ".beast-weather-current", hourly: ".beast-weather-hourly", week: ".beast-weather-week", radar: ".beast-weather-radar" };
     Object.entries(selectors).forEach(([id, selector]) => rootEl.querySelector(selector)?.classList.toggle("is-layout-hidden", hidden.has(id)));
     const button = rootEl.querySelector("#beastWeatherLayoutEdit");
-    if (button && !button.dataset.wired) { button.dataset.wired = "true"; button.addEventListener("click", () => openWeatherLayout(layout)); }
+    if (button && !button.dataset.wired) { button.dataset.wired = "true"; window.BeastPageActions?.attach(button, () => openWeatherLayout(layout)); }
   }
 
   function openWeatherLayout(layout) {
@@ -199,18 +246,47 @@
     map.innerHTML = `<iframe class="beast-radar-iframe" data-layer="${radarLayer}" src="${src}" loading="lazy" referrerpolicy="no-referrer-when-downgrade" allow="geolocation" allowfullscreen></iframe>`;
   }
 
+  function scheduleWeatherRetry(reason = "Vejrdata er midlertidigt utilgængelige.") {
+    if (weatherRetryTimerId) return;
+    const delay = WEATHER_RETRY_DELAYS_MS[Math.min(weatherRetryAttempt, WEATHER_RETRY_DELAYS_MS.length - 1)];
+    weatherRetryAttempt += 1;
+    renderRecoveringState("Genopretter vejrudsigten…", `${reason} Forsøger igen om ${Math.round(delay / 1000)} sekunder.`);
+    weatherRetryTimerId = window.setTimeout(() => {
+      weatherRetryTimerId = null;
+      load();
+    }, delay);
+  }
+
   async function load() {
     if (!weatherEntityId()) return;
-    const jobs = [
-      forecast("hourly").then((items) => { hourly = items; }),
-      forecast("daily").then((items) => { daily = items; }),
-      BeastAuth.haFetch("/api/config").then((config) => {
+    weatherRetryTimerId = null;
+    try {
+      const [hourlyResult, dailyResult, configResult] = await Promise.allSettled([
+        forecast("hourly"),
+        forecast("daily"),
+        BeastAuth.haFetch("/api/config")
+      ]);
+
+      hourly = hourlyResult.status === "fulfilled" && Array.isArray(hourlyResult.value) ? hourlyResult.value : [];
+      daily = dailyResult.status === "fulfilled" && Array.isArray(dailyResult.value) ? dailyResult.value : [];
+      const config = configResult.status === "fulfilled" ? configResult.value : null;
+      if (config && Number.isFinite(Number(config.latitude)) && Number.isFinite(Number(config.longitude))) {
         location = { latitude: Number(config.latitude), longitude: Number(config.longitude) };
-      })
-    ];
-    await Promise.allSettled(jobs);
-    render();
-    drawRadar();
+      }
+
+      const state = BeastHaSocket.getState(weatherEntityId());
+      const hasUsableState = !!state && !["unknown", "unavailable", "none", "offline"].includes(String(state.state || "").trim().toLowerCase());
+      if (!hasUsableState && !hourly.length && !daily.length) {
+        scheduleWeatherRetry("Vejrelementet er midlertidigt utilgængeligt.");
+        return;
+      }
+
+      weatherRetryAttempt = 0;
+      render();
+      drawRadar();
+    } catch (error) {
+      scheduleWeatherRetry(error?.message || "Vejrdata kunne ikke hentes.");
+    }
   }
 
   function init(root) {
@@ -221,15 +297,24 @@
       BeastCore.wireNotConfiguredLinks(rootEl);
       return;
     }
-    render();
+    renderRecoveringState("Forbinder til Home Assistant…", "Henter vejrdata og kortplacering.");
     load();
-    // render() at mount only has whatever's already cached — if the panel is
-    // opened before the initial get_states snapshot lands (or before the
-    // weather entity's first state arrives), "current conditions" renders
-    // empty and previously had nothing to wake it back up, since a weather
-    // condition can go a long time between state_changed events. Re-render
-    // once the socket confirms the snapshot is actually in.
-    BeastHaSocket.onStatusChange((status) => { if (status === "connected") render(); });
+    BeastHaSocket.onStatusChange((status) => {
+      if (status === "connecting") {
+        renderRecoveringState("Forbinder til Home Assistant…", "Genopretter vejrforbindelsen.");
+      } else if (status === "connected") {
+        weatherRetryAttempt = 0;
+        load();
+      }
+    });
+    document.addEventListener("beast:global-refresh", () => {
+      weatherRetryAttempt = 0;
+      if (weatherRetryTimerId) {
+        window.clearTimeout(weatherRetryTimerId);
+        weatherRetryTimerId = null;
+      }
+      load();
+    });
     BeastHaSocket.subscribeEntity(weatherEntityId(), BeastCore.stableUpdater(rootEl, render, 800));
   }
 

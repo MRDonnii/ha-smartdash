@@ -241,12 +241,13 @@ const BeastConfig = (() => {
   }
 
   function save(next) {
-    cache = next;
-    writeLocalFallback(next);
+    const normalized = normalizePageLayouts(isPlainObject(next) ? JSON.parse(JSON.stringify(next)) : next);
+    cache = normalized;
+    writeLocalFallback(normalized);
     const request = fetch(API_URL, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(next)
+      body: JSON.stringify(normalized)
     }).then((response) => {
       if (!response.ok) throw new Error(`HTTP ${response.status}`);
       return response.json();

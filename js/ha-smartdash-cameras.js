@@ -237,7 +237,8 @@
     const hidden = new Set(Array.isArray(layout.hidden) ? layout.hidden : []);
     containerEl.querySelector(".beast-camera-featured")?.classList.toggle("is-layout-hidden", hidden.has("featured"));
     containerEl.querySelector(".beast-camera-strip")?.classList.toggle("is-layout-hidden", hidden.has("grid"));
-    containerEl.querySelector("#beastCamerasLayoutEdit")?.addEventListener("click", () => openCameraLayout(layout));
+    const button = containerEl.querySelector("#beastCamerasLayoutEdit");
+    if (button && !button.dataset.pageEditActionBound) window.BeastPageActions?.attach(button, () => openCameraLayout(layout));
   }
 
   function openCameraLayout(layout) {

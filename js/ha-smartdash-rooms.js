@@ -159,7 +159,8 @@
       containerEl.innerHTML = `<button type="button" class="beast-page-edit-trigger beast-rooms-layout-trigger" id="beastRoomsLayoutEdit" aria-label="Rediger rumkort" title="Rediger rumkort">⋮</button><div class="beast-rooms-grid" id="beastRoomsGrid"></div><div id="beastRoomModalHost"></div>`;
       grid = document.getElementById("beastRoomsGrid");
       observeGridResize(grid);
-      document.getElementById("beastRoomsLayoutEdit")?.addEventListener("click", openRoomLayoutEditor);
+      const button = document.getElementById("beastRoomsLayoutEdit");
+      if (button && !button.dataset.pageEditActionBound) window.BeastPageActions?.attach(button, openRoomLayoutEditor);
     }
 
     areas.forEach((area) => {
