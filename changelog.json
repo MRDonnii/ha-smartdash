@@ -1,5 +1,13 @@
 [
   {
+    "version": "20260812-1",
+    "tag": "v0.7.107",
+    "date": "2026-08-12",
+    "changes": [
+      { "da": "Forsidens tre kameraer åbner nu kamera-siden direkte på det kamera, man trykker på, så det valgte kamera vises med det samme som stort livekamera.", "en": "The three front-page cameras now open the Cameras page directly on the camera you tap, so the selected camera is immediately shown as the featured live view." }
+    ]
+  },
+  {
     "version": "20260811-184",
     "tag": "v0.7.106",
     "date": "2026-08-12",
