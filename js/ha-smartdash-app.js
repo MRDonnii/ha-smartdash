@@ -221,7 +221,7 @@ function showDoorbellView() {
   const camera = doorbellCameraStream();
   const useStream = camera && window.BeastCameras?.hasGo2rtc?.() && (camera.resolvedStreamName || camera.streamName);
   const cameraMarkup = useStream
-    ? `<iframe src="./camera-player.html?v=15&src=${encodeURIComponent(camera.resolvedStreamName || camera.streamName)}" title="Fordør livekamera" frameborder="0" allow="autoplay"></iframe>`
+    ? `<iframe src="./camera-player.html?v=16&transport=webrtc&src=${encodeURIComponent(camera.resolvedStreamName || camera.streamName)}" title="Fordør livekamera" frameborder="0" allow="autoplay"></iframe>`
     : camera?.haStreamUrl
       ? `<img class="beast-doorbell-ha-camera" src="${camera.haStreamUrl}" data-doorbell-picture="${camera.entityPicture || ""}" alt="Fordør livekamera">`
       : `<img class="beast-doorbell-ha-camera" data-doorbell-picture="${camera?.entityPicture || ""}" alt="Fordør kamera">`;
@@ -337,7 +337,7 @@ function ambientCameraMarkup(config) {
     const camera = window.BeastCameras?.resolveCamera?.(id);
     if (!camera) return "";
     if (window.BeastCameras?.hasGo2rtc?.() && camera.streamName) {
-      const src = `./camera-player.html?v=15&transport=mse&src=${encodeURIComponent(camera.resolvedStreamName || camera.streamName)}`;
+      const src = `./camera-player.html?v=16&transport=webrtc&src=${encodeURIComponent(camera.resolvedStreamName || camera.streamName)}`;
       return `<div class="beast-ambient-camera-tile"><iframe class="beast-ambient-camera-tile-frame" src="${src}" allow="autoplay"></iframe></div>`;
     }
     if (camera.haStreamUrl) {
