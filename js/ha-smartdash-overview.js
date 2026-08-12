@@ -1290,12 +1290,27 @@
     }
     host.innerHTML = `
       <div class="beast-ov-camera-strip" data-count="${cameras.length}">${cameras.map((camera) => `
-        <div class="beast-ov-camera-thumb${camera.motion ? " has-motion" : ""}" data-slug="${camera.slug}">
+        <div class="beast-ov-camera-thumb${camera.motion ? " has-motion" : ""}" data-slug="${camera.slug}" role="button" tabindex="0" aria-label="Åbn ${escapeHtml(camera.label)}">
           ${window.BeastCameras.sharedCameraMarkup(camera, { className: "beast-overview-camera-render", label: true, motion: true })}
         </div>
       `).join("")}</div>
     `;
     window.BeastCameras.wireSharedCameras(host, renderCameras);
+    const openCamera = (slug) => {
+      if (!window.BeastCameras.selectCamera(slug)) return;
+      document.dispatchEvent(new CustomEvent("beast:navigate", { detail: { section: "cameras" } }));
+    };
+    host.querySelectorAll(".beast-ov-camera-thumb").forEach((tile) => {
+      tile.addEventListener("click", (event) => {
+        if (event.target.closest("[data-camera-quality-slug]")) return;
+        openCamera(tile.dataset.slug);
+      });
+      tile.addEventListener("keydown", (event) => {
+        if (event.key !== "Enter" && event.key !== " ") return;
+        event.preventDefault();
+        openCamera(tile.dataset.slug);
+      });
+    });
     const cameraPickerButton = document.getElementById("beastOvCameraPicker");
     if (cameraPickerButton) cameraPickerButton.onclick = (event) => {
       event.stopPropagation();
@@ -2154,7 +2169,9 @@
     // The "open/unlocked too long" door banner is duration-based, not just
     // state-based -- a door that's been open past the threshold needs its
     // banner to appear even without a NEW state change firing this second.
-    window.setInterval(renderBanners, 60000);
+    // Covered by the tracked bannerRefreshTimerId above (same mechanism,
+    // shorter interval) -- this used to be a second, untracked 60s
+    // setInterval doing the exact same call, never cleared on re-init.
     let bannerResizeTimerId = null;
     window.addEventListener("resize", () => {
       window.clearTimeout(bannerResizeTimerId);
