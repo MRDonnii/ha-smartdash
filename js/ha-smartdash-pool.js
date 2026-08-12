@@ -173,7 +173,8 @@
     const hidden = new Set(Array.isArray(layout.hidden) ? layout.hidden : []);
     const selectors = { hero: ".beast-pool-hero", camera: ".beast-pool-live", insights: ".beast-pool-insights" };
     Object.entries(selectors).forEach(([id, selector]) => containerEl.querySelectorAll(selector).forEach((el) => el.classList.toggle("is-layout-hidden", hidden.has(id))));
-    containerEl.querySelector("#beastPoolLayoutEdit")?.addEventListener("click", () => openPoolLayout(layout));
+    const button = containerEl.querySelector("#beastPoolLayoutEdit");
+    if (button && !button.dataset.pageEditActionBound) window.BeastPageActions?.attach(button, () => openPoolLayout(layout));
   }
 
   function openPoolLayout(layout) {

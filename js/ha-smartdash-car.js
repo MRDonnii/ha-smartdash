@@ -151,7 +151,8 @@
     const hidden = new Set(Array.isArray(layout.hidden) ? layout.hidden : []);
     containerEl.querySelector(".beast-car-top")?.classList.toggle("is-layout-hidden", hidden.has("battery"));
     containerEl.querySelector(".beast-stat-grid")?.classList.toggle("is-layout-hidden", hidden.has("details"));
-    containerEl.querySelector("#beastCarLayoutEdit")?.addEventListener("click", () => openCarLayout(layout));
+    const button = containerEl.querySelector("#beastCarLayoutEdit");
+    if (button && !button.dataset.pageEditActionBound) window.BeastPageActions?.attach(button, () => openCarLayout(layout));
   }
 
   function openCarLayout(layout) {

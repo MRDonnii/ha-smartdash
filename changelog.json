@@ -1,5 +1,16 @@
 [
   {
+    "version": "20260812-73",
+    "tag": "v0.7.110-beta.1",
+    "date": "2026-08-12",
+    "changes": [
+      "Vejr gendanner nu automatisk efter Home Assistant-genstart eller kortvarig utilgængelighed, så panelet ikke bliver blankt eller låst i fejltillstand.",
+      "Der er nu en global \"Genindlæs dashboard\"-handling, som tvinger HA-forbindelsen til at genoprette sig og derefter forsøger at hente nye data uden at spamme browseren.",
+      "Weather now self-recovers after Home Assistant restarts or brief unavailability so the panel does not get stuck blank or broken.",
+      "A new global \"Reload dashboard\" action forces the HA socket to reconnect and then refreshes the app without spamming the browser."
+    ]
+  },
+  {
     "version": "20260809-71",
     "tag": "v0.6.3",
     "date": "2026-08-09",

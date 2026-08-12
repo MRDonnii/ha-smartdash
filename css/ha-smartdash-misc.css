@@ -1457,9 +1457,49 @@
   color: var(--ink);
   font: 800 30px/1 var(--font-sans);
   box-shadow: none;
+  cursor: pointer;
   touch-action: manipulation;
 }
 .beast-page-edit-trigger:active { transform: scale(.94); }
+.beast-page-edit-trigger[aria-expanded="true"] {
+  background: color-mix(in srgb, var(--surface-2), transparent 25%);
+}
+
+.beast-page-edit-menu {
+  position: fixed;
+  top: 82px;
+  right: 8px;
+  z-index: 40;
+  display: grid;
+  min-width: 220px;
+  padding: 8px;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-md);
+  background: color-mix(in srgb, var(--surface-solid), transparent 8%);
+  box-shadow: 0 14px 34px rgba(8, 10, 15, .38);
+  backdrop-filter: blur(12px);
+}
+.beast-page-edit-menu[hidden] { display: none; }
+.beast-page-edit-menu button {
+  appearance: none;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 42px;
+  padding: 7px 10px;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--ink);
+  text-align: left;
+  font: inherit;
+  cursor: pointer;
+}
+.beast-page-edit-menu button:hover,
+.beast-page-edit-menu button:focus-visible {
+  background: var(--surface-2);
+  outline: none;
+}
 
 .beast-page-builder-grid {
   height: 100%;

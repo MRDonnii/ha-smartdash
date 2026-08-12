@@ -421,7 +421,8 @@
     const hidden = new Set(Array.isArray(layout.hidden) ? layout.hidden : []);
     containerEl.querySelector(".beast-music-control")?.classList.toggle("is-layout-hidden", hidden.has("player"));
     containerEl.querySelector(".beast-music-library")?.classList.toggle("is-layout-hidden", hidden.has("library"));
-    containerEl.querySelector("#beastMusicLayoutEdit")?.addEventListener("click", () => openMusicLayout(layout));
+    const button = containerEl.querySelector("#beastMusicLayoutEdit");
+    if (button && !button.dataset.pageEditActionBound) window.BeastPageActions?.attach(button, () => openMusicLayout(layout));
   }
 
   function openMusicLayout(layout) {

@@ -43,7 +43,7 @@
 
   function savedCards() {
     const cards = BeastConfig.get("pageLayouts.robots.cards");
-    return Array.isArray(cards) && cards.length ? cards : defaultCards();
+    return Array.isArray(cards) ? cards : defaultCards();
   }
 
   function cardSize(card) {
@@ -485,7 +485,8 @@
       configureCard: configureRobotCard,
       onAfterRender: () => wireCards()
     });
-    document.getElementById("beastRobotsEdit")?.addEventListener("click", () => pageEditor.enter());
+    const button = document.getElementById("beastRobotsEdit");
+    if (button && !button.dataset.pageEditActionBound) window.BeastPageActions?.attach(button, () => pageEditor.enter());
     render();
     const stableRender = BeastCore.stableUpdater(containerEl, render, 350);
     BeastHaSocket.onStatusChange((status) => { if (status === "connected") render(); });

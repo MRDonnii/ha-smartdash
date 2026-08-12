@@ -440,6 +440,26 @@ function currentBuildId() {
   return document.querySelector('meta[name="beast-build"]')?.content || "legacy";
 }
 
+let lastGlobalDashboardRefreshAt = 0;
+let globalDashboardReloadTimerId = null;
+
+function triggerGlobalDashboardRefresh() {
+  const now = Date.now();
+  if (now - lastGlobalDashboardRefreshAt < 5000) return;
+  lastGlobalDashboardRefreshAt = now;
+  window.clearTimeout(globalDashboardReloadTimerId);
+  BeastHaSocket.connect(true);
+  document.dispatchEvent(new CustomEvent("beast:global-refresh"));
+  globalDashboardReloadTimerId = window.setTimeout(() => {
+    const statusDot = document.getElementById("beastStatusDot");
+    const stillStale = !statusDot || statusDot.dataset.state !== "connected";
+    if (stillStale) {
+      BeastCore.log("Global dashboard refresh: HA stadig utilgængelig, genindlæser siden.");
+      window.location.reload();
+    }
+  }, 3500);
+}
+
 // Per-device on purpose — "I already saw this one, don't ask again" is a
 // preference about this specific screen, not something to sync centrally.
 const UPDATE_SKIP_KEY = "beast_skipped_update_version_v1";
@@ -747,6 +767,7 @@ function overviewCameraMenuMarkup(hasCameras) {
         <button type="button" class="beast-ov-camera-menu-toggle" id="beastOvCameraMenuToggle" aria-label="Åbn kameramenu" aria-expanded="false">⋮</button>
         <div class="beast-ov-camera-menu-popover" id="beastOvCameraMenu" hidden>
           <button type="button" id="beastOvCameraPicker">${BeastCore.icon("camera", { size: 17 })}<span>Vælg kameraer</span></button>
+          <button type="button" id="beastOvRefreshDashboard">${BeastCore.icon("refresh", { size: 17 })}<span>Genindlæs dashboard</span></button>
           <button type="button" id="beastOvEdit">${BeastCore.icon("settings", { size: 17 })}<span>Rediger forsiden</span></button>
           <button type="button" id="beastOvStartScreensaver">${BeastCore.icon("moon", { size: 17 })}<span>Start pauseskærm</span></button>
         </div>
@@ -898,6 +919,17 @@ function setupNavigation() {
     window.BeastScreenLock.requestPinVerification((ok) => {
       if (ok) window.location.href = "/admin/";
     });
+  });
+
+  const globalRefreshButton = document.getElementById("beastOvRefreshDashboard");
+  globalRefreshButton?.addEventListener("click", (event) => {
+    event.preventDefault();
+    event.stopPropagation();
+    const menu = document.getElementById("beastOvCameraMenu");
+    const toggle = document.getElementById("beastOvCameraMenuToggle");
+    if (menu) menu.hidden = true;
+    if (toggle) toggle.setAttribute("aria-expanded", "false");
+    triggerGlobalDashboardRefresh();
   });
 
   ["pointerdown", "keydown", "input", "wheel"].forEach((eventName) => {
