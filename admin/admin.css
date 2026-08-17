@@ -203,6 +203,13 @@ button { cursor: pointer; }
 .admin-check strong, .admin-check small { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .admin-check strong { font-size: 13px; }
 .admin-check small { margin-top: 2px; color: var(--ink-muted); font-size: 10px; }
+/* Camera pickers only (see annotateCameraItemsWithGo2rtc() in admin.js) --
+   a third grid column, not squeezed inside the name/small text (which
+   truncate with an ellipsis), so the badge stays fully readable at any
+   name length. */
+.admin-check.has-stream-badge { grid-template-columns: auto minmax(0, 1fr) auto; }
+.admin-check-badge { flex-shrink: 0; padding: 3px 9px; border-radius: 999px; border: 1px solid var(--border-strong); background: var(--surface-2-solid); color: var(--ink-muted); font-size: 9px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.04em; white-space: nowrap; }
+.admin-check-badge.is-live { border-color: transparent; background: var(--accent-gradient); color: var(--accent-ink); }
 .admin-page-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
 .admin-branding-grid { display: grid; grid-template-columns: minmax(0,1fr) minmax(0,1fr) auto; align-items: end; gap: 14px; }
 .admin-favicon-upload input { padding: 8px !important; }

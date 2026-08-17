@@ -70,8 +70,10 @@
       { key: "areaIds", label: "Synlige Home Assistant-områder", type: "areas" }
     ]},
     { id: "cameras", title: "Kameraer", description: "Kameraoversigt med snapshots, livevisning og bevægelsesstatus.", fields: [
-      { key: "go2rtcBaseUrl", label: "go2rtc-adresse", type: "text", placeholder: "http://server:1984" },
-      { key: "cameraEntities", label: "Kamera-entities", type: "multi", domain: "camera" }
+      { key: "go2rtcBaseUrl", label: "go2rtc-adresse", type: "text", placeholder: "http://server:1984",
+        hint: "Valgfri, men anbefalet: adressen på en go2rtc-server (ofte en Home Assistant-tilføjelse) gør kameraerne rigtig live med det samme, uden forsinkelse. Uden den vises kameraerne stadig, men opdateres langsommere via Home Assistant." },
+      { key: "cameraEntities", label: "Kamera-entities", type: "multi", domain: "camera",
+        hint: "Kameraer mærket \"Live\" har en go2rtc-stream og vises hurtigt og direkte. Kameraer mærket \"Langsommere\" vises stadig fint, men opdateres med lidt forsinkelse, fordi de går via Home Assistant i stedet." }
     ]},
     { id: "security", title: "Sikkerhed", description: "Alarmpaneler, dørlåse og sensorer for døre og vinduer.", fields: [
       { key: "primaryAlarm", label: "Primært alarmsystem", type: "single", domain: "alarm_control_panel" },
@@ -236,6 +238,24 @@
     return entityCandidateCache.get(cacheKey).slice();
   }
 
+  // Every camera entity picker in Admin (front-page cameras, printer
+  // override, screensaver cameras, ...) lists every camera.* entity Home
+  // Assistant knows about equally, with no way to tell which ones will
+  // actually get a smooth live feed (a go2rtc stream configured for that
+  // camera) versus which will fall back to Home Assistant's own slower
+  // proxy stream -- see BeastCameras.sharedCameraMarkup() for that
+  // fallback chain. Sorting the live-capable ones first and labeling each
+  // row is meant to be self-explanatory to someone setting this up for the
+  // first time, without needing to already know what go2rtc is.
+  function annotateCameraItemsWithGo2rtc(items) {
+    items.forEach((item) => {
+      const camera = window.BeastCameras?.resolveCamera?.(item.id);
+      item.goLive = Boolean(camera?.streamName);
+    });
+    items.sort((a, b) => Number(b.goLive) - Number(a.goLive) || a.name.localeCompare(b.name, "da"));
+    return items;
+  }
+
   function deviceSearchText(device) {
     const entityText = BeastRegistry.getDeviceEntityIds(device.id).map((id) => {
       const meta = BeastRegistry.getEntityMeta(id);
@@ -362,10 +382,20 @@
       const meta = BeastRegistry.getEntityMeta(item.id);
       const device = meta?.deviceId ? BeastRegistry.getDevice(meta.deviceId) : null;
       const context = [device?.name, meta?.platform].filter(Boolean).join(" · ");
+      // Only camera-domain fields ever set goLive (see
+      // annotateCameraItemsWithGo2rtc()) -- everything else's items simply
+      // don't have the property, so this stays invisible everywhere but
+      // the camera pickers it's meant for.
+      const streamBadge = item.goLive === true
+        ? `<span class="admin-check-badge is-live" title="Denne kamera-stream vises hurtigt og direkte (go2rtc).">Live</span>`
+        : item.goLive === false
+          ? `<span class="admin-check-badge" title="Ingen go2rtc-stream fundet til dette kamera -- det vises stadig, men opdateres langsommere via Home Assistant.">Langsommere</span>`
+          : "";
       return `
-      <label class="admin-check" data-search="${escapeHtml(searchText(item))}">
+      <label class="admin-check${streamBadge ? " has-stream-badge" : ""}" data-search="${escapeHtml(searchText(item))}">
         <input type="checkbox" value="${escapeHtml(item.id)}"${selected.has(item.id) ? " checked" : ""}>
         <span><strong>${escapeHtml(item.name)}</strong><small>${escapeHtml(context ? `${context} · ${item.id}` : item.id)}</small></span>
+        ${streamBadge}
       </label>`;
     }).join("");
     const remaining = Math.max(0, matches.length - visible.length);
@@ -467,6 +497,7 @@
       ids.filter(Boolean).forEach((entityId) => { if (!seen.has(entityId)) base.unshift({ id: entityId, name: BeastEntityPicker.friendlyName(entityId) }); });
       entityFieldBaseSources.set(id, base);
       const items = scope?.selectedDeviceId ? scopedEntityItems(id, scope.selectedDeviceId) : candidates(panel, field, current, ids);
+      if (field.domain === "camera") annotateCameraItemsWithGo2rtc(items);
       return `${renderEntityDeviceScope(id, scope)}${renderCheckList(panel, field, ids, items)}`;
     }
     if (field.type === "groups") {
@@ -767,7 +798,7 @@
           <div class="admin-card-head"><div><h2>${escapeHtml(panel.title)}</h2><p>${escapeHtml(panel.description)}</p></div></div>
           ${panel.fields.some((field) => field.type === "device") ? `<div class="admin-scope-banner">Vælg først den konkrete enhed og gem. Derefter viser felterne kun entities, som HA har knyttet til den valgte enhed.</div>` : ""}
           <div class="admin-grid">
-            ${panel.fields.map((field) => `<div class="admin-field"><span class="admin-field-heading"><b>${escapeHtml(field.label)}</b>${field.domain ? `<em>${escapeHtml(field.domain)}</em>` : ""}</span>${renderField(panel, field, current)}</div>`).join("")}
+            ${panel.fields.map((field) => `<div class="admin-field"><span class="admin-field-heading"><b>${escapeHtml(field.label)}</b>${field.domain ? `<em>${escapeHtml(field.domain)}</em>` : ""}</span>${field.hint ? `<p class="admin-field-hint">${escapeHtml(field.hint)}</p>` : ""}${renderField(panel, field, current)}</div>`).join("")}
           </div>
           ${panel.id === "rooms" ? renderRoomsEntityMappings(current) : ""}
           <div class="admin-actions"><button class="admin-save" type="button" data-save-panel="${panel.id}">Gem ${escapeHtml(panel.title)}</button><span class="admin-save-state" data-save-state="${panel.id}"></span></div>
@@ -2534,6 +2565,15 @@
     }
     await BeastConfig.init();
     if (!BeastAuth.getHaBaseUrl() && BeastConfig.get("haBaseUrl")) BeastAuth.setHaBaseUrl(BeastConfig.get("haBaseUrl"));
+    // Admin never mounts the Cameras panel, so nothing else here would ever
+    // trigger go2rtc's own stream-list discovery -- without this, the
+    // camera picker (see renderField()'s "multi" branch) could never tell
+    // which entities will actually get a live go2rtc stream vs Home
+    // Assistant's own slower proxy. Awaited before the first renderShell()
+    // so that distinction is there from the very first paint, not added in
+    // after the fact; a slow/unreachable go2rtc server just means no
+    // badges show, not a broken admin boot (rejections are swallowed).
+    await window.BeastCameras?.ensureStreamDiscovery(BeastConfig.get("panels.cameras.go2rtcBaseUrl")).catch(() => null);
     if (pinRecoveryPending && !callback) { BeastAuth.startLogin({ forceLogin: true }); return; }
     if (!BeastAuth.hasSession()) { renderLogin(); return; }
     const alreadyVerifiedForAdmin = window.BeastScreenLock?.consumeAdminVerification?.() === true;

@@ -87,8 +87,23 @@ class BeastCameraStream extends VideoRTC {
 customElements.define("beast-camera-stream", BeastCameraStream);
 const stream = document.getElementById("stream");
 
+// The poster is what's visible whenever the live video isn't (see the
+// body.ready rule in camera-player.html) -- including during every
+// reconnect. Assigning its src directly meant a failed fetch (go2rtc
+// answers 503 for a source whose producer connection is currently down)
+// replaced a perfectly good last frame with a broken-image blank, so a
+// source that reconnects often showed up as the picture repeatedly
+// flashing to black. Loading into a detached Image first and only
+// swapping on success keeps the last frame that *did* load on screen
+// through the gap instead. Nothing here fixes a flapping camera link --
+// it just stops a recovering stream from looking like a broken one.
 function refreshPoster() {
-  if (resolvedSrc) poster.src = `${GO2RTC_BASE_URL}/api/frame.jpeg?src=${encodeURIComponent(resolvedSrc)}&_ts=${Date.now()}`;
+  if (!resolvedSrc) return;
+  const nextUrl = `${GO2RTC_BASE_URL}/api/frame.jpeg?src=${encodeURIComponent(resolvedSrc)}&_ts=${Date.now()}`;
+  const preload = new Image();
+  preload.onload = () => { poster.src = nextUrl; };
+  preload.onerror = () => {};
+  preload.src = nextUrl;
 }
 
 function connect() {
@@ -157,6 +172,19 @@ window.addEventListener("online", reconnect);
 window.addEventListener("pagehide", disconnect);
 
 async function initPlayer() {
+  // Every caller that already knows the go2rtc address (see
+  // sharedCameraMarkup() and friends in the parent app) passes it as
+  // ?base=... precisely to skip this fetch. It used to run on every single
+  // player load regardless -- fine when api/config.php answers instantly,
+  // but a single slow/flaky response from it (a busy backend, a brief
+  // 503, ...) left GO2RTC_BASE_URL empty, which made this player give up
+  // immediately (see the unavailable-return below) without ever trying
+  // WebRTC. The parent's camera-health watchdog then saw a permanently
+  // silent frame, reloaded it, and the fresh reload hit the same flaky
+  // endpoint again -- a fast reload loop that showed up as the live
+  // picture repeatedly flashing to a blank white frame (a freshly
+  // (re)loaded iframe's default background, before this page's own CSS
+  // even applies) rather than any actual camera or stream problem.
   if (!GO2RTC_BASE_URL) {
     try {
       const response = await fetch("./api/config.php", { cache: "no-store" });
@@ -173,7 +201,14 @@ async function initPlayer() {
       lastVideoTime = current;
       lastVideoProgressAt = Date.now();
       postHealth("playing");
-    } else if (lastVideoProgressAt && Date.now() - lastVideoProgressAt > 12000) {
+    } else if (lastVideoProgressAt && Date.now() - lastVideoProgressAt > 24000) {
+      // Recovering means a visible drop to the black/poster frame while the
+      // connection re-negotiates (see connect()'s "ready" class removal) --
+      // worth it for a genuinely dead stream, but a source that's merely
+      // hiccuping every so often (weak wifi to the camera, a busy NVR,
+      // ...) would otherwise get "recovered" right through a brief stall
+      // that was already about to resolve on its own. 24s tolerates that
+      // without meaningfully delaying recovery from a real drop.
       recoverStalledStream();
     }
   }, 5000);

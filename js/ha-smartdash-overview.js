@@ -113,7 +113,15 @@
   let overviewPlayerDraggedUntil = 0;
   let bannerDraggedUntil = {};
   const printerImageCache = {}; // role -> { url, sourceId, lastFetchAt }
-  const PRINTER_IMAGE_REFRESH_MS = 5000;
+  // The printer's own built-in camera is an HA "image" entity (Bambu Lab's
+  // integration, at least) -- HA has no live-stream proxy for that domain,
+  // only entity_picture snapshots, so polling faster is the only lever
+  // available for it. The optional "protect" override is a real "camera"
+  // entity instead (e.g. a UniFi Protect camera pointed at the printer),
+  // which genuinely can stream -- see printerLiveCamera()/activeBanners()
+  // below, which use BeastCameras.resolveCamera() for that role instead of
+  // this snapshot cache.
+  const PRINTER_IMAGE_REFRESH_MS = 2000;
   function bannerPositionKey(type) { return `beast_banner_position_${type}_v1`; }
   // Edit-mode state (draft cards, is-editing) now lives inside the
   // BeastCardEditor instance created in init() -- see
@@ -277,14 +285,28 @@
   // Stacks every banner that hasn't been individually dragged directly
   // beneath the previous one, using each one's actual measured height --
   // "hænger sammen" (stick together) rather than fixed-size slots.
+  //
+  // renderBanners() calls this on every render (a printer's progress
+  // percentage ticking every few seconds, for instance), so writing
+  // style.top/left/transform unconditionally meant a banner containing a
+  // live camera got its position "changed" to the exact same value over
+  // and over. That's enough to make some browsers (kiosk/embedded ones
+  // especially) treat the box as having moved and briefly reset the
+  // video's decode surface -- which is what actually read as the camera
+  // flickering to black, not anything about the stream or the iframe
+  // itself. Only touching the DOM when a value has genuinely changed
+  // avoids that churn; the height read (needed to stack the *next* banner
+  // correctly) still has to happen every time, since text content -- and
+  // so a banner's height -- can change independently of its position.
   function stackDefaultBanners(container, banners) {
     let top = 12;
     banners.forEach((banner) => {
       const host = container.querySelector(`[data-banner-type="${banner.type}"]`);
       if (!host || host.classList.contains("has-custom-position")) return;
-      host.style.left = "";
-      host.style.transform = "";
-      host.style.top = `${top}px`;
+      if (host.style.left !== "") host.style.left = "";
+      if (host.style.transform !== "") host.style.transform = "";
+      const nextTop = `${top}px`;
+      if (host.style.top !== nextTop) host.style.top = nextTop;
       top += host.getBoundingClientRect().height + 12;
     });
   }
@@ -490,6 +512,42 @@
     }).catch(() => {});
   }
 
+  // Resolves the optional external "protect" camera into a real live
+  // camera object (go2rtc WebRTC if available, otherwise HA's own
+  // authenticated MJPEG camera_proxy_stream -- see cameraInfoFor() in
+  // ha-smartdash-cameras.js) instead of the periodic-snapshot approach the
+  // printer's own built-in camera is stuck with.
+  //
+  // go2rtc stream names are auto-matched from the camera entity's own id
+  // (see go2rtcVariantsForCamera() in ha-smartdash-cameras.js), which
+  // doesn't always line up -- the dedicated Printer page already has a
+  // manual override for exactly this (panels.printer.liveStream, "a raw
+  // go2rtc stream name typed by hand ... only if the camera can't be
+  // selected above"). Reusing that same override here (via
+  // resolvedStreamName, which sharedCameraMarkup() already prefers over
+  // streamName for per-camera quality overrides) means the banner gets the
+  // same real low-latency stream the Printer page uses, instead of falling
+  // back to HA's own slower proxy stream whenever auto-matching misses.
+  // Sticky across a single missed resolve (see printerLiveCamera() below) --
+  // BeastHaSocket.getState() briefly returning nothing for this entity
+  // (a reconnect, a slow state update, ...) must not read as "the camera
+  // is gone now" and tear the live iframe down, only to rebuild it (and
+  // pay the WebRTC handshake all over again) the moment the next render
+  // resolves it fine again. That rebuild-reconnect cycle is what reads as
+  // flickering between a live picture and a black frame.
+  let lastGoodPrinterLiveCamera = null;
+
+  function printerLiveCamera() {
+    if (!PRINTER_BANNER_CAMERA_ID) return (lastGoodPrinterLiveCamera = null);
+    const camera = window.BeastCameras?.resolveCamera(PRINTER_BANNER_CAMERA_ID);
+    if (!camera) return lastGoodPrinterLiveCamera;
+    if (!camera.streamName) {
+      const manualStream = String(BeastConfig.get("panels.printer.liveStream") || "").trim();
+      if (manualStream) return (lastGoodPrinterLiveCamera = { ...camera, resolvedStreamName: manualStream });
+    }
+    return (lastGoodPrinterLiveCamera = camera);
+  }
+
   function printerImages() {
     refreshPrinterImageRole("protect", PRINTER_BANNER_CAMERA_ID);
     refreshPrinterImageRole("indbygget", PRINTER_CAMERA_IMAGE_ID);
@@ -544,6 +602,22 @@
   }
 
   const PRINTER_ACTIVE_STATES = ["running", "prepare", "slicing", "pause"];
+  // A print-status sensor briefly reporting something outside
+  // PRINTER_ACTIVE_STATES (an "unavailable" blip, a slow MQTT update, ...)
+  // must not immediately drop the banner -- renderBanners() removes and
+  // fully recreates a banner's host the moment it stops being in the
+  // active list, which tears the live camera iframe down and pays the
+  // WebRTC handshake all over again on the next blip back to "running".
+  // That teardown/rebuild cycle is what reads as the banner's camera
+  // flickering to black, even though printerLiveCamera()'s own
+  // last-known-good guard already keeps the *photo* stable across a
+  // renderBanners() call that still has the banner present. Grace period
+  // is generous (a real "print finished" should still clear promptly, but
+  // sensors momentarily going unavailable is common enough on a home
+  // network to be worth riding out).
+  const PRINTER_STATUS_GRACE_MS = 20000;
+  let printerLastActiveStatus = null;
+  let printerLastActiveAt = 0;
 
   // Each banner type is independent: its own on/off toggle, its own trigger
   // condition, its own data. Multiple can be active and visible at once
@@ -565,16 +639,27 @@
 
     if (featureEnabled("printerBanner") && PRINTER_STATUS_ID) {
       const status = BeastHaSocket.getState(PRINTER_STATUS_ID)?.state;
-      if (PRINTER_ACTIVE_STATES.includes(status)) {
+      const isActiveNow = PRINTER_ACTIVE_STATES.includes(status);
+      if (isActiveNow) { printerLastActiveStatus = status; printerLastActiveAt = Date.now(); }
+      const withinGrace = !isActiveNow && printerLastActiveAt && Date.now() - printerLastActiveAt < PRINTER_STATUS_GRACE_MS;
+      // Debug-only preview hook: ?forcePrinterBanner=1 shows the banner (and
+      // its real camera, if one is configured) regardless of the printer's
+      // actual status -- for checking the banner/camera itself without
+      // waiting for or starting a real print. No query param -> normal
+      // behavior, untouched.
+      const forced = (() => { try { return new URLSearchParams(window.location.search).get("forcePrinterBanner") === "1"; } catch (_) { return false; } })();
+      if (isActiveNow || withinGrace || forced) {
+        const effectiveStatus = isActiveNow ? status : printerLastActiveStatus;
         const images = printerImages();
         const progress = Number(BeastHaSocket.getState(PRINTER_PROGRESS_ID)?.state);
         const remaining = Number(BeastHaSocket.getState(PRINTER_REMAINING_ID)?.state);
         const task = validText(BeastHaSocket.getState(PRINTER_TASK_ID)?.state);
         const progressLabel = Number.isFinite(progress) ? `${Math.round(progress)}%` : "";
         banners.push({
-          type: "printer", title: status === "pause" ? "Printer på pause" : "Printer kører",
+          type: "printer", title: effectiveStatus === "pause" ? "Printer på pause" : "Printer kører",
           detail: [progressLabel, task].filter(Boolean).join(" · ") || "Ingen data endnu",
           icon: "printer", image: images.protect || images.indbygget, images,
+          liveCamera: printerLiveCamera(),
           progress: Number.isFinite(progress) ? progress : null,
           remaining: Number.isFinite(remaining) ? remaining : null,
           task
@@ -658,15 +743,65 @@
   // at full size -- not a shrunk-down thumbnail -- whether they're their
   // own floating card or a row inside the combined one; only the wrapper
   // differs between the two modes, not what's inside it.
-  function bannerBodyMarkup(banner) {
-    return banner.compact
-      ? `<div class="beast-ov-mail-banner-row">
-          <span class="beast-ov-mail-banner-icon-sm">${BeastCore.icon(banner.icon, { size: 18 })}</span>
-          <div><strong>${escapeHtml(banner.title)}</strong><small>${escapeHtml(banner.detail)}</small></div>
-        </div>`
-      : `${banner.image ? `<img class="beast-ov-mail-banner-photo" src="${escapeHtml(banner.image)}" alt="">` : `<span class="beast-ov-mail-banner-icon">${BeastCore.icon(banner.icon, { size: 32 })}</span>`}
-        <div><strong>${escapeHtml(banner.title)}</strong><small>${escapeHtml(banner.detail)}</small></div>`;
+  // A live camera (currently only the printer banner's optional external
+  // "protect" override -- see printerLiveCamera()) renders through the same
+  // shared live-camera component the rest of the dashboard uses (WebRTC via
+  // go2rtc, or HA's own authenticated MJPEG stream as a fallback) instead
+  // of a periodically-refreshed still image. Returns null for a signature
+  // that identifies non-live photos too (image URL, or "icon") -- used to
+  // decide whether the photo element needs rebuilding at all (see
+  // renderBanners()/renderCombinedBanner() below), since a live camera's
+  // iframe/stream must not be torn down and recreated on every banner
+  // re-render (progress ticking, etc.) or it never gets the chance to
+  // actually play smoothly.
+  function bannerPhotoMarkup(banner) {
+    if (banner.compact) return { html: "", sig: "" };
+    if (banner.image) return { html: `<img class="beast-ov-mail-banner-photo" src="${escapeHtml(banner.image)}" alt="">`, sig: `img:${banner.image}` };
+    return { html: `<span class="beast-ov-mail-banner-icon">${BeastCore.icon(banner.icon, { size: 32 })}</span>`, sig: `icon:${banner.icon}` };
   }
+
+  // Live cameras go through a dedicated path instead of bannerPhotoMarkup()'s
+  // string diff: the string-sig guard should already stop the iframe from
+  // being rebuilt when nothing changed, but it still showed a live-to-
+  // white-flash flicker in practice, which only ever happens when the
+  // <iframe> element itself gets torn down and a fresh one inserted (a
+  // browser paints a blank white frame before a freshly-navigated iframe's
+  // own page/background has loaded -- camera-player.html's own body is
+  // black, so a *white* flash specifically means the element was recreated,
+  // not that the stream inside an existing one hiccuped). Keeping exactly
+  // one DOM node per camera identity alive here and only ever moving it
+  // (appendChild on a node that's already in the document just relocates
+  // it, never reloads it) removes even the possibility of that, regardless
+  // of whatever was still triggering it in the string-based path.
+  let printerLiveCameraEl = null;
+  let printerLiveCameraSig = null;
+
+  function ensurePrinterLiveCameraEl(camera) {
+    const sig = `${camera.slug}:${camera.resolvedStreamName || camera.streamName || ""}`;
+    // A cached element built before go2rtc's address was known would be the
+    // Home Assistant MJPEG fallback (an <img>, not the WebRTC player's
+    // <iframe>) -- and since the signature doesn't change when that address
+    // later becomes available, it would otherwise stay the weaker transport
+    // for the rest of the session. Rebuild once the real player is possible.
+    const wantsIframe = window.BeastCameras.hasGo2rtc?.();
+    const cachedIsIframe = Boolean(printerLiveCameraEl?.querySelector("iframe"));
+    if (printerLiveCameraEl && printerLiveCameraSig === sig && (!wantsIframe || cachedIsIframe)) return printerLiveCameraEl;
+    const wrap = document.createElement("div");
+    wrap.innerHTML = window.BeastCameras.sharedCameraMarkup(camera, { className: "beast-ov-mail-banner-photo", label: false, motion: false });
+    const el = wrap.firstElementChild;
+    window.BeastCameras.wireSharedCameras(wrap, renderBanners);
+    printerLiveCameraEl = el;
+    printerLiveCameraSig = sig;
+    return el;
+  }
+
+  function bannerTextMarkup(banner) {
+    return banner.compact
+      ? `<span class="beast-ov-mail-banner-icon-sm">${BeastCore.icon(banner.icon, { size: 18 })}</span>
+        <div><strong>${escapeHtml(banner.title)}</strong><small>${escapeHtml(banner.detail)}</small></div>`
+      : `<div><strong>${escapeHtml(banner.title)}</strong><small>${escapeHtml(banner.detail)}</small></div>`;
+  }
+
 
   // Resize handles let a banner (or the combined card) be dragged wider
   // than its default -- width only, height/image aspect-ratio follows via
@@ -734,7 +869,17 @@
     if (!container) return;
     const banners = visibleBanners();
     if (BeastConfig.get("banners.layoutMode") === "stacked") {
-      container.querySelectorAll("[data-banner-type]").forEach((el) => el.remove());
+      // ":scope >" is load-bearing. This exists to tear down the *other*
+      // layout mode's leftovers -- its banner hosts, which are direct
+      // children of the container. Without the direct-child restriction the
+      // selector also matched this mode's own rows (renderCombinedBanner()
+      // gives each row a data-banner-type too, nested inside
+      // #beastOvBannerGroup), so every single render deleted and rebuilt
+      // them. For a row holding a live camera that meant destroying and
+      // recreating its <iframe> on every render -- the flicker to a blank
+      // frame, on a stream that plays perfectly in the detail modal and on
+      // the Printer page, both of which build their player exactly once.
+      container.querySelectorAll(":scope > [data-banner-type]").forEach((el) => el.remove());
       renderCombinedBanner(container, banners);
       return;
     }
@@ -745,37 +890,86 @@
     });
     banners.forEach((banner) => {
       let host = container.querySelector(`[data-banner-type="${banner.type}"]`);
-      if (!host) {
+      const isNew = !host;
+      if (isNew) {
         host = document.createElement("div");
         host.className = "beast-ov-mail-banner";
         host.dataset.bannerType = banner.type;
-        container.appendChild(host);
-      }
-      host.classList.toggle("has-image", Boolean(banner.image));
-      host.classList.toggle("is-compact", Boolean(banner.compact));
-      host.innerHTML = `
+        host.innerHTML = `
           <span class="beast-ov-mail-banner-drag" aria-hidden="true"></span>
-          ${bannerBodyMarkup(banner)}
+          <div class="beast-ov-mail-banner-photo-slot"></div>
           <span class="beast-ov-mail-banner-resize" aria-hidden="true"></span>
         `;
-      host.onclick = (event) => {
-        event.stopPropagation();
-        if (Date.now() < (bannerDraggedUntil[`positions.${banner.type}`] || 0)) return;
-        openBannerDetail(banner);
-      };
-      wireBannerDrag(host, `positions.${banner.type}`);
-      wireBannerResize(host, banner.type, 230);
+        container.appendChild(host);
+        // Same reason as the combined layout's rows below: the host persists
+        // across renders now, so the handler must read the element's current
+        // banner instead of the one captured when it was created.
+        host.onclick = (event) => {
+          event.stopPropagation();
+          if (Date.now() < (bannerDraggedUntil[`positions.${banner.type}`] || 0)) return;
+          if (host._beastBanner) openBannerDetail(host._beastBanner);
+        };
+        wireBannerDrag(host, `positions.${banner.type}`);
+        wireBannerResize(host, banner.type, 230);
+      }
+      host._beastBanner = banner;
+      host.classList.toggle("has-image", Boolean(banner.image));
+      host.classList.toggle("is-compact", Boolean(banner.compact));
+      updateBannerHostBody(host, banner);
     });
     stackDefaultBanners(container, banners);
+  }
+
+  // Rebuilds a banner host's photo (only when its identity actually
+  // changed -- see bannerPhotoMarkup()) and text separately, instead of
+  // replacing the whole innerHTML on every call. A live camera's iframe
+  // must survive re-renders triggered by unrelated state changes (a
+  // printer's progress percentage ticking up every few seconds, for
+  // instance) or it never gets to actually stream smoothly -- this is the
+  // same problem, and the same fix, as renderCameras()'s render-signature
+  // guard elsewhere in this file.
+  function updateBannerHostBody(host, banner) {
+    const photo = bannerPhotoMarkup(banner);
+    let slot = host.querySelector(":scope > .beast-ov-mail-banner-photo-slot");
+    if (!slot) {
+      slot = document.createElement("div");
+      slot.className = "beast-ov-mail-banner-photo-slot";
+      const dragHandle = host.querySelector(":scope > .beast-ov-mail-banner-drag");
+      if (dragHandle) dragHandle.insertAdjacentElement("afterend", slot);
+      else host.prepend(slot);
+    }
+    if (banner.liveCamera && window.BeastCameras) {
+      const el = ensurePrinterLiveCameraEl(banner.liveCamera);
+      if (slot.firstElementChild !== el) {
+        slot.innerHTML = "";
+        slot.appendChild(el);
+      }
+      slot.dataset.photoSig = `node:${printerLiveCameraSig}`;
+    } else if (slot.dataset.photoSig !== photo.sig) {
+      slot.dataset.photoSig = photo.sig;
+      slot.innerHTML = photo.html;
+    }
+    let textEl = host.querySelector(":scope > .beast-ov-mail-banner-text, :scope > .beast-ov-mail-banner-row");
+    const textHtml = bannerTextMarkup(banner);
+    const wantsRow = Boolean(banner.compact);
+    if (!textEl || (wantsRow && !textEl.classList.contains("beast-ov-mail-banner-row")) || (!wantsRow && !textEl.classList.contains("beast-ov-mail-banner-text"))) {
+      textEl?.remove();
+      textEl = document.createElement("div");
+      textEl.className = wantsRow ? "beast-ov-mail-banner-row" : "beast-ov-mail-banner-text";
+      const resizeHandle = host.querySelector(":scope > .beast-ov-mail-banner-resize");
+      if (resizeHandle) resizeHandle.insertAdjacentElement("beforebegin", textEl);
+      else host.appendChild(textEl);
+    }
+    textEl.innerHTML = textHtml;
   }
 
   // Combined-card layout: every active banner is a row stacked inside one
   // shared card instead of its own separate floating card. Each row keeps
   // its own full-size body (mail/printer still get their real photo, not a
   // shrunk-down thumbnail -- the whole point of a photo alert is being able
-  // to actually see it) via the same bannerBodyMarkup() the separate-card
-  // layout uses; doors' own compact row is unchanged since it never had a
-  // photo. Each row still opens its own existing type-specific modal on
+  // to actually see it) via the same updateBannerHostBody() the separate-
+  // card layout uses; doors' own compact row is unchanged since it never
+  // had a photo. Each row still opens its own existing type-specific modal on
   // click; only one shared drag handle, resize handle, and saved position
   // (banners.groupPosition/banners.sizes.group) cover the whole card.
   function renderCombinedBanner(container, banners) {
@@ -788,28 +982,43 @@
       host = document.createElement("div");
       host.id = "beastOvBannerGroup";
       host.className = "beast-ov-mail-banner beast-ov-mail-banner-group";
+      host.innerHTML = `
+        <span class="beast-ov-mail-banner-drag" aria-hidden="true"></span>
+        <span class="beast-ov-mail-banner-resize" aria-hidden="true"></span>
+      `;
       container.appendChild(host);
+      wireBannerDrag(host, "groupPosition");
+      wireBannerResize(host, "group", 260);
     }
-    host.innerHTML = `
-      <span class="beast-ov-mail-banner-drag" aria-hidden="true"></span>
-      ${banners.map((banner) => `
-        <div class="beast-ov-mail-banner-group-item${banner.compact ? " is-compact" : ""}" data-banner-type="${banner.type}">
-          ${bannerBodyMarkup(banner)}
-        </div>
-      `).join("")}
-      <span class="beast-ov-mail-banner-resize" aria-hidden="true"></span>
-    `;
-    banners.forEach((banner) => {
-      const row = host.querySelector(`.beast-ov-mail-banner-group-item[data-banner-type="${banner.type}"]`);
-      if (!row) return;
-      row.onclick = (event) => {
-        event.stopPropagation();
-        if (Date.now() < (bannerDraggedUntil.groupPosition || 0)) return;
-        openBannerDetail(banner);
-      };
+    const resizeHandle = host.querySelector(":scope > .beast-ov-mail-banner-resize");
+    const activeTypes = new Set(banners.map((banner) => banner.type));
+    host.querySelectorAll(":scope > .beast-ov-mail-banner-group-item").forEach((row) => {
+      if (!activeTypes.has(row.dataset.bannerType)) row.remove();
     });
-    wireBannerDrag(host, "groupPosition");
-    wireBannerResize(host, "group", 260);
+    banners.forEach((banner) => {
+      let row = host.querySelector(`:scope > .beast-ov-mail-banner-group-item[data-banner-type="${banner.type}"]`);
+      if (!row) {
+        row = document.createElement("div");
+        row.dataset.bannerType = banner.type;
+        resizeHandle ? resizeHandle.insertAdjacentElement("beforebegin", row) : host.appendChild(row);
+        // Reads the banner off the element rather than closing over the one
+        // that happened to exist when the row was first created. Rows now
+        // persist across renders (so a live camera's iframe survives), which
+        // means a captured banner would stay frozen at its first-render
+        // contents -- for the printer that's before its camera images have
+        // finished loading, so opening the detail modal showed nothing at
+        // all. The element's latest banner is always current.
+        row.onclick = (event) => {
+          event.stopPropagation();
+          if (Date.now() < (bannerDraggedUntil.groupPosition || 0)) return;
+          if (row._beastBanner) openBannerDetail(row._beastBanner);
+        };
+      }
+      row._beastBanner = banner;
+      const nextClassName = `beast-ov-mail-banner-group-item${banner.compact ? " is-compact" : ""}`;
+      if (row.className !== nextClassName) row.className = nextClassName;
+      updateBannerHostBody(row, banner);
+    });
   }
 
   function openBannerDetail(banner) {
@@ -870,8 +1079,16 @@
   function openPrinterDetail(banner, activeCamera = "protect") {
     document.getElementById("beastOvBannerModal")?.remove();
     const images = banner.images || printerImages();
+    const liveCamera = banner.liveCamera || printerLiveCamera();
     const available = Object.entries(images).filter(([, url]) => url);
     const current = available.length ? (images[activeCamera] ? activeCamera : available[0][0]) : null;
+    // "protect" gets the real live camera component (same as the banner
+    // itself -- see bannerPhotoMarkup()) whenever it's configured; only
+    // "indbygget" (the printer's own built-in "image" entity, which HA has
+    // no live-stream proxy for) falls back to a still image, refreshed on
+    // an interval below so it's at least not a single frozen frame for the
+    // whole time the modal stays open.
+    const showLive = current === "protect" && liveCamera && window.BeastCameras;
     const overlay = document.createElement("div");
     overlay.id = "beastOvBannerModal";
     overlay.className = "beast-modal-overlay";
@@ -880,7 +1097,7 @@
     overlay.innerHTML = `<div class="beast-modal beast-ov-mail-modal" role="dialog" aria-modal="true">
       <div class="beast-modal-header"><div><h3>3D-printer</h3><p>${escapeHtml(banner.task || banner.title)}</p></div><button type="button" class="beast-modal-close" data-close>${BeastCore.icon("close", { size: 22 })}</button></div>
       <div class="beast-modal-body">
-        ${current ? `<div class="beast-ov-mail-modal-image"><img src="${escapeHtml(images[current])}" alt=""></div>` : ""}
+        ${current ? `<div class="beast-ov-mail-modal-image">${showLive ? window.BeastCameras.sharedCameraMarkup(liveCamera, { label: false, motion: false }) : `<img data-printer-modal-image src="${escapeHtml(images[current])}" alt="">`}</div>` : ""}
         ${available.length > 1 ? `<div class="beast-ov-mail-modal-switch">${available.map(([key]) => `<button type="button" data-camera="${key}"${key === current ? " class=\"is-active\"" : ""}>${escapeHtml(PRINTER_CAMERA_LABELS[key] || key)}</button>`).join("")}</div>` : ""}
         <div class="beast-ov-printer-modal-progress"><div class="beast-ov-printer-modal-bar" style="width:${progress}%"></div></div>
         <p class="beast-ov-printer-modal-meta">${Math.round(progress)}%${remainingLabel ? ` · ${remainingLabel}` : ""}</p>
@@ -891,11 +1108,24 @@
       </div>
     </div>`;
     document.body.appendChild(overlay);
-    const close = () => overlay.remove();
+    if (showLive) window.BeastCameras.wireSharedCameras(overlay, () => {});
+    // Keeps the built-in camera's still image actually moving while the
+    // modal is open -- previously it was set once at creation and then
+    // frozen for as long as the modal stayed up, even though the printer
+    // camera itself was refreshing in the background the whole time.
+    let refreshTimerId = null;
+    if (!showLive && current) {
+      refreshTimerId = window.setInterval(() => {
+        const img = overlay.querySelector("[data-printer-modal-image]");
+        const nextUrl = printerImages()[current];
+        if (img && nextUrl && img.src !== nextUrl) img.src = nextUrl;
+      }, PRINTER_IMAGE_REFRESH_MS);
+    }
+    const close = () => { window.clearInterval(refreshTimerId); overlay.remove(); };
     overlay.addEventListener("click", (event) => {
       if (event.target === overlay || event.target.closest("[data-close]")) { close(); return; }
       const cameraButton = event.target.closest("[data-camera]");
-      if (cameraButton) { openPrinterDetail(banner, cameraButton.dataset.camera); return; }
+      if (cameraButton) { close(); openPrinterDetail(banner, cameraButton.dataset.camera); return; }
       if (event.target.closest("[data-open-printer]")) { close(); document.querySelector('.beast-rail-btn[data-section="printer"]')?.click(); return; }
       if (event.target.closest("[data-snooze]")) {
         snoozeBanner("printer");
