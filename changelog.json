@@ -1,5 +1,20 @@
 [
   {
+    "version": "20260817-12",
+    "tag": "v0.7.120",
+    "date": "2026-08-17",
+    "changes": [
+      {
+        "da": "Vejr-overlayet kan nu også vises på pauseskærmen, ikke kun forsiden -- samme animerede regn/sne/stjerner osv. bag uret.",
+        "en": "The weather overlay can now also show on the screensaver, not just the front page -- the same animated rain/snow/stars, etc. behind the clock."
+      },
+      {
+        "da": "Uret på forsidens ur-kort er gjort betydeligt større, og \"Næste aftaler\" viser nu 4 i stedet for 5 punkter for at give plads.",
+        "en": "The clock on the front page's clock card has been made significantly larger, and \"Upcoming events\" now shows 4 instead of 5 items to make room."
+      }
+    ]
+  },
+  {
     "version": "20260817-7",
     "tag": "v0.7.119",
     "date": "2026-08-17",

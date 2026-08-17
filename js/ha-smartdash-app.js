@@ -468,7 +468,12 @@ function showAmbientMode(force = false) {
   overlay.style.backgroundColor = !config.backgroundImageUrl && config.backgroundColor ? config.backgroundColor : "";
   const cameraRowHtml = ambientCameraMarkup(config);
   overlay.classList.toggle("has-camera-row", Boolean(cameraRowHtml));
-  overlay.innerHTML = `<div class="beast-ambient-main"><div class="beast-ambient-time${clockSizeClass}">${now.toLocaleTimeString("da-DK", { hour: "2-digit", minute: "2-digit" })}</div><div class="beast-ambient-date">${now.toLocaleDateString("da-DK", { weekday: "long", day: "numeric", month: "long" })}</div><div class="beast-ambient-summary"><span>${BeastCore.icon("cloud", { size: 26 })}<b>${weather.temperature}</b>${weather.label}</span><span>${BeastCore.icon(unlocked || openDoors ? "unlock" : "shield", { size: 25 })}<b>${unlocked || openDoors ? `${openDoors} åbne · ${unlocked} ulåste` : "Huset er sikret"}</b></span>${ambientBannerPillsMarkup()}</div>${ambientBrightnessMarkup(config)}</div><div class="beast-ambient-bottom${cameraRowHtml ? " has-cameras" : ""}">${cameraRowHtml}<small>Tryk på skærmen for at åbne dashboardet</small></div>`;
+  // Rebuilds everything except the persistent weather-overlay canvas (see
+  // its comment in the shell markup above) -- innerHTML would tear that
+  // canvas down and force a full re-init of its animation state every
+  // time the screensaver opens again.
+  overlay.querySelectorAll(":scope > *:not(#beastAmbientWeatherFx)").forEach((el) => el.remove());
+  overlay.insertAdjacentHTML("beforeend", `<div class="beast-ambient-main"><div class="beast-ambient-time${clockSizeClass}">${now.toLocaleTimeString("da-DK", { hour: "2-digit", minute: "2-digit" })}</div><div class="beast-ambient-date">${now.toLocaleDateString("da-DK", { weekday: "long", day: "numeric", month: "long" })}</div><div class="beast-ambient-summary"><span>${BeastCore.icon("cloud", { size: 26 })}<b>${weather.temperature}</b>${weather.label}</span><span>${BeastCore.icon(unlocked || openDoors ? "unlock" : "shield", { size: 25 })}<b>${unlocked || openDoors ? `${openDoors} åbne · ${unlocked} ulåste` : "Huset er sikret"}</b></span>${ambientBannerPillsMarkup()}</div>${ambientBrightnessMarkup(config)}</div><div class="beast-ambient-bottom${cameraRowHtml ? " has-cameras" : ""}">${cameraRowHtml}<small>Tryk på skærmen for at åbne dashboardet</small></div>`);
   document.querySelectorAll("[data-ambient-camera-picture]").forEach((img) => {
     window.BeastAuth?.setAuthedImageSrc?.(img, img.dataset.ambientCameraPicture);
   });
@@ -963,7 +968,7 @@ function renderAppShell(root) {
         <main class="beast-content" id="beastContent">${sectionsHtml}</main>
       </div>
     </div>
-    <div class="beast-ambient-mode" id="beastAmbientMode" aria-hidden="true"></div>
+    <div class="beast-ambient-mode" id="beastAmbientMode" aria-hidden="true"><canvas class="beast-ambient-weather-fx" id="beastAmbientWeatherFx" aria-hidden="true"></canvas></div>
     ${quickScenarioMarkup()}
   `;
   document.documentElement.dataset.density = featureEnabled("localFavorites") ? BeastLocalSettings.get("density", "comfortable") : "comfortable";

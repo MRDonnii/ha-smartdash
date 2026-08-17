@@ -441,6 +441,16 @@ a.beast-rail-btn:visited {
 .beast-ambient-mode.has-camera-row { grid-template-rows: 1fr minmax(46vh, auto); }
 .beast-ambient-mode.is-visible { opacity:1; visibility:visible; pointer-events:auto; }
 .beast-ambient-mode.has-custom-background { backdrop-filter:none; }
+/* Same weather-overlay engine as the dashboard's own canvas (see
+   ha-smartdash-weatherfx.js), rendered here instead while the screensaver
+   is up. position:absolute takes it out of .beast-ambient-mode's own grid
+   flow (grid-template-rows above), so it doesn't consume a row -- it just
+   fills the whole overlay behind the clock/weather content, which paints
+   over it since those elements come later in the DOM. Kept as a permanent
+   child so showAmbientMode()'s repeated innerHTML rebuild of the rest of
+   the overlay never has to recreate (and re-init) it. */
+.beast-ambient-weather-fx { position:absolute; inset:0; z-index:0; display:none; pointer-events:none; }
+.beast-ambient-weather-fx.is-active { display:block; }
 .beast-ambient-main { min-height:0; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:12px; }
 .beast-ambient-time { font-size:clamp(6rem,15vw,13rem); font-weight:800; line-height:.9; letter-spacing:-.055em; font-variant-numeric:tabular-nums; }
 .beast-ambient-time.is-size-small { font-size:clamp(3.2rem,9vw,7rem); }
