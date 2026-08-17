@@ -13,6 +13,7 @@ const BeastHaSocket = (() => {
   let intentionalClose = false;
   let lastMessageAt = 0;
   let watchdogTimerId = null;
+  let disconnectedAt = 0;
 
   const stateByEntity = new Map();
   const pendingCommands = new Map();
@@ -163,7 +164,16 @@ const BeastHaSocket = (() => {
         lastMessageAt = Date.now();
         BeastCore.log("HA-socket: godkendt, abonnerer på ændringer.");
         await subscribeAndSnapshot();
-        setStatus("connected");
+        // downMs tells listeners how long the connection was actually down
+        // for -- 0 on first page load or a sub-watchdog-cycle blip that
+        // recovered on its own, a real duration after something like an HA
+        // restart. app.js uses this to force a full page reload after a
+        // long enough outage instead of trying to patch every widget's
+        // stale state back to life individually (cameras, images, timers,
+        // ...) -- the same fresh start a manual reload already gives.
+        const downMs = disconnectedAt ? Date.now() - disconnectedAt : 0;
+        disconnectedAt = 0;
+        setStatus("connected", { downMs });
         return;
       }
 
@@ -190,6 +200,7 @@ const BeastHaSocket = (() => {
       pendingCommands.forEach(({ reject }) => reject(new Error("SOCKET_CLOSED")));
       pendingCommands.clear();
       if (intentionalClose) return;
+      if (!disconnectedAt && lastMessageAt) disconnectedAt = Date.now();
       setStatus("connecting");
       scheduleReconnect();
     });
@@ -207,11 +218,14 @@ const BeastHaSocket = (() => {
       reject: () => BeastCore.log("HA-socket: kunne ikke abonnere på ændringer.")
     });
 
-    if (stateByEntity.size) {
-      BeastCore.log(`HA-socket: genbruger ${stateByEntity.size} cachede entities efter genforbindelse.`);
-      return;
-    }
-
+    // Always re-fetch on (re)connect, even if the cache already holds
+    // entities from before. Reusing the cache here used to skip this on
+    // every reconnect but the very first one -- if a single entity's state
+    // ever missed that one-and-only snapshot (e.g. HA still starting up
+    // when it was taken, so that integration's entities weren't loaded
+    // yet), no later reconnect ever corrected it; the cache just kept
+    // "reusing" the same permanent gap. A restart is exactly the moment a
+    // full re-sync matters most.
     await refreshSnapshot();
   }
 

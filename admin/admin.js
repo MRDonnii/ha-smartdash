@@ -57,13 +57,14 @@
     { id: "weather", title: "Vejr", description: "Vejrudsigt og aktuelle vejrdata.", fields: [
       { key: "entity", label: "Vejr-entity", type: "single", domain: "weather" }
     ]},
-    { id: "waste", title: "Kalender & affald", description: "Kalendere og affaldssensorer. Om de vises på forsiden styres under Forside.", fields: [
-      { key: "calendars", label: "Kalendere (bruges også af forsidens \"Næste aftaler\" -- tomt viser alle kalendere)", type: "multi", domain: "calendar" },
-      { key: "sensors", label: "Affaldssensorer", type: "multi", domain: "sensor", hints: ["affald", "waste", "trash", "bin"] },
-      { key: "scheduleCalendars", label: "Skoleskema-kalendere (ét kort pr. valgt kalender, fx AULA)", type: "multi", domain: "calendar", hints: ["skole", "skema", "aula"] }
+    { id: "waste", title: t("Kalender & affald", "Calendar & waste"), description: t("Kalendere og affaldssensorer. Om de vises på forsiden styres under Forside.", "Calendars and waste sensors. Front-page visibility is controlled under Overview."), fields: [
+      { key: "calendars", label: t("Kalendere (bruges også af forsidens \"Næste aftaler\" -- tomt viser alle kalendere)", "Calendars (also used by the overview's \"Next events\" -- empty shows every calendar)"), type: "multi", domain: "calendar" },
+      { key: "sensors", label: t("Affaldssensorer", "Waste sensors"), type: "multi", domain: "sensor", hints: ["affald", "waste", "trash", "bin"] },
+      { key: "scheduleCalendars", label: t("Skoleskema-kalendere (ét kort pr. valgt kalender, fx AULA)", "School schedule calendars (one card per selected calendar, e.g. AULA)"), type: "multi", domain: "calendar", hints: ["skole", "skema", "aula"] }
     ]},
     { id: "music", title: "Musik", description: "Music Assistant-integration til bibliotek og søgning.", fields: [
-      { key: "configEntryId", label: "Music Assistant config entry-id", type: "text", placeholder: "fx 01KK8RSBAW369PSMQMG6CE5HGB" }
+      { key: "configEntryId", label: "Music Assistant config entry-id", type: "text", placeholder: "fx 01KK8RSBAW369PSMQMG6CE5HGB" },
+      { key: "visiblePlayers", label: t("Synlige afspillere i musikvinduet", "Players visible in the Music view"), type: "multi", domain: "media_player", musicAssistantOnly: true, defaultAllWhenUnset: true }
     ]},
     { id: "rooms", title: "Rum", description: "Rumkort, klima, lys, åbninger og øvrige kontroller. Områderne bestemmer hvilke rum der vises; de nuværende rum er valgt på forhånd.", fields: [
       { key: "areaIds", label: "Synlige Home Assistant-områder", type: "areas" }
@@ -218,14 +219,19 @@
     const cacheKey = JSON.stringify({
       domain: field.domain || "",
       deviceClasses: field.deviceClasses || [],
-      hints: field.hints || []
+      hints: field.hints || [],
+      musicAssistantOnly: field.musicAssistantOnly === true
     });
     if (!entityCandidateCache.has(cacheKey)) {
-      entityCandidateCache.set(cacheKey, BeastEntityPicker.candidates({
+      let items = BeastEntityPicker.candidates({
         domain: field.domain,
         deviceClasses: field.deviceClasses,
         keywordHints: field.hints
-      }));
+      });
+      if (field.musicAssistantOnly) {
+        items = items.filter((item) => BeastHaSocket.getState(item.id)?.attributes?.app_id === "music_assistant");
+      }
+      entityCandidateCache.set(cacheKey, items);
     }
     return entityCandidateCache.get(cacheKey).slice();
   }
@@ -452,10 +458,11 @@
       return renderCheckList(panel, field, ids, areas);
     }
     if (field.type === "multi") {
-      const ids = Array.isArray(selected) ? selected : [];
+      const available = baseCandidates(field);
+      const ids = Array.isArray(selected) ? selected : (field.defaultAllWhenUnset ? available.map((item) => item.id) : []);
       const id = fieldId(panel.id, field.key);
       const scope = entityDeviceScope(panel, field, ids);
-      const base = baseCandidates(field);
+      const base = available;
       const seen = new Set(base.map((item) => item.id));
       ids.filter(Boolean).forEach((entityId) => { if (!seen.has(entityId)) base.unshift({ id: entityId, name: BeastEntityPicker.friendlyName(entityId) }); });
       entityFieldBaseSources.set(id, base);
@@ -676,10 +683,22 @@
   }
 
   function renderThemeView() {
+    const weatherOverlayOn = BeastConfig.get("features.weatherOverlay") === true;
     return `
       <section class="admin-view${activeView === "theme" ? " is-active" : ""}" data-admin-view="theme">
         <div class="admin-settings-intro"><div><h2>Tema og design</h2><p>Farve, stil og lystilstand for hele dashboardet. Ændringer virker med det samme og gemmes kun i denne browser.</p></div></div>
         <div class="admin-card admin-settings-group admin-settings-theme">${window.BeastTheme?.renderPanel() || ""}</div>
+        <div class="admin-card admin-settings-group"><div class="admin-card-head"><div><h2>${t("Vejr-overlay", "Weather overlay")}</h2><p>${t("Viser regn, sne, skyer, stjerner og lyn på tværs af hele dashboardet, ud fra det aktuelle vejr. Vises bag de gennemsigtige kort på forsiden. Til forskel fra resten af denne side gælder dette valg alle skærme, ikke kun denne browser.", "Shows rain, snow, clouds, stars and lightning across the whole dashboard, based on the current weather. Rendered behind the front page's translucent cards. Unlike the rest of this page, this setting applies to every screen, not just this browser.")}</p></div></div>
+          <div class="beast-mqtt-config">
+            <label><span>${t("Vejr-overlay", "Weather overlay")}</span>
+              <select id="adminThemeWeatherOverlay">
+                <option value="1" ${weatherOverlayOn ? "selected" : ""}>${t("Til", "On")}</option>
+                <option value="0" ${weatherOverlayOn ? "" : "selected"}>${t("Fra", "Off")}</option>
+              </select>
+            </label>
+          </div>
+          <div class="admin-actions"><button type="button" class="beast-btn beast-btn-primary" id="adminThemeWeatherOverlaySave">${t("Gem vejr-overlay", "Save weather overlay")}</button><span class="admin-save-state" data-save-state="themeWeatherOverlay"></span></div>
+        </div>
       </section>
     `;
   }
@@ -813,6 +832,7 @@
 
 
   function renderSetupOverview() {
+    const app = BeastConfig.get("appEntities") || {};
     return `
       <section class="admin-view${activeView === "setup" ? " is-active" : ""}" data-admin-view="setup">
         <div class="admin-card">
@@ -828,14 +848,42 @@
         </div>
         ${renderFeaturePanel()}
         <div class="admin-card">
-          <div class="admin-card-head"><div><h2>Kiosk & dørklokke</h2><p>Valgfrit — styrer skærm-sluk om natten og et automatisk dørkamera-overlay.</p></div></div>
+          <div class="admin-card-head"><div><h2>Kiosk & dørklokke</h2><p>Styrer skærm-sluk om natten, hvilke entities dørkamera-overlayet bruger, og hvornår overlayet lukker igen.</p></div></div>
           <div class="admin-grid">
             <label class="admin-field"><span>Kiosk-skærm (lokal på denne maskine)</span>${BeastEntityPicker.selectHtml({ id: "adminKioskLight", domain: "light", keywordHints: ["kiosk", "screen", "skaerm", "tablet"], selected: BeastLocalSettings.get("kioskScreenLight", BeastConfig.get("appEntities.kioskScreenLight")) })}</label>
             <label class="admin-field"><span>Dørklokke (binary_sensor)</span>${BeastEntityPicker.selectHtml({ id: "adminDoorbellBinary", domain: "binary_sensor", keywordHints: ["doorbell", "dørklokke", "ring"], selected: BeastConfig.get("appEntities.doorbellBinarySensor") })}</label>
             <label class="admin-field"><span>Dørklokke (event, valgfri)</span>${BeastEntityPicker.selectHtml({ id: "adminDoorbellEvent", domain: "event", keywordHints: ["doorbell", "dørklokke", "ring"], selected: BeastConfig.get("appEntities.doorbellEvent") })}</label>
             <label class="admin-field"><span>Dørkamera (valgfri)</span>${BeastEntityPicker.selectHtml({ id: "adminDoorbellCamera", domain: "camera", keywordHints: ["doorbell", "dørklokke", "front", "hoveddor", "fordor"], selected: BeastConfig.get("appEntities.doorbellCamera") })}</label>
+            <label class="admin-field"><span>${t("Overlayet lukker", "The overlay closes")}</span>
+              <select id="adminKioskDoorbellMode">
+                <option value="timeout" ${app.doorbellViewMode !== "manual" ? "selected" : ""}>${t("Automatisk efter et antal minutter", "Automatically after a number of minutes")}</option>
+                <option value="manual" ${app.doorbellViewMode === "manual" ? "selected" : ""}>${t("Kun når jeg selv lukker den", "Only when I close it myself")}</option>
+              </select>
+            </label>
+            <label class="admin-field" id="adminKioskDoorbellMinutesField"><span>${t("Antal minutter før automatisk luk", "Minutes before it closes automatically")}</span><input type="number" min="1" max="60" id="adminKioskDoorbellMinutes" value="${Number(app.doorbellViewMinutes) || 3}"></label>
           </div>
           <div class="admin-actions"><button class="admin-save" type="button" data-save-app-entities>Gem kiosk & dørklokke</button><span class="admin-save-state" data-save-state="appEntities"></span></div>
+        </div>
+        <div class="admin-card">
+          <div class="admin-card-head"><div><h2>${t("Auto-retur til forsiden", "Auto-return to the front page")}</h2><p>${t("Vender automatisk tilbage til en valgt side, når kiosken ikke er blevet rørt i et stykke tid.", "Automatically returns to a chosen page when the kiosk hasn't been touched for a while.")}</p></div></div>
+          <div class="admin-grid">
+            <label class="admin-field"><span>${t("Auto-retur", "Auto-return")}</span>
+              <select id="adminKioskAutoReturnEnabled">
+                <option value="1" ${app.autoReturnEnabled !== false ? "selected" : ""}>${t("Til", "On")}</option>
+                <option value="0" ${app.autoReturnEnabled === false ? "selected" : ""}>${t("Fra", "Off")}</option>
+              </select>
+            </label>
+            <label class="admin-field" id="adminKioskAutoReturnFields"><span>${t("Vend tilbage til", "Return to")}</span>
+              <select id="adminKioskAutoReturnSection">${[["overview", "Oversigt"], ...PAGES].map(([id, label]) => `<option value="${id}" ${(app.autoReturnSection || "overview") === id ? "selected" : ""}>${escapeHtml(label)}</option>`).join("")}</select>
+            </label>
+            <label class="admin-field" id="adminKioskAutoReturnMinutesField"><span>${t("Efter antal minutter uden aktivitet", "After minutes of inactivity")}</span><input type="number" min="1" max="60" id="adminKioskAutoReturnMinutes" value="${Number(app.autoReturnMinutes) || 3}"></label>
+          </div>
+          <label class="admin-security-toggle admin-schedule-toggle" id="adminKioskAutoReturnScheduleToggleField"><span><strong>${t("Kun aktiv i et bestemt tidsrum", "Only active within a time window")}</strong><small>${t("Fx kun i dagtimerne — ellers vender kiosken tilbage når som helst den er inaktiv i den valgte periode.", "E.g. daytime only — otherwise the kiosk returns any time it's inactive for the chosen period.")}</small></span><input type="checkbox" id="adminKioskAutoReturnScheduleEnabled"${app.autoReturnScheduleEnabled ? " checked" : ""}></label>
+          <div class="admin-schedule-fields" id="adminKioskAutoReturnScheduleFields"${app.autoReturnScheduleEnabled ? "" : " hidden"}>
+            <label><span>${t("Fra", "From")}</span><input type="time" id="adminKioskAutoReturnScheduleStart" value="${escapeHtml(app.autoReturnScheduleStart || "08:00")}"></label>
+            <label><span>${t("Til", "To")}</span><input type="time" id="adminKioskAutoReturnScheduleEnd" value="${escapeHtml(app.autoReturnScheduleEnd || "22:00")}"></label>
+          </div>
+          <div class="admin-actions"><button class="admin-save" type="button" data-save-kiosk-auto-return>${t("Gem auto-retur", "Save auto-return")}</button><span class="admin-save-state" data-save-state="kioskAutoReturn"></span></div>
         </div>
       </section>`;
   }
@@ -1114,24 +1162,24 @@
   function renderUpdatesView() {
     const currentUpdateChannel = BeastConfig.get("updateChannel") === "beta" ? "beta" : "stable";
     return `<section class="admin-view${activeView === "updates" ? " is-active" : ""}" data-admin-view="updates">
-      <div class="admin-card"><div class="admin-card-head"><div><h2>Denne installation</h2><p>Versionen der kører lige nu, og hvad der senest er ændret.</p></div><div style="display:flex; align-items:center; gap:10px;"><div class="admin-channel-switch" role="group" aria-label="Opdateringskanal"><button type="button" class="admin-channel-btn${currentUpdateChannel === "stable" ? " is-active" : ""}" data-update-channel="stable">Stable</button><button type="button" class="admin-channel-btn${currentUpdateChannel === "beta" ? " is-active" : ""}" data-update-channel="beta">Beta</button></div><button type="button" class="beast-btn" data-check-updates>Tjek for opdateringer</button></div></div>
-        <div class="beast-stat-grid">${BeastCore.statTile({ icon: "sparkles", label: "Nuværende version", value: "Henter…", meta: "…", id: "adminCurrentVersionTile" })}</div>
-        <div class="admin-update-status" id="adminUpdateStatus" data-state="checking"><span class="admin-update-status-dot"></span><span id="adminUpdateStatusText">Tjekker…</span></div>
+      <div class="admin-card"><div class="admin-card-head"><div><h2>${t("Denne installation", "This installation")}</h2><p>${t("Versionen der kører lige nu, og hvad der senest er ændret.", "The version currently running and its latest changes.")}</p></div><div style="display:flex; align-items:center; gap:10px;"><div class="admin-channel-switch" role="group" aria-label="${t("Opdateringskanal", "Update channel")}"><button type="button" class="admin-channel-btn${currentUpdateChannel === "stable" ? " is-active" : ""}" data-update-channel="stable">Stable</button><button type="button" class="admin-channel-btn${currentUpdateChannel === "beta" ? " is-active" : ""}" data-update-channel="beta">Beta</button></div><button type="button" class="beast-btn" data-check-updates>${t("Tjek for opdateringer", "Check for updates")}</button></div></div>
+        <div class="beast-stat-grid">${BeastCore.statTile({ icon: "sparkles", label: t("Nuværende version", "Current version"), value: t("Henter…", "Loading…"), meta: "…", id: "adminCurrentVersionTile" })}</div>
+        <div class="admin-update-status" id="adminUpdateStatus" data-state="checking"><span class="admin-update-status-dot"></span><span id="adminUpdateStatusText">${t("Tjekker…", "Checking…")}</span></div>
         ${currentUpdateChannel === "beta" ? `<p class="admin-field-hint" style="margin:8px 0 0;">${t("Du følger Beta-kanalen — kan indeholde ændringer der endnu ikke er færdigtestede.", "You're following the Beta channel -- may include changes that haven't finished testing yet.")}</p>` : ""}
-        <div id="adminInstallLatest" class="admin-install-latest-slot"><p class="admin-empty">Henter…</p></div>
+        <div id="adminInstallLatest" class="admin-install-latest-slot"><p class="admin-empty">${t("Henter…", "Loading…")}</p></div>
         <div id="adminUpdateSkipNote"></div>
         <details class="admin-changelog-details">
           <summary>${t("Vis ændringer og release notes", "Show changes and release notes")}</summary>
-          <div class="admin-changelog-list" id="adminChangelogList"><p class="admin-empty">Henter ændringslog…</p></div>
+          <div class="admin-changelog-list" id="adminChangelogList"><p class="admin-empty">${t("Henter ændringslog…", "Loading changelog…")}</p></div>
         </details>
       </div>
-      <div class="admin-card"><div class="admin-card-head"><div><h2>Versionshistorik</h2><p>Du kan altid installere den nyeste version, eller vælge en ældre at gendanne. Den nuværende version gemmes altid først, så det kan fortrydes.</p></div><button type="button" class="beast-btn" data-reload-versions>Opdatér liste</button></div>
+      <div class="admin-card"><div class="admin-card-head"><div><h2>${t("Versionshistorik", "Version history")}</h2><p>${t("Du kan altid installere den nyeste version, eller vælge en ældre at gendanne. Den nuværende version gemmes altid først, så det kan fortrydes.", "You can always install the latest version or restore an older one. The current version is saved first so the change can be undone.")}</p></div><button type="button" class="beast-btn" data-reload-versions>${t("Opdatér liste", "Refresh list")}</button></div>
         <div id="adminVersionSection">
           <div class="admin-old-versions">
-            <span class="admin-field-label">Tidligere versioner</span>
+            <span class="admin-field-label">${t("Tidligere versioner", "Previous versions")}</span>
             <div class="admin-old-versions-row">
-              <select id="adminOldVersionSelect" disabled><option value="">Henter…</option></select>
-              <button type="button" class="beast-btn" id="adminOldVersionRestoreBtn" data-rollback-version="" data-is-newer="false" data-is-latest="false" disabled>Gendan valgte version</button>
+              <select id="adminOldVersionSelect" disabled><option value="">${t("Henter…", "Loading…")}</option></select>
+              <button type="button" class="beast-btn" id="adminOldVersionRestoreBtn" data-rollback-version="" data-is-newer="false" data-is-latest="false" disabled>${t("Gendan valgte version", "Restore selected version")}</button>
             </div>
           </div>
           <div class="admin-old-versions admin-manual-install">
@@ -1349,16 +1397,12 @@
     const floatingPlayerOn = isFloatingPlayerEnabled();
     return `
       <section class="admin-view${activeView === "settings" ? " is-active" : ""}" data-admin-view="settings">
-        <div class="admin-settings-intro"><div><h2>Denne enhed</h2><p>Maskinspecifik adfærd for netop denne kiosk eller browser. Visuelle valg (tema, farver, stil) findes under Tema og design.</p></div></div>
+        <div class="admin-settings-intro"><div><h2>Denne enhed</h2><p>Maskinspecifik adfærd for netop denne kiosk eller browser. Visuelle valg (tema, farver, stil) findes under Tema og design. Kiosk-navigation og dørkamera findes under Forbindelser & kiosk.</p></div></div>
         <div class="admin-card admin-settings-group"><div class="admin-card-head"><div><h2>Dashboard på denne skærm</h2><p>Forbindelsesstatus og elementer, som kun påvirker den aktuelle kiosk eller browser.</p></div></div><div class="beast-stat-grid">
           ${BeastCore.statTile({ icon: "check", label: "HA-forbindelse", value: CONN_STATUS_LABELS[currentConnState] || currentConnState, id: "adminConnTile" })}
           ${BeastCore.statTile({ icon: "grid", label: "Entities i cache", value: String(BeastHaSocket.getAllStates().size), id: "adminCountTile" })}
-          ${BeastCore.statTile({
-            icon: "music", label: "Flydende afspiller", value: floatingPlayerOn ? "Vises på forsiden" : "Skjult",
-            id: "adminFloatingPlayerTile",
-            extra: `<div class="beast-stat-tile-actions"><button type="button" class="beast-security-action-btn${floatingPlayerOn ? " is-disarm" : ""}" id="adminFloatingPlayerBtn">${floatingPlayerOn ? "Slå fra" : "Slå til"}</button></div>`
-          })}
         </div></div>
+        <div class="admin-card admin-settings-group"><div class="admin-card-head"><div><h2>${t("Flydende musikafspiller", "Floating music player")}</h2><p>${t("Viser en lille afspiller-boks på forsiden mens der spilles musik. Gælder kun denne enhed/browser, ikke andre kiosker.", "Shows a small player box on the front page while music is playing. Applies only to this device/browser, not other kiosks.")}</p></div></div><div class="beast-stat-tile-actions"><button type="button" class="beast-security-action-btn${floatingPlayerOn ? " is-disarm" : ""}" id="adminSettingsFloatingPlayerBtn">${floatingPlayerOn ? t("Slå fra på denne enhed", "Turn off on this device") : t("Slå til på denne enhed", "Turn on on this device")}</button></div></div>
         <div class="admin-card admin-settings-group"><div class="admin-card-head"><div><h2>Kioskintegration</h2><p>Avanceret MQTT-styring og enhedskommandoer. Kan ignoreres på almindelige tablets.</p></div></div>${renderMqttPanel()}</div>
         <div class="admin-card admin-settings-group admin-diagnostics"><div class="admin-card-head"><div><h2>Diagnostik og session</h2><p>Seneste lokale hændelser samt mulighed for at logge Home Assistant-sessionen ud.</p></div></div><details><summary>Vis teknisk log</summary><pre class="beast-debug-log" id="adminDebugLog"></pre></details><button type="button" class="beast-btn" id="adminLogout">Log ud</button></div>
       </section>
@@ -1793,7 +1837,10 @@
         const channel = button.dataset.updateChannel === "beta" ? "beta" : "stable";
         if (channel === (BeastConfig.get("updateChannel") === "beta" ? "beta" : "stable")) return;
         if (channel === "beta") {
-          const accepted = window.confirm("Beta-kanalen henter udgivelser der endnu ikke er markeret stabile. De kan indeholde ændringer der ikke er færdigtestede.\n\nDenne installation vil fremover selv opdage og installere Beta-udgivelser, både her og i baggrunden.\n\nAccepterer du det, og vil du skifte til Beta?");
+          const accepted = window.confirm(t(
+            "Beta-kanalen henter udgivelser der endnu ikke er markeret stabile. De kan indeholde ændringer der ikke er færdigtestede.\n\nDenne installation vil fremover selv opdage og installere Beta-udgivelser, både her og i baggrunden.\n\nAccepterer du det, og vil du skifte til Beta?",
+            "The Beta channel installs releases that have not yet been marked stable. They may contain changes that have not finished testing.\n\nThis installation will discover and install Beta releases here and in the background.\n\nDo you accept this and want to switch to Beta?"
+          ));
           if (!accepted) return;
         }
         await BeastConfig.set("updateChannel", channel);
@@ -2130,15 +2177,43 @@
         if (state) state.textContent = `Gemt: ${result.filename} · ${result.target}`;
       } catch (error) { if (state) state.textContent = "Backup mislykkedes"; }
     });
+    const doorbellViewModeSelect = document.getElementById("adminKioskDoorbellMode");
+    const doorbellViewMinutesField = document.getElementById("adminKioskDoorbellMinutesField");
+    const syncDoorbellViewMinutesField = () => doorbellViewMinutesField?.classList.toggle("is-hidden", doorbellViewModeSelect?.value === "manual");
+    syncDoorbellViewMinutesField();
+    doorbellViewModeSelect?.addEventListener("change", syncDoorbellViewMinutesField);
+    const autoReturnEnabledSelect = document.getElementById("adminKioskAutoReturnEnabled");
+    const autoReturnFields = [document.getElementById("adminKioskAutoReturnFields"), document.getElementById("adminKioskAutoReturnMinutesField")];
+    const syncAutoReturnFields = () => autoReturnFields.forEach((field) => field?.classList.toggle("is-hidden", autoReturnEnabledSelect?.value === "0"));
+    syncAutoReturnFields();
+    autoReturnEnabledSelect?.addEventListener("change", syncAutoReturnFields);
+    document.getElementById("adminKioskAutoReturnScheduleEnabled")?.addEventListener("change", (event) => {
+      document.getElementById("adminKioskAutoReturnScheduleFields")?.toggleAttribute("hidden", !event.currentTarget.checked);
+    });
     document.querySelector("[data-save-app-entities]")?.addEventListener("click", (event) => save(event.currentTarget, "appEntities", async () => {
       BeastLocalSettings.set("kioskScreenLight", document.getElementById("adminKioskLight").value || null);
       return BeastConfig.set("appEntities", {
         ...BeastConfig.get("appEntities"),
         doorbellBinarySensor: document.getElementById("adminDoorbellBinary").value || null,
         doorbellEvent: document.getElementById("adminDoorbellEvent").value || null,
-        doorbellCamera: document.getElementById("adminDoorbellCamera").value || null
+        doorbellCamera: document.getElementById("adminDoorbellCamera").value || null,
+        doorbellViewMode: document.getElementById("adminKioskDoorbellMode").value === "manual" ? "manual" : "timeout",
+        doorbellViewMinutes: Math.max(1, Math.min(60, Number(document.getElementById("adminKioskDoorbellMinutes").value) || 3))
       });
     }));
+    document.querySelector("[data-save-kiosk-auto-return]")?.addEventListener("click", (event) => save(event.currentTarget, "kioskAutoReturn", async () => BeastConfig.set("appEntities", {
+      ...BeastConfig.get("appEntities"),
+      autoReturnEnabled: document.getElementById("adminKioskAutoReturnEnabled").value !== "0",
+      autoReturnSection: document.getElementById("adminKioskAutoReturnSection").value || "overview",
+      autoReturnMinutes: Math.max(1, Math.min(60, Number(document.getElementById("adminKioskAutoReturnMinutes").value) || 3)),
+      autoReturnScheduleEnabled: document.getElementById("adminKioskAutoReturnScheduleEnabled").checked,
+      autoReturnScheduleStart: document.getElementById("adminKioskAutoReturnScheduleStart").value || "08:00",
+      autoReturnScheduleEnd: document.getElementById("adminKioskAutoReturnScheduleEnd").value || "22:00"
+    })));
+    document.getElementById("adminThemeWeatherOverlaySave")?.addEventListener("click", (event) => save(event.currentTarget, "themeWeatherOverlay", async () => BeastConfig.set("features", {
+      ...BeastConfig.get("features"),
+      weatherOverlay: document.getElementById("adminThemeWeatherOverlay").value === "1"
+    })));
     document.querySelectorAll("[data-save-panel]").forEach((button) => button.addEventListener("click", async () => {
       const panel = PANELS.find((item) => item.id === button.dataset.savePanel);
       if (!panel) return;
@@ -2162,7 +2237,7 @@
       if (output) output.textContent = `${value}%`;
       window.BeastTheme?.setCardOpacity(value);
     });
-    document.getElementById("adminFloatingPlayerBtn")?.addEventListener("click", () => {
+    document.getElementById("adminSettingsFloatingPlayerBtn")?.addEventListener("click", () => {
       const floatingPlayerOn = isFloatingPlayerEnabled();
       setFloatingPlayerEnabled(!floatingPlayerOn);
       renderShell();

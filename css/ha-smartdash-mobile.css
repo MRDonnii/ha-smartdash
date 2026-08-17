@@ -1,0 +1,109 @@
+/* Dedicated single-column phone layout for the front page. See
+   ha-smartdash-app.js's isMobileOverviewViewport()/mobileOverviewMarkup()
+   and ha-smartdash-overview.js's renderCameras() mobile branch. Entirely
+   separate class names from the desktop/tablet grid
+   (.beast-overview-grid/.beast-ov-card) so nothing here can affect that
+   layout, or vice versa -- no shared selectors, no breakpoint overlap. */
+
+.beast-overview-mobile {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 10px 10px 20px;
+  /* This sits inside .beast-section.is-active, itself a flex column with
+     flex:1/min-height:0 (see ha-smartdash-layout.css) -- height:100% does
+     not reliably resolve in that nested flex chain and collapsed the
+     scroll container, making sibling cards overlap. flex:1/min-height:0
+     is the same pattern .beast-panel-fill already uses for exactly this
+     spot. */
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* .beast-panel (added alongside this in the markup) already supplies the
+   themed surface/border/radius/shadow -- only the phone-stack-specific
+   bits live here. .beast-panel's own padding (--space-5, 24px) is sized
+   for a spacious desktop grid cell; stacked five times down a phone
+   screen that reads as far too much whitespace, so it's tightened here. */
+.beast-ov-m-card {
+  min-height: 64px;
+  padding: 14px;
+  /* The desktop grid's cards (.beast-ov-card) use container-type:size so
+     their internal cqi/cqb-based sizing (clock digits, weather metrics,
+     the @container rules further down this file) scales to the card's
+     own box instead of the viewport. Without a container-type here too,
+     those same rules had no container to measure against and fell back
+     to their largest/default sizing -- oversized text and spacious
+     layouts on a card that's actually narrow. inline-size (not size) is
+     used deliberately: it only contains the width axis, which is what
+     cqi and these @container max-width queries need, while leaving
+     height free to stay auto/content-sized for the mobile stack (size
+     containment requires a definite height, which would fight the
+     stack's natural auto-height cards). */
+  container-type: inline-size;
+}
+.beast-ov-m-card--cameras { padding: 0; overflow: hidden; }
+
+/* Mail/printer/door alert banners (.beast-ov-mail-banner) are
+   position:fixed + draggable on desktop -- sized and positioned for a
+   large, non-scrolling dashboard. Left alone here they ignored the mobile
+   stack's scrolling entirely (permanently glued to the viewport, reading
+   as the page "always throwing you back to the top") and could land at a
+   stale x/y saved from dragging them around on desktop/tablet, which has
+   nothing to do with a phone's width -- producing two banners stranded
+   side by side near the top instead of a normal stacked card. Forcing
+   position:static here makes the drag/stack code's inline left/top/
+   transform harmless (they only affect fixed/absolute boxes), so no JS
+   changes are needed; the drag/resize handles are hidden since neither
+   gesture makes sense on a phone. */
+.beast-overview-mobile .beast-ov-mail-banner,
+.beast-overview-mobile .beast-ov-mail-banner-group {
+  position: static;
+  transform: none !important;
+  width: 100%;
+}
+.beast-overview-mobile .beast-ov-mail-banner-drag,
+.beast-overview-mobile .beast-ov-mail-banner-resize {
+  display: none;
+}
+
+/* Camera: one big featured shot, small tappable thumbnails below for the
+   rest -- tapping a thumbnail swaps which camera is featured in place,
+   the same behavior the standalone Cameras page already has, instead of
+   the desktop front page's equal-size side-by-side strip. */
+.beast-ov-camera-mobile {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px;
+}
+.beast-ov-camera-mobile-featured {
+  position: relative;
+  border-radius: 16px;
+  overflow: hidden;
+  aspect-ratio: 16 / 9;
+}
+.beast-ov-camera-mobile-thumbs {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  padding-bottom: 2px;
+  -webkit-overflow-scrolling: touch;
+}
+.beast-ov-camera-mobile-thumb {
+  flex: 0 0 96px;
+  height: 64px;
+  border: none;
+  border-radius: 12px;
+  overflow: hidden;
+  padding: 0;
+  background: transparent;
+  position: relative;
+}
+.beast-ov-camera-mobile-thumb.has-motion { box-shadow: 0 0 0 2px var(--accent-a, #4da3ff); }
+/* The quality-picker menu and full label are desktop-scale UI that don't
+   fit a 96x64px thumbnail -- keep the thumb to just the picture itself. */
+.beast-ov-camera-mobile-thumb .beast-camera-quality-menu,
+.beast-ov-camera-mobile-thumb .beast-shared-camera-label { display: none; }

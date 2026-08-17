@@ -1,4 +1,11 @@
 (function () {
+  // Dynamic strings in interactive cards need an explicit language choice;
+  // the global DOM translator only handles completed static markup. Keep
+  // this local helper aligned with the Calendar and Administration modules.
+  function t(da, en) {
+    return BeastLocalSettings.get("language", "en") === "da" ? da : en;
+  }
+
   let WEATHER_ENTITY_ID = null;
   let POWER_ENTITY_ID = null;
   let PRICE_ENTITY_ID = null;
@@ -72,10 +79,12 @@
     PRINTER_BANNER_CAMERA_ID = bannerSettings.printerCameraOverride || null;
     AULA_MESSAGE_ID = app.aulaMessageSensor || null;
     AULA_LESSON_MINUTES = Math.max(1, Number(bannerSettings.aulaLessonMinutes) || 10);
+    const hasHeatSource = Boolean(energy.heatPowerSensor || energy.heatEnergySensor);
+    const hasWaterSource = Boolean(energy.waterUsageSensor || energy.waterFlowSensor);
     UTILITY_VIEWS = {
       electric: { label: "El", current: energy.powerSensor, today: energy.totalEnergySensor, history: energy.powerSensor, mode: "average", unit: "W", todayUnit: "kWh" },
-      ...(energy.showHeatOnOverview !== false ? { heat: { label: "Varme", current: energy.heatPowerSensor, today: energy.heatEnergySensor, history: energy.heatEnergySensor, mode: "delta", unit: "kW", todayUnit: "kWh" } } : {}),
-      ...(energy.showWaterOnOverview !== false ? { water: { label: "Vand", current: energy.waterUsageSensor, today: energy.waterFlowSensor, history: energy.waterUsageSensor, mode: "delta", unit: "m³", todayUnit: "L/h" } } : {})
+      ...(energy.showHeatOnOverview !== false && hasHeatSource ? { heat: { label: "Varme", current: energy.heatPowerSensor, today: energy.heatEnergySensor, history: energy.heatEnergySensor, mode: "delta", unit: "kW", todayUnit: "kWh" } } : {}),
+      ...(energy.showWaterOnOverview !== false && hasWaterSource ? { water: { label: "Vand", current: energy.waterUsageSensor, today: energy.waterFlowSensor, history: energy.waterUsageSensor, mode: "delta", unit: "m³", todayUnit: "L/h" } } : {})
     };
     if (!UTILITY_VIEWS[utilityView]) utilityView = "electric";
   }
@@ -95,6 +104,7 @@
   let utilityView = "electric";
   let utilityHistory = [];
   let utilityHistoryLoading = false;
+  let utilityHistoryTimerId = null;
   let overviewPriceView = "today";
   let stableMusicRender = null;
   let overviewPlayerExpanded = false;
@@ -111,6 +121,8 @@
   let overviewCardEditor = null;
   let contextualFocusTimerId = null;
   let motionFocusSlug = null;
+  let mobileFeaturedCameraSlug = null;
+  let lastCameraRenderSignature = null;
   let motionFocusTimerId = null;
   const OVERVIEW_PLAYER_IDLE_HIDE_MS = 120000;
   const OVERVIEW_PLAYER_POSITION_KEY = "beast_overview_player_position_v1";
@@ -1133,18 +1145,21 @@
   function renderWeather() {
     const host = document.getElementById("beastOvWeather");
     if (!host) return;
+    // A missing state (entity not in the socket's cache yet -- e.g. right
+    // after an HA restart, before a fresh snapshot arrives) used to wipe
+    // this whole widget down to "Intet vejrdata." with nothing left to
+    // recover it visually. It now degrades the same way the dedicated
+    // Weather page already does: dashes for the current-conditions numbers,
+    // forecast rows kept (they come from dailyForecast/hourlyForecast,
+    // loaded independently of this entity's live state).
     const state = BeastHaSocket.getState(WEATHER_ENTITY_ID);
-    if (!state) {
-      host.innerHTML = `<p class="beast-music-empty">Intet vejrdata.</p>`;
-      return;
-    }
-    const meta = BeastCore.weatherMeta(state.state);
-    const temp = Number.isFinite(Number(state.attributes.temperature)) ? Math.round(Number(state.attributes.temperature)) : "–";
-    const feelsLike = Number.isFinite(Number(state.attributes.apparent_temperature)) ? Math.round(Number(state.attributes.apparent_temperature)) : null;
-    const humidity = Number.isFinite(Number(state.attributes.humidity)) ? Math.round(Number(state.attributes.humidity)) : null;
-    const wind = Number.isFinite(Number(state.attributes.wind_speed)) ? Math.round(Number(state.attributes.wind_speed)) : null;
-    const pressure = Number.isFinite(Number(state.attributes.pressure)) ? Math.round(Number(state.attributes.pressure)) : null;
-    const visibility = Number.isFinite(Number(state.attributes.visibility)) ? Number(state.attributes.visibility).toFixed(0) : null;
+    const meta = BeastCore.weatherMeta(state?.state);
+    const temp = Number.isFinite(Number(state?.attributes?.temperature)) ? Math.round(Number(state.attributes.temperature)) : "–";
+    const feelsLike = Number.isFinite(Number(state?.attributes?.apparent_temperature)) ? Math.round(Number(state.attributes.apparent_temperature)) : null;
+    const humidity = Number.isFinite(Number(state?.attributes?.humidity)) ? Math.round(Number(state.attributes.humidity)) : null;
+    const wind = Number.isFinite(Number(state?.attributes?.wind_speed)) ? Math.round(Number(state.attributes.wind_speed)) : null;
+    const pressure = Number.isFinite(Number(state?.attributes?.pressure)) ? Math.round(Number(state.attributes.pressure)) : null;
+    const visibility = Number.isFinite(Number(state?.attributes?.visibility)) ? Number(state.attributes.visibility).toFixed(0) : null;
     host.parentElement.dataset.mood = meta.mood;
     host.innerHTML = `
       <div class="beast-ov-fill">
@@ -1239,7 +1254,7 @@
   function renderCameras() {
     const host = document.getElementById("beastOvCameras");
     if (!host || !window.BeastCameras) return;
-    let allCameras = window.BeastCameras.getAllCameras();
+    let allCameras = window.BeastCameras.getAllCameras("overview");
     const doorbellId = BeastConfig.get("appEntities.doorbellCamera");
     const doorbellCamera = doorbellId ? window.BeastCameras.resolveCamera(doorbellId) : null;
     if (doorbellCamera && !allCameras.some((camera) => camera.slug === doorbellCamera.slug)) allCameras = [doorbellCamera, ...allCameras];
@@ -1278,14 +1293,74 @@
     if (autoFocusEnabled() && motionFocusSlug && cameraBySlug.has(motionFocusSlug)) {
       cameras = [cameraBySlug.get(motionFocusSlug), ...cameras.filter((camera) => camera.slug !== motionFocusSlug)].slice(0, OVERVIEW_CAMERA_LIMIT);
     }
+    const isMobile = isMobileOverviewViewport();
+    if (isMobile && (!mobileFeaturedCameraSlug || !cameraBySlug.has(mobileFeaturedCameraSlug))) mobileFeaturedCameraSlug = cameras[0]?.slug || null;
+    // Skip rebuilding when nothing camera-relevant actually changed.
+    // renderCameras() runs as part of renderAll() on every reconnect and
+    // several unrelated state updates (weather, security, ...) -- without
+    // this guard each of those tore the live WebRTC iframe(s) down and
+    // rebuilt them from scratch for no camera-side reason at all, which is
+    // what read as the cameras blinking on their own.
+    const cameraRenderSignature = JSON.stringify({
+      mobile: isMobile,
+      featured: isMobile ? mobileFeaturedCameraSlug : null,
+      cameras: cameras.map((camera) => `${camera.slug}:${camera.resolvedStreamName || camera.streamName || ""}`)
+    });
+    if (cameraRenderSignature === lastCameraRenderSignature) return;
+    lastCameraRenderSignature = cameraRenderSignature;
+    // Mobile: one big featured camera plus small tappable thumbnails for
+    // the rest, swapping which is featured in place -- the same pattern
+    // the standalone Cameras page already uses, not the equal-size strip
+    // the desktop/tablet front page shows.
+    if (isMobile) {
+      const featured = cameraBySlug.get(mobileFeaturedCameraSlug) || cameras[0];
+      const others = cameras.filter((camera) => camera.slug !== mobileFeaturedCameraSlug);
+      host.innerHTML = `
+        <div class="beast-ov-camera-mobile">
+          <div class="beast-ov-camera-mobile-featured" data-slug="${featured.slug}">
+            ${window.BeastCameras.sharedCameraMarkup(featured, { className: "beast-overview-camera-render", label: true, motion: true })}
+          </div>
+          ${others.length ? `<div class="beast-ov-camera-mobile-thumbs">${others.map((camera) => `
+            <button type="button" class="beast-ov-camera-mobile-thumb${camera.motion ? " has-motion" : ""}" data-slug="${camera.slug}" aria-label="Vis ${escapeHtml(camera.label)}">
+              ${window.BeastCameras.sharedCameraMarkup(camera, { className: "beast-overview-camera-render", label: true, motion: true })}
+            </button>
+          `).join("")}</div>` : ""}
+        </div>
+      `;
+      window.BeastCameras.wireSharedCameras(host, renderCameras, "overview");
+      host.querySelectorAll(".beast-ov-camera-mobile-thumb").forEach((button) => {
+        button.addEventListener("click", (event) => {
+          if (event.target.closest("[data-camera-quality-slug]")) return;
+          event.stopPropagation();
+          mobileFeaturedCameraSlug = button.dataset.slug;
+          renderCameras();
+        });
+      });
+      return;
+    }
     host.innerHTML = `
       <div class="beast-ov-camera-strip" data-count="${cameras.length}">${cameras.map((camera) => `
-        <div class="beast-ov-camera-thumb${camera.motion ? " has-motion" : ""}" data-slug="${camera.slug}">
+        <div class="beast-ov-camera-thumb${camera.motion ? " has-motion" : ""}" data-slug="${camera.slug}" role="button" tabindex="0" aria-label="Åbn ${escapeHtml(camera.label)}">
           ${window.BeastCameras.sharedCameraMarkup(camera, { className: "beast-overview-camera-render", label: true, motion: true })}
         </div>
       `).join("")}</div>
     `;
-    window.BeastCameras.wireSharedCameras(host, renderCameras);
+    window.BeastCameras.wireSharedCameras(host, renderCameras, "overview");
+    const openCamera = (slug) => {
+      if (!window.BeastCameras.selectCamera(slug)) return;
+      document.dispatchEvent(new CustomEvent("beast:navigate", { detail: { section: "cameras" } }));
+    };
+    host.querySelectorAll(".beast-ov-camera-thumb").forEach((tile) => {
+      tile.addEventListener("click", (event) => {
+        if (event.target.closest("[data-camera-quality-slug]")) return;
+        openCamera(tile.dataset.slug);
+      });
+      tile.addEventListener("keydown", (event) => {
+        if (event.key !== "Enter" && event.key !== " ") return;
+        event.preventDefault();
+        openCamera(tile.dataset.slug);
+      });
+    });
     const cameraPickerButton = document.getElementById("beastOvCameraPicker");
     if (cameraPickerButton) cameraPickerButton.onclick = (event) => {
       event.stopPropagation();
@@ -1408,7 +1483,7 @@
 
   function refreshCameraSnapshots() {
     if (!window.BeastCameras || !BeastCore.isPanelVisible(zoneEl)) return;
-    const cams = window.BeastCameras.getAllCameras();
+    const cams = window.BeastCameras.getAllCameras("overview");
     // Only cameras without a go2rtc mapping get a plain <img> here (ones
     // with one use a live iframe instead, nothing to refresh); go through
     // HA's own authenticated camera image for those.
@@ -1421,7 +1496,7 @@
 
   function updateOverviewCameraMotion() {
     if (!window.BeastCameras) return;
-    const allCameras = window.BeastCameras.getAllCameras();
+    const allCameras = window.BeastCameras.getAllCameras("overview");
     const cameraBySlug = new Map(allCameras.map((camera) => [camera.slug, camera]));
     const movingCamera = allCameras.find((camera) => camera.motion);
     if (autoFocusEnabled() && movingCamera && motionFocusSlug !== movingCamera.slug) {
@@ -1669,12 +1744,8 @@
     }));
   }
 
-  // x maps to real minutes-since-midnight over a fixed 1440-minute (full
-  // day) axis — like Home Assistant's own history graphs, which show the
-  // whole day's timeline and just let the data stop wherever "now" is,
-  // rather than stretching whatever's been recorded so far to fill the
-  // full width (that made the chart's shape change size/meaning every time
-  // it redrew, and never looked like a real "today" graph).
+  // Use the same current-day window as the detailed Energy graph: local
+  // midnight through now, expanded across the available chart width.
   function buildOverviewUsageLine(points) {
     if (!points.length) return "";
     const width = 600;
@@ -1684,8 +1755,10 @@
     const min = Math.min(...values);
     const max = Math.max(...values);
     const range = max - min || 1;
+    const now = new Date();
+    const elapsedMinutes = Math.max(1, now.getHours() * 60 + now.getMinutes() + now.getSeconds() / 60);
     const coordinates = points.map((item, index) => [
-      (item.minutes / 1440) * width,
+      Math.min(1, item.minutes / elapsedMinutes) * width,
       padY + (height - padY * 2) - ((values[index] - min) / range) * (height - padY * 2)
     ]);
     // Curved rather than straight segments purely for a smoother-looking
@@ -1724,10 +1797,16 @@
     </div>`;
   }
 
-  // Fixed full-day markers — accurate now that buildOverviewUsageLine plots
-  // against a real 1440-minute axis instead of stretching whatever's been
-  // recorded so far to fill the width.
-  const UTILITY_AXIS_LABELS = ["00:00", "06:00", "12:00", "18:00", "24:00"];
+  // Keep the five axis markers aligned with the current-day window.
+  function utilityAxisLabels() {
+    const now = new Date();
+    const elapsedMinutes = now.getHours() * 60 + now.getMinutes();
+    return Array.from({ length: 5 }, (_, index) => {
+      if (index === 4) return t("Nu", "Now");
+      const minutes = Math.round((elapsedMinutes * index) / 4);
+      return `${String(Math.floor(minutes / 60)).padStart(2, "0")}:${String(minutes % 60).padStart(2, "0")}`;
+    });
+  }
 
   function renderEnergy() {
     const host = document.getElementById("beastOvEnergy");
@@ -1765,7 +1844,7 @@
         <div class="beast-ov-utility-chart">
           ${utilityHistory.length ? buildOverviewUsageLine(utilityHistory) : `<i>${utilityHistoryLoading ? "Henter dagsgraf…" : "Ingen historik"}</i>`}
         </div>
-        <div class="beast-ov-chart-axis">${UTILITY_AXIS_LABELS.map((label) => `<span>${label}</span>`).join("")}</div>
+        <div class="beast-ov-chart-axis">${utilityAxisLabels().map((label) => `<span>${label}</span>`).join("")}</div>
         <div class="beast-ov-price-head">
           <div>
             <span class="beast-ov-energy-price ${level.cls}">${price !== null ? price.toFixed(2) : "–"} kr/kWh · ${level.label}</span>
@@ -1976,7 +2055,7 @@
     const config = BeastConfig.getAll();
     return {
       car: { label:"Bil", entity:config.panels?.car?.battery, suffix:"%", icon:"car", detail:"Batteri" },
-      pool: { label:"Pool", entity:config.panels?.pool?.waterTemp, suffix:"°", icon:"droplet", detail:"Vandtemperatur" },
+      pool: { label:"Pool", entity:config.panels?.pool?.waterTemp, suffix:"°", icon:"droplet", detail:"Temperatur" },
       robots: { label:"Robotter", entity:[...(config.panels?.robots?.vacuums || []),...(config.panels?.robots?.mowers || [])][0], suffix:"", icon:"robot", detail:"Aktuel status" },
       printer: { label:"3D-printer", entity:config.panels?.printer?.statusSensor, suffix:"", icon:"printer", detail:"Printstatus" },
       heatpump: { label:"Varmepumpe", entity:(config.panels?.heating?.heatPumps || [])[0], suffix:"", icon:"wind", detail:"Varme og temperatur" }
@@ -2096,14 +2175,36 @@
     // forecast/history loaders would otherwise never run.
     loadWeatherForecast();
     loadUtilityHistory();
+    window.clearInterval(utilityHistoryTimerId);
+    utilityHistoryTimerId = window.setInterval(loadUtilityHistory, 5 * 60 * 1000);
     document.addEventListener("beast:overview-player-setting-changed", () => stableMusicRender());
     document.addEventListener("beast:camera-streams-changed", () => renderAll());
 
+    let hasConnectedOnce = false;
+    let reconnectRefreshTimerId = null;
     BeastHaSocket.onStatusChange((status) => {
       if (status !== "connected") return;
-      renderAll();
-      loadWeatherForecast();
-      loadUtilityHistory();
+      if (!hasConnectedOnce) {
+        // First-ever connect for this page load (see the comment above) --
+        // refresh immediately, same as always.
+        hasConnectedOnce = true;
+        renderAll();
+        loadWeatherForecast();
+        loadUtilityHistory();
+        return;
+      }
+      // A reconnect after being disconnected. A flapping connection can
+      // fire "connected" several times within seconds; refreshing on every
+      // single one tore the live camera iframes down and rebuilt them
+      // each time, which looked like the cameras blinking on their own.
+      // Debounce so only the reconnect that actually sticks triggers one
+      // refresh, 30s after it settles.
+      window.clearTimeout(reconnectRefreshTimerId);
+      reconnectRefreshTimerId = window.setTimeout(() => {
+        renderAll();
+        loadWeatherForecast();
+        loadUtilityHistory();
+      }, 30000);
     });
 
     window.clearInterval(clockTimerId);
@@ -2138,7 +2239,9 @@
     // The "open/unlocked too long" door banner is duration-based, not just
     // state-based -- a door that's been open past the threshold needs its
     // banner to appear even without a NEW state change firing this second.
-    window.setInterval(renderBanners, 60000);
+    // Covered by the tracked bannerRefreshTimerId above (same mechanism,
+    // shorter interval) -- this used to be a second, untracked 60s
+    // setInterval doing the exact same call, never cleared on re-init.
     let bannerResizeTimerId = null;
     window.addEventListener("resize", () => {
       window.clearTimeout(bannerResizeTimerId);

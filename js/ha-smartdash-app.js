@@ -30,7 +30,21 @@ const MOUNTED_SECTION_ZONES = {
   printer: "beastPrinterZone"
 };
 
-const AUTO_RETURN_TO_OVERVIEW_MS = 3 * 60 * 1000;
+// Default matches the dashboard's original fixed behavior (always on,
+// 3 minutes, back to Oversigt); all three are configurable under
+// Admin -> Advarsler.
+function AUTO_RETURN_ENABLED() { return BeastConfig.get("appEntities.autoReturnEnabled") !== false; }
+function AUTO_RETURN_SECTION() { return BeastConfig.get("appEntities.autoReturnSection") || "overview"; }
+function AUTO_RETURN_MS() { return Math.max(1, Math.min(60, Number(BeastConfig.get("appEntities.autoReturnMinutes")) || 3)) * 60 * 1000; }
+function AUTO_RETURN_SCHEDULE_OK() {
+  if (BeastConfig.get("appEntities.autoReturnScheduleEnabled") !== true) return true;
+  const minutes = new Date().getHours() * 60 + new Date().getMinutes();
+  const start = parseTimeToMinutes(BeastConfig.get("appEntities.autoReturnScheduleStart"), 8 * 60);
+  const end = parseTimeToMinutes(BeastConfig.get("appEntities.autoReturnScheduleEnd"), 22 * 60);
+  if (start === end) return true;
+  if (start > end) return minutes >= start || minutes < end;
+  return minutes >= start && minutes < end;
+}
 // Checks GitHub Releases for a new build. Safe to poll fairly often
 // despite GitHub's unauthenticated 60 requests/hour-per-IP limit (shared
 // by every kiosk and admin tab on this network): api/update.php caches
@@ -47,6 +61,13 @@ const CAMERA_HEALTH_CHECK_INTERVAL_MS = 10 * 1000;
 const CAMERA_RECONNECT_AFTER_MS = 20 * 1000;
 const CAMERA_RELOAD_AFTER_MS = 48 * 1000;
 const FULL_RECOVERY_COOLDOWN_MS = 10 * 60 * 1000;
+// How long the HA connection has to have been down before a reconnect
+// triggers a full page reload instead of trying to patch every widget's
+// stale state back to life individually (cameras, images, timers, ...).
+// Short enough to self-heal well within a typical HA restart, long enough
+// that an ordinary few-second network blip never causes an unnecessary
+// reload.
+const CONNECTION_RECOVERY_RELOAD_AFTER_MS = 90 * 1000;
 const AMBIENT_MODE_AFTER_MS = 5 * 60 * 1000;
 function screensaverConfig() {
   return BeastLocalSettings.get("screensaver", BeastConfig.get("screensaver")) || { enabled: true, schedule: "custom", startTime: "23:00", endTime: "05:30", offAfterMinutes: 5 };
@@ -59,7 +80,10 @@ function parseTimeToMinutes(value, fallbackMinutes) {
 function KIOSK_SCREEN_ENTITY_ID() { return BeastLocalSettings.get("kioskScreenLight", BeastConfig.get("appEntities.kioskScreenLight")); }
 function DOORBELL_BINARY_ID() { return BeastConfig.get("appEntities.doorbellBinarySensor"); }
 function DOORBELL_EVENT_ID() { return BeastConfig.get("appEntities.doorbellEvent"); }
-const DOORBELL_VIEW_MS = 3 * 60 * 1000;
+// Default matches the dashboard's original fixed behavior; both the mode
+// and the minute count are configurable under Admin -> Kiosk & dørklokke.
+function DOORBELL_VIEW_MODE() { return BeastConfig.get("appEntities.doorbellViewMode") === "manual" ? "manual" : "timeout"; }
+function DOORBELL_VIEW_MS() { return Math.max(1, Math.min(60, Number(BeastConfig.get("appEntities.doorbellViewMinutes")) || 3)) * 60 * 1000; }
 let lastUserActivityAt = Date.now();
 let buildCheckTimerId = null;
 let cameraHealthTimerId = null;
@@ -211,14 +235,19 @@ function showDoorbellView() {
   hideAmbientMode();
   window.clearTimeout(ambientModeTimerId);
   window.clearTimeout(screenOffTimerId);
-  document.getElementById("beastDoorbellView")?.remove();
+  // A ring while the view is already open just extends the close timer --
+  // rebuilding the overlay from scratch on every repeat ring tore down and
+  // restarted the camera stream each time, which looked like flicker.
+  window.clearTimeout(doorbellTimerId);
+  if (DOORBELL_VIEW_MODE() !== "manual") doorbellTimerId = window.setTimeout(closeDoorbellView, DOORBELL_VIEW_MS());
+  if (document.getElementById("beastDoorbellView")) return;
   const overlay = document.createElement("div");
   overlay.id = "beastDoorbellView";
   overlay.className = "beast-doorbell-view";
   const camera = doorbellCameraStream();
   const useStream = camera && window.BeastCameras?.hasGo2rtc?.() && (camera.resolvedStreamName || camera.streamName);
   const cameraMarkup = useStream
-    ? `<iframe src="./camera-player.html?v=14&src=${encodeURIComponent(camera.resolvedStreamName || camera.streamName)}" title="Fordør livekamera" frameborder="0" allow="autoplay"></iframe>`
+    ? `<iframe src="./camera-player.html?v=16&transport=webrtc&src=${encodeURIComponent(camera.resolvedStreamName || camera.streamName)}" title="Fordør livekamera" frameborder="0" allow="autoplay"></iframe>`
     : camera?.haStreamUrl
       ? `<img class="beast-doorbell-ha-camera" src="${camera.haStreamUrl}" data-doorbell-picture="${camera.entityPicture || ""}" alt="Fordør livekamera">`
       : `<img class="beast-doorbell-ha-camera" data-doorbell-picture="${camera?.entityPicture || ""}" alt="Fordør kamera">`;
@@ -229,7 +258,6 @@ function showDoorbellView() {
   fallbackImage?.addEventListener("error", () => BeastAuth.setAuthedImageSrc(fallbackImage, fallbackImage.dataset.doorbellPicture), { once:true });
   document.body.classList.add("beast-doorbell-active");
   overlay.querySelector(".beast-doorbell-close")?.addEventListener("click", (event) => { event.stopPropagation(); closeDoorbellView(); });
-  doorbellTimerId = window.setTimeout(closeDoorbellView, DOORBELL_VIEW_MS);
 }
 
 function handleDoorbellBinary() {
@@ -334,7 +362,7 @@ function ambientCameraMarkup(config) {
     const camera = window.BeastCameras?.resolveCamera?.(id);
     if (!camera) return "";
     if (window.BeastCameras?.hasGo2rtc?.() && camera.streamName) {
-      const src = `./camera-player.html?v=12&transport=mse&src=${encodeURIComponent(camera.resolvedStreamName || camera.streamName)}`;
+      const src = `./camera-player.html?v=16&transport=webrtc&src=${encodeURIComponent(camera.resolvedStreamName || camera.streamName)}`;
       return `<div class="beast-ambient-camera-tile"><iframe class="beast-ambient-camera-tile-frame" src="${src}" allow="autoplay"></iframe></div>`;
     }
     if (camera.haStreamUrl) {
@@ -564,8 +592,15 @@ async function installPendingUpdate(el) {
     const response = await fetch("/api/update.php", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "install", tag: pendingUpdateTag || undefined, channel: BeastConfig.get("updateChannel") === "beta" ? "beta" : "stable" }) });
     const payload = await response.json().catch(() => null);
     if (!response.ok || !payload?.success) throw new Error(payload?.message || payload?.error || `HTTP ${response.status}`);
+    if (pendingUpdateVersion && payload.installedVersion !== pendingUpdateVersion) {
+      throw new Error(updateBannerT(`Serveren beholdt build ${payload.installedVersion || "ukendt"}`, `The server kept build ${payload.installedVersion || "unknown"}`));
+    }
     if (statusEl) statusEl.textContent = updateBannerT("✓ Installeret — genindlæser…", "✓ Installed — reloading…");
-    window.setTimeout(() => window.location.reload(), 900);
+    window.setTimeout(() => {
+      const nextUrl = new URL(window.location.href);
+      nextUrl.searchParams.set("dashboardUpdate", payload.installedVersion || String(Date.now()));
+      window.location.replace(nextUrl.href);
+    }, 900);
   } catch (error) {
     updateInstallInFlight = false;
     applyBtn.disabled = false;
@@ -657,6 +692,18 @@ function startKioskWatchdogs() {
     window.setTimeout(checkForDashboardUpdate, 5000);
   }
   if (!cameraHealthTimerId) cameraHealthTimerId = window.setInterval(runCameraHealthCheck, CAMERA_HEALTH_CHECK_INTERVAL_MS);
+  // An always-on kiosk never gets the fresh start a manual reload gives.
+  // Reconciling every individual widget's stale state after a real outage
+  // (an HA restart routinely takes well past a minute) is a losing game --
+  // camera streams, authenticated images, and anything cached in a
+  // module-level variable can all be left stuck. Once the connection comes
+  // back after being down a while, just reload -- the same recovery a
+  // manual refresh already provides, done automatically.
+  BeastHaSocket.onStatusChange((status, detail) => {
+    if (status !== "connected" || !(detail?.downMs > CONNECTION_RECOVERY_RELOAD_AFTER_MS)) return;
+    BeastCore.log(`HA-socket: var nede i ${Math.round(detail.downMs / 1000)}s -- genindlæser siden for en frisk start.`);
+    window.setTimeout(() => window.location.reload(), 1500);
+  });
   if (!isNightScreenPeriod()) setKioskScreenPower(true);
   scheduleAmbientMode();
   scheduleMorningWake();
@@ -760,6 +807,21 @@ function renderLoginScreen(root, message) {
 }
 
 function overviewEscape(value) { const el = document.createElement("span"); el.textContent = String(value || ""); return el.innerHTML; }
+// A dedicated phone-width check, separate from BeastNativePageEditor's own
+// "mobile" profile (<=820px) -- that threshold overlaps with an iPad held
+// in portrait, which must keep the existing tablet layout untouched here.
+// 600px is comfortably below any tablet's narrowest dimension and above
+// realistic phone portrait widths.
+function isMobileOverviewViewport() {
+  const widths = [window.innerWidth, document.documentElement?.clientWidth]
+    .map(Number).filter((value) => Number.isFinite(value) && value > 0);
+  const measured = Math.max(0, ...widths);
+  // Same guard as BeastNativePageEditor.viewportWidth(): a kiosk refresh can
+  // briefly report a near-zero viewport, which must not be mistaken for a
+  // phone on a large display.
+  if (measured < 480 && Number(window.screen?.availWidth) >= 1180) return false;
+  return (measured || Number(window.screen?.availWidth) || 1920) <= 600;
+}
 // Shared by the initial mount (renderOverviewSection) and the live
 // front-page editor (ha-smartdash-overview.js's edit mode) so both render
 // a card from exactly the same markup -- position/size are passed in
@@ -788,7 +850,31 @@ function overviewCardMarkup(card) {
   return overviewSlotMarkup(card, position, size);
 }
 
+// A genuinely separate template for real phone widths, not a CSS
+// adaptation of the desktop/tablet grid -- the grid's column system,
+// per-card --desktop-w/-h sizing and drag/resize editor don't translate to
+// a phone, and forcing them to would risk leaking into the tablet
+// breakpoints this dashboard already carefully tunes. Same host element
+// ids as the desktop grid (#beastOvWeather, #beastOvClock, ...) so the
+// existing render functions (renderWeather, renderClock, ...) populate it
+// with zero changes -- only the surrounding markup and the camera strip's
+// own behavior (see renderCameras' mobile branch) differ.
+function mobileOverviewMarkup() {
+  return `
+    <div class="beast-overview-mobile" id="beastOverviewZone">
+      <div id="beastOvBanners"></div>
+      <section class="beast-panel beast-ov-m-card beast-ov-m-card--cameras" data-nav="cameras" aria-label="Kameraer"><div id="beastOvCameras"></div></section>
+      <section class="beast-panel beast-ov-m-card" data-nav="overview" aria-label="Tid, kalender og affald"><div id="beastOvClock"></div></section>
+      <section class="beast-panel beast-ov-m-card" data-nav="weather" aria-label="Vejr"><div id="beastOvWeather"></div></section>
+      <section class="beast-panel beast-ov-m-card" data-nav="security" aria-label="Sikkerhed"><div id="beastOvSecurity"></div></section>
+      <section class="beast-panel beast-ov-m-card" data-nav="energy" aria-label="Energi"><div id="beastOvEnergy"></div></section>
+      <div id="beastOvClockMusic" data-card-editor-anchor></div>
+    </div>
+  `;
+}
+
 function renderOverviewSection() {
+  if (isMobileOverviewViewport()) return mobileOverviewMarkup();
   const defaults = { main:{type:"cameras"}, compactTop:{type:"clock"}, compactBottom:{type:"security"}, wideTop:{type:"weather"}, wideBottom:{type:"energy"} };
   const slots = { ...defaults, ...(BeastConfig.get("overviewSlots") || {}) };
   const configuredCards = BeastConfig.get("overviewCards") || [];
@@ -860,7 +946,7 @@ function renderAppShell(root) {
     </button>
   `).join("");
   const adminItem = visibleRailItems.find((item) => item.id === "settings");
-  const adminRailHtml = adminItem ? `<a href="/admin/" class="beast-rail-btn beast-rail-admin">${BeastCore.icon(adminItem.icon, { size: 24 })}<span>${adminItem.label}</span></a>` : "";
+  const adminRailHtml = adminItem ? `<a href="/admin/" class="beast-rail-btn beast-rail-admin">${BeastCore.icon(adminItem.icon, { size: 24 })}<span class="beast-rail-admin-label"><span class="beast-rail-admin-label-full">${adminItem.label}</span><span class="beast-rail-admin-label-short">Admin</span></span></a>` : "";
 
   const sectionsHtml = visibleRailItems.filter((item) => item.id !== "settings").map((item) => `
     <div class="beast-section" data-section="${item.id}">
@@ -869,6 +955,7 @@ function renderAppShell(root) {
   `).join("");
 
   root.innerHTML = `
+    <canvas class="beast-weather-fx" id="beastWeatherFx" aria-hidden="true"></canvas>
     <div class="beast-app">
       <span class="beast-status-dot-fixed" id="beastStatusDot" data-state="connecting" title="Forbinder…"></span>
       <div class="beast-body">
@@ -907,11 +994,22 @@ function renderAppShell(root) {
   window.setTimeout(() => window.BeastPageEditor?.mountAll(), 80);
   document.addEventListener("beast:navigate", () => window.setTimeout(() => window.BeastPageEditor?.mountAll(), 80));
   BeastHaSocket.connect();
+  // BeastWeatherFx is a top-level `const` in its own script file, not a
+  // window property (same reason BeastHaSocket/BeastConfig aren't) --
+  // reference it directly, it's already in scope by load order.
+  BeastWeatherFx.mount();
   setupEventFocus();
   window.BeastScreenLock?.init();
   lastDoorbellBinaryState = BeastHaSocket.getState(DOORBELL_BINARY_ID())?.state || null;
   if (DOORBELL_BINARY_ID()) BeastHaSocket.subscribeEntity(DOORBELL_BINARY_ID(), handleDoorbellBinary);
-  if (DOORBELL_EVENT_ID()) BeastHaSocket.subscribeEntity(DOORBELL_EVENT_ID(), showDoorbellView);
+  // HA event entities also emit a state change when they briefly go
+  // "unavailable" (integration restart, connectivity blip) -- reacting to
+  // every update instead of only genuine rings opened the view for those
+  // too, and since they're spaced well past the 5s re-trigger guard below,
+  // each one re-armed its own close timer on top of whatever was pending.
+  if (DOORBELL_EVENT_ID()) BeastHaSocket.subscribeEntity(DOORBELL_EVENT_ID(), (entityId, nextState) => {
+    if (nextState?.attributes?.event_type === "ring") showDoorbellView();
+  });
 }
 
 function applyDashboardBranding() {
@@ -931,8 +1029,8 @@ function setupNavigation() {
 
   function scheduleAutoReturn() {
     window.clearTimeout(autoReturnTimerId);
-    if (document.hidden || activeSectionId === "overview") return;
-    autoReturnTimerId = window.setTimeout(() => activate("overview"), AUTO_RETURN_TO_OVERVIEW_MS);
+    if (!AUTO_RETURN_ENABLED() || !AUTO_RETURN_SCHEDULE_OK() || document.hidden || activeSectionId === AUTO_RETURN_SECTION()) return;
+    autoReturnTimerId = window.setTimeout(() => activate(AUTO_RETURN_SECTION()), AUTO_RETURN_MS());
   }
 
   function activate(sectionId) {
@@ -1041,7 +1139,7 @@ function mountPageActionMenus() {
       : trigger;
     const menu = document.createElement("div"); menu.id = "beastPageActionMenu"; menu.className = "beast-page-action-menu";
     const isOverview = section.dataset.section === "overview";
-    menu.innerHTML = `<button type="button" data-page-action="edit"><i>${BeastCore.icon("settings",{size:21})}</i><span><strong>Rediger side</strong><small>Flyt, ændr og tilføj kort</small></span></button><button type="button" data-page-action="fit"><i>${BeastCore.icon("grid",{size:21})}</i><span><strong>Tilpas side</strong><small>Fordel kortene til denne skærm</small></span></button>${isOverview ? `<button type="button" data-page-action="cameras"><i>${BeastCore.icon("camera",{size:21})}</i><span><strong>Vælg kameraer</strong><small>Vælg hvilke kameraer der vises på forsiden</small></span></button><button type="button" data-page-action="screensaver"><i>${BeastCore.icon("moon",{size:21})}</i><span><strong>Start pauseskærm</strong><small>Vis nattens pauseskærm med det samme</small></span></button>` : ""}`;
+    menu.innerHTML = `<button type="button" data-page-action="edit"><i>${BeastCore.icon("settings",{size:21})}</i><span><strong>Rediger side</strong><small>Flyt, ændr og tilføj kort</small></span></button><button type="button" data-page-action="fit"><i>${BeastCore.icon("grid",{size:21})}</i><span><strong>Tilpas side</strong><small>Fordel kortene til denne skærm</small></span></button>${isOverview ? `<button type="button" data-page-action="cameras"><i>${BeastCore.icon("camera",{size:21})}</i><span><strong>Vælg kameraer</strong><small>Vælg hvilke kameraer der vises på forsiden</small></span></button><button type="button" data-page-action="screensaver"><i>${BeastCore.icon("moon",{size:21})}</i><span><strong>Start pauseskærm</strong><small>Vis nattens pauseskærm med det samme</small></span></button>` : ""}<button type="button" data-page-action="reload"><i>${BeastCore.icon("refresh",{size:21})}</i><span><strong>Genindlæs dashboard</strong><small>Genstart siden og alle forbindelser</small></span></button>`;
     document.body.appendChild(menu);
     const triggerRect = trigger.getBoundingClientRect();
     const menuRect = menu.getBoundingClientRect();
@@ -1057,6 +1155,12 @@ function mountPageActionMenus() {
     menu.querySelector('[data-page-action="fit"]').addEventListener("click", async (actionEvent) => { const button=actionEvent.currentTarget; button.disabled=true; button.classList.add("is-busy"); await window.BeastPageEditor?.fit?.(section.dataset.section); close(); });
     menu.querySelector('[data-page-action="cameras"]')?.addEventListener("click", () => { close(); document.getElementById("beastOvCameraPicker")?.click(); });
     menu.querySelector('[data-page-action="screensaver"]')?.addEventListener("click", () => { close(); document.getElementById("beastOvStartScreensaver")?.click(); });
+    menu.querySelector('[data-page-action="reload"]').addEventListener("click", () => {
+      close();
+      const nextUrl = new URL(window.location.href);
+      nextUrl.searchParams.set("dashboardReload", String(Date.now()));
+      window.location.replace(nextUrl.href);
+    });
   }, true);
 }
 

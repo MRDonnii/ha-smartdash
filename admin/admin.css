@@ -44,6 +44,7 @@ button { cursor: pointer; }
 .admin-back { min-height: 44px; display: grid; place-items: center; border: 1px solid var(--border); border-radius: 11px; color: var(--ink); text-decoration: none; background: var(--surface-2); font-weight: 750; }
 .admin-main { min-width: 0; padding: 34px clamp(24px, 4vw, 64px) 70px; }
 .admin-topbar { display: flex; align-items: center; justify-content: space-between; gap: 20px; margin-bottom: 30px; }
+.admin-topbar > div:first-child { min-width: 0; }
 .admin-topbar h1 { margin: 0; font-size: clamp(28px, 3vw, 42px); }
 .admin-topbar p { margin: 6px 0 0; color: var(--ink-muted); }
 .admin-status { display: inline-flex; align-items: center; gap: 8px; padding: 9px 13px; border: 1px solid var(--border); border-radius: 999px; color: var(--ink-muted); background: var(--surface-2); font-size: 13px; font-weight: 750; }
@@ -159,10 +160,16 @@ button { cursor: pointer; }
 .admin-project-details summary { cursor:pointer; font-weight:800; }
 .admin-project-details p { margin:10px 0 0; color:var(--ink-muted); font-size:13px; line-height:1.55; }
 .admin-card-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 20px; margin-bottom: 22px; }
+/* Flex items default to min-width:auto, which lets a long paragraph's
+   unwrapped natural width force this whole row (and every ancestor up to
+   .admin-main) wide instead of actually wrapping -- this was the source
+   of the horizontal overflow that broke Admin on narrow/phone widths. */
+.admin-card-head > * { min-width: 0; }
 .admin-card-head h2 { margin: 0; font-size: 21px; }
 .admin-card-head p { margin: 6px 0 0; color: var(--ink-muted); font-size: 14px; }
 .admin-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
 .admin-field { display: grid; gap: 8px; min-width: 0; }
+.admin-field.is-hidden { display: none; }
 .admin-field > span { color: var(--ink-muted); font-size: 12px; font-weight: 800; }
 .admin-field-heading { display:flex; align-items:center; justify-content:space-between; gap:8px; }
 .admin-field-heading b { min-width:0; color:var(--ink-muted); font-size:12px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
@@ -457,7 +464,13 @@ button { cursor: pointer; }
 .beast-modal :is(input,select,textarea,button) { box-sizing:border-box; max-width:100%; }
 
 @media (max-width: 900px) {
-  .admin-shell { grid-template-columns: 1fr; }
+  /* A bare `1fr` track defaults to minmax(auto, 1fr) -- its minimum size
+     is its content's min-content width, not 0. With a wide descendant
+     (long text, a multi-column form) that let this single track "blow
+     out" past the viewport instead of shrinking to it, dragging the
+     entire page into horizontal overflow. minmax(0, 1fr) is what actually
+     makes the column shrink to the available width. */
+  .admin-shell { grid-template-columns: minmax(0, 1fr); }
   .admin-sidebar { position: static; height: auto; padding: 15px; }
   .admin-nav { display: flex; overflow-x: auto; }
   .admin-nav button { white-space: nowrap; }
