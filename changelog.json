@@ -1,5 +1,24 @@
 [
   {
+    "version": "20260818-2",
+    "tag": "v0.7.122",
+    "date": "2026-08-18",
+    "changes": [
+      {
+        "da": "Rettet at dørkamera-visningen kunne springe frem uden at nogen havde ringet på. Dørklokkens hændelse husker sin sidste ringning i sine data, også når enheden kortvarigt bliver utilgængelig -- fx når integrationen genstarter -- og hver af de opstarter blev opfattet som en ny ringning. Visningen åbner nu kun ved en reelt ny ringning.",
+        "en": "Fixed the doorbell camera view opening when nobody had rung. The doorbell's event keeps its last ring in its data even while the entity is briefly unavailable -- for instance when the integration restarts -- and each of those restarts was read as a new ring. The view now opens only for a genuinely new ring."
+      },
+      {
+        "da": "En genindlæsning af dashboardet kan ikke længere gentage den seneste ringning fra tidligere på dagen.",
+        "en": "Reloading the dashboard can no longer replay the most recent ring from earlier in the day."
+      },
+      {
+        "da": "Dørklokkens sensor skal nu skifte rent fra rolig til aktiv for at åbne visningen -- at komme tilbage efter en forbindelsesafbrydelse tæller ikke længere som en ringning.",
+        "en": "The doorbell sensor now has to change cleanly from idle to active to open the view -- returning after a connection drop no longer counts as a ring."
+      }
+    ]
+  },
+  {
     "version": "20260817-24",
     "tag": "v0.7.121",
     "date": "2026-08-17",

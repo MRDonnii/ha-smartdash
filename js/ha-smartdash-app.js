@@ -97,6 +97,11 @@ let kioskScreenIsOff = false;
 let doorbellTimerId = null;
 let lastDoorbellAt = 0;
 let lastDoorbellBinaryState = null;
+let lastDoorbellEventAt = 0;
+// A ring older than this is history, not something to interrupt the screen
+// for -- guards against a page reload or reconnect snapshot replaying the
+// last real ring long after the fact.
+const DOORBELL_EVENT_MAX_AGE_MS = 60 * 1000;
 let eventFocusTimerId = null;
 const cameraHealth = new Map();
 
@@ -262,7 +267,13 @@ function showDoorbellView() {
 
 function handleDoorbellBinary() {
   const state = BeastHaSocket.getState(DOORBELL_BINARY_ID())?.state || "off";
-  if (state === "on" && lastDoorbellBinaryState !== "on") showDoorbellView();
+  // Only a real press -- a clean "off" -> "on" edge. Coming back from
+  // "unavailable"/"unknown" (integration restart, connectivity blip) is not
+  // a ring even when the sensor restores as "on", but it is still a
+  // transition into "on", so it used to open the doorbell view on its own.
+  // Those states are recorded so the next genuine press is still detected,
+  // they just don't count as the edge themselves.
+  if (state === "on" && lastDoorbellBinaryState === "off") showDoorbellView();
   lastDoorbellBinaryState = state;
 }
 
@@ -1022,8 +1033,22 @@ function renderAppShell(root) {
   // every update instead of only genuine rings opened the view for those
   // too, and since they're spaced well past the 5s re-trigger guard below,
   // each one re-armed its own close timer on top of whatever was pending.
+  // An event entity keeps its last event's attributes (event_type: "ring")
+  // even while its *state* is "unknown"/"unavailable" -- so matching on
+  // event_type alone fired on every integration restart or connectivity
+  // blip, which is what opened the doorbell view when nobody had rung.
+  // The state itself is the event's ISO timestamp; a genuine new ring is a
+  // parseable timestamp that differs from the one seen before. The
+  // freshness check additionally stops a page reload (or reconnect
+  // snapshot) from replaying the last real ring from hours ago.
+  lastDoorbellEventAt = Date.parse(BeastHaSocket.getState(DOORBELL_EVENT_ID())?.state || "") || 0;
   if (DOORBELL_EVENT_ID()) BeastHaSocket.subscribeEntity(DOORBELL_EVENT_ID(), (entityId, nextState) => {
-    if (nextState?.attributes?.event_type === "ring") showDoorbellView();
+    if (nextState?.attributes?.event_type !== "ring") return;
+    const firedAt = Date.parse(nextState?.state || "");
+    if (!Number.isFinite(firedAt) || firedAt === lastDoorbellEventAt) return;
+    const isFresh = Date.now() - firedAt < DOORBELL_EVENT_MAX_AGE_MS;
+    lastDoorbellEventAt = firedAt;
+    if (isFresh) showDoorbellView();
   });
 }
 
