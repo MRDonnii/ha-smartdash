@@ -87,6 +87,19 @@ body::after {
   overflow: hidden;
 }
 
+/* Sits behind .beast-app (z-index:1 above) so it shows through the front
+   page's translucent cards rather than sitting on top of the dashboard.
+   Hidden by default (no is-active class) so an idle canvas costs nothing
+   when the feature is off or the current condition has no effect. */
+.beast-weather-fx {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  display: none;
+  pointer-events: none;
+}
+.beast-weather-fx.is-active { display: block; }
+
 /* No header bar — every pixel of a 15" wall panel is precious. A tiny fixed
    dot is the only persistent chrome; everything else lives in Indstillinger. */
 .beast-status-dot-fixed {
@@ -147,6 +160,7 @@ body::after {
 }
 .beast-rail-pages::-webkit-scrollbar { display: none; }
 .beast-rail-tools {
+  container-type: inline-size;
   flex: 0 0 auto;
   display: grid;
   gap: 5px;
@@ -164,6 +178,11 @@ body::after {
 .beast-rail-tools .beast-rail-admin { border:1px solid var(--border-strong) !important; background:var(--surface-solid) !important; color:var(--ink-muted) !important; box-shadow:none; }
 .beast-rail-tools .beast-rail-page-edit-icon { color:var(--ink-muted); background:transparent; box-shadow:none; }
 .beast-rail-admin { min-height:52px !important; }
+.beast-rail-admin-label-short { display:none; }
+@container (max-width: 112px) {
+  .beast-rail-admin-label-full { display:none; }
+  .beast-rail-admin-label-short { display:inline; }
+}
 .beast-rail-tools .beast-rail-page-edit:hover,
 .beast-rail-admin:hover { border-color:color-mix(in srgb,var(--accent-b) 45%,var(--border)) !important; color:var(--ink) !important; }
 
@@ -205,7 +224,7 @@ body::after {
 .beast-rail-page-edit:hover { border-color: color-mix(in srgb, var(--accent-a) 58%, var(--border)); background: color-mix(in srgb, var(--accent-a) 16%, var(--panel)); }
 .beast-rail-page-edit:active { transform: scale(.97); }
 .beast-rail-page-edit-icon { width: 30px; height: 30px; display: grid; place-items: center; justify-self: center; border-radius: 9px; color: #fff; background: linear-gradient(135deg, var(--accent-a), var(--accent-b)); box-shadow: 0 5px 13px color-mix(in srgb, var(--accent-a) 28%, transparent); }
-.beast-rail-page-edit-label { width: 100%; min-width: 0; overflow: hidden; white-space: nowrap; text-align: center; }
+.beast-rail-page-edit-label { width: 100%; min-width: 0; overflow: hidden; padding-bottom: 1px; line-height: 1.25; white-space: nowrap; text-align: center; }
 
 .beast-rail-btn,
 a.beast-rail-btn,

@@ -1,11 +1,56 @@
 [
   {
+    "version": "20260817-1",
+    "tag": "v0.7.116",
+    "date": "2026-08-17",
+    "changes": [
+      {
+        "da": "Rettet at vejrudsigten på forsiden kunne forsvinde og ikke selv komme tilbage efter en Home Assistant-genstart -- den henter nu altid frisk data igen, ligesom resten af forsiden.",
+        "en": "Fixed the front-page weather widget sometimes disappearing and not recovering on its own after a Home Assistant restart -- it now always re-fetches fresh data again, like the rest of the front page."
+      },
+      {
+        "da": "Forsiden genindlæser nu automatisk sig selv, hvis forbindelsen til Home Assistant har været nede i længere tid, i stedet for at blive hængende i en gammel tilstand.",
+        "en": "The front page now automatically reloads itself if the connection to Home Assistant has been down for an extended period, instead of getting stuck in a stale state."
+      },
+      {
+        "da": "Ny dedikeret forside-visning til mobiltelefoner: et enkelt, lodret kortlayout tilpasset en smal skærm. Berøringsskærm/tablet-visningen er uændret.",
+        "en": "New dedicated front-page layout for phones: a single, vertically stacked card layout built for a narrow screen. The touchscreen/tablet layout is unchanged."
+      },
+      {
+        "da": "Kamera-kortet på mobilforsiden viser nu ét stort, levende kamerabillede plus små thumbnails til de øvrige kameraer -- tryk for at skifte hvilket kamera der er i fokus.",
+        "en": "The camera card on the mobile front page now shows one large live camera feed plus small thumbnails for the other cameras -- tap to switch which camera is featured."
+      },
+      {
+        "da": "Administrationspanelet er nu brugbart på mobiltelefoner (indhold kunne før løbe ud over skærmen og gøre siden ubrugelig).",
+        "en": "The Admin panel is now usable on phones (content could previously overflow the screen and make the page unusable)."
+      },
+      {
+        "da": "Rettet at kameraerne på forsiden kunne blinke/genindlæse i flere sekunder efter en kortvarig forbindelsesudsving, selvom forbindelsen reelt var fin igen med det samme.",
+        "en": "Fixed front-page cameras sometimes flickering/reloading for several seconds after a brief connection blip, even when the connection was actually fine again immediately."
+      },
+      {
+        "da": "Ny valgfri animeret vejr-baggrundseffekt (regn, sne, skyer m.m.) der matcher det aktuelle vejr -- kan slås til/fra under Administration.",
+        "en": "New optional animated weather background effect (rain, snow, clouds, etc.) matching current conditions -- toggle it under Administration."
+      },
+      {
+        "da": "Rettet at post-/pakke-/printer-advarsler ikke var tilpasset den nye mobilvisning, hvilket kunne få dem til at overlappe eller virke som om de sad fast øverst på skærmen.",
+        "en": "Fixed mail/package/printer alert banners not being adapted to the new mobile layout, which could make them overlap or feel stuck at the top of the screen."
+      }
+    ]
+  },
+  {
     "version": "20260811-139",
     "tag": "v0.7.61",
     "date": "2026-08-11",
     "changes": [
-      { "da": "Skoleskemaet viser nu en hel uge ad gangen (mandag-fredag) i stedet for én dag, med hver time farvekodet efter fag, og uge-frem/tilbage-navigation.", "en": "The school schedule now shows a full week at once (Monday-Friday) instead of a single day, with each lesson color-coded by subject, and week-by-week navigation." },
-      { "da": "Rettet at installationer der allerede havde et gemt kalenderlayout kunne ende med at Affald-kortet lå oveni det nye skoleskema i stedet for at flytte ned til sin egen plads.", "en": "Fixed installations that already had a saved calendar layout potentially ending up with the Affald card overlapping the new school schedule instead of moving down to its own spot." }
+      {
+        "da": "Skoleskemaet viser nu en hel uge ad gangen (mandag-fredag) i stedet for én dag, med hver time farvekodet efter fag, og uge-frem/tilbage-navigation.",
+        "en": "The school schedule now shows a full week at once (Monday-Friday) instead of a single day, with each lesson color-coded by subject, and week-by-week navigation."
+      },
+      {
+        "da": "Rettet at installationer der allerede havde et gemt kalenderlayout kunne ende med at Affald-kortet lå oveni det nye skoleskema i stedet for at flytte ned til sin egen plads.",
+        "en": "Fixed installations that already had a saved calendar layout potentially ending up with the Affald card overlapping the new school schedule instead of moving down to its own spot."
+      }
     ]
   },
   {
@@ -13,7 +58,10 @@
     "tag": "v0.7.60",
     "date": "2026-08-11",
     "changes": [
-      { "da": "Rettet at opdateringstjekket sammenlignede den installerede version mod en fil der ikke var blevet opdateret i de seneste par udgivelser, hvilket kunne betyde at en ny udgivelse aldrig blev vist som tilgængelig -- gælder både Stable og Beta.", "en": "Fixed the update check comparing the installed version against a file that hadn't been updated in the last couple of releases, which could mean a new release never showed up as available -- affects both Stable and Beta." }
+      {
+        "da": "Rettet at opdateringstjekket sammenlignede den installerede version mod en fil der ikke var blevet opdateret i de seneste par udgivelser, hvilket kunne betyde at en ny udgivelse aldrig blev vist som tilgængelig -- gælder både Stable og Beta.",
+        "en": "Fixed the update check comparing the installed version against a file that hadn't been updated in the last couple of releases, which could mean a new release never showed up as available -- affects both Stable and Beta."
+      }
     ]
   },
   {
@@ -21,7 +69,10 @@
     "tag": "v0.7.59",
     "date": "2026-08-11",
     "changes": [
-      { "da": "Skoleskemaet viser nu fagenes rigtige navne i stedet for AULA's forkortelser (fx \"Matematik\" i stedet for \"MAT\"), og en times fag vises altid korrekt selvom en ekstra støttelærer er tilknyttet samme tidspunkt.", "en": "The school schedule now shows subjects' real names instead of AULA's abbreviations (e.g. \"Matematik\" instead of \"MAT\"), and a lesson's subject always shows correctly even when an extra support teacher is attached to the same period." }
+      {
+        "da": "Skoleskemaet viser nu fagenes rigtige navne i stedet for AULA's forkortelser (fx \"Matematik\" i stedet for \"MAT\"), og en times fag vises altid korrekt selvom en ekstra støttelærer er tilknyttet samme tidspunkt.",
+        "en": "The school schedule now shows subjects' real names instead of AULA's abbreviations (e.g. \"Matematik\" instead of \"MAT\"), and a lesson's subject always shows correctly even when an extra support teacher is attached to the same period."
+      }
     ]
   },
   {
@@ -29,8 +80,14 @@
     "tag": "v0.7.58",
     "date": "2026-08-11",
     "changes": [
-      { "da": "Nyt skoleskema på Kalender-siden: vælg én eller flere skema-kalendere (fx AULA) i Admin, og få ét kort pr. valgt kalender med dagens lektioner. Lektioner der dækkes af flere lærere samtidig vises samlet som én linje i stedet for gentaget.", "en": "New school schedule on the Calendar page: pick one or more schedule calendars (e.g. AULA) in Admin and get one card per calendar showing today's lessons. Lessons covered by multiple teachers at once are merged into a single line instead of repeating." },
-      { "da": "Nye valgfrie dashboard-advarsler: en lektion der starter om kort tid, og en ny besked i skole-appen -- begge slået fra som standard og styres under Admin -> Advarsler.", "en": "New optional dashboard alerts: a lesson starting soon, and a new message in the school app -- both off by default and controlled under Admin -> Alerts." }
+      {
+        "da": "Nyt skoleskema på Kalender-siden: vælg én eller flere skema-kalendere (fx AULA) i Admin, og få ét kort pr. valgt kalender med dagens lektioner. Lektioner der dækkes af flere lærere samtidig vises samlet som én linje i stedet for gentaget.",
+        "en": "New school schedule on the Calendar page: pick one or more schedule calendars (e.g. AULA) in Admin and get one card per calendar showing today's lessons. Lessons covered by multiple teachers at once are merged into a single line instead of repeating."
+      },
+      {
+        "da": "Nye valgfrie dashboard-advarsler: en lektion der starter om kort tid, og en ny besked i skole-appen -- begge slået fra som standard og styres under Admin -> Advarsler.",
+        "en": "New optional dashboard alerts: a lesson starting soon, and a new message in the school app -- both off by default and controlled under Admin -> Alerts."
+      }
     ]
   },
   {
@@ -38,7 +95,10 @@
     "tag": "v0.7.57",
     "date": "2026-08-11",
     "changes": [
-      { "da": "Samme indhold som v0.7.56, udgivet på Beta-kanalen for at bekræfte at kanal-skiftet reelt finder og henter en nyere Beta-udgivelse.", "en": "Same content as v0.7.56, published to the Beta channel to confirm the channel switch actually discovers and fetches a newer Beta release." }
+      {
+        "da": "Samme indhold som v0.7.56, udgivet på Beta-kanalen for at bekræfte at kanal-skiftet reelt finder og henter en nyere Beta-udgivelse.",
+        "en": "Same content as v0.7.56, published to the Beta channel to confirm the channel switch actually discovers and fetches a newer Beta release."
+      }
     ]
   },
   {
@@ -46,9 +106,18 @@
     "tag": "v0.7.56",
     "date": "2026-08-11",
     "changes": [
-      { "da": "Ændringsloggen følger nu dashboardets sprogvalg i stedet for altid at vise én fast sprogversion -- både i Admin og i selve dashboardets \"ny version klar\"-boks. Ældre poster (skrevet før dette fandtes) vises stadig på deres oprindelige sprog.", "en": "The changelog now follows the dashboard's language setting instead of always showing one fixed language -- both in Admin and in the dashboard's own \"new version ready\" banner. Older entries (written before this existed) still show in whatever language they were originally written." },
-      { "da": "Fremover udgives løbende arbejde som udgangspunkt på Beta-kanalen; Stable opdateres kun når en version bevidst er markeret klar til alle.", "en": "Going forward, ongoing work is published to the Beta channel by default; Stable is only updated once a version has been deliberately marked ready for everyone." },
-      { "da": "Rettet at Admin i sjældne tilfælde kunne foreslå en ældre, lokalt gemt version i stedet for den nyeste version på den valgte kanal -- \"Ny version klar\" bygger nu udelukkende på hvad GitHub rapporterer for den aktuelt valgte kanal, aldrig på lokale gendannelsespunkter.", "en": "Fixed Admin occasionally suggesting an older, locally saved version instead of the newest version on the selected channel -- \"New version ready\" is now based solely on what GitHub reports for the currently selected channel, never on local restore points." }
+      {
+        "da": "Ændringsloggen følger nu dashboardets sprogvalg i stedet for altid at vise én fast sprogversion -- både i Admin og i selve dashboardets \"ny version klar\"-boks. Ældre poster (skrevet før dette fandtes) vises stadig på deres oprindelige sprog.",
+        "en": "The changelog now follows the dashboard's language setting instead of always showing one fixed language -- both in Admin and in the dashboard's own \"new version ready\" banner. Older entries (written before this existed) still show in whatever language they were originally written."
+      },
+      {
+        "da": "Fremover udgives løbende arbejde som udgangspunkt på Beta-kanalen; Stable opdateres kun når en version bevidst er markeret klar til alle.",
+        "en": "Going forward, ongoing work is published to the Beta channel by default; Stable is only updated once a version has been deliberately marked ready for everyone."
+      },
+      {
+        "da": "Rettet at Admin i sjældne tilfælde kunne foreslå en ældre, lokalt gemt version i stedet for den nyeste version på den valgte kanal -- \"Ny version klar\" bygger nu udelukkende på hvad GitHub rapporterer for den aktuelt valgte kanal, aldrig på lokale gendannelsespunkter.",
+        "en": "Fixed Admin occasionally suggesting an older, locally saved version instead of the newest version on the selected channel -- \"New version ready\" is now based solely on what GitHub reports for the currently selected channel, never on local restore points."
+      }
     ]
   },
   {

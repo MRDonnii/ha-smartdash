@@ -1,0 +1,254 @@
+// Full-screen ambient overlay reflecting the current weather condition,
+// sitting behind the dashboard's own (already translucent) cards -- see
+// ha-smartdash-app.js's shell markup, where the canvas is a sibling placed
+// before .beast-app and stacked underneath it with z-index. Off by
+// default; toggled under Admin -> Tema og design.
+//
+// Every native HA weather condition gets its own distinct look rather than
+// a shared "rain or snow" bucket: stars at night, a sun glow when clear,
+// drifting clouds, fog bands, wind gusts, rain (light/heavy), hail, snow,
+// sleet (rain+snow together), and lightning flashes layered on top of
+// storm conditions.
+const BeastWeatherFx = (() => {
+  // Each condition maps to a tint (a very low-opacity full-canvas wash --
+  // this sits behind translucent cards, so it must stay subtle) plus a set
+  // of particle-layer builders and whether lightning flashes are active.
+  const CONDITION_EFFECTS = {
+    "clear-night": { tint: "night", layers: ["stars"] },
+    sunny: { tint: "sun", layers: ["sunGlow"] },
+    partlycloudy: { tint: "day", layers: ["sunGlow", "clouds"] },
+    cloudy: { tint: "overcast", layers: ["clouds", "clouds"] },
+    fog: { tint: "overcast", layers: ["fog"] },
+    windy: { tint: "day", layers: ["clouds", "wind"] },
+    "windy-variant": { tint: "day", layers: ["clouds", "wind"] },
+    rainy: { tint: "rain", layers: ["rain"] },
+    pouring: { tint: "storm", layers: ["rainHeavy"] },
+    lightning: { tint: "storm", layers: ["clouds"], flash: true },
+    "lightning-rainy": { tint: "storm", layers: ["rain"], flash: true },
+    hail: { tint: "storm", layers: ["hail"] },
+    snowy: { tint: "snow", layers: ["snow"] },
+    "snowy-rainy": { tint: "snow", layers: ["rainLight", "snowLight"] }
+  };
+
+  const TINTS = {
+    day: null,
+    night: (w, h) => { const g = mkGrad(0, 0, 0, h); g.addColorStop(0, "rgba(10,18,45,0.16)"); g.addColorStop(1, "rgba(10,18,45,0)"); return g; },
+    sun: (w, h) => { const g = ctx.createRadialGradient(w * 0.82, h * 0.12, 0, w * 0.82, h * 0.12, Math.max(w, h) * 0.5); g.addColorStop(0, "rgba(255,214,140,0.14)"); g.addColorStop(1, "rgba(255,214,140,0)"); return g; },
+    overcast: (w, h) => { const g = mkGrad(0, 0, 0, h); g.addColorStop(0, "rgba(140,150,165,0.10)"); g.addColorStop(1, "rgba(140,150,165,0.03)"); return g; },
+    rain: (w, h) => { const g = mkGrad(0, 0, 0, h); g.addColorStop(0, "rgba(70,90,120,0.10)"); g.addColorStop(1, "rgba(70,90,120,0.04)"); return g; },
+    storm: (w, h) => { const g = mkGrad(0, 0, 0, h); g.addColorStop(0, "rgba(40,50,70,0.20)"); g.addColorStop(1, "rgba(40,50,70,0.06)"); return g; },
+    snow: (w, h) => { const g = mkGrad(0, 0, 0, h); g.addColorStop(0, "rgba(210,225,245,0.10)"); g.addColorStop(1, "rgba(210,225,245,0.02)"); return g; }
+  };
+
+  function mkGrad(x0, y0, x1, y1) { return ctx.createLinearGradient(x0, y0, x1, y1); }
+
+  let canvas = null;
+  let ctx = null;
+  let particles = [];
+  let currentCondition = null;
+  let activeConfig = null;
+  let width = 0;
+  let height = 0;
+  let reducedMotion = false;
+  let weatherEntityId = null;
+  let flashIntensity = 0;
+  let nextFlashAt = 0;
+
+  function enabled() {
+    return BeastConfig.get("features.weatherOverlay") === true;
+  }
+
+  function resize() {
+    if (!canvas) return;
+    width = canvas.width = window.innerWidth;
+    height = canvas.height = window.innerHeight;
+  }
+
+  function density(perPixels, cap) {
+    return Math.min(cap, Math.max(6, Math.round((width * height) / perPixels)));
+  }
+
+  const LAYER_BUILDERS = {
+    stars: () => Array.from({ length: density(9000, 70) }, () => ({
+      kind: "star", x: Math.random() * width, y: Math.random() * height * 0.75,
+      r: 0.6 + Math.random() * 1.3, phase: Math.random() * Math.PI * 2, speed: 0.01 + Math.random() * 0.02
+    })),
+    sunGlow: () => [],
+    clouds: () => Array.from({ length: density(70000, 10) }, () => {
+      const w = 90 + Math.random() * 140;
+      const h = 24 + Math.random() * 20;
+      // A handful of overlapping puffs (offset within the cloud's own
+      // bounds) reads as a soft, irregular cloud shape once blurred --
+      // a single gradient ellipse showed a hard, scalloped edge instead.
+      const puffs = Array.from({ length: 3 + Math.floor(Math.random() * 2) }, () => ({
+        dx: (Math.random() - 0.5) * w * 0.7, dy: (Math.random() - 0.5) * h * 0.6, r: h * (0.55 + Math.random() * 0.35)
+      }));
+      return { kind: "cloud", x: Math.random() * width, y: 20 + Math.random() * height * 0.35, w, h, puffs, speed: 0.12 + Math.random() * 0.25, opacity: 0.06 + Math.random() * 0.08 };
+    }),
+    fog: () => Array.from({ length: 4 }, (_, i) => ({
+      kind: "fog", x: Math.random() * width, y: (height / 4) * i + Math.random() * 40,
+      w: width * 1.4, h: 60 + Math.random() * 40, speed: (i % 2 ? 1 : -1) * (0.15 + Math.random() * 0.15), opacity: 0.05 + Math.random() * 0.05
+    })),
+    wind: () => Array.from({ length: density(12000, 60) }, () => ({
+      kind: "wind", x: Math.random() * width, y: Math.random() * height,
+      len: 20 + Math.random() * 30, speed: 6 + Math.random() * 5, opacity: 0.08 + Math.random() * 0.1
+    })),
+    rain: () => rainDrops(density(9000, 140), 7, 6, 10, 14, 0.12, 0.18),
+    rainLight: () => rainDrops(density(16000, 70), 6, 5, 8, 10, 0.10, 0.14),
+    rainHeavy: () => rainDrops(density(6000, 190), 11, 7, 14, 18, 0.16, 0.24),
+    hail: () => Array.from({ length: density(12000, 60) }, () => ({
+      kind: "hail", x: Math.random() * width, y: Math.random() * height,
+      r: 1.8 + Math.random() * 1.6, speed: 9 + Math.random() * 5, opacity: 0.3 + Math.random() * 0.25
+    })),
+    snow: () => snowFlakes(density(14000, 90), 1.5, 2.5, 0.6, 1.2),
+    snowLight: () => snowFlakes(density(22000, 50), 1.3, 2.2, 0.5, 1.0)
+  };
+
+  function rainDrops(count, speedBase, speedRange, lenBase, lenRange, opBase, opRange) {
+    return Array.from({ length: count }, () => ({
+      kind: "rain", x: Math.random() * width, y: Math.random() * height,
+      len: lenBase + Math.random() * lenRange, speed: speedBase + Math.random() * speedRange,
+      drift: 1.2, opacity: opBase + Math.random() * opRange
+    }));
+  }
+
+  function snowFlakes(count, rMin, rRange, speedMin, speedRange) {
+    return Array.from({ length: count }, () => ({
+      kind: "snow", x: Math.random() * width, y: Math.random() * height,
+      r: rMin + Math.random() * rRange, speed: speedMin + Math.random() * speedRange,
+      drift: Math.random() * 0.6 - 0.3, sway: Math.random() * Math.PI * 2, opacity: 0.25 + Math.random() * 0.35
+    }));
+  }
+
+  function drawParticle(p) {
+    if (p.kind === "star") {
+      p.phase += p.speed;
+      ctx.globalAlpha = 0.35 + Math.sin(p.phase) * 0.25;
+      ctx.fillStyle = "rgba(255,255,255,1)";
+      ctx.beginPath(); ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2); ctx.fill();
+      return;
+    }
+    if (p.kind === "cloud") {
+      ctx.globalAlpha = p.opacity;
+      ctx.fillStyle = "rgba(222,227,236,1)";
+      ctx.filter = "blur(14px)";
+      p.puffs.forEach((puff) => {
+        ctx.beginPath();
+        ctx.arc(p.x + puff.dx, p.y + puff.dy, puff.r, 0, Math.PI * 2);
+        ctx.fill();
+      });
+      ctx.filter = "none";
+      p.x += p.speed;
+      if (p.x - p.w > width) p.x = -p.w;
+      return;
+    }
+    if (p.kind === "fog") {
+      ctx.globalAlpha = p.opacity;
+      const grad = ctx.createLinearGradient(p.x - p.w / 2, 0, p.x + p.w / 2, 0);
+      grad.addColorStop(0, "rgba(210,215,220,0)"); grad.addColorStop(0.5, "rgba(210,215,220,1)"); grad.addColorStop(1, "rgba(210,215,220,0)");
+      ctx.fillStyle = grad;
+      ctx.fillRect(p.x - p.w / 2, p.y, p.w, p.h);
+      p.x += p.speed;
+      if (p.speed > 0 && p.x - p.w / 2 > width) p.x = -p.w / 2;
+      if (p.speed < 0 && p.x + p.w / 2 < 0) p.x = width + p.w / 2;
+      return;
+    }
+    if (p.kind === "wind") {
+      ctx.globalAlpha = p.opacity;
+      ctx.strokeStyle = "rgba(255,255,255,1)"; ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.moveTo(p.x, p.y); ctx.lineTo(p.x + p.len, p.y - 2); ctx.stroke();
+      p.x += p.speed;
+      if (p.x > width) { p.x = -p.len; p.y = Math.random() * height; }
+      return;
+    }
+    if (p.kind === "rain") {
+      ctx.globalAlpha = p.opacity;
+      ctx.strokeStyle = "rgba(200,220,255,1)"; ctx.lineWidth = 1.2;
+      ctx.beginPath(); ctx.moveTo(p.x, p.y); ctx.lineTo(p.x - p.drift * 2, p.y + p.len); ctx.stroke();
+      p.y += p.speed; p.x -= p.drift;
+      if (p.y > height) { p.y = -p.len; p.x = Math.random() * width; }
+      if (p.x < -10) p.x = width + 10;
+      return;
+    }
+    if (p.kind === "hail") {
+      ctx.globalAlpha = p.opacity;
+      ctx.fillStyle = "rgba(225,235,245,1)";
+      ctx.beginPath(); ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2); ctx.fill();
+      p.y += p.speed;
+      if (p.y > height) { p.y = -p.r; p.x = Math.random() * width; }
+      return;
+    }
+    if (p.kind === "snow") {
+      ctx.globalAlpha = p.opacity;
+      ctx.fillStyle = "rgba(255,255,255,1)";
+      ctx.beginPath(); ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2); ctx.fill();
+      p.sway += 0.02; p.y += p.speed; p.x += p.drift + Math.sin(p.sway) * 0.4;
+      if (p.y > height) { p.y = -p.r; p.x = Math.random() * width; }
+      if (p.x < -10) p.x = width + 10;
+      if (p.x > width + 10) p.x = -10;
+    }
+  }
+
+  function maybeFlash(now) {
+    if (!activeConfig?.flash) { flashIntensity = 0; nextFlashAt = 0; return; }
+    if (!nextFlashAt) nextFlashAt = now + 3000 + Math.random() * 6000;
+    if (now >= nextFlashAt) {
+      flashIntensity = 0.5 + Math.random() * 0.3;
+      nextFlashAt = now + 4000 + Math.random() * 8000;
+    }
+    if (flashIntensity > 0) {
+      ctx.globalAlpha = flashIntensity;
+      ctx.fillStyle = "rgba(255,255,255,1)";
+      ctx.fillRect(0, 0, width, height);
+      flashIntensity -= 0.06;
+    }
+  }
+
+  function tick() {
+    window.requestAnimationFrame(tick);
+    if (document.hidden || !ctx || !activeConfig) return;
+    ctx.clearRect(0, 0, width, height);
+    const tint = TINTS[activeConfig.tint];
+    if (tint) { const grad = tint(width, height); if (grad) { ctx.globalAlpha = 1; ctx.fillStyle = grad; ctx.fillRect(0, 0, width, height); } }
+    particles.forEach(drawParticle);
+    maybeFlash(Date.now());
+    ctx.globalAlpha = 1;
+  }
+
+  function applyCondition(condition) {
+    if (condition === currentCondition) return;
+    currentCondition = condition;
+    activeConfig = CONDITION_EFFECTS[condition] || null;
+    canvas?.classList.toggle("is-active", Boolean(activeConfig));
+    flashIntensity = 0; nextFlashAt = 0;
+    particles = activeConfig ? activeConfig.layers.flatMap((name) => LAYER_BUILDERS[name]?.() || []) : [];
+  }
+
+  function evaluate() {
+    if (!enabled() || reducedMotion || !weatherEntityId) { applyCondition(null); return; }
+    const state = BeastHaSocket.getState(weatherEntityId);
+    applyCondition(state?.state || null);
+  }
+
+  // Called once from ha-smartdash-app.js's own init, after BeastConfig is
+  // already loaded (same timing every other post-boot subscription in that
+  // file relies on) -- not on DOMContentLoaded, which could race config's
+  // own async load.
+  function mount() {
+    canvas = document.getElementById("beastWeatherFx");
+    if (!canvas) return;
+    reducedMotion = Boolean(window.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches);
+    weatherEntityId = BeastConfig.get("panels.weather.entity") || null;
+    if (reducedMotion || !weatherEntityId) return;
+    ctx = canvas.getContext("2d");
+    resize();
+    window.addEventListener("resize", resize, { passive: true });
+    evaluate();
+    BeastHaSocket.subscribeEntity(weatherEntityId, evaluate);
+    document.addEventListener("beast:config-changed", evaluate);
+    BeastHaSocket.onStatusChange((status) => { if (status === "connected") evaluate(); });
+    tick();
+  }
+
+  return { mount };
+})();
