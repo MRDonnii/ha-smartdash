@@ -45,6 +45,7 @@ const BeastWeatherFx = (() => {
   let canvas = null;
   let ctx = null;
   let particles = [];
+  let impacts = [];
   let currentCondition = null;
   let activeConfig = null;
   let width = 0;
@@ -53,6 +54,7 @@ const BeastWeatherFx = (() => {
   let weatherEntityId = null;
   let flashIntensity = 0;
   let nextFlashAt = 0;
+  let unsubscribeWeather = null;
 
   function enabled() {
     return BeastConfig.get("features.weatherOverlay") === true;
@@ -166,7 +168,11 @@ const BeastWeatherFx = (() => {
       ctx.strokeStyle = "rgba(200,220,255,1)"; ctx.lineWidth = 1.2;
       ctx.beginPath(); ctx.moveTo(p.x, p.y); ctx.lineTo(p.x - p.drift * 2, p.y + p.len); ctx.stroke();
       p.y += p.speed; p.x -= p.drift;
-      if (p.y > height) { p.y = -p.len; p.x = Math.random() * width; }
+      if (p.y > height) {
+        impacts.push({ kind: "rainSplash", x: p.x, y: height - 2, age: 0, life: 18 + Math.random() * 12 });
+        if (impacts.length > 90) impacts.shift();
+        p.y = -p.len; p.x = Math.random() * width;
+      }
       if (p.x < -10) p.x = width + 10;
       return;
     }
@@ -183,10 +189,46 @@ const BeastWeatherFx = (() => {
       ctx.fillStyle = "rgba(255,255,255,1)";
       ctx.beginPath(); ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2); ctx.fill();
       p.sway += 0.02; p.y += p.speed; p.x += p.drift + Math.sin(p.sway) * 0.4;
-      if (p.y > height) { p.y = -p.r; p.x = Math.random() * width; }
+      if (p.y > height) {
+        impacts.push({ kind: "settledSnow", x: p.x, y: height - 1 - Math.random() * 9, r: p.r * (0.7 + Math.random() * 0.6), opacity: p.opacity * 0.8, age: 0, life: 900 + Math.random() * 900 });
+        if (impacts.filter((item) => item.kind === "settledSnow").length > 120) impacts.splice(impacts.findIndex((item) => item.kind === "settledSnow"), 1);
+        p.y = -p.r; p.x = Math.random() * width;
+      }
       if (p.x < -10) p.x = width + 10;
       if (p.x > width + 10) p.x = -10;
     }
+  }
+
+  function drawGroundEffects() {
+    const raining = particles.some((particle) => particle.kind === "rain");
+    const snowing = particles.some((particle) => particle.kind === "snow");
+    if (raining) {
+      const wet = ctx.createLinearGradient(0, height - 28, 0, height);
+      wet.addColorStop(0, "rgba(110,150,205,0)");
+      wet.addColorStop(1, "rgba(110,150,205,0.11)");
+      ctx.globalAlpha = 1; ctx.fillStyle = wet; ctx.fillRect(0, height - 28, width, 28);
+    }
+    if (snowing) {
+      const bank = ctx.createLinearGradient(0, height - 18, 0, height);
+      bank.addColorStop(0, "rgba(245,250,255,0)");
+      bank.addColorStop(1, "rgba(245,250,255,0.18)");
+      ctx.globalAlpha = 1; ctx.fillStyle = bank; ctx.fillRect(0, height - 18, width, 18);
+    }
+    impacts = impacts.filter((impact) => {
+      impact.age += 1;
+      const remaining = Math.max(0, 1 - impact.age / impact.life);
+      if (impact.kind === "rainSplash") {
+        ctx.globalAlpha = remaining * 0.35;
+        ctx.strokeStyle = "rgba(205,225,255,1)"; ctx.lineWidth = 1;
+        const spread = 2 + impact.age * 0.55;
+        ctx.beginPath(); ctx.ellipse(impact.x, impact.y, spread, Math.max(0.7, spread * 0.18), 0, Math.PI, Math.PI * 2); ctx.stroke();
+      } else {
+        ctx.globalAlpha = Math.min(impact.opacity, remaining * impact.opacity * 2);
+        ctx.fillStyle = "rgba(250,253,255,1)";
+        ctx.beginPath(); ctx.ellipse(impact.x, impact.y, impact.r * 1.35, impact.r * 0.55, 0, 0, Math.PI * 2); ctx.fill();
+      }
+      return impact.age < impact.life;
+    });
   }
 
   function maybeFlash(now) {
@@ -211,6 +253,7 @@ const BeastWeatherFx = (() => {
     const tint = TINTS[activeConfig.tint];
     if (tint) { const grad = tint(width, height); if (grad) { ctx.globalAlpha = 1; ctx.fillStyle = grad; ctx.fillRect(0, 0, width, height); } }
     particles.forEach(drawParticle);
+    drawGroundEffects();
     maybeFlash(Date.now());
     ctx.globalAlpha = 1;
   }
@@ -221,13 +264,43 @@ const BeastWeatherFx = (() => {
     activeConfig = CONDITION_EFFECTS[condition] || null;
     canvas?.classList.toggle("is-active", Boolean(activeConfig));
     flashIntensity = 0; nextFlashAt = 0;
+    impacts = [];
     particles = activeConfig ? activeConfig.layers.flatMap((name) => LAYER_BUILDERS[name]?.() || []) : [];
   }
 
+  // Debug-only preview hook: ?weatherfx=<condition> in the URL forces that
+  // condition's look regardless of the real weather state or the Admin
+  // toggle, so a specific effect can be checked on the actual kiosk/device
+  // without waiting for that weather to happen. No query param -> normal
+  // behavior, untouched.
+  function forcedCondition() {
+    try {
+      const configured = String(BeastConfig.get("features.weatherOverlayConditionOverride") || "").trim();
+      return new URLSearchParams(window.location.search).get("weatherfx")
+        || (!["", "auto", "off"].includes(configured) ? configured : null);
+    } catch (_) { return null; }
+  }
+
   function evaluate() {
+    const forced = forcedCondition();
+    if (forced) { applyCondition(forced); return; }
     if (!enabled() || reducedMotion || !weatherEntityId) { applyCondition(null); return; }
     const state = BeastHaSocket.getState(weatherEntityId);
     applyCondition(state?.state || null);
+  }
+
+  function bindWeatherEntity() {
+    const nextEntityId = BeastConfig.get("panels.weather.entity") || null;
+    if (nextEntityId === weatherEntityId && unsubscribeWeather) return;
+    unsubscribeWeather?.();
+    unsubscribeWeather = null;
+    weatherEntityId = nextEntityId;
+    if (weatherEntityId) unsubscribeWeather = BeastHaSocket.subscribeEntity(weatherEntityId, evaluate);
+  }
+
+  function handleConfigChange() {
+    bindWeatherEntity();
+    evaluate();
   }
 
   // Called once from ha-smartdash-app.js's own init, after BeastConfig is
@@ -238,14 +311,17 @@ const BeastWeatherFx = (() => {
     canvas = document.getElementById("beastWeatherFx");
     if (!canvas) return;
     reducedMotion = Boolean(window.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches);
-    weatherEntityId = BeastConfig.get("panels.weather.entity") || null;
-    if (reducedMotion || !weatherEntityId) return;
+    bindWeatherEntity();
+    // The debug preview hook (?weatherfx=<condition>) must work even when
+    // reduced-motion is on or no weather entity is configured -- those are
+    // real reasons to disable the effect normally, but they shouldn't be
+    // able to silently swallow someone deliberately asking to preview it.
+    if ((reducedMotion || !weatherEntityId) && !forcedCondition()) return;
     ctx = canvas.getContext("2d");
     resize();
     window.addEventListener("resize", resize, { passive: true });
     evaluate();
-    BeastHaSocket.subscribeEntity(weatherEntityId, evaluate);
-    document.addEventListener("beast:config-changed", evaluate);
+    document.addEventListener("beast:config-changed", handleConfigChange);
     BeastHaSocket.onStatusChange((status) => { if (status === "connected") evaluate(); });
     tick();
   }

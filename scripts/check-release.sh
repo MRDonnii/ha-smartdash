@@ -11,6 +11,33 @@ PHP_BIN=${PHP_BIN:-php}
 
 if command -v "$NODE_BIN" >/dev/null 2>&1 || test -x "$NODE_BIN"; then
   find "$ROOT/js" "$ROOT/admin" -name '*.js' -type f -exec "$NODE_BIN" --check {} \;
+  "$NODE_BIN" - "$ROOT" <<'NODE'
+const fs = require("fs");
+const path = require("path");
+const root = process.argv[2];
+const read = (file) => fs.readFileSync(path.join(root, file), "utf8");
+const meta = (html, name) => html.match(new RegExp(`<meta\\s+name=["']${name}["']\\s+content=["']([^"']+)["']`))?.[1];
+const index = read("index.html");
+const beast = read("beast.html");
+const changelog = JSON.parse(read("changelog.json"));
+const latest = changelog[0];
+if (!latest || !/^v\d+\.\d+\.\d+$/.test(latest.tag || "")) throw new Error("Latest changelog tag must use vMAJOR.MINOR.PATCH.");
+if (!/^\d{8}-\d+$/.test(latest.version || "")) throw new Error("Latest changelog version must use YYYYMMDD-N.");
+for (const html of [index, beast]) {
+  if (meta(html, "beast-release-tag") !== latest.tag) throw new Error("HTML release tag does not match the latest changelog tag.");
+  if (meta(html, "beast-build") !== latest.version) throw new Error("HTML build ID does not match the latest changelog version.");
+  const releaseAssets = ["ha-smartdash-misc.css", "ha-smartdash-overview.css", "ha-smartdash-card-editor.js", "ha-smartdash-overview.js"];
+  for (const asset of releaseAssets) {
+    const escaped = asset.replaceAll(".", "\\.");
+    const cacheId = html.match(new RegExp(`${escaped}\\?v=([^\"']+)`))?.[1];
+    if (cacheId !== latest.version) throw new Error(`${asset} cache ID must match the release build ID.`);
+  }
+}
+if (!Array.isArray(latest.changes) || !latest.changes.length || latest.changes.some((item) => !String(item?.da || "").trim() || !String(item?.en || "").trim())) {
+  throw new Error("Every latest changelog change must contain non-empty da and en text.");
+}
+console.log(`Release metadata OK: ${latest.tag} (${latest.version})`);
+NODE
 else
   echo "Node.js not found; JavaScript syntax check skipped." >&2
 fi

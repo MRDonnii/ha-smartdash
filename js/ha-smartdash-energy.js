@@ -3,7 +3,7 @@
     { id: "energy-summary", kind: "energy-summary", type: "energy-summary", templateId: "overview-energy", label: "Nøgletal", enabled: true, desktop: { x: 1, y: 2, w: 3, h: 7 }, bindings: {} },
     { id: "energy-recommendation", kind: "energy-recommendation", type: "energy-recommendation", label: "Energiassistent", enabled: true, desktop: { x: 4, y: 2, w: 9, h: 1 }, bindings: {} },
     { id: "energy-price-chart", kind: "energy-price-chart", type: "energy-price-card", templateId: "energy-price-card", label: "Elpris time for time", enabled: true, desktop: { x: 4, y: 3, w: 9, h: 3 }, bindings: {}, options: { days: 7, stats: true } },
-    { id: "energy-usage-chart", kind: "energy-usage-chart", type: "energy-usage-card", templateId: "energy-usage-card", label: "Forbrug seneste 24 timer", enabled: true, desktop: { x: 4, y: 6, w: 9, h: 3 }, bindings: {}, options: { stats: true } },
+    { id: "energy-usage-chart", kind: "energy-usage-chart", type: "energy-usage-card", templateId: "energy-usage-card", label: "Forbrug i dag", enabled: true, desktop: { x: 4, y: 6, w: 9, h: 3 }, bindings: {}, options: { stats: true } },
     { id: "energy-now-summary", kind: "energy-now-summary", type: "energy-now-summary", label: "Forbrug lige nu", enabled: true, desktop: { x: 1, y: 2, w: 12, h: 1 }, bindings: {} },
     { id: "energy-devices", kind: "energy-devices", type: "energy-devices", label: "Forbrug pr. enhed", enabled: true, desktop: { x: 1, y: 3, w: 12, h: 5 }, bindings: {} },
   ];
@@ -14,7 +14,9 @@
     const cards = Array.isArray(saved) && saved.length ? saved : ENERGY_NATIVE_DEFAULTS;
     return cards.map((card) => {
       const fallback = ENERGY_NATIVE_DEFAULTS.find((item) => item.id === card.id || item.kind === card.kind || item.kind === card.type) || {};
-      return { ...fallback, ...card, kind: card.kind || fallback.kind || card.type || card.id, bindings: { ...(fallback.bindings || {}), ...(card.bindings || {}) }, desktop: { ...(fallback.desktop || {}), ...(card.desktop || {}) } };
+      const merged = { ...fallback, ...card, kind: card.kind || fallback.kind || card.type || card.id, bindings: { ...(fallback.bindings || {}), ...(card.bindings || {}) }, desktop: { ...(fallback.desktop || {}), ...(card.desktop || {}) } };
+      if (merged.kind === "energy-usage-chart" && merged.label === "Forbrug seneste 24 timer") merged.label = "Forbrug i dag";
+      return merged;
     });
   }
 
@@ -41,6 +43,7 @@
   let priceView = "today";
   let energyView = "overview";
   let todayRefreshTimerId = null;
+  let historyRefreshPending = false;
   let nativeEditing = false;
   let nativeDraftCards = null;
 
@@ -198,7 +201,7 @@
     return `<div class="beast-energy-hour-chart">${bars}</div>`;
   }
 
-  // Averaging per bucket keeps the point count sane for a 24h series without
+  // Averaging per bucket keeps the point count sane for today's series without
   // needing to smooth the shape afterwards — real HA history graphs (see
   // the "Strømkilder" reference card) draw actual recorded values with
   // straight segments between them, spikes and all, not a rounded curve.
@@ -244,7 +247,13 @@
       const value = yMax * (1 - ratio);
       return `<line x1="${left}" y1="${y}" x2="${left + plotWidth}" y2="${y}"></line><text x="${left - 7}" y="${y + 4}" text-anchor="end">${value.toFixed(value % 1 ? 1 : 0)}</text>`;
     }).join("");
-    const xLabels = ["24 t siden", "−18 t", "−12 t", "−6 t", "Nu"];
+    const now = new Date();
+    const elapsedMinutes = now.getHours() * 60 + now.getMinutes();
+    const xLabels = Array.from({ length: 5 }, (_, index) => {
+      if (index === 4) return "Nu";
+      const minutes = Math.round((elapsedMinutes * index) / 4);
+      return `${String(Math.floor(minutes / 60)).padStart(2, "0")}:${String(minutes % 60).padStart(2, "0")}`;
+    });
     const xGrid = xLabels.map((label, index) => {
       const x = left + plotWidth * (index / 4);
       return `<line x1="${x}" y1="${top}" x2="${x}" y2="${top + plotHeight}"></line><text x="${x}" y="${height - 6}" text-anchor="${index === 0 ? "start" : index === 4 ? "end" : "middle"}">${label}</text>`;
@@ -257,7 +266,7 @@
     const dotLeftPct = (lastX / width) * 100;
     const dotTopPct = (lastY / height) * 100;
     return `<div class="beast-energy-line-chart-wrap">
-      <svg class="beast-energy-line-chart" viewBox="0 0 ${width} ${height}" preserveAspectRatio="none" role="img" aria-label="Strømforbrug de seneste 24 timer">
+      <svg class="beast-energy-line-chart" viewBox="0 0 ${width} ${height}" preserveAspectRatio="none" role="img" aria-label="Strømforbrug i dag fra midnat til nu">
         <defs>
           <linearGradient id="beastEnergyFill" x1="0" y1="0" x2="0" y2="1">
             <stop offset="0%" stop-color="#4fb8ff" stop-opacity=".5"></stop>
@@ -310,8 +319,31 @@
     };
     containerEl.querySelectorAll(":scope > .beast-energy-native-clone").forEach((element) => element.remove());
     containerEl.classList.add("has-native-layout");
+    const cards = cardsOverride || energyNativeCards();
+    let runtimeCards = cards;
+    if (!cardsOverride) {
+      // Overview and Now share one persisted card model, but only one set is
+      // rendered at a time. Cards belonging to the inactive view are not
+      // "missing" and must not trigger the adaptive full-width stack.
+      const activeKinds = energyView === "now"
+        ? new Set(["energy-now-summary", "energy-devices"])
+        : new Set(["energy-summary", "energy-recommendation", "energy-price-chart", "energy-usage-chart"]);
+      const activeCards = cards.filter((card) => activeKinds.has(card.kind || card.type || card.id));
+      const visible = activeCards.filter((card) => card.enabled !== false && containerEl.querySelector(selectors[card.kind || card.type || card.id])).map((card) => ({ ...card, desktop:{ ...(card.desktop || {}) } }));
+      runtimeCards = visible;
+      if (visible.length < activeCards.length && visible.length) {
+        const baseHeight = Math.max(1, Math.floor(7 / visible.length));
+        let nextY = 2;
+        visible.forEach((card,index) => {
+          const height = index === visible.length - 1 ? 9 - nextY : baseHeight;
+          card.desktop = { ...card.desktop, x:1, y:nextY, w:12, h:Math.max(1,height) };
+          nextY += height;
+        });
+        runtimeCards = visible;
+      }
+    }
     const usedKinds = new Set();
-    (cardsOverride || energyNativeCards()).forEach((card, index) => {
+    cards.forEach((card, index) => {
       const kind = card.kind || card.type || card.id;
       const source = containerEl.querySelector(selectors[kind]);
       let element = source;
@@ -322,16 +354,18 @@
         containerEl.appendChild(element);
       }
       if (!element) return;
+      const runtimeCard = runtimeCards.find((item) => item.id === card.id);
+      const desktop = runtimeCard?.desktop || card.desktop;
       usedKinds.add(kind);
       element.classList.add("beast-energy-native-card");
       element.dataset.energyNativeCard = card.id;
       element.dataset.energyNativeKind = kind;
       element.style.setProperty("--energy-native-order", String(index));
-      element.style.setProperty("--energy-native-w", String(Math.max(1, Math.min(12, Number(card.desktop?.w) || 12))));
-      element.style.setProperty("--energy-native-h", String(Math.max(1, Math.min(8, Number(card.desktop?.h) || 1))));
-      element.style.setProperty("--energy-native-x", String(Math.max(1, Math.min(12, Number(card.desktop?.x) || 1))));
-      element.style.setProperty("--energy-native-y", String(Math.max(2, Number(card.desktop?.y) || 2)));
-      element.classList.toggle("is-layout-hidden", card.enabled === false);
+      element.style.setProperty("--energy-native-w", String(Math.max(1, Math.min(12, Number(desktop?.w) || 12))));
+      element.style.setProperty("--energy-native-h", String(Math.max(1, Math.min(8, Number(desktop?.h) || 1))));
+      element.style.setProperty("--energy-native-x", String(Math.max(1, Math.min(12, Number(desktop?.x) || 1))));
+      element.style.setProperty("--energy-native-y", String(Math.max(2, Number(desktop?.y) || 2)));
+      element.classList.toggle("is-layout-hidden", !runtimeCard);
       const title = element.querySelector(".beast-panel-title"); if (title && card.label) title.textContent = card.label;
     });
   }
@@ -550,7 +584,7 @@
   }
 
   async function loadHistory() {
-    const start = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+    const start = startOfTodayIso();
     try {
       const result = await BeastAuth.haFetch(`/api/history/period/${start}?filter_entity_id=${POWER_ENTITY_ID()}&minimal_response`);
       const series = (result && result[0]) || [];
@@ -664,7 +698,7 @@
       </div>
       <div class="beast-energy-chart-wrap beast-energy-chart-usage">
         <div class="beast-energy-chart-head">
-          <span class="beast-panel-title">${escapeHtml(nativeCard("energy-usage-chart")?.label || "Forbrug seneste 24 timer")}</span>
+          <span class="beast-panel-title">${escapeHtml(nativeCard("energy-usage-chart")?.label || "Forbrug i dag")}</span>
           <div class="beast-energy-price-range" ${nativeOption("energy-usage-chart", "stats", true) ? "" : "hidden"}>
             ${historyAvg !== null ? `<span>Snit <strong>${historyAvg.toFixed(2)} kW</strong></span><span>Top <strong>${historyMax.toFixed(2)} kW</strong></span><span>Bund <strong>${historyMin.toFixed(2)} kW</strong></span>` : ""}
           </div>
@@ -690,10 +724,28 @@
   function refreshTodayTotals() {
     const energyId = TOTAL_ENERGY_ID();
     const costId = TOTAL_COST_ID();
-    if (energyId) loadTodayDelta(energyId).then((value) => { todayEnergyKwh = value ?? directTodayValue(energyId, "energy"); render(); });
-    else todayEnergyKwh = null;
-    if (costId) loadTodayDelta(costId).then((value) => { todayCostKr = value ?? directTodayValue(costId, "cost"); render(); });
-    else todayCostKr = null;
+    // These configuration fields explicitly represent today's utility-meter
+    // values. Daily sensors already reset themselves; subtracting their first
+    // state of the day a second time under-reports both usage and cost.
+    todayEnergyKwh = energyId ? directTodayValue(energyId, "energy") : null;
+    todayCostKr = costId ? directTodayValue(costId, "cost") : null;
+    render();
+  }
+
+  async function refreshTodayHistory() {
+    if (historyRefreshPending) return;
+    historyRefreshPending = true;
+    try {
+      cachedHistoryPoints = await loadHistory();
+      render();
+    } finally {
+      historyRefreshPending = false;
+    }
+  }
+
+  function refreshTodayData() {
+    refreshTodayTotals();
+    refreshTodayHistory();
   }
 
   function init(root) {
@@ -707,10 +759,9 @@
       render();
       if (!historyLoaded) {
         historyLoaded = true;
-        loadHistory().then((points) => { cachedHistoryPoints = points; render(); });
-        refreshTodayTotals();
+        refreshTodayData();
         window.clearInterval(todayRefreshTimerId);
-        todayRefreshTimerId = window.setInterval(refreshTodayTotals, TODAY_REFRESH_MS);
+        todayRefreshTimerId = window.setInterval(refreshTodayData, TODAY_REFRESH_MS);
       }
     });
 

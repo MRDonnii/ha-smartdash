@@ -197,7 +197,7 @@
   };
   const dashboardEn = {
     "Oversigt": "Overview", "Kalender": "Calendar", "Sider": "Pages", "Dansk": "Danish",
-    "Rediger side": "Edit page", "Tilpas side": "Fit page", "Rediger forsiden": "Edit overview",
+    "Rediger side": "Edit page", "Tilpas side": "Fit page", "Genindlæs dashboard": "Reload dashboard", "Genstart siden og alle forbindelser": "Restart the page and all connections", "Rediger forsiden": "Edit overview",
     "Nulstil layout": "Reset layout", "Kun dette view og denne skærmstørrelse": "Only this view and this screen size",
     "Nulstil layoutet for dette view på denne skærmstørrelse?": "Reset the layout for this view at this screen size?",
     "Flyt, ændr og tilføj kort": "Move, resize, and add cards", "Fordel kortene til denne skærm": "Fit cards to this screen",
@@ -301,6 +301,7 @@
     "Sikkerhedssystem": "Security system", "Døren er lukket · låst": "Door is closed · locked", "Døren er åben · låst": "Door is open · locked",
     "Døren er lukket · ulåst": "Door is closed · unlocked", "Døren er åben · ulåst": "Door is open · unlocked",
     "Afspil på": "Play on", "i gruppen": "in group", "Lydstyrke": "Volume", "Dit musikbibliotek": "Your music library",
+    "Ingen afspillere er valgt under Administration → Musik.": "No players are selected under Administration → Music.",
     "Søg efter musik, album eller radio…": "Search for music, albums, or radio…", "Henter playlister…": "Loading playlists…",
     "Docket": "Docked", "Beholder klar": "Bin ready", "Send i dock": "Send to dock", "Tøm beholder": "Empty bin",
     "Flyt knapper": "Move buttons", "Ryd valg": "Clear selection", "Hele huset": "Whole house", "Start rengøring": "Start cleaning", "rum valgt": "rooms selected",

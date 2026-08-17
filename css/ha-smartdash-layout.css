@@ -87,10 +87,7 @@ body::after {
   overflow: hidden;
 }
 
-/* Sits behind .beast-app (z-index:1 above) so it shows through the front
-   page's translucent cards rather than sitting on top of the dashboard.
-   Hidden by default (no is-active class) so an idle canvas costs nothing
-   when the feature is off or the current condition has no effect. */
+/* Full-screen weather animation behind the translucent dashboard surfaces. */
 .beast-weather-fx {
   position: fixed;
   inset: 0;

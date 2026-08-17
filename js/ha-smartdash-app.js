@@ -994,9 +994,6 @@ function renderAppShell(root) {
   window.setTimeout(() => window.BeastPageEditor?.mountAll(), 80);
   document.addEventListener("beast:navigate", () => window.setTimeout(() => window.BeastPageEditor?.mountAll(), 80));
   BeastHaSocket.connect();
-  // BeastWeatherFx is a top-level `const` in its own script file, not a
-  // window property (same reason BeastHaSocket/BeastConfig aren't) --
-  // reference it directly, it's already in scope by load order.
   BeastWeatherFx.mount();
   setupEventFocus();
   window.BeastScreenLock?.init();
