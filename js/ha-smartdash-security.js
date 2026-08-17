@@ -151,15 +151,34 @@
     const command = containerEl?.querySelector(".beast-security-command"); if (!command) return;
     const selectors = { "security-hero": ".beast-security-hero", "security-systems": ".beast-security-systems", "security-entries": ".beast-security-entries" };
     command.classList.add("has-native-layout");
-    (cardsOverride || securityNativeCards()).forEach((card) => {
+    const cards = cardsOverride || securityNativeCards();
+    let runtimeCards = cards;
+    if (!cardsOverride) {
+      const visible = cards.filter((card) => card.enabled !== false && (
+        card.kind === "security-entries" ? (ENTRY_POINTS.length || getOpeningSensors().length) : ALARM_PANELS.length
+      )).map((card) => ({ ...card, desktop:{ ...(card.desktop || {}) } }));
+      if (visible.length < cards.length) {
+        const baseHeight = Math.max(1, Math.floor(7 / Math.max(1,visible.length)));
+        let nextY = 1;
+        visible.forEach((card,index) => {
+          const height = index === visible.length - 1 ? 8 - nextY : baseHeight;
+          card.desktop = { ...card.desktop, x:1, y:nextY, w:12, h:Math.max(1,height) };
+          nextY += height;
+        });
+        runtimeCards = visible;
+      }
+    }
+    cards.forEach((card) => {
       const element = command.querySelector(selectors[card.kind]); if (!element) return;
+      const runtimeCard = runtimeCards.find((item) => item.id === card.id);
+      const desktop = runtimeCard?.desktop || card.desktop;
       element.classList.add("beast-security-native-card");
       element.dataset.securityNativeCard = card.id;
-      element.style.setProperty("--security-x", String(Math.max(1, Math.min(12, Number(card.desktop?.x) || 1))));
-      element.style.setProperty("--security-y", String(Math.max(1, Number(card.desktop?.y) || 1)));
-      element.style.setProperty("--security-w", String(Math.max(1, Math.min(12, Number(card.desktop?.w) || 12))));
-      element.style.setProperty("--security-h", String(Math.max(1, Math.min(8, Number(card.desktop?.h) || 1))));
-      element.classList.toggle("is-layout-hidden", card.enabled === false);
+      element.style.setProperty("--security-x", String(Math.max(1, Math.min(12, Number(desktop?.x) || 1))));
+      element.style.setProperty("--security-y", String(Math.max(1, Number(desktop?.y) || 1)));
+      element.style.setProperty("--security-w", String(Math.max(1, Math.min(12, Number(desktop?.w) || 12))));
+      element.style.setProperty("--security-h", String(Math.max(1, Math.min(8, Number(desktop?.h) || 1))));
+      element.classList.toggle("is-layout-hidden", !runtimeCard);
       const heading = element.querySelector(".beast-security-section-head strong"); if (heading && card.label) heading.textContent = card.label;
     });
   }

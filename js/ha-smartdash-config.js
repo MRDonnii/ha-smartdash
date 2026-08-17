@@ -60,7 +60,7 @@ const BeastConfig = (() => {
     heating: {
       rooms: [], heatPumps: [], heatPumpUnits: {}, automation: null, districtSensors: [], ventilationSensors: [], districtPlacement: "sidebar"
     },
-    music: { configEntryId: null, stereoGroups: {} }
+    music: { configEntryId: null, stereoGroups: {}, visiblePlayers: null }
   };
 
   const DEFAULTS = {

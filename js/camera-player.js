@@ -5,7 +5,7 @@ let GO2RTC_BASE_URL = params.get("base") || "";
 const source = params.get("src") || "";
 const useSub = params.get("sub") === "1";
 const allowAudio = params.get("audio") === "1";
-const transport = params.get("transport") || "auto";
+const transport = params.get("transport") || "webrtc";
 const fit = params.get("fit") === "cover" ? "cover" : "contain";
 const position = params.get("position") || "center";
 const resolvedSrc = useSub && !source.endsWith("_sub") ? `${source}_sub` : source;
@@ -19,6 +19,7 @@ let reconnectTimer = null;
 let lastVideoTime = -1;
 let lastVideoProgressAt = 0;
 let reconnectAttempts = 0;
+let activeMode = transport === "mse" ? "mse" : "webrtc";
 
 document.body.classList.add(`position-${position}`);
 
@@ -62,7 +63,7 @@ function configureVideo(video) {
 class BeastCameraStream extends VideoRTC {
   constructor() {
     super();
-    this.mode = transport === "mse" ? "mse" : "mse,webrtc";
+    this.mode = activeMode;
     this.media = allowAudio ? "video,audio" : "video";
     this.background = true;
   }
@@ -95,6 +96,7 @@ function connect() {
   connected = true;
   streamReady = false;
   document.body.classList.remove("ready");
+  stream.mode = activeMode;
   refreshPoster();
   stream.src = `${GO2RTC_BASE_URL}/api/ws?src=${encodeURIComponent(resolvedSrc)}`;
   postHealth("connecting");
@@ -120,6 +122,15 @@ function reconnect() {
   const delay = Math.min(2500, 180 + reconnectAttempts * 320);
   reconnectAttempts += 1;
   reconnectTimer = window.setTimeout(() => { reconnectTimer = null; connect(); }, delay);
+}
+
+function recoverStalledStream() {
+  // Keep one transport active at a time. Parallel MSE and WebRTC can
+  // compete for a high-bitrate stream and cause a reconnect loop.
+  // Explicit legacy MSE players move to WebRTC after their first stall.
+  if (activeMode === "mse") activeMode = "webrtc";
+  postHealth("stalled");
+  reconnect();
 }
 
 function shouldStartImmediately() {
@@ -163,8 +174,7 @@ async function initPlayer() {
       lastVideoProgressAt = Date.now();
       postHealth("playing");
     } else if (lastVideoProgressAt && Date.now() - lastVideoProgressAt > 12000) {
-      postHealth("stalled");
-      reconnect();
+      recoverStalledStream();
     }
   }, 5000);
   if (shouldStartImmediately()) connect();

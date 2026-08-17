@@ -11,7 +11,9 @@
     "quickScenarios": false,
     "idleMode": true,
     "adminPreview": false,
-    "configAudit": false
+    "configAudit": false,
+    "weatherOverlay": false,
+    "weatherOverlayConditionOverride": null
   },
   "overviewSlots": {
     "main": {

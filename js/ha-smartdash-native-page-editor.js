@@ -47,6 +47,33 @@ window.BeastNativePageEditor = (() => {
     const host = () => state.host();
     const elementFor = (card) => root()?.querySelector(card.selector);
 
+    function isAvailable(card) {
+      if (card.enabled === false || !elementFor(card)) return false;
+      return typeof card.available === "function" ? card.available() !== false : card.available !== false;
+    }
+
+    // Saved coordinates remain the user's source of truth. When a card is
+    // unavailable at runtime (missing integration/entity, or deliberately
+    // hidden), stack the remaining cards at full width without writing those
+    // temporary coordinates back to configuration. A vertical stack stays
+    // predictable across pages and restores the exact saved layout when the
+    // card returns.
+    function adaptiveLayout(list) {
+      const visible = list.filter(isAvailable).map((card) => ({ ...card, desktop:{ ...(card.desktop || {}) } }));
+      const configured = list.filter((card) => card.enabled !== false);
+      if (!visible.length) return [];
+      if (visible.length === list.length && list.every((card) => elementFor(card))) return list;
+      const totalRows = Math.max(12, ...configured.map((card) => clamp(card.desktop?.y,1,40) + clamp(card.desktop?.h,1,24) - 1));
+      const baseHeight = Math.floor(totalRows / visible.length);
+      let nextY = 1;
+      visible.forEach((card,index) => {
+        const height = index === visible.length - 1 ? totalRows - nextY + 1 : baseHeight;
+        card.desktop = { ...card.desktop, x:1, y:nextY, w:12, h:Math.max(1,height) };
+        nextY += height;
+      });
+      return visible;
+    }
+
     function packed(list) {
       let x = 1, y = 1, rowHeight = 0;
       return list.map((card) => {
@@ -89,23 +116,25 @@ window.BeastNativePageEditor = (() => {
       root()?.classList.toggle("is-responsive-fitted", fitted);
       root()?.closest?.(".beast-section")?.classList.toggle("is-responsive-fitted", fitted);
       layoutHost.classList.add("beast-native-layout-grid");
-      applyRowFit(list);
+      const runtimeList = state.editing ? list : adaptiveLayout(list);
+      applyRowFit(runtimeList);
       list.forEach((card) => {
         const element = elementFor(card); if (!element) return;
-        const d = card.desktop || {};
+        const runtimeCard = runtimeList.find((item) => item.id === card.id);
+        const d = runtimeCard?.desktop || card.desktop || {};
         element.dataset.beastNativeCard = card.id;
         element.classList.add("beast-native-layout-card");
         element.style.setProperty("--native-x", clamp(d.x, 1, 12));
         element.style.setProperty("--native-y", clamp(d.y, 1, 40));
         element.style.setProperty("--native-w", clamp(d.w, 1, 12));
         element.style.setProperty("--native-h", clamp(d.h, 1, 24));
-        element.classList.toggle("is-layout-hidden", card.enabled === false);
+        element.classList.toggle("is-layout-hidden", !runtimeCard);
         const title = card.titleSelector ? element.querySelector(card.titleSelector) : null;
         if (title && card.label) title.textContent = card.label;
       });
       const extra = layoutHost.querySelector(":scope > .beast-page-editor-host");
       if (extra) {
-        const lastRow = list.reduce((max, card) => Math.max(max, (Number(card.desktop?.y) || 1) + (Number(card.desktop?.h) || 1)), 1);
+        const lastRow = runtimeList.reduce((max, card) => Math.max(max, (Number(card.desktop?.y) || 1) + (Number(card.desktop?.h) || 1)), 1);
         extra.style.gridColumn = "1 / -1"; extra.style.gridRow = `${lastRow} / auto`;
       }
     }
@@ -159,26 +188,40 @@ window.BeastNativePageEditor = (() => {
       drag.type = "button"; drag.className = "beast-native-card-drag"; drag.setAttribute("aria-label", `Flyt ${card.label}`); drag.innerHTML = BeastCore.icon("grip", { size: 19 });
       const resize = document.createElement("span"); resize.className = "beast-native-card-resize"; resize.setAttribute("aria-hidden", "true");
       element.append(drag, resize);
-      let dragging = null, lastTarget = "";
-      drag.addEventListener("pointerdown", (event) => { event.preventDefault(); event.stopPropagation(); dragging = event.pointerId; lastTarget = ""; drag.setPointerCapture?.(event.pointerId); element.classList.add("is-dragging"); });
+      let dragging = null;
+      const gridMetrics = () => {
+        const layoutHost = host();
+        const bounds = layoutHost.getBoundingClientRect();
+        const styles = getComputedStyle(layoutHost);
+        const gap = parseFloat(styles.gap) || 0;
+        const rows = Math.max(1, Number(styles.getPropertyValue("--native-total-rows")) || 12);
+        return {
+          colStep: (bounds.width - gap * 11) / 12 + gap,
+          rowStep: (bounds.height - gap * Math.max(0, rows - 1)) / rows + gap
+        };
+      };
+      drag.addEventListener("pointerdown", (event) => {
+        event.preventDefault(); event.stopPropagation();
+        const metrics = gridMetrics();
+        dragging = { id:event.pointerId, startX:event.clientX, startY:event.clientY, x:Number(card.desktop.x)||1, y:Number(card.desktop.y)||1, ...metrics };
+        drag.setPointerCapture?.(event.pointerId); element.classList.add("is-dragging");
+      });
       drag.addEventListener("pointermove", (event) => {
-        if (event.pointerId !== dragging) return;
-        const target = document.elementFromPoint(event.clientX, event.clientY)?.closest(".beast-native-layout-card");
-        if (!target || target === element || target.dataset.beastNativeCard === lastTarget) return;
-        const other = state.draft.find((item) => item.id === target.dataset.beastNativeCard); if (!other) return;
-        lastTarget = other.id;
-        const own = { x: card.desktop.x, y: card.desktop.y };
-        card.desktop = { ...card.desktop, x: other.desktop.x, y: other.desktop.y };
-        other.desktop = { ...other.desktop, ...own };
+        if (!dragging || event.pointerId !== dragging.id) return;
+        const width = clamp(card.desktop?.w,1,12);
+        const nextX = clamp(Math.round(dragging.x + (event.clientX - dragging.startX) / dragging.colStep), 1, 13 - width);
+        const nextY = clamp(Math.round(dragging.y + (event.clientY - dragging.startY) / dragging.rowStep), 1, 40);
+        if (nextX === card.desktop.x && nextY === card.desktop.y) return;
+        card.desktop = { ...card.desktop, x:nextX, y:nextY };
         apply(state.draft);
       });
-      const endDrag = (event) => { if (event.pointerId !== dragging) return; drag.releasePointerCapture?.(event.pointerId); dragging = null; lastTarget = ""; element.classList.remove("is-dragging"); };
+      const endDrag = (event) => { if (!dragging || event.pointerId !== dragging.id) return; drag.releasePointerCapture?.(event.pointerId); dragging = null; element.classList.remove("is-dragging"); };
       drag.addEventListener("pointerup", endDrag); drag.addEventListener("pointercancel", endDrag);
       let sizing = null;
       resize.addEventListener("pointerdown", (event) => {
         event.preventDefault(); event.stopPropagation();
-        const layoutHost = host().getBoundingClientRect();
-        sizing = { id: event.pointerId, x: event.clientX, y: event.clientY, w: card.desktop.w, h: card.desktop.h, col: layoutHost.width / 12, row: 72 };
+        const metrics = gridMetrics();
+        sizing = { id: event.pointerId, x: event.clientX, y: event.clientY, w: card.desktop.w, h: card.desktop.h, col: metrics.colStep, row: metrics.rowStep };
         resize.setPointerCapture?.(event.pointerId); element.classList.add("is-resizing");
       });
       resize.addEventListener("pointermove", (event) => {
@@ -201,7 +244,7 @@ window.BeastNativePageEditor = (() => {
         if (control.type === "checkbox") return `<label class="beast-native-option-check"><input type="checkbox" data-native-option="${escape(control.key)}" ${value ? "checked" : ""}><span>${escape(control.label)}</span></label>`;
         return `<label>${escape(control.label)}<input type="number" data-native-option="${escape(control.key)}" min="${Number(control.min)||1}" max="${Number(control.max)||50}" step="${Number(control.step)||1}" value="${escape(value)}"></label>`;
       };
-      overlay.innerHTML = `<div class="beast-modal beast-native-settings-modal"><div class="beast-modal-header"><div><small>Indbyggede kort · ${profileLabel()}</small><h3>Rediger ${escape(state.label)}</h3></div><button type="button" class="beast-modal-close" data-close>×</button></div><div class="beast-modal-body"><p class="beast-responsive-profile-note">Ændringer gemmes kun til profilen <strong>${profileLabel()}</strong>. De andre skærmstørrelser beholder deres eget layout.</p><div class="beast-native-settings-list">${list.map((card) => `<article data-native-settings-card="${escape(card.id)}"><header><label><input type="checkbox" data-native-enabled ${card.enabled === false ? "" : "checked"}><strong>${escape(card.label)}</strong></label></header><div><label>Navn<input data-native-label value="${escape(card.label)}"></label><label>Venstre<select data-native-x>${Array.from({length:12},(_,i)=>`<option value="${i+1}" ${Number(card.desktop.x)===i+1?"selected":""}>${i+1}</option>`).join("")}</select></label><label>Top<select data-native-y>${Array.from({length:24},(_,i)=>`<option value="${i+1}" ${Number(card.desktop.y)===i+1?"selected":""}>${i+1}</option>`).join("")}</select></label><label>Bredde<select data-native-w>${Array.from({length:12},(_,i)=>`<option value="${i+1}" ${Number(card.desktop.w)===i+1?"selected":""}>${i+1}/12</option>`).join("")}</select></label><label>Højde<select data-native-h>${Array.from({length:16},(_,i)=>`<option value="${i+1}" ${Number(card.desktop.h)===i+1?"selected":""}>${i+1}</option>`).join("")}</select></label>${(card.controls || []).map((control)=>controlMarkup(card, control)).join("")}</div></article>`).join("")}</div><button type="button" class="beast-btn beast-btn-primary" data-native-settings-save>Anvend</button></div></div>`;
+      overlay.innerHTML = `<div class="beast-modal beast-native-settings-modal"><div class="beast-modal-header"><div><small>Indbyggede kort · ${profileLabel()}</small><h3>Rediger ${escape(state.label)}</h3></div><button type="button" class="beast-modal-close" data-close>×</button></div><div class="beast-modal-body"><p class="beast-responsive-profile-note">Ændringer gemmes kun til profilen <strong>${profileLabel()}</strong>. De andre skærmstørrelser beholder deres eget layout.</p><div class="beast-native-settings-list">${list.map((card) => `<article data-native-settings-card="${escape(card.id)}"><header><label><input type="checkbox" data-native-enabled ${card.enabled === false ? "" : "checked"}><strong>${escape(card.label)}</strong></label></header><div><label>Navn<input data-native-label value="${escape(card.label)}"></label><label>Venstre<select data-native-x>${Array.from({length:12},(_,i)=>`<option value="${i+1}" ${Number(card.desktop.x)===i+1?"selected":""}>${i+1}</option>`).join("")}</select></label><label>Top<select data-native-y>${Array.from({length:40},(_,i)=>`<option value="${i+1}" ${Number(card.desktop.y)===i+1?"selected":""}>${i+1}</option>`).join("")}</select></label><label>Bredde<select data-native-w>${Array.from({length:12},(_,i)=>`<option value="${i+1}" ${Number(card.desktop.w)===i+1?"selected":""}>${i+1}/12</option>`).join("")}</select></label><label>Højde<select data-native-h>${Array.from({length:24},(_,i)=>`<option value="${i+1}" ${Number(card.desktop.h)===i+1?"selected":""}>${i+1}</option>`).join("")}</select></label>${(card.controls || []).map((control)=>controlMarkup(card, control)).join("")}</div></article>`).join("")}</div><button type="button" class="beast-btn beast-btn-primary" data-native-settings-save>Anvend</button></div></div>`;
       document.body.appendChild(overlay);
       overlay.addEventListener("click", (event) => {
         if (event.target === overlay || event.target.closest("[data-close]")) return overlay.remove();

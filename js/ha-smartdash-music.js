@@ -31,6 +31,10 @@
   const playerRenderSignatures = new Map();
   const linkedPlayersByLeader = new Map();
 
+  function musicT(da, en) {
+    return BeastLocalSettings.get("language", "en") === "da" ? da : en;
+  }
+
   function findItems(payload) {
     if (!payload || typeof payload !== "object") return null;
     if (Array.isArray(payload.items)) return payload.items;
@@ -70,8 +74,10 @@
   }
 
   function getPlayers() {
+    const visiblePlayers = BeastConfig.get("panels.music.visiblePlayers");
+    const allowed = Array.isArray(visiblePlayers) ? new Set(visiblePlayers) : null;
     return Array.from(BeastHaSocket.getAllStates().values())
-      .filter(isMusicAssistantPlayer)
+      .filter((state) => isMusicAssistantPlayer(state) && (!allowed || allowed.has(state.entity_id)))
       .sort((a, b) => String(a.attributes.friendly_name || "").localeCompare(String(b.attributes.friendly_name || ""), "da-DK"));
   }
 
@@ -162,6 +168,12 @@
     if (!feedback) return;
     feedback.textContent = message;
     feedback.className = `beast-speaker-feedback${type ? ` is-${type}` : ""}`;
+    const popoverFeedback = document.getElementById("beastPlayerPopoverFeedback");
+    if (popoverFeedback) {
+      popoverFeedback.hidden = !message;
+      popoverFeedback.textContent = message;
+      popoverFeedback.className = `beast-player-popover-feedback${type ? ` is-${type}` : ""}`;
+    }
   }
 
   async function changeSpeakerGroup(players, activePlayer, player, shouldJoin, button) {
@@ -173,9 +185,9 @@
     if (button) {
       button.disabled = true;
       button.classList.add("is-busy");
-      button.innerHTML = `<span>${shouldJoin ? "Tilslutter…" : "Frakobler…"}</span>`;
+      if (button.tagName !== "INPUT") button.innerHTML = `<span>${shouldJoin ? musicT("Tilslutter…", "Joining…") : musicT("Frakobler…", "Disconnecting…")}</span>`;
     }
-    setGroupFeedback(`${shouldJoin ? "Tilslutter" : "Frakobler"} ${playerName}…`);
+    setGroupFeedback(`${shouldJoin ? musicT("Tilslutter", "Joining") : musicT("Frakobler", "Disconnecting")} ${playerName}…`);
     try {
       if (shouldJoin) {
         const oldGroup = playerGroupIds(players, player);
@@ -187,12 +199,12 @@
         const leaderState = await BeastAuth.haFetch(`/api/states/${encodeURIComponent(leaderId)}`);
         const nativeMembers = Array.isArray(leaderState?.attributes?.group_members) ? leaderState.attributes.group_members : [];
         if (!nativeMembers.includes(player.entity_id)) {
-          setGroupFeedback(`Starter samme musik på ${playerName}…`);
+          setGroupFeedback(`${musicT("Starter samme musik på", "Starting the same music on")} ${playerName}…`);
           await mirrorCurrentPlayback(activePlayer, player, leaderId);
-          setGroupFeedback(`${playerName} afspiller med · uden fast synkronisering.`, "success");
+          setGroupFeedback(`${playerName} ${musicT("afspiller med · uden fast synkronisering.", "is playing along · without fixed synchronisation.")}`, "success");
         } else {
           linkedPlayers.delete(player.entity_id);
-          setGroupFeedback(`${playerName} er tilsluttet.`, "success");
+          setGroupFeedback(`${playerName} ${musicT("er tilsluttet.", "is connected.")}`, "success");
         }
       } else {
         if (linkedPlayers.has(player.entity_id)) {
@@ -201,12 +213,12 @@
         } else {
           await callServiceStrict("media_player", "unjoin", player.entity_id);
         }
-        setGroupFeedback(`${playerName} er frakoblet.`, "success");
+        setGroupFeedback(`${playerName} ${musicT("er frakoblet.", "is disconnected.")}`, "success");
       }
       window.setTimeout(render, 700);
     } catch (error) {
       BeastCore.log(`Musik: gruppering fejlede for ${player.entity_id} (${error.message}).`);
-      setGroupFeedback(`Kunne ikke ${shouldJoin ? "tilslutte" : "frakoble"} ${playerName}.`, "error");
+      setGroupFeedback(`${musicT("Kunne ikke", "Could not")} ${shouldJoin ? musicT("tilslutte", "connect") : musicT("frakoble", "disconnect")} ${playerName}.`, "error");
       if (button) {
         button.disabled = false;
         button.classList.remove("is-busy");
@@ -324,7 +336,11 @@
     const players = getPlayers();
     if (!players.length) {
       stopProgressTicker();
-      containerEl.innerHTML = `<p class="beast-panel-title">Musik</p><p class="beast-music-empty">Ingen Music Assistant-afspillere fundet endnu.</p>`;
+      const configured = BeastConfig.get("panels.music.visiblePlayers");
+      const emptyText = Array.isArray(configured) && configured.length === 0
+        ? "Ingen afspillere er valgt under Administration → Musik."
+        : "Ingen Music Assistant-afspillere fundet endnu.";
+      containerEl.innerHTML = `<p class="beast-panel-title">Musik</p><p class="beast-music-empty">${emptyText}</p>`;
       return;
     }
 
@@ -335,6 +351,28 @@
     const nativeGroupIds = playerGroupIds(players, activePlayer);
     const groupLeaderId = nativeGroupIds[0] || activePlayer.entity_id;
     const visibleGroupCount = stereoGroupInfo(activePlayer.entity_id)?.speakers || new Set([...nativeGroupIds, ...linkedPlayerIds(groupLeaderId)]).size;
+    const english = BeastLocalSettings.get("language", "en") !== "da";
+    const playerCountLabel = `${visibleGroupCount} ${english ? (visibleGroupCount === 1 ? "player" : "players") : (visibleGroupCount === 1 ? "afspiller" : "afspillere")}`;
+    const nativeMemberIds = new Set(nativeGroupIds);
+    const linkedMemberIds = linkedPlayerIds(groupLeaderId);
+    const groupRows = players.map((player) => {
+      const isLeader = player.entity_id === groupLeaderId;
+      const grouped = isLeader || nativeMemberIds.has(player.entity_id) || linkedMemberIds.has(player.entity_id);
+      return `<label class="beast-player-popover-row${isLeader ? " is-leader" : ""}">
+        <input type="checkbox" data-group-player="${escapeHtml(player.entity_id)}" ${grouped ? "checked" : ""} ${isLeader ? "disabled" : ""}>
+        <span><strong>${escapeHtml(player.attributes.friendly_name || player.entity_id)}</strong><small>${isLeader ? (english ? "Group leader" : "Gruppeleder") : (grouped ? (english ? "In group" : "I gruppen") : (english ? "Available" : "Tilgængelig"))}</small></span>
+      </label>`;
+    }).join("");
+    const playerRows = players.map((player) => {
+      const selected = player.entity_id === activePlayer.entity_id;
+      const volume = Number.isFinite(Number(player.attributes.volume_level)) ? `${Math.round(Number(player.attributes.volume_level) * 100)}%` : "--";
+      const status = player.state === "playing" ? (english ? "Playing" : "Afspiller") : player.state === "paused" ? (english ? "Paused" : "På pause") : (english ? "Ready" : "Klar");
+      return `<button type="button" class="beast-player-popover-card${selected ? " is-selected" : ""}" data-select-player="${escapeHtml(player.entity_id)}">
+        <span class="beast-player-popover-icon">${BeastCore.icon("music", { size: 19 })}</span>
+        <span><strong>${escapeHtml(player.attributes.friendly_name || player.entity_id)}</strong><small>${status}</small></span>
+        <em>${volume}</em>${selected ? BeastCore.icon("check", { size: 18 }) : ""}
+      </button>`;
+    }).join("");
 
     containerEl.innerHTML = `
       <button type="button" class="beast-page-edit-trigger" id="beastMusicLayoutEdit" aria-label="Rediger musiklayout">⋮</button><div class="beast-music-dashboard">
@@ -362,25 +400,48 @@
                 <div class="beast-now-playing-title" id="beastNowPlayingTitle">${attrs.media_title ? escapeHtml(attrs.media_title) : "Ingen afspilning"}</div>
                 <div class="beast-now-playing-artist" id="beastNowPlayingArtist">${escapeHtml(attrs.media_artist || "Vælg musik fra biblioteket")}</div>
                 <div class="beast-now-playing-album" id="beastNowPlayingAlbum">${attrs.media_album_name ? `<strong>${escapeHtml(attrs.media_album_name)}</strong><span>Album · ${escapeHtml(attrs.media_artist || "Ukendt kunstner")}</span>` : `<strong>Musikbibliotek</strong><span>Vælg et album, en playliste eller en radiostation</span>`}</div>
+                <div class="beast-player-dock">
+                  <div class="beast-transport-row">
+                    <button type="button" class="beast-transport-btn" id="beastPrevBtn" aria-label="Forrige">${BeastCore.icon("skip-back", { size: 22 })}</button>
+                    <button type="button" class="beast-transport-btn beast-play-btn" id="beastPlayBtn" aria-label="${playing ? "Pause" : "Afspil"}">${BeastCore.icon(playing ? "pause" : "play", { size: 27 })}</button>
+                    <button type="button" class="beast-transport-btn" id="beastNextBtn" aria-label="Næste">${BeastCore.icon("skip-forward", { size: 22 })}</button>
+                  </div>
+                  <div class="beast-player-destinations">
+                    <button type="button" class="beast-player-destination" id="beastPlayerVolumeBtn" aria-label="${english ? "Volume" : "Lydstyrke"}" title="${english ? "Volume" : "Lydstyrke"}">
+                      ${BeastCore.icon(attrs.is_volume_muted ? "volume-mute" : "volume", { size: 21 })}
+                    </button>
+                    <button type="button" class="beast-player-destination" id="beastPlayerGroupBtn" aria-label="${playerCountLabel}" title="${playerCountLabel}">
+                      ${BeastCore.icon("users", { size: 20 })}<small>${visibleGroupCount}</small>
+                    </button>
+                    <button type="button" class="beast-player-destination" id="beastPlayerOutputBtn" aria-label="${english ? "Select player" : "Vælg afspiller"}" title="${english ? "Select player" : "Vælg afspiller"}">
+                      ${BeastCore.icon("music", { size: 20 })}
+                    </button>
+                  </div>
+                </div>
+                <div class="beast-player-popover beast-volume-popover" id="beastVolumePopover" hidden>
+                  <header><strong>${english ? "Volume" : "Lydstyrke"}</strong><button type="button" data-close-player-popover aria-label="${english ? "Close" : "Luk"}">×</button></header>
+                  <button type="button" class="beast-volume-popover-mute" id="beastMuteBtn">${BeastCore.icon(attrs.is_volume_muted ? "volume-mute" : "volume", { size: 24 })}<span>${attrs.is_volume_muted ? (english ? "Unmute" : "Slå lyd til") : (english ? "Mute" : "Slå lyd fra")}</span></button>
+                  <div class="beast-volume-buttons beast-volume-popover-buttons">
+                    <button type="button" data-volume-step="-5" aria-label="${english ? "Volume down" : "Skru ned"}">−</button>
+                    <output id="beastVolumeOutput">${Math.round((Number(attrs.volume_level) || 0) * 100)}%</output>
+                    <button type="button" data-volume-step="5" aria-label="${english ? "Volume up" : "Skru op"}">+</button>
+                  </div>
+                </div>
+                <div class="beast-player-popover" id="beastGroupPopover" hidden>
+                  <header><strong>${english ? "Devices in group" : "Enheder i gruppen"}</strong><button type="button" data-close-player-popover aria-label="${english ? "Close" : "Luk"}">×</button></header>
+                  <div class="beast-player-popover-list">${groupRows}</div>
+                  <p class="beast-player-popover-feedback" id="beastPlayerPopoverFeedback" hidden></p>
+                </div>
+                <div class="beast-player-popover" id="beastPlayerPopover" hidden>
+                  <header><strong>${english ? "Players" : "Afspillere"}</strong><button type="button" data-close-player-popover aria-label="${english ? "Close" : "Luk"}">×</button></header>
+                  <label class="beast-player-popover-search">${BeastCore.icon("search", { size: 17 })}<input type="search" id="beastPlayerPopoverSearch" placeholder="${english ? "Search players" : "Søg efter afspillere"}"></label>
+                  <div class="beast-player-popover-list" id="beastPlayerPopoverList">${playerRows}</div>
+                </div>
                 <div class="beast-progress-row">
                   <span id="beastProgressElapsed">--:--</span>
                   <div class="beast-progress-track"><div class="beast-progress-fill" id="beastProgressFill"></div></div>
                   <span id="beastProgressDuration">--:--</span>
                 </div>
-                <div class="beast-transport-row">
-                  <button type="button" class="beast-transport-btn" id="beastPrevBtn" aria-label="Forrige">${BeastCore.icon("skip-back", { size: 22 })}</button>
-                  <button type="button" class="beast-transport-btn beast-play-btn" id="beastPlayBtn" aria-label="${playing ? "Pause" : "Afspil"}">${BeastCore.icon(playing ? "pause" : "play", { size: 27 })}</button>
-                  <button type="button" class="beast-transport-btn" id="beastNextBtn" aria-label="Næste">${BeastCore.icon("skip-forward", { size: 22 })}</button>
-                </div>
-              <div class="beast-volume-row">
-                <button type="button" class="beast-mute-btn" id="beastMuteBtn" aria-label="Slå lyd fra">${BeastCore.icon(attrs.is_volume_muted ? "volume-mute" : "volume", { size: 21 })}</button>
-                <span class="beast-volume-label">Lydstyrke</span>
-                <div class="beast-volume-buttons">
-                  <button type="button" data-volume-step="-5" aria-label="Skru ned">−</button>
-                  <output id="beastVolumeOutput">${Math.round((Number(attrs.volume_level) || 0) * 100)}%</output>
-                  <button type="button" data-volume-step="5" aria-label="Skru op">+</button>
-                </div>
-              </div>
             </div>
           </div>
         </aside>
@@ -402,6 +463,7 @@
     renderPlayerChips(players, activePlayer);
     renderGroupVolume(players, activePlayer);
     wireSpeakerToggle();
+    wirePlayerPopovers(players, activePlayer);
     wireGroupControls(players, activePlayer);
     updateNowPlayingArt(attrs.entity_picture);
     updateProgressState(activePlayer);
@@ -749,11 +811,59 @@
     const drawer = document.getElementById("beastSpeakerDrawer");
     const actions = containerEl.querySelector(".beast-music-group-actions");
     if (!toggle || !drawer) return;
-    toggle.addEventListener("click", () => {
+    const setOpen = () => {
       speakerPanelOpen = !speakerPanelOpen;
       toggle.setAttribute("aria-expanded", String(speakerPanelOpen));
       drawer.classList.toggle("is-open", speakerPanelOpen);
       actions?.classList.toggle("is-collapsed", !speakerPanelOpen);
+    };
+    toggle.addEventListener("click", setOpen);
+  }
+
+  function wirePlayerPopovers(players, activePlayer) {
+    const volumeButton = document.getElementById("beastPlayerVolumeBtn");
+    const groupButton = document.getElementById("beastPlayerGroupBtn");
+    const outputButton = document.getElementById("beastPlayerOutputBtn");
+    const volumePopover = document.getElementById("beastVolumePopover");
+    const groupPopover = document.getElementById("beastGroupPopover");
+    const playerPopover = document.getElementById("beastPlayerPopover");
+    if (!volumeButton || !groupButton || !outputButton || !volumePopover || !groupPopover || !playerPopover) return;
+
+    const closeAll = () => {
+      volumePopover.hidden = true;
+      groupPopover.hidden = true;
+      playerPopover.hidden = true;
+      volumeButton.classList.remove("is-active");
+      groupButton.classList.remove("is-active");
+      outputButton.classList.remove("is-active");
+    };
+    const togglePopover = (popover, button) => {
+      const open = popover.hidden;
+      closeAll();
+      popover.hidden = !open;
+      button.classList.toggle("is-active", open);
+      if (open && popover === playerPopover) document.getElementById("beastPlayerPopoverSearch")?.focus();
+    };
+
+    volumeButton.addEventListener("click", (event) => { event.stopPropagation(); togglePopover(volumePopover, volumeButton); });
+    groupButton.addEventListener("click", (event) => { event.stopPropagation(); togglePopover(groupPopover, groupButton); });
+    outputButton.addEventListener("click", (event) => { event.stopPropagation(); togglePopover(playerPopover, outputButton); });
+    containerEl.querySelectorAll("[data-close-player-popover]").forEach((button) => button.addEventListener("click", closeAll));
+    containerEl.querySelectorAll("[data-select-player]").forEach((button) => button.addEventListener("click", () => selectPlayer(button.dataset.selectPlayer)));
+    containerEl.querySelectorAll("[data-group-player]").forEach((checkbox) => checkbox.addEventListener("change", () => {
+      const player = players.find((item) => item.entity_id === checkbox.dataset.groupPlayer);
+      if (!player || player.entity_id === activePlayer.entity_id) return;
+      checkbox.disabled = true;
+      changeSpeakerGroup(players, activePlayer, player, checkbox.checked, checkbox);
+    }));
+    document.getElementById("beastPlayerPopoverSearch")?.addEventListener("input", (event) => {
+      const query = event.currentTarget.value.trim().toLocaleLowerCase();
+      containerEl.querySelectorAll("[data-select-player]").forEach((button) => {
+        button.hidden = Boolean(query) && !button.textContent.toLocaleLowerCase().includes(query);
+      });
+    });
+    containerEl.querySelector(".beast-now-playing")?.addEventListener("click", (event) => {
+      if (!event.target.closest(".beast-player-popover, .beast-player-destinations")) closeAll();
     });
   }
 

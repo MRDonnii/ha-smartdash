@@ -1,7 +1,7 @@
 [
   {
-    "version": "20260817-1",
-    "tag": "v0.7.116",
+    "version": "20260817-7",
+    "tag": "v0.7.119",
     "date": "2026-08-17",
     "changes": [
       {
@@ -29,12 +29,804 @@
         "en": "Fixed front-page cameras sometimes flickering/reloading for several seconds after a brief connection blip, even when the connection was actually fine again immediately."
       },
       {
-        "da": "Ny valgfri animeret vejr-baggrundseffekt (regn, sne, skyer m.m.) der matcher det aktuelle vejr -- kan slås til/fra under Administration.",
-        "en": "New optional animated weather background effect (rain, snow, clouds, etc.) matching current conditions -- toggle it under Administration."
-      },
-      {
         "da": "Rettet at post-/pakke-/printer-advarsler ikke var tilpasset den nye mobilvisning, hvilket kunne få dem til at overlappe eller virke som om de sad fast øverst på skærmen.",
         "en": "Fixed mail/package/printer alert banners not being adapted to the new mobile layout, which could make them overlap or feel stuck at the top of the screen."
+      }
+    ]
+  },
+  {
+    "version": "20260817-4",
+    "tag": "v0.7.118",
+    "date": "2026-08-17",
+    "changes": [
+      {
+        "da": "Beta-opdateringer kan nu findes via GitHubs offentlige release-feed, når den delte anonyme API-kvote eller raw-downloadgrænse er opbrugt.",
+        "en": "Beta updates can now be discovered through GitHub's public release feed when the shared anonymous API quota or raw download limit has been exhausted."
+      },
+      {
+        "da": "Release-feedet indeholder nu build-ID'et, så updateren kan sammenligne versioner uden et ekstra kald til raw.githubusercontent.com.",
+        "en": "The release feed now carries the build ID so the updater can compare versions without an additional raw.githubusercontent.com request."
+      }
+    ]
+  },
+  {
+    "version": "20260817-3",
+    "tag": "v0.7.117",
+    "date": "2026-08-17",
+    "changes": [
+      {
+        "da": "Vejr-overlayet udgives med et nyt entydigt versionsnummer, så installationer med det tidligere lokale v0.7.116-build sikkert opdager og installerer opdateringen.",
+        "en": "The weather overlay is published with a new unique version number so installations carrying the earlier local v0.7.116 build reliably discover and install the update."
+      }
+    ]
+  },
+  {
+    "version": "20260817-2",
+    "tag": "v0.7.116",
+    "date": "2026-08-17",
+    "changes": [
+      {
+        "da": "Nyt animeret vejr-overlay kan slås fra, følge Home Assistants aktuelle vejr automatisk eller vise en valgt preview-effekt fra Administration.",
+        "en": "A new animated weather overlay can be turned off, follow Home Assistant's current weather automatically, or show a selected preview effect from Administration."
+      },
+      {
+        "da": "Regn rammer nu bunden med små stænk og en diskret våd kant, mens snefnug samler sig i et tyndt lag langs bunden.",
+        "en": "Rain now hits the bottom with small splashes and a subtle wet edge, while snowflakes collect in a thin layer along the bottom."
+      },
+      {
+        "da": "Overlayet skifter automatisk mellem sol, nat, skyer, vind, tåge, regn, skybrud, sne, slud, hagl og torden, når vejrtilstanden ændrer sig.",
+        "en": "The overlay automatically switches between sun, night, clouds, wind, fog, rain, downpour, snow, sleet, hail, and thunderstorms when the weather state changes."
+      }
+    ]
+  },
+  {
+    "version": "20260813-1",
+    "tag": "v0.7.115",
+    "date": "2026-08-13",
+    "changes": [
+      {
+        "da": "Rettet dørkamera-visningen så gentagne ringninger, mens den allerede er åben, forlænger luk-timeren i stedet for at genopbygge visningen og genstarte kamerastrømmen forfra.",
+        "en": "Fixed the doorbell camera view so repeated rings while it is already open extend the close timer instead of rebuilding the view and restarting the camera stream from scratch."
+      },
+      {
+        "da": "Rettet at falske tilstandsændringer (fx en kortvarig \"utilgængelig\") på dørklokkens event-entity kunne åbne dørkamera-visningen og sætte urelaterede luk-timere i gang oveni hinanden -- kun rigtige ringninger åbner nu visningen.",
+        "en": "Fixed spurious state changes (e.g. a brief \"unavailable\") on the doorbell event entity being able to open the doorbell camera view and stack unrelated close timers on top of each other -- only genuine rings now open the view."
+      },
+      {
+        "da": "Auto-retur til forsiden er nu konfigurerbar: til/fra, hvilken side der returneres til, antal minutter uden aktivitet, og et valgfrit tidsrum hvor det er aktivt (fx kun i dagtimerne).",
+        "en": "Auto-return to the front page is now configurable: on/off, which page it returns to, minutes of inactivity, and an optional time window when it is active (e.g. daytime only)."
+      },
+      {
+        "da": "Administration er omorganiseret så indstillinger matcher deres kategori: Advarsler indeholder nu kun banner-advarsler, dørkamera- og auto-retur-indstillinger er samlet under Forbindelser & kiosk, og den flydende musikafspiller er flyttet til Denne enhed.",
+        "en": "Administration has been reorganized so settings match their category: Alerts now only contains banner alerts, doorbell view and auto-return settings are grouped under Connections & kiosk, and the floating music player moved to This device."
+      }
+    ]
+  },
+  {
+    "version": "20260812-4",
+    "tag": "v0.7.114",
+    "date": "2026-08-12",
+    "changes": [
+      {
+        "da": "Fjernet en overflødig, usporet gentagelses-timer for advarselsbannere, der kørte samtidig med den eksisterende og aldrig blev ryddet op -- reducerer unødvendigt arbejde og en potentiel timer-lækage.",
+        "en": "Removed a redundant, untracked repeating timer for alert banners that ran alongside the existing one and was never cleaned up -- reduces unnecessary work and a potential timer leak."
+      }
+    ]
+  },
+  {
+    "version": "20260812-3",
+    "tag": "v0.7.113",
+    "date": "2026-08-12",
+    "changes": [
+      {
+        "da": "Alle go2rtc-livekameraer bruger nu ren WebRTC i stedet for parallel MSE/WebRTC, så High-streams ikke længere havner i et gentaget stop- og genstartsloop.",
+        "en": "All go2rtc live cameras now use WebRTC exclusively instead of parallel MSE/WebRTC, preventing High streams from entering a repeated stop-and-restart loop."
+      }
+    ]
+  },
+  {
+    "version": "20260812-2",
+    "tag": "v0.7.112",
+    "date": "2026-08-12",
+    "changes": [
+      {
+        "da": "High-kvalitet på livekameraer genopretter nu forbindelsen med automatisk MSE/WebRTC-forhandling i stedet for at gentage en fastlåst MSE-forbindelse.",
+        "en": "High-quality live cameras now recover with automatic MSE/WebRTC negotiation instead of repeatedly retrying a stalled MSE connection."
+      },
+      {
+        "da": "Sidemenuen har nu en Genindlæs dashboard-knap, som genstarter siden og alle dashboardets forbindelser.",
+        "en": "The page action menu now includes a Reload dashboard button that restarts the page and all dashboard connections."
+      }
+    ]
+  },
+  {
+    "version": "20260812-1",
+    "tag": "v0.7.107",
+    "date": "2026-08-12",
+    "changes": [
+      {
+        "da": "Forsidens tre kameraer åbner nu kamera-siden direkte på det kamera, man trykker på, så det valgte kamera vises med det samme som stort livekamera.",
+        "en": "The three front-page cameras now open the Cameras page directly on the camera you tap, so the selected camera is immediately shown as the featured live view."
+      }
+    ]
+  },
+  {
+    "version": "20260811-184",
+    "tag": "v0.7.106",
+    "date": "2026-08-12",
+    "changes": [
+      {
+        "da": "Skærm-overlay-indstillinger (dørkamera-visning, flydende musikafspiller) er samlet under Admin -> Advarsler i stedet for at være spredt ud over flere sider -- inklusiv en ny til/fra-knap for den flydende musikafspiller på forsiden.",
+        "en": "Screen-overlay settings (doorbell camera view, floating music player) are now gathered under Admin -> Alerts instead of being spread across several pages -- including a new on/off toggle for the front-page floating music player."
+      }
+    ]
+  },
+  {
+    "version": "20260811-183",
+    "tag": "v0.7.105",
+    "date": "2026-08-12",
+    "changes": [
+      {
+        "da": "Dørkamera-visningen kan nu enten lukke automatisk efter et selvvalgt antal minutter, eller blive stående indtil man selv lukker den -- indstilles under Admin -> Kiosk & dørklokke.",
+        "en": "The doorbell camera view can now either close automatically after a chosen number of minutes, or stay open until manually closed -- configurable under Admin -> Kiosk & doorbell."
+      }
+    ]
+  },
+  {
+    "version": "20260811-182",
+    "tag": "v0.7.104",
+    "date": "2026-08-11",
+    "changes": [
+      {
+        "da": "Rettet at den kompakte afspiller-visning (når højttalermenuen er åben) kunne have overlappende tekst eller en afspilningsknap der forsvandt ud af kortet på alle skærmstørrelser, ikke kun tablets -- forhaandsvisningen var altid en fast 330x330px boks uanset skærmstørrelse, så den forrige rettelse kun dækkede tablet-bredder.",
+        "en": "Fixed the compact player view (when the speaker menu is open) potentially having overlapping text or a playback button running off the card on any screen size, not just tablets -- the preview was always a fixed 330x330px box regardless of screen size, so the previous fix only covered tablet widths."
+      }
+    ]
+  },
+  {
+    "version": "20260811-181",
+    "tag": "v0.7.103",
+    "date": "2026-08-11",
+    "changes": [
+      {
+        "da": "Rettet at afspilningsknapperne i musikafspilleren kunne overlappe eller forsvinde ud af kortet på tablet-brede skærme -- de skalerer nu ned og ombrydes i stedet for at flyde over kanten, og afspiller-kortet fik lidt mere plads på bibliotekets bekostning.",
+        "en": "Fixed the music player's playback buttons potentially overlapping or running off the card on tablet-width screens -- they now scale down and wrap instead of overflowing, and the player card got a bit more width at the library's expense."
+      },
+      {
+        "da": "Rettet at den kompakte afspiller-visning (når højttalermenuen er åben) havde overlappende tekst og en afspilningsknap der stak ud over kanten -- forhåndsvisningen er nu fuld bredde uden overlap.",
+        "en": "Fixed the compact player view (when the speaker menu is open) having overlapping text and a playback button running past the edge -- the preview is now full width with no overlap."
+      }
+    ]
+  },
+  {
+    "version": "20260811-180",
+    "tag": "v0.7.102",
+    "date": "2026-08-11",
+    "changes": [
+      {
+        "da": "Rettet at Varme-sidens tre paneler kunne overlappe hinanden på tablet-brede skærme efter sidste rettelse -- de stables nu korrekt uden at ligge oveni hinanden.",
+        "en": "Fixed Heating's three panels potentially overlapping each other on tablet-width screens after the previous fix -- they now stack correctly without landing on top of each other."
+      }
+    ]
+  },
+  {
+    "version": "20260811-179",
+    "tag": "v0.7.101",
+    "date": "2026-08-11",
+    "changes": [
+      {
+        "da": "Varme viser nu Termostater, Varmepumper og Statistik i fuld bredde, én ad gangen (scroll ned mellem dem), i stedet for tre smalle kolonner ved siden af hinanden på tablet-brede skærme -- ingenting behøver længere skrumpe nær så meget.",
+        "en": "Heating now shows Thermostats, Heat pumps, and Statistics at full width, one at a time (scroll down between them), instead of three narrow side-by-side columns on tablet-width screens -- nothing needs to shrink nearly as much anymore."
+      },
+      {
+        "da": "Rettet at afspilningsknappen kunne overlappe teksten i musikafspillerens kompakte visning, når højttalermenuen var åben.",
+        "en": "Fixed the playback button potentially overlapping text in the music player's compact view when the speaker menu was open."
+      }
+    ]
+  },
+  {
+    "version": "20260811-178",
+    "tag": "v0.7.100",
+    "date": "2026-08-11",
+    "changes": [
+      {
+        "da": "Rettet at album-covers på Musik-siden altid krævede mindst 288px højde, uanset hvor meget plads spilleren faktisk havde -- kunne gøre pladeomslags-området unødigt stort og tomt på smallere skærme.",
+        "en": "Fixed album covers on the Music page always requiring at least 288px of height, regardless of how much space the player actually had -- could make the cover-art area unnecessarily large and empty on narrower screens."
+      },
+      {
+        "da": "Rettet at rumkortene under Varme altid tvang præcis 4 lige brede kolonner, selv når der ikke var plads til det, hvilket klippede tekst af -- de tilpasser sig nu det faktiske plads.",
+        "en": "Fixed the room cards under Heating always forcing exactly 4 equal-width columns even when there wasn't room for that, clipping text -- they now adapt to the actual available space."
+      },
+      {
+        "da": "Rettet at pris- og forbrugsgraferne på Energi-siden kunne kræve mere plads end kortet havde og derved flyde ned over kortet nedenunder.",
+        "en": "Fixed the price and usage charts on the Energy page potentially requiring more space than the card had, causing them to overflow into the card below."
+      }
+    ]
+  },
+  {
+    "version": "20260811-177",
+    "tag": "v0.7.99",
+    "date": "2026-08-11",
+    "changes": [
+      {
+        "da": "Rettet tilbage: siderne på tablets i det 1180-1200px-brede interval beholder nu igen den samme kortopstilling som på en stor skærm, i stedet for at blive lagt om til én smal kolonne. Den forrige rettelse ændrede designet i stedet for bare at skalere det ned, hvilket ikke var meningen.",
+        "en": "Reverted: pages on tablets in the 1180-1200px-wide range now again keep the same card layout as on a large screen, instead of being reflowed into a single narrow column. The previous fix changed the design instead of just scaling it down, which was not the intent."
+      }
+    ]
+  },
+  {
+    "version": "20260811-176",
+    "tag": "v0.7.98",
+    "date": "2026-08-11",
+    "changes": [
+      {
+        "da": "Rettet at dashboardet ikke skalerede korrekt ned på tablets med en skærmbredde omkring 1180-1200px (fx iPad Pro 11\"): Energi, Bil, Robotter, Printer, Musik og Skema-siden kunne blive skåret af eller ikke passe til skærmen i liggende format.",
+        "en": "Fixed the dashboard not scaling down correctly on tablets with a screen width around 1180-1200px (e.g. iPad Pro 11\"): Energy, Car, Robots, Printer, Music, and the Schedule page could get cut off or not fit the screen in landscape."
+      },
+      {
+        "da": "Rettet at Musik-siden aldrig kunne scrolle, uanset skærmstørrelse, hvis indholdet var højere end pladsen.",
+        "en": "Fixed the Music page never being able to scroll, regardless of screen size, when its content was taller than the available space."
+      }
+    ]
+  },
+  {
+    "version": "20260811-175",
+    "tag": "v0.7.97",
+    "date": "2026-08-11",
+    "changes": [
+      {
+        "da": "Forsidens grafer for El, Varme og Vand viser nu det aktuelle lokale døgn fra midnat til nu over hele grafens bredde.",
+        "en": "The overview charts for Electricity, Heating, and Water now show the current local day from midnight until now across the full chart width."
+      },
+      {
+        "da": "Tidsaksen på alle tre grafer følger dagens klokkeslæt og slutter med Nu.",
+        "en": "The timeline on all three charts now follows today's clock times and ends with Now."
+      },
+      {
+        "da": "Den valgte forsidegraf genindlæses hvert femte minut og starter automatisk på et nyt døgn efter midnat.",
+        "en": "The selected overview chart reloads every five minutes and automatically starts a new day after midnight."
+      }
+    ]
+  },
+  {
+    "version": "20260811-174",
+    "tag": "v0.7.96",
+    "date": "2026-08-11",
+    "changes": [
+      {
+        "da": "Energigrafen Forbrug i dag viser nu det aktuelle lokale døgn fra midnat til nu i stedet for de seneste 24 timer.",
+        "en": "The Energy usage today chart now shows the current local day from midnight until now instead of the latest 24 hours."
+      },
+      {
+        "da": "Grafens tidsakse følger dagens klokkeslæt, og historikken genindlæses hvert femte minut samt automatisk efter midnat.",
+        "en": "The chart timeline now follows today's clock times, and its history reloads every five minutes and automatically after midnight."
+      },
+      {
+        "da": "Eksisterende standardtitler med Forbrug seneste 24 timer migreres automatisk til Forbrug i dag.",
+        "en": "Existing default titles using Usage over the latest 24 hours automatically migrate to Usage today."
+      }
+    ]
+  },
+  {
+    "version": "20260811-173",
+    "tag": "v0.7.95",
+    "date": "2026-08-11",
+    "changes": [
+      {
+        "da": "Teksten på Rediger-knappen har fået korrekt linjehøjde og bundplads, så bogstaver med underlængde ikke længere bliver beskåret.",
+        "en": "The Edit button label now has the correct line height and bottom spacing, preventing letters with descenders from being clipped."
+      }
+    ]
+  },
+  {
+    "version": "20260811-172",
+    "tag": "v0.7.94",
+    "date": "2026-08-11",
+    "changes": [
+      {
+        "da": "Administrationsknappen forkorter nu automatisk teksten til Admin, når sidepanelet ikke har plads til den fulde tekst.",
+        "en": "The Administration button now automatically shortens its label to Admin when the sidebar does not have room for the full text."
+      }
+    ]
+  },
+  {
+    "version": "20260811-171",
+    "tag": "v0.7.93",
+    "date": "2026-08-11",
+    "changes": [
+      {
+        "da": "Pool-feltet i Ur og kalender-kortet bruger nu den korte tekst Temperatur og holder værdi og titel adskilt ved smalle opløsninger.",
+        "en": "The Pool tile in the Clock and calendar card now uses the shorter Temperature label and keeps its value separate from the title at narrow resolutions."
+      },
+      {
+        "da": "De to hurtigfelter i Ur og kalender-kortet skifter nu til et mere luftigt layout på kiosk-skærme, så teksten ikke overlapper.",
+        "en": "The two quick tiles in the Clock and calendar card now use a cleaner kiosk layout that prevents text overlap."
+      }
+    ]
+  },
+  {
+    "version": "20260811-170",
+    "tag": "v0.7.92",
+    "date": "2026-08-11",
+    "changes": [
+      {
+        "da": "Alle indbyggede kort kan nu flyttes frit til enhver grid-position i stedet for kun at bytte plads med et andet kort.",
+        "en": "All built-in cards can now be moved freely to any grid position instead of only swapping places with another card."
+      },
+      {
+        "da": "Størrelseshåndtaget følger nu det faktiske grids række- og kolonnestørrelse, så både bredde og højde kan justeres præcist.",
+        "en": "The resize handle now follows the grid's actual row and column sizes, allowing precise width and height adjustments."
+      },
+      {
+        "da": "Kortindstillingerne understøtter nu 12 frie kolonner, op til 40 top-positioner og 24 rækker i højden til asymmetriske layouts.",
+        "en": "Card settings now support 12 free columns, up to 40 top positions, and 24 rows of height for asymmetric layouts."
+      }
+    ]
+  },
+  {
+    "version": "20260811-169",
+    "tag": "v0.7.91",
+    "date": "2026-08-11",
+    "changes": [
+      {
+        "da": "Affaldskortet er gjort markant lavere og mere kompakt, men beholder sine afhentninger som en lodret liste.",
+        "en": "The waste card is now significantly shorter and more compact while keeping its collections in a vertical list."
+      },
+      {
+        "da": "Begge skoleskemaer bevares som store hovedkort, og Kommende aftaler overtager den frigivne højde i sidekolonnen.",
+        "en": "Both school schedules remain large primary cards, while Upcoming events uses the freed space in the side column."
+      },
+      {
+        "da": "Eksisterende standardlayouts flyttes automatisk til den nye prioritering; manuelt tilpassede layouts ændres ikke.",
+        "en": "Existing default layouts automatically migrate to the new priority, while manually customized layouts remain unchanged."
+      }
+    ]
+  },
+  {
+    "version": "20260811-168",
+    "tag": "v0.7.90",
+    "date": "2026-08-11",
+    "changes": [
+      {
+        "da": "For lange fag- og lærertekster i skoleskemaet ruller nu roligt frem og tilbage, men kun når teksten ikke kan være i feltet.",
+        "en": "Long subject and teacher text in the school schedule now scrolls gently back and forth, but only when it does not fit inside the cell."
+      },
+      {
+        "da": "Rulletekstens afstand og hastighed tilpasses automatisk kortets størrelse og tekstens længde, og reduceret animation respekteres.",
+        "en": "Scrolling distance and speed now adapt automatically to the card size and text length, while reduced-motion preferences are respected."
+      }
+    ]
+  },
+  {
+    "version": "20260811-167",
+    "tag": "v0.7.89",
+    "date": "2026-08-11",
+    "changes": [
+      {
+        "da": "Musikafspillerens forrige-, afspil/pause- og næste-knapper står nu samlet til venstre, mens lydstyrke, gruppe og afspillervalg står samlet til højre.",
+        "en": "The Music player's previous, play/pause, and next controls are now grouped on the left, while volume, grouping, and player selection are grouped on the right."
+      },
+      {
+        "da": "De resterende fejlbehæftede danske tegn i gruppe- og afspillermenuerne er rettet.",
+        "en": "The remaining malformed Danish characters in the group and player menus have been fixed."
+      }
+    ]
+  },
+  {
+    "version": "20260811-166",
+    "tag": "v0.7.88",
+    "date": "2026-08-11",
+    "changes": [
+      {
+        "da": "Musikafspilleren har nu en separat lydstyrkeknap, der åbner en popup med større mute-, minus-, procent- og plusknapper.",
+        "en": "The Music player now has a dedicated volume button that opens a popover with larger mute, minus, percentage, and plus controls."
+      },
+      {
+        "da": "Knappen til gruppeenheder bruger nu et tydeligt gruppeikon og antal, så den ikke længere ligner lydstyrkeknappen.",
+        "en": "The grouped-devices button now uses a clear group icon and count so it no longer resembles the volume button."
+      },
+      {
+        "da": "Fejlbehæftede tegn i de nye musikmenuers danske søgefelt og lukkeknapper er rettet.",
+        "en": "Broken characters in the new Music menus' Danish search field and close buttons have been fixed."
+      }
+    ]
+  },
+  {
+    "version": "20260811-165",
+    "tag": "v0.7.87",
+    "date": "2026-08-11",
+    "changes": [
+      {
+        "da": "Afspiller- og gruppemenuernes tekster og statusbeskeder følger nu konsekvent dashboardets valgte sprog.",
+        "en": "Player and group menu labels and status messages now consistently follow the dashboard's selected language."
+      },
+      {
+        "da": "Opdateringsbanneret genåbner nu dashboardet uden gammel browsercache og kontrollerer, at serveren faktisk installerede det forventede build.",
+        "en": "The update banner now reopens the dashboard without stale browser cache and verifies that the server actually installed the expected build."
+      },
+      {
+        "da": "Opdateringsserveren opdager nu manglende skriveadgang eller ufuldstændig filkopiering og gendanner den tidligere version i stedet for at melde falsk succes.",
+        "en": "The updater now detects write-permission or incomplete-copy failures and restores the previous version instead of reporting false success."
+      }
+    ]
+  },
+  {
+    "version": "20260811-164",
+    "tag": "v0.7.86",
+    "date": "2026-08-11",
+    "changes": [
+      {
+        "da": "Musikafspillerens betjening har nu separate Music Assistant-inspirerede menuer til valg af aktiv afspiller og styring af gruppens enheder, uden ændringer af cover, titel eller kunstner.",
+        "en": "The Music player controls now have separate Music Assistant-inspired menus for selecting the active player and managing grouped devices, without changing the cover, title, or artist area."
+      },
+      {
+        "da": "Skoleskemaet bruger mindre plads i kortets top og skjuler lokalenummeret, så fag og læreroplysninger får mere plads.",
+        "en": "The school schedule uses less space at the top of the card and hides room numbers, giving subjects and teacher details more room."
+      }
+    ]
+  },
+  {
+    "version": "20260811-163",
+    "tag": "v0.7.85",
+    "date": "2026-08-11",
+    "changes": [
+      {
+        "da": "Musikafspillerens bundlinje holder sig nu inden for den smalle afspillerkolonne ved lavere skærmopløsninger.",
+        "en": "The Music player bottom bar now stays within the narrow player column at lower display resolutions."
+      },
+      {
+        "da": "Skoleskemaets fag, klasse og lærertekst beskæres ikke længere på 1080p-skærme, fordi den store typografi nu også tager højde for skærmhøjden.",
+        "en": "School schedule subject, class, and teacher text is no longer clipped on 1080p displays because large typography now also accounts for screen height."
+      },
+      {
+        "da": "Datostriben i Kommende aftaler er gjort smallere, så Alle og de syv kommende dage kan være i kortet uden afskæring.",
+        "en": "The Upcoming events date strip is now narrower so All and the next seven days fit inside the card without clipping."
+      }
+    ]
+  },
+  {
+    "version": "20260811-162",
+    "tag": "v0.7.84",
+    "date": "2026-08-11",
+    "changes": [
+      {
+        "da": "Den seneste kalender-, layout-, energi-, 3D-printer- og musikopdatering er nu godkendt til Stable-kanalen.",
+        "en": "The latest calendar, layout, energy, 3D printer, and Music updates are now approved for the Stable channel."
+      },
+      {
+        "da": "Musikbiblioteket har det nye afspillerdesign, seks elementer pr. række og valg af synlige Music Assistant-afspillere fra Administration.",
+        "en": "The Music library includes the new player design, six items per row, and Admin selection of visible Music Assistant players."
+      },
+      {
+        "da": "Stable-versionen indeholder alle hotfixes fra Beta-forløbet, herunder rettelsen af Musik-siden i Administration.",
+        "en": "The Stable release includes all hotfixes from the Beta cycle, including the Administration Music page fix."
+      }
+    ]
+  },
+  {
+    "version": "20260811-161",
+    "tag": "v0.7.83",
+    "date": "2026-08-11",
+    "changes": [
+      {
+        "da": "Rettet at Musik-siden i Administration ikke åbnede efter tilføjelsen af valget for synlige afspillere.",
+        "en": "Fixed the Music page in Administration not opening after the visible-player selector was added."
+      },
+      {
+        "da": "Afspillerlisten indlæses nu korrekt og viser alle Music Assistant-afspillere markeret som standard på eksisterende installationer.",
+        "en": "The player list now loads correctly and shows all Music Assistant players selected by default on existing installations."
+      }
+    ]
+  },
+  {
+    "version": "20260811-160",
+    "tag": "v0.7.82",
+    "date": "2026-08-11",
+    "changes": [
+      {
+        "da": "Administration → Musik har nu et valg af præcis hvilke Music Assistant-afspillere der må vises i musikvinduet og den flydende afspiller.",
+        "en": "Administration → Music now lets users choose exactly which Music Assistant players may appear in the Music view and floating player."
+      },
+      {
+        "da": "Eksisterende installationer viser fortsat alle afspillere som standard, indtil et udvalg gemmes.",
+        "en": "Existing installations continue to show all players by default until a selection is saved."
+      }
+    ]
+  },
+  {
+    "version": "20260811-159",
+    "tag": "v0.7.81",
+    "date": "2026-08-11",
+    "changes": [
+      {
+        "da": "Musikbiblioteket viser nu seks playlister, album, radiostationer eller søgeresultater pr. række på brede skærme, så mere af biblioteket er synligt samtidig.",
+        "en": "The music library now shows six playlists, albums, radio stations, or search results per row on wide screens, keeping more of the library visible at once."
+      },
+      {
+        "da": "Antallet af kort tilpasses automatisk på smallere skærme, så covers og titler fortsat er lette at bruge.",
+        "en": "The number of cards now adapts automatically on narrower screens so covers and titles remain easy to use."
+      }
+    ]
+  },
+  {
+    "version": "20260811-158",
+    "tag": "v0.7.80",
+    "date": "2026-08-11",
+    "changes": [
+      {
+        "da": "Musiksidens afspiller har fået en ny samlet bundlinje inspireret af Music Assistants nye design med tydelig central afspilningsknap.",
+        "en": "The Music page player now has a unified bottom control bar inspired by Music Assistant's new design, with a prominent central playback button."
+      },
+      {
+        "da": "Forrige, play/pause, næste, lydstyrke og valg af afspiller er samlet i én rolig kontrollinje, mens tidslinjen ligger langs bunden.",
+        "en": "Previous, play/pause, next, volume, and player selection are combined in one clean control row, with the progress timeline along the bottom."
+      }
+    ]
+  },
+  {
+    "version": "20260811-157",
+    "tag": "v0.7.79",
+    "date": "2026-08-11",
+    "changes": [
+      {
+        "da": "Rettet at Pris i dag og Forbrug i dag kunne blive vist for lavt, fordi dagsensorens første værdi fejlagtigt blev trukket fra endnu en gang.",
+        "en": "Fixed Today's cost and Today's usage being shown too low because the daily sensor's first value was incorrectly subtracted a second time."
+      },
+      {
+        "da": "Energi-siden bruger nu den aktuelle værdi direkte fra de konfigurerede dagsensorer, som felterne i Administration angiver.",
+        "en": "The Energy page now uses the current value directly from the configured daily sensors, matching the fields defined in Administration."
+      }
+    ]
+  },
+  {
+    "version": "20260811-156",
+    "tag": "v0.7.78",
+    "date": "2026-08-11",
+    "changes": [
+      {
+        "da": "Når kun printerens eget kamera vises, bevarer kamerabilledet nu sit korrekte format uden kraftig beskæring eller forvrængning.",
+        "en": "When only the printer's own camera is shown, the camera image now keeps its correct aspect ratio without excessive cropping or distortion."
+      },
+      {
+        "da": "Hele printerbilledet tilpasses inden for kamerafeltet med centrerede kanter, mens visningen med begge kameraer bevarer sit kompakte layout.",
+        "en": "The complete printer image now fits within the camera area with centered borders, while the dual-camera view keeps its compact layout."
+      }
+    ]
+  },
+  {
+    "version": "20260811-155",
+    "tag": "v0.7.77",
+    "date": "2026-08-11",
+    "changes": [
+      {
+        "da": "3D-printervisningen viser nu kun kamerafelter for kamera-entities, der faktisk er valgt; et ikke-konfigureret kamera giver ikke længere et tomt sort felt.",
+        "en": "The 3D Printer view now shows camera areas only for camera entities that are actually selected; an unconfigured camera no longer creates an empty black area."
+      },
+      {
+        "da": "Når ét kamera er valgt, fylder det hele kamerakortet. Hvis ingen kameraer er valgt, skjules kamerakortet, og printerstyringen overtager den ledige bredde.",
+        "en": "When one camera is selected, it fills the entire camera card. If no cameras are selected, the camera card is hidden and the printer controls take over the available width."
+      }
+    ]
+  },
+  {
+    "version": "20260811-154",
+    "tag": "v0.7.76",
+    "date": "2026-08-11",
+    "changes": [
+      {
+        "da": "Rettet at Energi-siden kunne åbne med sammenpressede og overlappende kort, indtil redigeringstilstanden blev aktiveret.",
+        "en": "Fixed the Energy page opening with compressed and overlapping cards until edit mode was activated."
+      },
+      {
+        "da": "Det adaptive energilayout vurderer nu kun kortene i den aktive fane, så kort fra fanen Nu ikke fejlagtigt behandles som manglende på Overblik og omvendt.",
+        "en": "The adaptive Energy layout now evaluates only cards in the active view, so cards from Now are not incorrectly treated as missing on Overview and vice versa."
+      }
+    ]
+  },
+  {
+    "version": "20260811-153",
+    "tag": "v0.7.75",
+    "date": "2026-08-11",
+    "changes": [
+      {
+        "da": "Forsidens energigraf skjuler nu automatisk knapperne Varme og Vand, når de tilhørende sensorer ikke er konfigureret.",
+        "en": "The Overview energy chart now automatically hides the Heat and Water buttons when their corresponding sensors are not configured."
+      },
+      {
+        "da": "El forbliver standardvisningen, og tomme grafindstillinger kan ikke længere vælges.",
+        "en": "Electricity remains the default view, and empty chart configurations can no longer be selected."
+      }
+    ]
+  },
+  {
+    "version": "20260811-152",
+    "tag": "v0.7.74",
+    "date": "2026-08-11",
+    "changes": [
+      {
+        "da": "Rumtemperaturen er nu markant større på forsidens varmepumpekort, så den aktuelle temperatur er kortets tydeligste værdi.",
+        "en": "The room temperature is now significantly larger on the Overview heat pump card, making the current temperature the card's clearest value."
+      }
+    ]
+  },
+  {
+    "version": "20260811-151",
+    "tag": "v0.7.73",
+    "date": "2026-08-11",
+    "changes": [
+      {
+        "da": "Varmepumpekortet viser nu den aktuelle rumtemperatur øverst til venstre med temperaturstyringen placeret nedenunder i fuld bredde.",
+        "en": "The heat pump card now shows the current room temperature at the upper left with the temperature control placed below at full width."
+      },
+      {
+        "da": "Temperaturstyringen har fået et tydeligere samlet kontrolfelt og tilpasser sig automatisk smallere kort.",
+        "en": "The temperature control now has a clearer unified control surface and adapts automatically to narrower cards."
+      }
+    ]
+  },
+  {
+    "version": "20260811-150",
+    "tag": "v0.7.72",
+    "date": "2026-08-11",
+    "changes": [
+      {
+        "da": "Rettet en JavaScript-fejl i forsidens varmepumpekort, som stoppede redigeringstilstanden før flytte-, størrelse- og indstillingsknapperne blev oprettet.",
+        "en": "Fixed a JavaScript error in the Overview heat pump card that stopped edit mode before the move, resize, and settings controls were created."
+      },
+      {
+        "da": "Dynamiske tekster i varmepumpekortet følger nu dashboardets valgte sprog uden at afbryde rendering.",
+        "en": "Dynamic heat pump card text now follows the dashboard language without interrupting rendering."
+      }
+    ]
+  },
+  {
+    "version": "20260811-149",
+    "tag": "v0.7.71",
+    "date": "2026-08-11",
+    "changes": [
+      {
+        "da": "Rettet at redigering af forsiden kunne vise de stiplede kortrammer uden flytte-, størrelses- og indstillingsknapper på installationer med ældre cachede editorfiler.",
+        "en": "Fixed Overview editing showing dashed card outlines without move, resize, and settings controls on installations with older cached editor assets."
+      },
+      {
+        "da": "Forsidens editor-JavaScript og CSS bruger nu samme build-baserede cache-id, og releasekontrollen forhindrer fremover en udgivelse med blandede editorversioner.",
+        "en": "The Overview editor JavaScript and CSS now use the same build-based cache ID, and the release check prevents future releases with mixed editor versions."
+      }
+    ]
+  },
+  {
+    "version": "20260811-148",
+    "tag": "v0.7.70",
+    "date": "2026-08-11",
+    "changes": [
+      {
+        "da": "Rettet at browseren fortsatte med at bruge en ældre cachet kalender-CSS, så de nye lodrette og højdefyldende affaldsfelter ikke blev vist efter opdateringen.",
+        "en": "Fixed the browser continuing to use an older cached Calendar stylesheet, preventing the new vertical, height-filling waste rows from appearing after an update."
+      },
+      {
+        "da": "Kalenderens CSS har nu et nyt build-baseret cache-id, så rettelsen indlæses automatisk uden manuel rydning af browserens cache.",
+        "en": "The Calendar stylesheet now has a new build-based cache ID, so the fix loads automatically without manually clearing the browser cache."
+      }
+    ]
+  },
+  {
+    "version": "20260811-147",
+    "tag": "v0.7.69",
+    "date": "2026-08-11",
+    "changes": [
+      {
+        "da": "Affaldsfelterne fordeler nu hele den tilgængelige højde ligeligt, så kortet fyldes pænt uden tom plads under den sidste afhentning.",
+        "en": "Waste collection rows now share all available height evenly, filling the card cleanly without empty space below the last collection."
+      },
+      {
+        "da": "Tre viste afhentninger giver tre lige høje felter, fire giver fire felter og så videre; listen ruller kun, når felternes læsbare minimumshøjde ikke kan bevares.",
+        "en": "Three visible collections create three equal rows, four create four rows, and so on; the list scrolls only when the readable minimum row height cannot be preserved."
+      }
+    ]
+  },
+  {
+    "version": "20260811-146",
+    "tag": "v0.7.68",
+    "date": "2026-08-11",
+    "changes": [
+      {
+        "da": "Affaldsafhentninger står nu altid lodret i én kolonne med ét felt pr. række: felt 1, felt 2, felt 3 og så videre.",
+        "en": "Waste collections now always use one vertical column with one item per row: item 1, item 2, item 3, and so on."
+      },
+      {
+        "da": "Hvis der vises flere afhentninger, end kortets højde kan rumme, ruller kun affaldslisten lodret uden at ændre resten af kalenderlayoutet.",
+        "en": "If more collections are shown than the card height can fit, only the waste list scrolls vertically without changing the rest of the Calendar layout."
+      }
+    ]
+  },
+  {
+    "version": "20260811-145",
+    "tag": "v0.7.67",
+    "date": "2026-08-11",
+    "changes": [
+      {
+        "da": "Når kort mangler eller er slået fra, står de resterende kort nu i en lodret stak med fuld bredde i stedet for at blive fordelt side om side.",
+        "en": "When cards are unavailable or disabled, the remaining cards now form a full-width vertical stack instead of being distributed side by side."
+      },
+      {
+        "da": "Staklayoutet bruges ens på specialsiderne, Energi og Sikkerhed uden at overskrive brugerens gemte layout.",
+        "en": "The stacked layout is used consistently across specialized pages, Energy, and Security without overwriting the user's saved layout."
+      }
+    ]
+  },
+  {
+    "version": "20260811-144",
+    "tag": "v0.7.66",
+    "date": "2026-08-11",
+    "changes": [
+      {
+        "da": "Specialsiderne tilpasser nu automatisk kortenes størrelse, når et kort mangler eller er slået fra, så tomme områder bliver udfyldt uden at ændre brugerens gemte layout.",
+        "en": "Specialized pages now resize cards automatically when a card is unavailable or disabled, filling empty areas without changing the user's saved layout."
+      },
+      {
+        "da": "Kalender-siden skjuler nu AULA-, aftale- og affaldsområder, der ikke har en konfigureret datakilde, og lader de resterende kort bruge pladsen.",
+        "en": "The Calendar page now hides AULA, event, and waste regions that have no configured data source and lets the remaining cards use the space."
+      },
+      {
+        "da": "Energi og Sikkerhed fordeler nu også automatisk pladsen mellem de kort, der faktisk har tilgængelige datakilder.",
+        "en": "Energy and Security now also distribute space automatically between cards that actually have available data sources."
+      },
+      {
+        "da": "Når en datakilde senere sættes op igen, vender det oprindelige gemte kortlayout automatisk tilbage.",
+        "en": "When a data source is configured again later, the original saved card layout returns automatically."
+      }
+    ]
+  },
+  {
+    "version": "20260811-143",
+    "tag": "v0.7.65",
+    "date": "2026-08-11",
+    "changes": [
+      {
+        "da": "Affaldskortet har nu plads til at vise afhentningerne korrekt i det kompakte kalenderlayout i stedet for at klippe dem til smalle striber.",
+        "en": "The waste card now has enough room to show collections correctly in the compact Calendar layout instead of clipping them into narrow strips."
+      },
+      {
+        "da": "Eksisterende urørte v0.7.64-standardlayouts udvides automatisk, mens affaldskort som brugeren selv har ændret størrelse på bevares.",
+        "en": "Existing untouched v0.7.64 default layouts expand automatically, while waste cards resized by the user are preserved."
+      }
+    ]
+  },
+  {
+    "version": "20260811-142",
+    "tag": "v0.7.64",
+    "date": "2026-08-11",
+    "changes": [
+      {
+        "da": "Skoleskemaet viser nu hele ugens lektioner uden intern scrolling. Skemakortet bruger mere af kalenderens hÃ¸jde, og lektionerne tilpasser sig automatisk den tilgÃ¦ngelige plads.",
+        "en": "The school schedule now shows the entire week's lessons without internal scrolling. The schedule card uses more of the Calendar page height, and lessons automatically fit the available space."
+      },
+      {
+        "da": "Eksisterende urÃ¸rte v0.7.63-standardlayouts udvides automatisk, mens skemakort som brugeren selv har Ã¦ndret stÃ¸rrelse pÃ¥ bevares.",
+        "en": "Existing untouched v0.7.63 default layouts expand automatically, while schedule cards resized by the user are preserved."
+      }
+    ]
+  },
+  {
+    "version": "20260811-141",
+    "tag": "v0.7.63",
+    "date": "2026-08-11",
+    "changes": [
+      {
+        "da": "Kalender-siden prioriterer nu skoleskemaet: hvert skema får dobbelt bredde og mere højde, kommende aftaler ligger i en kompakt sidekolonne, og affald er reduceret til et lille sekundært kort.",
+        "en": "The Calendar page now prioritizes school schedules: each schedule gets twice the width and more height, upcoming events use a compact side column, and waste is reduced to a small secondary card."
+      },
+      {
+        "da": "Eksisterende urørte standardlayouts flyttes automatisk til den nye opbygning, mens layouts brugeren selv har flyttet eller ændret bevares.",
+        "en": "Existing untouched default layouts migrate automatically to the new composition, while layouts that users moved or resized themselves are preserved."
+      },
+      {
+        "da": "Kalender, skoleskema, affald og Stable/Beta-opdateringsfladen følger nu dashboardets valgte sprog på både dansk og engelsk.",
+        "en": "Calendar, school schedule, waste, and the Stable/Beta update interface now follow the dashboard's selected language in both Danish and English."
+      },
+      {
+        "da": "Rettet at kun det sidst indlæste skoleskema blev vist, når flere skemakalendere var valgt samtidig.",
+        "en": "Fixed only the last loaded school schedule being shown when multiple schedule calendars were selected at the same time."
       }
     ]
   },

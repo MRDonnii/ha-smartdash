@@ -267,17 +267,20 @@
     const data = printerData();
     if (card.type === "cameras") {
       const cameraDisplay = card.cameraDisplay || BeastConfig.get("panels.printer.cameraDisplay") || "both";
-      const showLiveCamera = cameraDisplay !== "printer";
-      const showPrinterCamera = cameraDisplay !== "live";
       const liveEntity = card.entity || BeastConfig.get("panels.printer.liveCamera");
-      const resolved = liveEntity ? window.BeastCameras?.resolveCamera?.(liveEntity) : null;
       const secondary = card.secondaryEntity || IDS.camera;
+      // The display preference may choose between configured sources, but it
+      // must never create a placeholder slot for a source that was not set.
+      const showLiveCamera = cameraDisplay !== "printer" && Boolean(liveEntity);
+      const showPrinterCamera = cameraDisplay !== "live" && Boolean(secondary);
+      if (!showLiveCamera && !showPrinterCamera) return "";
+      const resolved = liveEntity ? window.BeastCameras?.resolveCamera?.(liveEntity) : null;
       const fallbackState = liveEntity ? BeastHaSocket.getState(liveEntity) : null;
       const liveCamera = resolved || (liveEntity ? { slug: liveEntity.replace(/^camera\./, ""), entityId: liveEntity, label: fallbackState?.attributes?.friendly_name || "3D Printer", entityPicture: fallbackState?.attributes?.entity_picture || null } : null);
       return `<section class="beast-panel beast-ov-card beast-page-builder-card beast-printer-builder-card" ${cardSize(card)} data-printer-card="cameras" data-camera-display="${escapeHtml(cameraDisplay)}" data-secondary-camera="${escapeHtml(showPrinterCamera ? (secondary || "") : "")}">
         <section class="beast-printer-visual${showLiveCamera && showPrinterCamera ? "" : " is-single"}">
           ${showLiveCamera ? `<div class="beast-printer-cam beast-printer-cam--main">
-            ${liveCamera ? BeastCameras.sharedCameraMarkup(liveCamera, { className: "beast-printer-live-frame", label: false, motion: false }) : `<div class="beast-printer-camera-empty">Vælg et kamera</div>`}
+            ${BeastCameras.sharedCameraMarkup(liveCamera, { className: "beast-printer-live-frame", label: false, motion: false })}
             <span class="beast-printer-cam-label">3D Printer · Livekamera</span>
             <span class="beast-printer-live"><i></i> Live</span>
           </div>` : ""}
@@ -387,7 +390,12 @@
       return;
     }
     lastStructureSignature = structureSignature;
-    gridEl.innerHTML = `${cards.map(printerCardMarkup).join("")}<div data-card-editor-anchor></div>`;
+    const renderedCards = cards.map((card) => ({ card, markup: printerCardMarkup(card) })).filter((item) => item.markup);
+    const hasCameraCard = renderedCards.some((item) => item.card.type === "cameras");
+    gridEl.innerHTML = `${renderedCards.map((item) => {
+      if (hasCameraCard || item.card.type !== "control") return item.markup;
+      return printerCardMarkup({ ...item.card, desktop:{ ...(item.card.desktop || {}), w:12 }, tablet:{ ...(item.card.tablet || {}), w:2 } });
+    }).join("")}<div data-card-editor-anchor></div>`;
     wireCards();
   }
 
