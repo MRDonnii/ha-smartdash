@@ -897,6 +897,7 @@ function renderAppShell(root) {
   `).join("");
 
   root.innerHTML = `
+    <canvas class="beast-weather-fx" id="beastWeatherFx" aria-hidden="true"></canvas>
     <div class="beast-app">
       <span class="beast-status-dot-fixed" id="beastStatusDot" data-state="connecting" title="Forbinder…"></span>
       <div class="beast-body">
@@ -935,6 +936,7 @@ function renderAppShell(root) {
   window.setTimeout(() => window.BeastPageEditor?.mountAll(), 80);
   document.addEventListener("beast:navigate", () => window.setTimeout(() => window.BeastPageEditor?.mountAll(), 80));
   BeastHaSocket.connect();
+  BeastWeatherFx.mount();
   setupEventFocus();
   window.BeastScreenLock?.init();
   lastDoorbellBinaryState = BeastHaSocket.getState(DOORBELL_BINARY_ID())?.state || null;

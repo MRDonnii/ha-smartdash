@@ -683,10 +683,25 @@
   }
 
   function renderThemeView() {
+    const weatherOverlayOn = BeastConfig.get("features.weatherOverlay") === true;
+    const weatherOverride = String(BeastConfig.get("features.weatherOverlayConditionOverride") || "").trim();
+    const weatherOverlayMode = weatherOverlayOn ? (weatherOverride || "auto") : "off";
+    const weatherModes = [
+      ["off", t("Fra", "Off")], ["auto", t("Automatisk efter aktuelt vejr", "Automatic from current weather")],
+      ["sunny", t("Preview · sol", "Preview · sun")], ["cloudy", t("Preview · skyer", "Preview · clouds")],
+      ["rainy", t("Preview · regn", "Preview · rain")], ["pouring", t("Preview · kraftig regn", "Preview · heavy rain")],
+      ["snowy", t("Preview · sne", "Preview · snow")], ["snowy-rainy", t("Preview · slud", "Preview · sleet")],
+      ["hail", t("Preview · hagl", "Preview · hail")], ["fog", t("Preview · tåge", "Preview · fog")],
+      ["lightning-rainy", t("Preview · torden og regn", "Preview · thunderstorm")], ["clear-night", t("Preview · klar nat", "Preview · clear night")]
+    ];
     return `
       <section class="admin-view${activeView === "theme" ? " is-active" : ""}" data-admin-view="theme">
         <div class="admin-settings-intro"><div><h2>Tema og design</h2><p>Farve, stil og lystilstand for hele dashboardet. Ændringer virker med det samme og gemmes kun i denne browser.</p></div></div>
         <div class="admin-card admin-settings-group admin-settings-theme">${window.BeastTheme?.renderPanel() || ""}</div>
+        <div class="admin-card admin-settings-group"><div class="admin-card-head"><div><h2>${t("Vejr-overlay", "Weather overlay")}</h2><p>${t("Følger automatisk den valgte Home Assistant-vejrentity. Regn giver stænk og våd bund, mens sne lægger sig diskret. Preview-valgene gør det muligt at afprøve effekterne uden at ændre vejret i Home Assistant.", "Automatically follows the selected Home Assistant weather entity. Rain creates splashes and a wet edge, while snow settles subtly. Preview choices let you test effects without changing Home Assistant weather.")}</p></div></div>
+          <div class="beast-mqtt-config"><label><span>${t("Tilstand", "Mode")}</span><select id="adminThemeWeatherOverlay">${weatherModes.map(([value,label]) => `<option value="${value}" ${weatherOverlayMode === value ? "selected" : ""}>${label}</option>`).join("")}</select></label></div>
+          <div class="admin-actions"><button type="button" class="beast-btn beast-btn-primary" id="adminThemeWeatherOverlaySave">${t("Gem vejr-overlay", "Save weather overlay")}</button><span class="admin-save-state" data-save-state="themeWeatherOverlay"></span></div>
+        </div>
       </section>
     `;
   }
@@ -2198,6 +2213,14 @@
       autoReturnScheduleStart: document.getElementById("adminKioskAutoReturnScheduleStart").value || "08:00",
       autoReturnScheduleEnd: document.getElementById("adminKioskAutoReturnScheduleEnd").value || "22:00"
     })));
+    document.getElementById("adminThemeWeatherOverlaySave")?.addEventListener("click", (event) => save(event.currentTarget, "themeWeatherOverlay", async () => {
+      const mode = document.getElementById("adminThemeWeatherOverlay").value || "off";
+      return BeastConfig.set("features", {
+        ...BeastConfig.get("features"),
+        weatherOverlay: mode !== "off",
+        weatherOverlayConditionOverride: ["off", "auto"].includes(mode) ? null : mode
+      });
+    }));
     document.querySelectorAll("[data-save-panel]").forEach((button) => button.addEventListener("click", async () => {
       const panel = PANELS.find((item) => item.id === button.dataset.savePanel);
       if (!panel) return;
