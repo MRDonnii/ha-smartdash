@@ -378,7 +378,7 @@
           <section class="beast-ov-planner-section">
             <div class="beast-ov-planner-title">${BeastCore.icon("calendar", { size: 14 })}<span>Næste aftaler</span></div>
             <div class="beast-ov-calendar-list">
-              ${calendarItems.slice(0, 8).map((item) => `
+              ${calendarItems.slice(0, 4).map((item) => `
                 <div class="beast-ov-calendar-item">
                   <span>${escapeHtml(formatCompactDate(item.date))}</span>
                   <b>${escapeHtml(item.label)}</b>

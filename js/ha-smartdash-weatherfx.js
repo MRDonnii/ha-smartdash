@@ -43,6 +43,7 @@ const BeastWeatherFx = (() => {
   function mkGrad(x0, y0, x1, y1) { return ctx.createLinearGradient(x0, y0, x1, y1); }
 
   let canvas = null;
+  let ambientCanvas = null;
   let ctx = null;
   let particles = [];
   let impacts = [];
@@ -61,9 +62,20 @@ const BeastWeatherFx = (() => {
   }
 
   function resize() {
-    if (!canvas) return;
-    width = canvas.width = window.innerWidth;
-    height = canvas.height = window.innerHeight;
+    width = window.innerWidth;
+    height = window.innerHeight;
+    if (canvas) { canvas.width = width; canvas.height = height; }
+    if (ambientCanvas) { ambientCanvas.width = width; ambientCanvas.height = height; }
+  }
+
+  // Dashboard and screensaver are never visible at once, so rather than
+  // running the whole particle simulation twice (each drawParticle() call
+  // both paints AND steps that particle's position -- running it against
+  // two canvases every frame would advance every particle's physics
+  // twice as fast), tick() just points the single shared ctx at whichever
+  // canvas is actually on screen right now.
+  function activeCanvas() {
+    return (document.body.classList.contains("beast-is-ambient") && ambientCanvas) ? ambientCanvas : canvas;
   }
 
   function density(perPixels, cap) {
@@ -246,9 +258,18 @@ const BeastWeatherFx = (() => {
     }
   }
 
+  let liveTarget = null;
+
   function tick() {
     window.requestAnimationFrame(tick);
-    if (document.hidden || !ctx || !activeConfig) return;
+    const target = activeCanvas();
+    if (target !== liveTarget) {
+      liveTarget = target;
+      ctx = target ? target.getContext("2d") : null;
+    }
+    canvas?.classList.toggle("is-active", Boolean(activeConfig) && target === canvas);
+    ambientCanvas?.classList.toggle("is-active", Boolean(activeConfig) && target === ambientCanvas);
+    if (document.hidden || !ctx || !activeConfig || !target) return;
     ctx.clearRect(0, 0, width, height);
     const tint = TINTS[activeConfig.tint];
     if (tint) { const grad = tint(width, height); if (grad) { ctx.globalAlpha = 1; ctx.fillStyle = grad; ctx.fillRect(0, 0, width, height); } }
@@ -309,6 +330,7 @@ const BeastWeatherFx = (() => {
   // own async load.
   function mount() {
     canvas = document.getElementById("beastWeatherFx");
+    ambientCanvas = document.getElementById("beastAmbientWeatherFx");
     if (!canvas) return;
     reducedMotion = Boolean(window.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches);
     bindWeatherEntity();

@@ -1125,7 +1125,7 @@
 }
 
 .beast-ov-card--clock .beast-ov-clock-time {
-  font-size: clamp(1.8rem, min(11cqi, 24cqb), 4.2rem);
+  font-size: clamp(4.4rem, min(26cqi, 56cqb), 10rem);
 }
 
 .beast-ov-card--clock .beast-ov-clock-date {
