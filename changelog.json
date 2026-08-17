@@ -1,5 +1,16 @@
 [
   {
+    "version": "20260817-3",
+    "tag": "v0.7.117",
+    "date": "2026-08-17",
+    "changes": [
+      {
+        "da": "Vejr-overlayet udgives med et nyt entydigt versionsnummer, så installationer med det tidligere lokale v0.7.116-build sikkert opdager og installerer opdateringen.",
+        "en": "The weather overlay is published with a new unique version number so installations carrying the earlier local v0.7.116 build reliably discover and install the update."
+      }
+    ]
+  },
+  {
     "version": "20260817-2",
     "tag": "v0.7.116",
     "date": "2026-08-17",
