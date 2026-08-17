@@ -260,13 +260,26 @@
     return `<div class="beast-camera-quality-menu" data-camera-quality-slug="${escapeHtml(camera.slug)}"><button type="button" class="beast-camera-quality-toggle" aria-label="Vælg kamerakvalitet" aria-expanded="false">⋮</button><div class="beast-camera-quality-popover" hidden><small>Livekvalitet</small>${camera.qualityOptions.map((option) => `<button type="button" data-camera-quality="${option.quality}" class="${option.quality === camera.selectedQuality ? "is-active" : ""}"><span>${escapeHtml(option.label)}</span>${option.quality === camera.selectedQuality ? BeastCore.icon("check", { size: 16 }) : ""}</button>`).join("")}</div></div>`;
   }
 
+  // GO2RTC_BASE_URL is only assigned in init(), i.e. when the Cameras panel
+  // itself mounts. Anything that renders a camera before that (the overview
+  // alert banners, in particular) would see it empty and silently fall back
+  // to Home Assistant's own MJPEG proxy stream -- a real live picture, so
+  // nothing looks broken, but a far less resilient one than the WebRTC
+  // player, and prone to exactly the stall/reconnect flicker that transport
+  // is meant to absorb. Reading straight from config makes the choice
+  // independent of panel init order.
+  function go2rtcBaseUrl() {
+    return GO2RTC_BASE_URL || String(BeastConfig.get("panels.cameras.go2rtcBaseUrl") || "").replace(/\/+$/, "");
+  }
+
   function sharedCameraMarkup(camera, options = {}) {
     const className = options.className || "";
     // go2rtc is optional. Without an explicitly configured endpoint the
     // authenticated Home Assistant camera image is the reliable fallback.
-    const streamName = GO2RTC_BASE_URL ? (camera.resolvedStreamName || camera.streamName) : null;
+    const baseUrl = go2rtcBaseUrl();
+    const streamName = baseUrl ? (camera.resolvedStreamName || camera.streamName) : null;
     return `<div class="beast-shared-camera ${className}" data-shared-camera="${escapeHtml(camera.slug)}">
-      <div class="beast-shared-camera-frame">${streamName ? `<iframe class="beast-shared-camera-live" src="./camera-player.html?v=16&transport=webrtc&src=${encodeURIComponent(streamName)}${options.audio ? "&audio=1" : ""}" title="${escapeHtml(camera.label)} livekamera" frameborder="0" allow="autoplay"></iframe>` : camera.haStreamUrl ? `<img class="beast-shared-camera-live beast-shared-camera-ha-stream" src="${escapeHtml(camera.haStreamUrl)}" data-camera-fallback-picture="${escapeHtml(camera.entityPicture || "")}" alt="${escapeHtml(camera.label)} livekamera">` : `<img class="beast-shared-camera-snapshot" data-camera-picture="${escapeHtml(camera.entityPicture || "")}" alt="${escapeHtml(camera.label)}">`}</div>
+      <div class="beast-shared-camera-frame">${streamName ? `<iframe class="beast-shared-camera-live" src="./camera-player.html?v=19&base=${encodeURIComponent(baseUrl)}&transport=webrtc&src=${encodeURIComponent(streamName)}${options.audio ? "&audio=1" : ""}" title="${escapeHtml(camera.label)} livekamera" frameborder="0" allow="autoplay"></iframe>` : camera.haStreamUrl ? `<img class="beast-shared-camera-live beast-shared-camera-ha-stream" src="${escapeHtml(camera.haStreamUrl)}" data-camera-fallback-picture="${escapeHtml(camera.entityPicture || "")}" alt="${escapeHtml(camera.label)} livekamera">` : `<img class="beast-shared-camera-snapshot" data-camera-picture="${escapeHtml(camera.entityPicture || "")}" alt="${escapeHtml(camera.label)}">`}</div>
       ${qualityMenuMarkup(camera)}
       ${options.motion !== false && camera.motion ? `<span class="beast-camera-motion-badge">${BeastCore.icon("bolt", { size: 11 })} ${escapeHtml(camera.motionLabel || "Hændelse")}</span>` : ""}
       ${options.label === false ? "" : `<span class="beast-shared-camera-label">${escapeHtml(camera.label)}</span>`}
@@ -290,7 +303,9 @@
     });
   }
 
-  function hasGo2rtc() { return Boolean(GO2RTC_BASE_URL); }
+  // Same init-order independence as sharedCameraMarkup() above -- callers
+  // gate whole live-camera views on this (doorbell, pool, screensaver).
+  function hasGo2rtc() { return Boolean(go2rtcBaseUrl()); }
 
   function snapshotUrl(streamName) {
     return `${GO2RTC_BASE_URL}/api/frame.jpeg?src=${encodeURIComponent(streamName)}&_ts=${Date.now()}`;
@@ -488,6 +503,17 @@
     isSmartDetectionEntity,
     refreshStreams: () => discoverGo2rtcStreams(true).then(() => reconcileSavedCameraQualities()).then(() => {
       render(); document.dispatchEvent(new CustomEvent("beast:camera-streams-changed")); return discoverCameras();
-    })
+    }),
+    // For pages that need go2rtc's stream list (to tell which camera
+    // entities will actually get a live WebRTC feed vs HA's own slower
+    // proxy stream -- see Administration's camera picker) but never mount
+    // the Cameras panel itself, so discoverGo2rtcStreams() would otherwise
+    // never run and GO2RTC_BASE_URL would stay empty. Safe to call
+    // regardless of whether the Cameras panel is mounted -- unlike
+    // refreshStreams(), this never touches containerEl/render().
+    ensureStreamDiscovery: (baseUrl) => {
+      if (baseUrl) GO2RTC_BASE_URL = baseUrl;
+      return discoverGo2rtcStreams();
+    }
   };
 })();

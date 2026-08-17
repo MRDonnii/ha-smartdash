@@ -78,6 +78,19 @@
 .beast-ov-mail-banner-icon { display: flex; align-items: center; justify-content: center; color: var(--warning); background: var(--warning-soft); }
 .beast-ov-mail-banner-photo { background: var(--warning-soft); }
 .beast-ov-mail-banner > div { width: 100%; }
+/* Stable wrapper updateBannerHostBody() reuses across re-renders instead
+   of rebuilding the photo (which, for a live camera, means tearing down
+   and recreating its stream) every time -- see the function's own comment
+   in ha-smartdash-overview.js. Plain block passthrough, no styling of its
+   own; the child photo/icon element still supplies width/aspect-ratio. */
+/* Isolates the live camera from layout/paint churn caused by its sibling
+   text updating on every render (a printer's progress percentage, for
+   instance) -- without this, some browsers (kiosk/embedded ones
+   especially) treat that sibling reflow as reason enough to repaint this
+   box too, which can briefly reset a video element's decode surface and
+   read as the camera flickering to black even though nothing about the
+   photo itself actually changed. */
+.beast-ov-mail-banner-photo-slot { display: block; width: 100%; contain: layout style paint; }
 .beast-ov-mail-banner strong { display: block; font-size: 13px; line-height: 1.3; }
 .beast-ov-mail-banner small { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; margin-top: 2px; color: rgba(255,255,255,.68); font-size: 11px; line-height: 1.35; }
 

@@ -247,7 +247,7 @@ function showDoorbellView() {
   const camera = doorbellCameraStream();
   const useStream = camera && window.BeastCameras?.hasGo2rtc?.() && (camera.resolvedStreamName || camera.streamName);
   const cameraMarkup = useStream
-    ? `<iframe src="./camera-player.html?v=16&transport=webrtc&src=${encodeURIComponent(camera.resolvedStreamName || camera.streamName)}" title="Fordør livekamera" frameborder="0" allow="autoplay"></iframe>`
+    ? `<iframe src="./camera-player.html?v=19&base=${encodeURIComponent(BeastConfig.get("panels.cameras.go2rtcBaseUrl") || "")}&transport=webrtc&src=${encodeURIComponent(camera.resolvedStreamName || camera.streamName)}" title="Fordør livekamera" frameborder="0" allow="autoplay"></iframe>`
     : camera?.haStreamUrl
       ? `<img class="beast-doorbell-ha-camera" src="${camera.haStreamUrl}" data-doorbell-picture="${camera.entityPicture || ""}" alt="Fordør livekamera">`
       : `<img class="beast-doorbell-ha-camera" data-doorbell-picture="${camera?.entityPicture || ""}" alt="Fordør kamera">`;
@@ -362,7 +362,7 @@ function ambientCameraMarkup(config) {
     const camera = window.BeastCameras?.resolveCamera?.(id);
     if (!camera) return "";
     if (window.BeastCameras?.hasGo2rtc?.() && camera.streamName) {
-      const src = `./camera-player.html?v=16&transport=webrtc&src=${encodeURIComponent(camera.resolvedStreamName || camera.streamName)}`;
+      const src = `./camera-player.html?v=19&base=${encodeURIComponent(BeastConfig.get("panels.cameras.go2rtcBaseUrl") || "")}&transport=webrtc&src=${encodeURIComponent(camera.resolvedStreamName || camera.streamName)}`;
       return `<div class="beast-ambient-camera-tile"><iframe class="beast-ambient-camera-tile-frame" src="${src}" allow="autoplay"></iframe></div>`;
     }
     if (camera.haStreamUrl) {
@@ -658,9 +658,22 @@ function reloadCameraFrame(frame, reason) {
   document.dispatchEvent(new CustomEvent("beast:camerahealth", { detail: { state: "recovering", reason } }));
 }
 
+// Alert-banner cameras are deliberately exempt, the same way the banner's
+// own detail modal already is by accident (it's appended to <body>, so it
+// has no .beast-section ancestor and never matched this selector -- which
+// is exactly why that modal has always played smoothly while the banner
+// flickered, on the very same stream).
+//
+// The watchdog's recovery is a full iframe reload, and a reloading iframe
+// paints a blank frame before its new document renders. That's the right
+// trade for a big always-on camera view that has genuinely died. For a
+// small banner thumbnail it isn't: camera-player.js already reconnects
+// itself internally (without ever blanking, since it keeps the last good
+// poster frame), so the outer reload adds nothing but the visible flash --
+// and against a source that reconnects often, it fires repeatedly.
 function visibleCameraFrames() {
   return Array.from(document.querySelectorAll('iframe[src*="camera-player.html"]'))
-    .filter((frame) => frame.closest(".beast-section.is-active"));
+    .filter((frame) => frame.closest(".beast-section.is-active") && !frame.closest("#beastOvBanners"));
 }
 
 function runCameraHealthCheck() {

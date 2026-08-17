@@ -1,5 +1,32 @@
 [
   {
+    "version": "20260817-24",
+    "tag": "v0.7.121",
+    "date": "2026-08-17",
+    "changes": [
+      {
+        "da": "Rettet at et livekamera i en advarsel (fx 3D-printeren) blinkede til en tom skærm igen og igen: kameraets afspiller blev slettet og bygget forfra hver eneste gang advarslen opdaterede sig, fx når printerens fremgang tikkede. Kameraet i advarslen kører nu lige så stabilt som i detaljevinduet.",
+        "en": "Fixed a live camera inside an alert (e.g. the 3D printer) repeatedly flickering to a blank frame: the camera's player was destroyed and rebuilt every time the alert refreshed, such as when print progress ticked. The alert's camera now runs as smoothly as it does in the detail view."
+      },
+      {
+        "da": "Livekameraer vælger nu altid den hurtige direkte stream, uanset hvilken side der åbnes først -- før kunne en advarsel på forsiden ende på en langsommere visning, fordi kameraopsætningen endnu ikke var indlæst.",
+        "en": "Live cameras now always pick the fast direct stream regardless of which page loads first -- previously an alert on the front page could end up on a slower view because the camera setup hadn't loaded yet."
+      },
+      {
+        "da": "Livebilledet fryser nu på sidste gode billede, mens en forbindelse genoprettes, i stedet for at gå helt sort.",
+        "en": "The live picture now holds the last good frame while a connection is re-established, instead of going fully black."
+      },
+      {
+        "da": "Kameravælgerne under Administration viser nu tydeligt hvilke kameraer der giver hurtig direkte live-visning, og hvilke der vises lidt langsommere -- med de hurtige øverst.",
+        "en": "The camera pickers under Administration now clearly show which cameras give a fast direct live view and which are shown a little slower -- with the fast ones listed first."
+      },
+      {
+        "da": "3D-printerens indbyggede kamerabillede opdateres nu hurtigere, og bliver ved med at opdatere sig mens detaljevinduet står åbent i stedet for at fryse.",
+        "en": "The 3D printer's built-in camera image now updates faster, and keeps updating while the detail view stays open instead of freezing."
+      }
+    ]
+  },
+  {
     "version": "20260817-12",
     "tag": "v0.7.120",
     "date": "2026-08-17",
