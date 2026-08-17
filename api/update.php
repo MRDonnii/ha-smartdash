@@ -176,6 +176,41 @@ function fetchLatestRelease($githubRepo, &$error = null) {
   return $data;
 }
 
+function fetchLatestReleaseFromAtom($githubRepo, &$error = null) {
+  $feedError = null;
+  $body = httpGet("https://github.com/$githubRepo/releases.atom", $feedError);
+  if ($body === null) { $error = $feedError; return null; }
+
+  if (!preg_match('/<entry>(.*?)<\/entry>/s', $body, $entryMatch)) {
+    $error = "No release entry found in GitHub Atom feed";
+    return null;
+  }
+  $entry = $entryMatch[1];
+  if (!preg_match('/<id>[^<]*\/([^<\/]+)<\/id>/', $entry, $tagMatch)) {
+    $error = "Release tag not found in GitHub Atom feed";
+    return null;
+  }
+
+  $tag = html_entity_decode(trim($tagMatch[1]), ENT_QUOTES | ENT_XML1, "UTF-8");
+  preg_match('/<title>(.*?)<\/title>/s', $entry, $titleMatch);
+  preg_match('/<updated>(.*?)<\/updated>/s', $entry, $updatedMatch);
+  preg_match('/<link[^>]+rel="alternate"[^>]+href="([^"]+)"/', $entry, $linkMatch);
+  preg_match('/<content[^>]*>(.*?)<\/content>/s', $entry, $contentMatch);
+  $title = isset($titleMatch[1]) ? html_entity_decode(trim($titleMatch[1]), ENT_QUOTES | ENT_XML1, "UTF-8") : $tag;
+  $content = isset($contentMatch[1]) ? html_entity_decode(trim($contentMatch[1]), ENT_QUOTES | ENT_XML1, "UTF-8") : "";
+  $plainContent = trim(strip_tags($content));
+  preg_match('/\bBuild:\s*(\d{8}-\d+)\b/i', $plainContent, $buildMatch);
+
+  return [
+    "tag_name" => $tag,
+    "html_url" => isset($linkMatch[1]) ? html_entity_decode($linkMatch[1], ENT_QUOTES | ENT_XML1, "UTF-8") : "https://github.com/$githubRepo/releases/tag/" . rawurlencode($tag),
+    "body" => $plainContent,
+    "published_at" => $updatedMatch[1] ?? null,
+    "prerelease" => stripos($title, "beta") !== false || stripos($title, "pre-release") !== false,
+    "beast_build" => $buildMatch[1] ?? null,
+  ];
+}
+
 // GitHub's /releases/latest quietly excludes anything marked "pre-release"
 // -- exactly the behavior the stable channel wants, for free. The beta
 // channel instead reads the plain /releases list (newest first) and takes
@@ -184,7 +219,10 @@ function fetchLatestRelease($githubRepo, &$error = null) {
 function fetchLatestReleaseForChannel($githubRepo, $channel, &$error = null) {
   if ($channel !== "beta") return fetchLatestRelease($githubRepo, $error);
   $body = httpGet("https://api.github.com/repos/$githubRepo/releases?per_page=5", $error);
-  if ($body === null) return null;
+  // GitHub's anonymous API quota is shared by every dashboard behind the
+  // same public IP. The public Atom feed is not subject to that API quota,
+  // so keep beta discovery working when GitHub responds with HTTP 403.
+  if ($body === null) return fetchLatestReleaseFromAtom($githubRepo, $error);
   $data = json_decode($body, true);
   if (!is_array($data) || empty($data[0]["tag_name"])) { $error = "Unexpected GitHub API response"; return null; }
   return $data[0];
@@ -311,7 +349,8 @@ if ($action === "check") {
     exit;
   }
   $tag = $release["tag_name"];
-  $remoteBuildId = fetchRemoteBuildId($githubRepo, $tag, $error);
+  $remoteBuildId = $release["beast_build"] ?? null;
+  if (!isSafeVersion($remoteBuildId)) $remoteBuildId = fetchRemoteBuildId($githubRepo, $tag, $error);
   if ($remoteBuildId === null) { http_response_code(502); echo json_encode(["error" => "github_unreachable", "message" => $error]); exit; }
 
   $payload = [

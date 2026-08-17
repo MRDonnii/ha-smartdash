@@ -1,5 +1,20 @@
 [
   {
+    "version": "20260817-4",
+    "tag": "v0.7.118",
+    "date": "2026-08-17",
+    "changes": [
+      {
+        "da": "Beta-opdateringer kan nu findes via GitHubs offentlige release-feed, når den delte anonyme API-kvote eller raw-downloadgrænse er opbrugt.",
+        "en": "Beta updates can now be discovered through GitHub's public release feed when the shared anonymous API quota or raw download limit has been exhausted."
+      },
+      {
+        "da": "Release-feedet indeholder nu build-ID'et, så updateren kan sammenligne versioner uden et ekstra kald til raw.githubusercontent.com.",
+        "en": "The release feed now carries the build ID so the updater can compare versions without an additional raw.githubusercontent.com request."
+      }
+    ]
+  },
+  {
     "version": "20260817-3",
     "tag": "v0.7.117",
     "date": "2026-08-17",
