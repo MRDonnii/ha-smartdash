@@ -1,5 +1,24 @@
 [
   {
+    "version": "20260817-2",
+    "tag": "v0.7.116",
+    "date": "2026-08-17",
+    "changes": [
+      {
+        "da": "Nyt animeret vejr-overlay kan slås fra, følge Home Assistants aktuelle vejr automatisk eller vise en valgt preview-effekt fra Administration.",
+        "en": "A new animated weather overlay can be turned off, follow Home Assistant's current weather automatically, or show a selected preview effect from Administration."
+      },
+      {
+        "da": "Regn rammer nu bunden med små stænk og en diskret våd kant, mens snefnug samler sig i et tyndt lag langs bunden.",
+        "en": "Rain now hits the bottom with small splashes and a subtle wet edge, while snowflakes collect in a thin layer along the bottom."
+      },
+      {
+        "da": "Overlayet skifter automatisk mellem sol, nat, skyer, vind, tåge, regn, skybrud, sne, slud, hagl og torden, når vejrtilstanden ændrer sig.",
+        "en": "The overlay automatically switches between sun, night, clouds, wind, fog, rain, downpour, snow, sleet, hail, and thunderstorms when the weather state changes."
+      }
+    ]
+  },
+  {
     "version": "20260813-1",
     "tag": "v0.7.115",
     "date": "2026-08-13",

@@ -87,6 +87,16 @@ body::after {
   overflow: hidden;
 }
 
+/* Full-screen weather animation behind the translucent dashboard surfaces. */
+.beast-weather-fx {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  display: none;
+  pointer-events: none;
+}
+.beast-weather-fx.is-active { display: block; }
+
 /* No header bar — every pixel of a 15" wall panel is precious. A tiny fixed
    dot is the only persistent chrome; everything else lives in Indstillinger. */
 .beast-status-dot-fixed {
