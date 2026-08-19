@@ -44,10 +44,11 @@
     const latest = values[values.length - 1];
     host.innerHTML = `
       <div class="beast-pool-chart-head">
+        ${BeastCore.chartTypeToggleMarkup("pool.temperature", "")}
         <span><small>Vandtemperatur · 24 timer</small><strong>${latest.toFixed(1)}°</strong></span>
-        <span><em>Min ${minimum.toFixed(1)}°</em><em>Maks ${maximum.toFixed(1)}°</em></span>
+        <span class="beast-energy-chart-head-stats"><em>Min ${minimum.toFixed(1)}°</em><em>Maks ${maximum.toFixed(1)}°</em></span>
       </div>
-      <div class="beast-pool-chart">${BeastCore.sparkline(values, { width: 760, height: 105, color: "var(--accent-b)" })}</div>
+      <div class="beast-pool-chart">${BeastCore.sparkline(values, { width: 760, height: 105, color: "var(--accent-b)", chartKey: "pool.temperature" })}</div>
       <div class="beast-pool-chart-axis"><span>24 timer siden</span><span>12 timer</span><span>Nu</span></div>`;
   }
 
@@ -215,6 +216,10 @@
     loadTemperatureHistory();
 
   }
+
+  document.addEventListener("beast:chart-type-changed", (event) => {
+    if (event.detail?.key === "*" || event.detail?.key === "pool.temperature") renderTemperatureHistory();
+  });
 
   BeastCore.registerPanel("pool", "beastPoolZone", init);
 })();

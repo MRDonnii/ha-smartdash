@@ -744,13 +744,28 @@
   overflow: hidden;
 }
 
+/* The line/bars/colour toggle sits first (top-left of the card) rather
+   than the title -- it's the control the user actually reaches for while
+   editing, so it gets the corner; the title just follows it. Only the
+   trailing stats/day-picker group is pinned to the right (.-stats below),
+   everything else clusters left in document order. */
 .beast-energy-chart-head {
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: var(--space-3);
   min-width: 0;
   margin-bottom: var(--space-2);
 }
+.beast-energy-chart-head-stats { margin-left: auto; }
+/* Line/bars switch for the usage graph. Matches the segmented look the
+   price and utility toggles already use elsewhere on this page, so it
+   reads as the same kind of control rather than a new one. */
+.beast-energy-chart-type { flex: 0 0 auto; display: inline-flex; gap: 2px; padding: 2px; border: 1px solid var(--border); border-radius: 999px; background: var(--surface-2); }
+.beast-energy-chart-type button { min-height: 30px; padding: 0 12px; border: 0; border-radius: 999px; background: transparent; color: var(--ink-muted); font: 800 11px/1 var(--font-sans); cursor: pointer; touch-action: manipulation; transition: background .16s ease, color .16s ease; }
+.beast-energy-chart-type button:hover { color: var(--ink); }
+.beast-energy-chart-type button.is-active { background: var(--accent-gradient); color: var(--accent-ink); }
+.beast-energy-bars .beast-energy-bar { fill: var(--accent-b, #4fb8ff); opacity: .85; }
 .beast-energy-recommendation { min-height:64px; display:flex; align-items:center; gap:12px; padding:10px 16px; border:1px solid var(--accent-border); border-radius:var(--radius-md); background:var(--accent-soft); color:var(--accent-a); }
 .beast-energy-recommendation div { min-width:0; }
 .beast-energy-recommendation strong,.beast-energy-recommendation span { display:block; }
@@ -1021,13 +1036,18 @@
   vector-effect: non-scaling-stroke;
   filter: blur(1.5px);
 }
+/* Matches .beast-ov-utility-line-path on the front page (see
+   ha-smartdash-overview.css) so the same measurement looks the same in
+   both places: same weight, same soft glow instead of a separate blurred
+   shadow path underneath. */
 .beast-energy-line-path {
   fill: none;
   stroke: #f7fbff;
-  stroke-width: 2.5;
+  stroke-width: 2;
   stroke-linecap: round;
   stroke-linejoin: round;
   vector-effect: non-scaling-stroke;
+  filter: drop-shadow(0 0 2px rgba(35,155,255,.55));
 }
 
 .beast-sparkline-area {
@@ -1456,7 +1476,10 @@
 .beast-pool-runtime-card > div { position: absolute; left: 12px; right: 12px; bottom: 7px; height: 4px; overflow: hidden; border-radius: 4px; background: var(--border); }
 .beast-pool-runtime-card > div i { display: block; height: 100%; border-radius: inherit; background: var(--accent-gradient); transition: width .4s ease; }
 .beast-pool-insights > .beast-pool-temperature-chart-card { grid-column: span 2; display: flex; flex-direction: column; align-items: stretch; gap: 4px; padding: 10px 14px 7px; }
-.beast-pool-chart-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
+/* Toggle first (top-left) rather than the label, matching the Energy
+   page's chart heads -- see .beast-energy-chart-head for the reasoning. */
+.beast-pool-chart-head { display: flex; align-items: flex-start; flex-wrap: wrap; gap: 12px; }
+.beast-pool-chart-head .beast-energy-chart-head-stats { margin-left: auto; }
 .beast-pool-chart-head small,.beast-pool-chart-head strong { display: block; }
 .beast-pool-chart-head small { color: var(--ink-muted); font-size: 10px; text-transform: uppercase; letter-spacing: .07em; }
 .beast-pool-chart-head strong { margin-top: 2px; font-size: var(--text-lg); }
@@ -3541,3 +3564,97 @@
   .beast-heating-main .beast-heating-room-card .beast-stepper-value small { font-size:7px; }
   .beast-heating-main .beast-heating-room-card .beast-stepper-value strong { font-size:13px; }
 }
+
+/* Shared line/bars switch used by every graph that can be toggled (see
+   BeastCore.chartTypeToggleMarkup). Same segmented look as the energy and
+   price toggles so it reads as the same kind of control everywhere. */
+/* Hidden during normal use and revealed in edit mode: choosing a graph's
+   shape is a layout decision, so it lives with the other editing controls
+   instead of taking up space in every card all the time.
+   .is-native-page-editing is set on a page's root by the native page
+   editor; .is-editing is the front page's own equivalent. */
+/* Three different edit modes exist: .is-editing (front page),
+   .is-native-page-editing (pages using the shared page editor) and
+   .is-native-editing (the Energy page, which predates that shared editor
+   and has its own). All three mean "the user is arranging this page", so
+   all three reveal the graph controls. */
+.beast-chart-type { display: none; }
+.is-native-page-editing .beast-chart-type,
+.is-native-editing .beast-chart-type,
+.is-utility-editing .beast-chart-type,
+.is-editing .beast-chart-type { display: inline-flex; align-items: center; gap: 4px; padding: 2px; border: 1px solid var(--border); border-radius: 999px; background: var(--surface-2); }
+.beast-chart-type > span { padding: 0 6px 0 8px; color: var(--ink-faint); font-size: 10px; font-weight: 800; text-transform: uppercase; letter-spacing: .04em; }
+.beast-chart-type button { min-height: 28px; padding: 0 11px; border: 0; border-radius: 999px; background: transparent; color: var(--ink-muted); font: 800 11px/1 var(--font-sans); cursor: pointer; touch-action: manipulation; }
+.beast-chart-type button:hover { color: var(--ink); }
+.beast-chart-type button.is-active { background: var(--accent-gradient); color: var(--accent-ink); }
+.beast-sparkline-bars { display: block; width: 100%; height: 100%; }
+
+/* Edit mode deliberately makes a card's contents unclickable so a press
+   anywhere on it starts a drag instead of hitting the controls inside.
+   The line/bars switch is the exception: it only exists while editing, so
+   it has to stay clickable there or it can't be used at all. !important
+   matches the rule above it, which is itself !important. */
+.is-native-page-editing .beast-chart-type,
+.is-native-page-editing .beast-chart-type *,
+.is-native-editing .beast-chart-type,
+.is-native-editing .beast-chart-type * { pointer-events: auto !important; }
+
+/* Colour panel folded out from the chart-type switch in edit mode. */
+.beast-chart-type { position: relative; }
+.beast-chart-colors-btn { display: inline-flex; align-items: center; justify-content: center; min-height: 28px; padding: 0 9px; }
+.beast-chart-colors { position: absolute; top: calc(100% + 6px); right: 0; z-index: 60; width: 232px; display: grid; gap: 9px; padding: 12px; border: 1px solid var(--border-strong); border-radius: 12px; background: var(--surface-solid); box-shadow: 0 18px 44px rgba(0,0,0,.42); text-align: left; }
+.beast-chart-colors[hidden] { display: none; }
+.beast-chart-colors label { display: grid; gap: 4px; }
+.beast-chart-colors label > span, .beast-chart-colors .beast-chart-color-steps > span { color: var(--ink-muted); font-size: 10px; font-weight: 800; text-transform: uppercase; letter-spacing: .04em; }
+.beast-chart-colors select { min-height: 32px; border: 1px solid var(--border); border-radius: 8px; background: var(--surface-2); color: var(--ink); font: 700 12px/1 var(--font-sans); padding: 0 8px; }
+.beast-chart-colors input[type="color"] { width: 100%; height: 30px; padding: 0; border: 1px solid var(--border); border-radius: 8px; background: none; cursor: pointer; }
+.beast-chart-color-steps { display: grid; gap: 4px; }
+.beast-chart-color-steps > div { display: grid; grid-template-columns: repeat(4, 1fr); gap: 5px; }
+.beast-chart-colors small { color: var(--ink-faint); font-size: 10.5px; }
+/* Line variant of the hour-by-hour price chart -- same box the bars use,
+   and it keeps the bars' key markers (cheapest, dearest, current hour)
+   because spotting those at a glance is the point of this chart. */
+.beast-energy-price-line { width: 100%; height: 190px; }
+.beast-energy-price-line svg { width: 100%; height: 100%; display: block; overflow: visible; }
+.beast-energy-price-path { fill: none; stroke-width: 2.5; stroke-linecap: round; stroke-linejoin: round; vector-effect: non-scaling-stroke; }
+.beast-energy-price-dot { stroke: var(--surface-solid); stroke-width: 2; vector-effect: non-scaling-stroke; }
+.beast-energy-price-dot.is-now { fill: var(--accent-a); }
+.beast-energy-price-dot.is-min { fill: var(--success); }
+.beast-energy-price-dot.is-max { fill: var(--danger); }
+.beast-energy-price-hourline { opacity: .5; }
+
+/* Heat/water view. .beast-energy-panel is always display:grid (2 columns x
+   4 rows, see the base rule above) even outside the native-layout system,
+   so this wrapper needs its own explicit placement -- left unset, it
+   auto-placed into the single first column left of the viewbar, squeezed
+   into ~40% width with the rest of the page blank. Spanning the full grid
+   area below the viewbar and laying itself out internally sidesteps both
+   that and every electricity-only positioning rule further down. */
+.beast-energy-utility-view {
+  grid-column: 1 / -1;
+  grid-row: 2 / -1;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  min-height: 0;
+}
+.beast-energy-utility-view > .beast-stat-grid {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+.beast-energy-utility-view > .beast-energy-chart-wrap {
+  flex: 1;
+  min-height: 0;
+}
+@media (max-width: 980px) {
+  .beast-energy-utility-view > .beast-stat-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
+/* Utility switcher on the consumption page (El / Varme / Vand). Only
+   rendered when more than one utility is configured -- an install that
+   measures electricity alone shows no tabs at all. */
+/* Heat/water have no draggable cards, so unlike the rest of the app they
+   need their own small trigger to reach the (otherwise edit-mode-only)
+   chart-type/colour toggle -- see utilityEditing in ha-smartdash-energy.js. */
+.beast-energy-utility-edit { flex-shrink: 0; width: 34px; height: 34px; display: grid; place-items: center; border: 1px solid var(--border); border-radius: 999px; background: var(--surface-2); color: var(--ink-muted); cursor: pointer; touch-action: manipulation; }
+.beast-energy-utility-edit:hover { color: var(--ink); }
+.beast-energy-utility-edit.is-active { border-color: var(--accent-border); background: var(--accent-soft); color: var(--accent); }

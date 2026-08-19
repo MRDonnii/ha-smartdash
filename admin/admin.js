@@ -137,6 +137,8 @@
       { key: "liveStream", label: "go2rtc streamnavn (kun hvis kameraet ikke kan vælges ovenfor)", type: "text", placeholder: "3dprinter" }
     ]},
     { id: "energy", title: "Energi", description: "Hovedmåler, elpris og dagens totaler.", fields: [
+      { key: "usageChartType", label: "Forbrugsgraf som standard", type: "select", choices: [["line", "Linje"], ["bars", "Søjler"]],
+        hint: "Gælder både forsidens forbrugsgraf og Energi-siden. Kan altid skiftes direkte på Energi-siden bagefter -- det valg gemmes her." },
       { key: "powerSensor", label: "Hovedmåler (effekt)", type: "single", domain: "sensor", deviceClasses: ["power"], hints: ["main", "total", "house", "hoved"] },
       { key: "priceSensor", label: "Elpris nu", type: "single", domain: "sensor", deviceClasses: ["monetary"], hints: ["price", "pris"] },
       { key: "priceForecastSensor", label: "Prisprognose (valgfri)", type: "single", domain: "sensor", hints: ["forecast", "prognose", "pris"] },
@@ -725,13 +727,35 @@
       ["hail", t("Preview · hagl", "Preview · hail")], ["fog", t("Preview · tåge", "Preview · fog")],
       ["lightning-rainy", t("Preview · torden og regn", "Preview · thunderstorm")], ["clear-night", t("Preview · klar nat", "Preview · clear night")]
     ];
+    // Mirrors BeastCore.chartColorSettings()'s defaults so the pickers show
+    // the colours actually in use before anything has been saved.
+    const savedChartColors = BeastConfig.get("chartColors") || {};
+    const chartColors = {
+      mode: savedChartColors.mode === "usage" ? "usage" : "static",
+      static: savedChartColors.static || "#4fb8ff",
+      steps: Array.isArray(savedChartColors.steps) && savedChartColors.steps.length === 4
+        ? savedChartColors.steps
+        : ["#3ddc84", "#ffd166", "#ff9f43", "#ef4444"]
+    };
     return `
       <section class="admin-view${activeView === "theme" ? " is-active" : ""}" data-admin-view="theme">
         <div class="admin-settings-intro"><div><h2>Tema og design</h2><p>Farve, stil og lystilstand for hele dashboardet. Ændringer virker med det samme og gemmes kun i denne browser.</p></div></div>
         <div class="admin-card admin-settings-group admin-settings-theme">${window.BeastTheme?.renderPanel() || ""}</div>
         <div class="admin-card admin-settings-group"><div class="admin-card-head"><div><h2>${t("Vejr-overlay", "Weather overlay")}</h2><p>${t("Følger automatisk den valgte Home Assistant-vejrentity. Regn giver stænk og våd bund, mens sne lægger sig diskret. Preview-valgene gør det muligt at afprøve effekterne uden at ændre vejret i Home Assistant.", "Automatically follows the selected Home Assistant weather entity. Rain creates splashes and a wet edge, while snow settles subtly. Preview choices let you test effects without changing Home Assistant weather.")}</p></div></div>
-          <div class="beast-mqtt-config"><label><span>${t("Tilstand", "Mode")}</span><select id="adminThemeWeatherOverlay">${weatherModes.map(([value,label]) => `<option value="${value}" ${weatherOverlayMode === value ? "selected" : ""}>${label}</option>`).join("")}</select></label></div>
+          <div class="beast-mqtt-config"><label><span>${t("Tilstand", "Mode")}</span><select id="adminThemeWeatherOverlay">${weatherModes.map(([value,label]) => `<option value="${value}" ${weatherOverlayMode === value ? "selected" : ""}>${label}</option>`).join("")}</select></label>
+          </div>
           <div class="admin-actions"><button type="button" class="beast-btn beast-btn-primary" id="adminThemeWeatherOverlaySave">${t("Gem vejr-overlay", "Save weather overlay")}</button><span class="admin-save-state" data-save-state="themeWeatherOverlay"></span></div>
+        </div>
+        <div class="admin-card admin-settings-group"><div class="admin-card-head"><div><h2>${t("Graffarver", "Graph colours")}</h2><p>${t("Gælder alle forbrugsgrafer, både linje og søjler. \"Efter forbrug\" deler grafens eget interval i fire trin, så en travl time skiller sig ud -- trinnene er relative til grafens egne tal, ikke faste kW-grænser.", "Applies to every usage graph, line and bars alike. \"By usage\" splits the graph's own range into four steps so a busy hour stands out -- the steps are relative to that graph's own numbers, not fixed kW limits.")}</p></div></div>
+          <div class="beast-mqtt-config">
+            <label><span>${t("Farvelægning", "Colouring")}</span><select id="adminChartColorMode">
+              <option value="static" ${chartColors.mode === "static" ? "selected" : ""}>${t("Fast farve", "Single colour")}</option>
+              <option value="usage" ${chartColors.mode === "usage" ? "selected" : ""}>${t("Efter forbrug", "By usage")}</option>
+            </select></label>
+            <label><span>${t("Fast farve", "Single colour")}</span><input type="color" id="adminChartColorStatic" value="${escapeHtml(chartColors.static)}"></label>
+            ${chartColors.steps.map((color, index) => `<label><span>${t("Trin", "Step")} ${index + 1}${index === 0 ? t(" (lavest)", " (lowest)") : index === 3 ? t(" (højest)", " (highest)") : ""}</span><input type="color" data-chart-color-step="${index}" value="${escapeHtml(color)}"></label>`).join("")}
+          </div>
+          <div class="admin-actions"><button type="button" class="beast-btn beast-btn-primary" id="adminChartColorsSave">${t("Gem graffarver", "Save graph colours")}</button><span class="admin-save-state" data-save-state="chartColors"></span></div>
         </div>
       </section>
     `;
@@ -2243,6 +2267,13 @@
       autoReturnScheduleEnabled: document.getElementById("adminKioskAutoReturnScheduleEnabled").checked,
       autoReturnScheduleStart: document.getElementById("adminKioskAutoReturnScheduleStart").value || "08:00",
       autoReturnScheduleEnd: document.getElementById("adminKioskAutoReturnScheduleEnd").value || "22:00"
+    })));
+    document.getElementById("adminChartColorsSave")?.addEventListener("click", (event) => save(event.currentTarget, "chartColors", async () => BeastConfig.set("chartColors", {
+      mode: document.getElementById("adminChartColorMode").value === "usage" ? "usage" : "static",
+      static: document.getElementById("adminChartColorStatic").value || "#4fb8ff",
+      steps: Array.from(document.querySelectorAll("[data-chart-color-step]"))
+        .sort((a, b) => Number(a.dataset.chartColorStep) - Number(b.dataset.chartColorStep))
+        .map((input) => input.value)
     })));
     document.getElementById("adminThemeWeatherOverlaySave")?.addEventListener("click", (event) => save(event.currentTarget, "themeWeatherOverlay", async () => {
       const mode = document.getElementById("adminThemeWeatherOverlay").value || "off";

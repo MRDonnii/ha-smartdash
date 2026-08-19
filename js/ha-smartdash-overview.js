@@ -618,6 +618,13 @@
   const PRINTER_STATUS_GRACE_MS = 20000;
   let printerLastActiveStatus = null;
   let printerLastActiveAt = 0;
+  // When the *current* print started, as opposed to printerLastActiveAt
+  // (touched on every active tick, used only for the grace window above).
+  // Reset exclusively on a genuine fresh start -- the gap since the last
+  // active tick exceeded the grace window -- never on a brief status blip
+  // mid-print. This is what "hide until the next print starts" (see the
+  // snooze menu) actually watches: banner.occurrenceKey below.
+  let printerActiveSince = 0;
 
   // Each banner type is independent: its own on/off toggle, its own trigger
   // condition, its own data. Multiple can be active and visible at once
@@ -633,14 +640,22 @@
       banners.push({
         type: "mail", title: "Der er post",
         detail: mailDescription || (Number.isFinite(mailCount) && mailCount > 0 ? `${mailCount} registreringer` : "Post registreret"),
-        icon: "bell", image: images.indkorsel, images
+        icon: "bell", image: images.indkorsel, images,
+        // Identifies this particular delivery: the sensor only goes back to
+        // "on" for a genuinely new one, so its own last_changed is a stable
+        // key for "hide until the next delivery" (see snoozeUntilEvent()).
+        occurrenceKey: BeastHaSocket.getState(MAIL_PRESENT_ID)?.last_changed || "",
+        occurrenceLabel: "Indtil næste post"
       });
     }
 
     if (featureEnabled("printerBanner") && PRINTER_STATUS_ID) {
       const status = BeastHaSocket.getState(PRINTER_STATUS_ID)?.state;
       const isActiveNow = PRINTER_ACTIVE_STATES.includes(status);
-      if (isActiveNow) { printerLastActiveStatus = status; printerLastActiveAt = Date.now(); }
+      if (isActiveNow) {
+        if (!printerLastActiveAt || Date.now() - printerLastActiveAt > PRINTER_STATUS_GRACE_MS) printerActiveSince = Date.now();
+        printerLastActiveStatus = status; printerLastActiveAt = Date.now();
+      }
       const withinGrace = !isActiveNow && printerLastActiveAt && Date.now() - printerLastActiveAt < PRINTER_STATUS_GRACE_MS;
       // Debug-only preview hook: ?forcePrinterBanner=1 shows the banner (and
       // its real camera, if one is configured) regardless of the printer's
@@ -662,7 +677,9 @@
           liveCamera: printerLiveCamera(),
           progress: Number.isFinite(progress) ? progress : null,
           remaining: Number.isFinite(remaining) ? remaining : null,
-          task
+          task,
+          occurrenceKey: String(printerActiveSince),
+          occurrenceLabel: "Indtil næste print"
         });
       }
     }
@@ -676,24 +693,28 @@
       };
       const scheduleOk = !BeastConfig.get("banners.scheduleEnabled") ||
         isWithinBannerSchedule(BeastConfig.get("banners.scheduleStart"), BeastConfig.get("banners.scheduleEnd"));
-      const longOpen = scheduleOk ? DOOR_IDS.map((id) => {
+      const openEntries = scheduleOk ? DOOR_IDS.map((id) => {
         const state = BeastHaSocket.getState(id);
         if (state?.state !== "on" || !tooLong(state)) return null;
-        return BeastEntityPicker.friendlyName(id);
+        return { key: `${id}@${state.last_changed}`, label: `${BeastEntityPicker.friendlyName(id)} — åben` };
       }).filter(Boolean) : [];
-      const longUnlocked = scheduleOk ? LOCKS.filter((entry) => {
+      const unlockedEntries = scheduleOk ? LOCKS.map((entry) => {
         const state = BeastHaSocket.getState(entry.id);
         const value = state?.state;
-        return value && !["locked", "unknown", "unavailable"].includes(value) && tooLong(state);
-      }).map((entry) => entry.label) : [];
-      if (longOpen.length || longUnlocked.length) {
-        const rows = [
-          ...longOpen.map((label) => `${label} — åben`),
-          ...longUnlocked.map((label) => `${label} — ulåst`)
-        ];
+        if (!value || ["locked", "unknown", "unavailable"].includes(value) || !tooLong(state)) return null;
+        return { key: `${entry.id}@${state.last_changed}`, label: `${entry.label} — ulåst` };
+      }).filter(Boolean) : [];
+      const entries = [...openEntries, ...unlockedEntries];
+      if (entries.length) {
+        const rows = entries.map((entry) => entry.label);
         banners.push({
           type: "doors", title: `${rows.length} ${rows.length === 1 ? "indgang har" : "indgange har"} stået åbne/ulåste længe`,
-          detail: rows.join(" · "), icon: "unlock", image: null, rows, compact: true
+          detail: rows.join(" · "), icon: "unlock", image: null, rows, compact: true,
+          // Reopening a door (or unlocking again) after it was closed
+          // produces a new last_changed and therefore a new key, so a
+          // snooze doesn't also swallow the next, unrelated time it happens.
+          occurrenceKey: entries.map((entry) => entry.key).sort().join("|"),
+          occurrenceLabel: "Indtil næste hændelse"
         });
       }
     }
@@ -733,10 +754,81 @@
     try { return JSON.parse(localStorage.getItem(NOTIFICATION_SNOOZE_KEY) || "{}"); } catch (_) { return {}; }
   }
 
-  function visibleBanners() {
+  function saveSnoozedNotifications(snoozed) {
+    localStorage.setItem(NOTIFICATION_SNOOZE_KEY, JSON.stringify(snoozed));
+  }
+
+  // A snoozed entry is either { until: <timestamp> } (a fixed duration) or
+  // { untilEvent: <occurrenceKey> } (hidden for as long as it's still the
+  // same occurrence -- see occurrenceKey on each banner in activeBanners()).
+  // Bare numbers are read the same as { until: n } for compatibility with
+  // snoozes already saved in a browser from before this existed.
+  function snoozeBanner(type, minutes = 30) {
     const snoozed = snoozedNotifications();
-    const now = Date.now();
-    return activeBanners().filter((banner) => Number(snoozed[banner.type] || 0) < now);
+    snoozed[type] = { until: Date.now() + minutes * 60 * 1000 };
+    saveSnoozedNotifications(snoozed);
+  }
+
+  function snoozeBannerUntilEvent(type, occurrenceKey) {
+    const snoozed = snoozedNotifications();
+    snoozed[type] = { untilEvent: occurrenceKey };
+    saveSnoozedNotifications(snoozed);
+  }
+
+  function isBannerSnoozed(banner) {
+    const entry = snoozedNotifications()[banner.type];
+    if (entry === undefined || entry === null) return false;
+    if (typeof entry === "number") return entry > Date.now();
+    if (entry.until !== undefined) return entry.until > Date.now();
+    if (entry.untilEvent !== undefined) return entry.untilEvent === banner.occurrenceKey;
+    return false;
+  }
+
+  function visibleBanners() {
+    return activeBanners().filter((banner) => !isBannerSnoozed(banner));
+  }
+
+  // Shared by all three banner popups (mail/printer/doors) so "hide" always
+  // offers the same choice: three fixed durations, plus hiding until the
+  // banner's own next occurrence -- next print, next delivery, next
+  // door/lock event -- whichever applies to the banner it's attached to
+  // (see occurrenceLabel/occurrenceKey in activeBanners()).
+  function snoozeActionMarkup(banner) {
+    return `<div class="beast-snooze-wrap" data-snooze-wrap>
+      <button type="button" class="beast-btn" data-snooze-trigger aria-haspopup="true" aria-expanded="false">${BeastCore.icon("bell", { size: 16 })}<span>Skjul</span></button>
+      <div class="beast-snooze-menu" data-snooze-menu hidden>
+        <button type="button" data-snooze-minutes="15">15 minutter</button>
+        <button type="button" data-snooze-minutes="30">30 minutter</button>
+        <button type="button" data-snooze-minutes="60">1 time</button>
+        ${banner.occurrenceKey ? `<button type="button" class="is-until-event" data-snooze-until-event>${escapeHtml(banner.occurrenceLabel || "Indtil næste hændelse")}</button>` : ""}
+      </div>
+    </div>`;
+  }
+
+  // `onSnoozed` closes the modal and re-renders the banners -- identical in
+  // all three callers, but each owns its own overlay/close() so it's passed
+  // in rather than assumed.
+  function wireSnoozeMenu(root, banner, onSnoozed) {
+    const wrap = root.querySelector("[data-snooze-wrap]");
+    if (!wrap) return;
+    const menu = wrap.querySelector("[data-snooze-menu]");
+    const trigger = wrap.querySelector("[data-snooze-trigger]");
+    trigger.addEventListener("click", (event) => {
+      event.stopPropagation();
+      const next = menu.hidden;
+      menu.hidden = !next;
+      trigger.setAttribute("aria-expanded", String(next));
+    });
+    menu.querySelectorAll("[data-snooze-minutes]").forEach((button) => button.addEventListener("click", (event) => {
+      event.stopPropagation();
+      snoozeBanner(banner.type, Number(button.dataset.snoozeMinutes));
+      onSnoozed();
+    }));
+    menu.querySelector("[data-snooze-until-event]")?.addEventListener("click", (event) => {
+      event.stopPropagation();
+      snoozeBannerUntilEvent(banner.type, banner.occurrenceKey);
+      onSnoozed();
+    });
   }
 
   // Shared by both layout modes so mail/printer always get their real photo
@@ -1050,12 +1142,13 @@
         ${available.length > 1 ? `<div class="beast-ov-mail-modal-switch">${available.map(([key]) => `<button type="button" data-camera="${key}"${key === current ? " class=\"is-active\"" : ""}>${escapeHtml(MAIL_CAMERA_LABELS[key] || key)}</button>`).join("")}</div>` : ""}
         <div class="beast-ov-mail-modal-actions">
           <button type="button" class="beast-btn beast-btn-primary" data-mail-collected>${BeastCore.icon("check", { size: 17 })}<span>Posten er hentet</span></button>
-          <button type="button" class="beast-btn" data-snooze>Skjul 30 min.</button>
+          ${snoozeActionMarkup(banner)}
         </div>
       </div>
     </div>`;
     document.body.appendChild(overlay);
     const close = () => overlay.remove();
+    wireSnoozeMenu(overlay, banner, () => { close(); renderBanners(); });
     overlay.addEventListener("click", (event) => {
       if (event.target === overlay || event.target.closest("[data-close]")) { close(); return; }
       const cameraButton = event.target.closest("[data-camera]");
@@ -1066,11 +1159,7 @@
         renderBanners();
         return;
       }
-      if (event.target.closest("[data-snooze]")) {
-        snoozeBanner("mail");
-        close();
-        renderBanners();
-      }
+      if (!event.target.closest("[data-snooze-wrap]")) { const menu = overlay.querySelector("[data-snooze-menu]"); if (menu) menu.hidden = true; }
     });
   }
 
@@ -1103,7 +1192,7 @@
         <p class="beast-ov-printer-modal-meta">${Math.round(progress)}%${remainingLabel ? ` · ${remainingLabel}` : ""}</p>
         <div class="beast-ov-mail-modal-actions">
           <button type="button" class="beast-btn beast-btn-primary" data-open-printer>${BeastCore.icon("printer", { size: 17 })}<span>Åbn 3D-printer</span></button>
-          <button type="button" class="beast-btn" data-snooze>Skjul 30 min.</button>
+          ${snoozeActionMarkup(banner)}
         </div>
       </div>
     </div>`;
@@ -1122,16 +1211,13 @@
       }, PRINTER_IMAGE_REFRESH_MS);
     }
     const close = () => { window.clearInterval(refreshTimerId); overlay.remove(); };
+    wireSnoozeMenu(overlay, banner, () => { close(); renderBanners(); });
     overlay.addEventListener("click", (event) => {
       if (event.target === overlay || event.target.closest("[data-close]")) { close(); return; }
       const cameraButton = event.target.closest("[data-camera]");
       if (cameraButton) { close(); openPrinterDetail(banner, cameraButton.dataset.camera); return; }
       if (event.target.closest("[data-open-printer]")) { close(); document.querySelector('.beast-rail-btn[data-section="printer"]')?.click(); return; }
-      if (event.target.closest("[data-snooze]")) {
-        snoozeBanner("printer");
-        close();
-        renderBanners();
-      }
+      if (!event.target.closest("[data-snooze-wrap]")) { const menu = overlay.querySelector("[data-snooze-menu]"); if (menu) menu.hidden = true; }
     });
   }
 
@@ -1146,20 +1232,17 @@
         <ul class="beast-ov-doors-modal-list">${banner.rows.map((row) => `<li>${escapeHtml(row)}</li>`).join("")}</ul>
         <div class="beast-ov-mail-modal-actions">
           <button type="button" class="beast-btn beast-btn-primary" data-open-security>${BeastCore.icon("shield", { size: 17 })}<span>Åbn sikkerhed</span></button>
-          <button type="button" class="beast-btn" data-snooze>Skjul 30 min.</button>
+          ${snoozeActionMarkup(banner)}
         </div>
       </div>
     </div>`;
     document.body.appendChild(overlay);
     const close = () => overlay.remove();
+    wireSnoozeMenu(overlay, banner, () => { close(); renderBanners(); });
     overlay.addEventListener("click", (event) => {
       if (event.target === overlay || event.target.closest("[data-close]")) { close(); return; }
       if (event.target.closest("[data-open-security]")) { close(); document.querySelector('.beast-rail-btn[data-section="security"]')?.click(); return; }
-      if (event.target.closest("[data-snooze]")) {
-        snoozeBanner("doors");
-        close();
-        renderBanners();
-      }
+      if (!event.target.closest("[data-snooze-wrap]")) { const menu = overlay.querySelector("[data-snooze-menu]"); if (menu) menu.hidden = true; }
     });
   }
 
@@ -2010,21 +2093,85 @@
     // render below where the real minimum actually is. The area fill keeps
     // its own full-height clip so it still reaches the widget's bottom.
     const lowestY = Math.max(...coordinates.map((c) => c[1]));
+    // Colours the line by level when that mode is on -- see
+    // BeastCore.chartLineGradient(); null means keep the plain stroke.
+    const bandBounds = { width, height, top: padY, bottom: height - padY };
+    const lineGradient = BeastCore.chartLineStroke(coordinates, values, bandBounds);
+    const areaFill = BeastCore.chartAreaFill(coordinates, values, { ...bandBounds, topOpacity: 0.34 });
     return `<div class="beast-ov-utility-line-wrap">
       <svg class="beast-ov-utility-line" viewBox="0 0 ${width} ${height}" preserveAspectRatio="none" role="img" aria-label="Forbrug fra midnat til nu">
         <defs>
-          <linearGradient id="beastOvUtilityFill" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stop-color="#4fb8ff" stop-opacity=".45"></stop>
-            <stop offset="100%" stop-color="#4fb8ff" stop-opacity="0"></stop>
-          </linearGradient>
+          ${lineGradient.defs}
+          ${areaFill.defs}
           <clipPath id="beastOvUtilityAreaClip"><rect x="0" y="0" width="${width}" height="${height}"></rect></clipPath>
           <clipPath id="beastOvUtilityLineClip"><rect x="0" y="0" width="${width}" height="${lowestY.toFixed(1)}"></rect></clipPath>
         </defs>
-        <path class="beast-ov-utility-line-area" fill="url(#beastOvUtilityFill)" d="${area}" clip-path="url(#beastOvUtilityAreaClip)"></path>
-        <path class="beast-ov-utility-line-path" d="${line}" clip-path="url(#beastOvUtilityLineClip)"></path>
+        <path class="beast-ov-utility-line-area" fill="${areaFill.fill}" mask="${areaFill.mask}" d="${area}" clip-path="url(#beastOvUtilityAreaClip)"></path>
+        <path class="beast-ov-utility-line-path" d="${line}" clip-path="url(#beastOvUtilityLineClip)" style="stroke:${lineGradient.stroke}"></path>
       </svg>
       <span class="beast-ov-utility-dot" style="left:${dotLeftPct.toFixed(2)}%;top:${dotTopPct.toFixed(2)}%"></span>
     </div>`;
+  }
+
+  // Follows the same shared setting as the Energy page's own usage graph
+  // (panels.energy.usageChartType), so switching there switches here too --
+  // it's one preference about how usage is drawn, not a per-screen one.
+  function buildOverviewUsageBars(points) {
+    if (!points.length) return "";
+    const width = 600;
+    const height = 100;
+    const padY = 8;
+    const values = points.map((item) => item.value);
+    const max = Math.max(...values, 0.001);
+    // Bucketed to a readable column count: the raw series is far denser
+    // than this card is wide, so one bar per point would be sub-pixel.
+    const barCount = Math.min(40, values.length);
+    const bucketed = Array.from({ length: barCount }, (_, index) => {
+      const start = Math.floor((index * values.length) / barCount);
+      const end = Math.max(start + 1, Math.floor(((index + 1) * values.length) / barCount));
+      const bucket = values.slice(start, end);
+      return bucket.reduce((sum, value) => sum + value, 0) / bucket.length;
+    });
+    const slot = width / barCount;
+    const barWidth = Math.max(1.5, slot * 0.66);
+    const bars = bucketed.map((value, index) => {
+      const barHeight = Math.max(1, (value / max) * (height - padY));
+      const x = slot * index + (slot - barWidth) / 2;
+      // Shared colour settings, so bars and lines follow the same choice.
+      const ratio = Math.max(0, Math.min(1, value / (max || 1)));
+      const fill = BeastCore.chartColorForRatio(ratio);
+      return `<rect x="${x.toFixed(1)}" y="${(height - barHeight).toFixed(1)}" width="${barWidth.toFixed(1)}" height="${barHeight.toFixed(1)}" rx="${Math.min(2, barWidth / 2).toFixed(1)}" style="fill:${fill}"></rect>`;
+    }).join("");
+    return `<div class="beast-ov-utility-line-wrap">
+      <svg class="beast-ov-utility-line beast-ov-utility-bars" viewBox="0 0 ${width} ${height}" preserveAspectRatio="none" role="img" aria-label="Forbrug fra midnat til nu, vist som søjler">
+        <g>${bars}</g>
+      </svg>
+    </div>`;
+  }
+
+  // El, Varme and Vand each keep their own choice: a spiky electricity
+  // trace and a slow-moving water total genuinely suit different shapes, so
+  // one shared setting forced a compromise on at least one of them.
+  // panels.energy.usageChartType stays the fallback -- it's the "default"
+  // set in Administration, used until a view is given its own answer.
+  // Each utility view is its own graph as far as this setting is concerned:
+  // a spiky electricity trace and a slow-moving water total genuinely suit
+  // different shapes. Keys go through the shared store in BeastCore so every
+  // graph in the dashboard is handled the same way.
+  function usageChartKey(view) { return `overview.utility.${view}`; }
+
+  function buildOverviewUsageChart(points) {
+    return BeastCore.chartType(usageChartKey(utilityView)) === "bars"
+      ? buildOverviewUsageBars(points)
+      : buildOverviewUsageLine(points);
+  }
+
+  // Only while the front page is in edit mode: this is a layout decision,
+  // so it belongs with the other edit-mode controls rather than taking up
+  // space in the card during normal use.
+  function usageChartTypeEditorMarkup() {
+    if (!overviewCardEditor?.isEditing()) return "";
+    return BeastCore.chartTypeToggleMarkup(usageChartKey(utilityView), `${UTILITY_VIEWS[utilityView]?.label || ""}-graf`);
   }
 
   // Keep the five axis markers aligned with the current-day window.
@@ -2071,8 +2218,9 @@
             ${Object.entries(UTILITY_VIEWS).map(([key, item]) => `<button type="button" data-utility="${key}" class="${utilityView === key ? "is-active" : ""}">${item.label}</button>`).join("")}
           </div>
         </div>
+        ${usageChartTypeEditorMarkup()}
         <div class="beast-ov-utility-chart">
-          ${utilityHistory.length ? buildOverviewUsageLine(utilityHistory) : `<i>${utilityHistoryLoading ? "Henter dagsgraf…" : "Ingen historik"}</i>`}
+          ${utilityHistory.length ? buildOverviewUsageChart(utilityHistory) : `<i>${utilityHistoryLoading ? "Henter dagsgraf…" : "Ingen historik"}</i>`}
         </div>
         <div class="beast-ov-chart-axis">${utilityAxisLabels().map((label) => `<span>${label}</span>`).join("")}</div>
         <div class="beast-ov-price-head">
@@ -2373,6 +2521,17 @@
       card.classList.toggle("is-unavailable", unavailable);
     });
   }
+
+  // Each panel redraws only its own graphs -- see the dispatch in
+  // setupChartTypeToggles() (ha-smartdash-app.js).
+  document.addEventListener("beast:chart-type-changed", (event) => {
+    const key = String(event.detail?.key || "");
+    if (key === "*" || key.startsWith("overview.utility.")) renderEnergy();
+  });
+  // Colours are a global setting rather than a per-graph one, so any config
+  // change may have altered them -- redraw so the change is visible without
+  // a reload.
+  document.addEventListener("beast:config-changed", () => renderEnergy());
 
   function init(root) {
     applyConfig();

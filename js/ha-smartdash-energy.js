@@ -42,6 +42,18 @@
   let todayCostKr = null;
   let priceView = "today";
   let energyView = "overview";
+  // Which utility the page is showing. Electricity is the default because
+  // it is the one every install has; the others appear only when set up.
+  let utilityView = "electric";
+  let utilityHistoryPoints = [];
+  let utilityHistoryLoading = false;
+  // Heat/water have no draggable cards to rearrange, so they skip the
+  // heavier native-card editor entirely (see the render() branch below) --
+  // but the chart-type/colour toggle is still edit-mode-only everywhere
+  // else in the app, and it needs *some* way to be reached here too. This
+  // is that page's own lightweight edit toggle, independent of the
+  // electric tab's is-native-editing.
+  let utilityEditing = false;
   let todayRefreshTimerId = null;
   let historyRefreshPending = false;
   let nativeEditing = false;
@@ -179,12 +191,85 @@
     return best;
   }
 
+
+  function buildPriceLineChart(prices, highlightNow, min, max) {
+    const width = 960;
+    const height = 190;
+    const left = 40;
+    const right = 10;
+    const top = 12;
+    const bottom = 26;
+    const plotWidth = width - left - right;
+    const plotHeight = height - top - bottom;
+    const values = prices.map((p) => p.price);
+    const yMax = max * 1.05 || 1;
+    const yMin = Math.min(0, min);
+    const range = yMax - yMin || 1;
+    const coordinates = prices.map((p, index) => [
+      left + (index / Math.max(1, prices.length - 1)) * plotWidth,
+      top + plotHeight - ((p.price - yMin) / range) * plotHeight
+    ]);
+    const line = BeastCore.linearPath(coordinates);
+    // The colour bands span the day's actual price range, not the axis: the
+    // axis starts at 0, so with prices sitting between (say) 1.50 and 2.70
+    // every hour -- including the cheapest -- would land in the top, red
+    // part of the scale. Anchoring green to the cheapest hour and red to
+    // the dearest also makes the line agree with the hour dots, which are
+    // coloured that way already.
+    const yForPrice = (price) => top + plotHeight - ((price - yMin) / range) * plotHeight;
+    const stroke = BeastCore.chartLineStroke(coordinates, values, {
+      width, height, top: yForPrice(max), bottom: yForPrice(min)
+    });
+    const yGrid = Array.from({ length: 5 }, (_, index) => {
+      const ratio = index / 4;
+      const y = top + plotHeight * ratio;
+      const value = yMin + range * (1 - ratio);
+      return `<line x1="${left}" y1="${y}" x2="${left + plotWidth}" y2="${y}"></line><text x="${left - 7}" y="${y + 4}" text-anchor="end">${value.toFixed(1)}</text>`;
+    }).join("");
+    const now = new Date();
+    // A dot per hour, not just on the extremes: the data really is hourly,
+    // so every hour should be readable as its own point (and hoverable for
+    // its exact price). Cheapest/dearest/now stay bigger so they still
+    // stand out among them.
+    const colorSettings = BeastCore.chartColorSettings();
+    const priceRange = (max - min) || 1;
+    const marks = prices.map((p, index) => {
+      const start = new Date(p.start);
+      const isNow = highlightNow && start.getHours() === now.getHours() && start.toDateString() === now.toDateString();
+      const isMin = p.price === min;
+      const isMax = p.price === max;
+      const [x, y] = coordinates[index];
+      const cls = isNow ? " is-now" : isMin ? " is-min" : isMax ? " is-max" : "";
+      const radius = isNow ? 5.5 : (isMin || isMax) ? 4.5 : 2.6;
+      // Plain hours take the value's own colour so the dots read as part of
+      // the line rather than as separate markers.
+      const fill = cls ? "" : ` style="fill:${colorSettings.mode === "usage" ? BeastCore.chartColorForRatio((p.price - min) / priceRange, colorSettings) : colorSettings.static}"`;
+      return `<circle class="beast-energy-price-dot${cls}" cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="${radius}"${fill}><title>${String(start.getHours()).padStart(2, "0")}:00 · ${p.price.toFixed(2)} kr/kWh</title></circle>`;
+    }).join("");
+    const xLabels = prices.map((p, index) => {
+      const hour = new Date(p.start).getHours();
+      if (hour % 6 || prices.length < 6) return "";
+      const x = coordinates[index][0];
+      return `<line class="beast-energy-price-hourline" x1="${x}" y1="${top}" x2="${x}" y2="${top + plotHeight}"></line><text x="${x}" y="${height - 6}" text-anchor="middle">${String(hour).padStart(2, "0")}</text>`;
+    }).join("");
+    return `<div class="beast-energy-price-line">
+      <svg viewBox="0 0 ${width} ${height}" preserveAspectRatio="none" role="img" aria-label="Elpris time for time">
+        <defs>${stroke.defs}</defs>
+        <g class="beast-energy-line-grid">${yGrid}${xLabels}</g>
+        <text class="beast-energy-line-unit" x="${left}" y="8">kr/kWh</text>
+        <path class="beast-energy-price-path" d="${line}" style="stroke:${stroke.stroke}"></path>
+        ${marks}
+      </svg>
+    </div>`;
+  }
+
   function buildPriceChart(prices, highlightNow) {
     if (!Array.isArray(prices) || !prices.length) return "";
     const now = new Date();
     const values = prices.map((p) => p.price);
     const max = Math.max(...values);
     const min = Math.min(...values);
+    if (BeastCore.chartType(PRICE_CHART_KEY) === "line") return buildPriceLineChart(prices, highlightNow, min, max);
     const bars = prices.map((p, index) => {
       const start = new Date(p.start);
       const isActive = highlightNow && start.getHours() === now.getHours() && start.toDateString() === now.toDateString();
@@ -193,7 +278,7 @@
       return `
         <button type="button" class="beast-energy-hour${isActive ? " is-current" : ""}${isMin ? " is-min" : ""}${isMax ? " is-max" : ""}" style="--bar-height:${Math.max(8, (p.price / max) * 100)}%" aria-label="${start.getHours()}:00, ${p.price.toFixed(2)} kroner pr. kilowatttime">
           <span class="beast-energy-hour-value">${p.price.toFixed(2)}</span>
-          <i style="height:${Math.max(8, (p.price / max) * 100)}%;--bar-color:${priceColor(p.price)}"></i>
+          <i style="height:${Math.max(8, (p.price / max) * 100)}%;--bar-color:${BeastCore.chartColorSettings().mode === "usage" ? BeastCore.chartColorForRatio((p.price - min) / ((max - min) || 1)) : priceColor(p.price)}"></i>
           <small>${index % 2 === 0 ? String(start.getHours()).padStart(2, "0") : ""}</small>
         </button>
       `;
@@ -218,11 +303,93 @@
     return out;
   }
 
-  function buildDetailedUsageChart(points) {
+  // Shared by the Energy page and the front page's own usage graph, so the
+  // choice follows the household rather than one screen -- picking bars on
+  // the wall panel shows bars on a phone too.
+  // The Energy page's usage graph is the electricity meter, so it shares
+  // the front page's "electric" key rather than having a separate answer --
+  // heat and water get their own, set on the front page's energy card.
+  const USAGE_CHART_KEY = "overview.utility.electric";
+  const PRICE_CHART_KEY = "energy.price";
+
+  function usageChartType() { return BeastCore.chartType(USAGE_CHART_KEY); }
+
+  function usageChartToggleMarkup() {
+    return BeastCore.chartTypeToggleMarkup(USAGE_CHART_KEY, "");
+  }
+
+  // Same axes, grid, scale and data as the line version -- only the series
+  // itself is drawn as discrete columns. Bars are averaged into far fewer
+  // buckets than the line's 360 points: at one bar per raw sample they'd be
+  // sub-pixel slivers, which reads as noise rather than as a bar chart.
+  // Rounds the axis top to something readable for whatever the meter
+  // measures: half-units for a few kW, tens or hundreds for litres an hour.
+  function niceAxisMax(rawMax) {
+    if (rawMax <= 5) return Math.ceil(rawMax * 2) / 2;
+    if (rawMax <= 50) return Math.ceil(rawMax / 5) * 5;
+    if (rawMax <= 500) return Math.ceil(rawMax / 50) * 50;
+    return Math.ceil(rawMax / 500) * 500;
+  }
+
+  function buildDetailedUsageBars(points, def) {
+    if (!points.length) return "";
+    const barCount = 48;
+    const scale = def?.scale ?? 0.001;
+    const values = bucketAverage(points, Math.min(barCount, points.length)).map((value) => value * scale);
+    const width = 960;
+    const height = 200;
+    const left = 38;
+    const right = 8;
+    const top = 14;
+    const bottom = 26;
+    const plotWidth = width - left - right;
+    const plotHeight = height - top - bottom;
+    const rawMax = Math.max(...values, .5);
+    const yMax = niceAxisMax(rawMax);
+    const slot = plotWidth / values.length;
+    const barWidth = Math.max(1.5, slot * 0.68);
+    const bars = values.map((value, index) => {
+      const barHeight = Math.max(1, (value / yMax) * plotHeight);
+      const x = left + slot * index + (slot - barWidth) / 2;
+      const y = top + plotHeight - barHeight;
+      return `<rect class="beast-energy-bar" x="${x.toFixed(2)}" y="${y.toFixed(2)}" width="${barWidth.toFixed(2)}" height="${barHeight.toFixed(2)}" rx="${Math.min(2, barWidth / 2).toFixed(2)}" style="fill:${BeastCore.chartColorForRatio(value / (yMax || 1))}"><title>${value.toFixed(2)} kW</title></rect>`;
+    }).join("");
+    const yGrid = Array.from({ length: 5 }, (_, index) => {
+      const ratio = index / 4;
+      const y = top + plotHeight * ratio;
+      const value = yMax * (1 - ratio);
+      return `<line x1="${left}" y1="${y}" x2="${left + plotWidth}" y2="${y}"></line><text x="${left - 7}" y="${y + 4}" text-anchor="end">${value >= 100 ? Math.round(value) : value.toFixed(value % 1 ? 1 : 0)}</text>`;
+    }).join("");
+    const now = new Date();
+    const elapsedMinutes = now.getHours() * 60 + now.getMinutes();
+    const xLabels = Array.from({ length: 5 }, (_, index) => {
+      if (index === 4) return "Nu";
+      const minutes = Math.round((elapsedMinutes * index) / 4);
+      return `${String(Math.floor(minutes / 60)).padStart(2, "0")}:${String(minutes % 60).padStart(2, "0")}`;
+    });
+    const xGrid = xLabels.map((label, index) => {
+      const x = left + plotWidth * (index / 4);
+      return `<line x1="${x}" y1="${top}" x2="${x}" y2="${top + plotHeight}"></line><text x="${x}" y="${height - 6}" text-anchor="${index === 0 ? "start" : index === 4 ? "end" : "middle"}">${label}</text>`;
+    }).join("");
+    return `<div class="beast-energy-line-chart-wrap">
+      <svg class="beast-energy-line-chart" viewBox="0 0 ${width} ${height}" preserveAspectRatio="none" role="img" aria-label="Strømforbrug i dag fra midnat til nu, vist som søjler">
+        <g class="beast-energy-line-grid">${yGrid}${xGrid}</g>
+        <text class="beast-energy-line-unit" x="${left}" y="8">${escapeHtml(def?.rateUnit || "kW")}</text>
+        <g class="beast-energy-bars">${bars}</g>
+      </svg>
+    </div>`;
+  }
+
+  function buildUsageChart(points) {
+    return usageChartType() === "bars" ? buildDetailedUsageBars(points) : buildDetailedUsageChart(points);
+  }
+
+  function buildDetailedUsageChart(points, def) {
     if (!points.length) return "";
     const maxPoints = 360;
-    const values = bucketAverage(points, maxPoints).map((value) => value / 1000);
-    const lastRealKw = points[points.length - 1] / 1000;
+    const scale = def?.scale ?? 0.001;
+    const values = bucketAverage(points, maxPoints).map((value) => value * scale);
+    const lastRealKw = points[points.length - 1] * scale;
     if (points.length > 1 && values[values.length - 1] !== lastRealKw) values.push(lastRealKw);
     const width = 960;
     const height = 200;
@@ -233,19 +400,22 @@
     const plotWidth = width - left - right;
     const plotHeight = height - top - bottom;
     const rawMax = Math.max(...values, .5);
-    const yMax = Math.ceil(rawMax * 2) / 2;
+    const yMax = niceAxisMax(rawMax);
     const coordinates = values.map((value, index) => [
       left + (index / Math.max(1, values.length - 1)) * plotWidth,
       top + plotHeight - (value / yMax) * plotHeight
     ]);
-    const line = BeastCore.linearPath(coordinates);
+    // Smoothed the same way as the front page's usage graph so the two read
+    // as the same chart at different sizes -- the data is untouched, only
+    // the joins between points are rounded (see catmullRomPath).
+    const line = BeastCore.catmullRomPath(coordinates);
     const area = `${line} L${left + plotWidth} ${top + plotHeight} L${left} ${top + plotHeight} Z`;
     const [lastX, lastY] = coordinates[coordinates.length - 1];
     const yGrid = Array.from({ length: 5 }, (_, index) => {
       const ratio = index / 4;
       const y = top + plotHeight * ratio;
       const value = yMax * (1 - ratio);
-      return `<line x1="${left}" y1="${y}" x2="${left + plotWidth}" y2="${y}"></line><text x="${left - 7}" y="${y + 4}" text-anchor="end">${value.toFixed(value % 1 ? 1 : 0)}</text>`;
+      return `<line x1="${left}" y1="${y}" x2="${left + plotWidth}" y2="${y}"></line><text x="${left - 7}" y="${y + 4}" text-anchor="end">${value >= 100 ? Math.round(value) : value.toFixed(value % 1 ? 1 : 0)}</text>`;
     }).join("");
     const now = new Date();
     const elapsedMinutes = now.getHours() * 60 + now.getMinutes();
@@ -263,21 +433,21 @@
     // "none") to fill whatever rectangle the container ends up being,
     // which turns a true SVG <circle> into a visibly squashed ellipse.
     // Positioning it by percentage outside the SVG avoids that entirely.
+    const bandBounds = { width, height, top, bottom: top + plotHeight };
+    const lineGradient = BeastCore.chartLineStroke(coordinates, values, bandBounds);
+    const areaFill = BeastCore.chartAreaFill(coordinates, values, bandBounds);
     const dotLeftPct = (lastX / width) * 100;
     const dotTopPct = (lastY / height) * 100;
     return `<div class="beast-energy-line-chart-wrap">
       <svg class="beast-energy-line-chart" viewBox="0 0 ${width} ${height}" preserveAspectRatio="none" role="img" aria-label="Strømforbrug i dag fra midnat til nu">
         <defs>
-          <linearGradient id="beastEnergyFill" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stop-color="#4fb8ff" stop-opacity=".5"></stop>
-            <stop offset="100%" stop-color="#4fb8ff" stop-opacity="0"></stop>
-          </linearGradient>
+          ${lineGradient.defs}
+          ${areaFill.defs}
         </defs>
         <g class="beast-energy-line-grid">${yGrid}${xGrid}</g>
-        <text class="beast-energy-line-unit" x="${left}" y="8">kW</text>
-        <path class="beast-energy-line-area" fill="url(#beastEnergyFill)" d="${area}"></path>
-        <path class="beast-energy-line-shadow" d="${line}"></path>
-        <path class="beast-energy-line-path" d="${line}"></path>
+        <text class="beast-energy-line-unit" x="${left}" y="8">${escapeHtml(def?.rateUnit || "kW")}</text>
+        <path class="beast-energy-line-area" fill="${areaFill.fill}" mask="${areaFill.mask}" d="${area}"></path>
+        <path class="beast-energy-line-path" d="${line}" style="stroke:${lineGradient.stroke}"></path>
       </svg>
       <span class="beast-energy-line-dot" style="left:${dotLeftPct.toFixed(2)}%;top:${dotTopPct.toFixed(2)}%"></span>
     </div>`;
@@ -298,12 +468,29 @@
   }
 
   function renderViewBar() {
+    // "Nu" is the per-device wattage breakdown -- it only exists for
+    // electricity (NOW_GROUPS() is wired to electrical circuits), so the
+    // toggle has nothing to switch to on the heat/water tabs and is left
+    // out there rather than shown pointing at a view that doesn't apply.
+    const isElectric = utilityView === "electric";
+    const title = !isElectric ? (utilityDefs()[utilityView]?.label || "Forbrug")
+      : energyView === "overview" ? "Forbrug og priser" : "Forbrug pr. enhed lige nu";
+    const tabs = utilityTabsMarkup();
+    // With more than one utility set up, El/Varme/Vand IS the "which page
+    // am I on" signal -- clearer than the small eyebrow text ever was -- so
+    // it takes the top-left slot that text used to occupy. Rendered here in
+    // the always-correctly-positioned viewbar row rather than lower in the
+    // page, which is where it previously landed in an unpositioned grid
+    // cell and got pushed to the bottom of the whole layout. A
+    // single-utility install (almost everyone, since heat/water are
+    // opt-in) never sees tabs and keeps the original text unchanged.
+    const left = tabs || `<div><small>Energi</small><strong>${escapeHtml(title)}</strong></div>`;
     return `<div class="beast-energy-viewbar">
-      <div><small>Energi</small><strong>${energyView === "overview" ? "Forbrug og priser" : "Forbrug pr. enhed lige nu"}</strong></div>
-      <div class="beast-energy-view-toggle">
+      ${left}
+      ${isElectric ? `<div class="beast-energy-view-toggle">
         <button type="button" data-energy-view="overview" class="${energyView === "overview" ? "is-active" : ""}">Overblik</button>
         <button type="button" data-energy-view="now" class="${energyView === "now" ? "is-active" : ""}">Nu</button>
-      </div>
+      </div>` : ""}
     </div>`;
   }
 
@@ -451,6 +638,39 @@
     bar.querySelector("[data-energy-native-settings]").addEventListener("click", () => { BeastConfig.set(energyCardsPath(), nativeDraftCards); exitNativeEditor(false); openEnergyLayout(BeastConfig.get("pageLayouts.energy.energyLayout") || {}); });
   }
 
+  function wireUtilityTabs() {
+    containerEl.querySelectorAll("[data-utility-view]").forEach((button) => button.addEventListener("click", () => {
+      const next = button.dataset.utilityView;
+      if (next === utilityView) return;
+      utilityView = next;
+      utilityHistoryPoints = [];
+      utilityHistoryLoading = next !== "electric";
+      // Leaving edit mode on tab switch: a chart-type choice belongs to the
+      // graph you were just looking at, not the one you're switching to.
+      utilityEditing = false;
+      render();
+      loadUtilityHistoryFor(next);
+    }));
+    containerEl.querySelector("[data-utility-edit]")?.addEventListener("click", () => {
+      utilityEditing = !utilityEditing;
+      render();
+    });
+  }
+
+  async function loadUtilityHistoryFor(key) {
+    const def = utilityDefs()[key];
+    if (!def) return;
+    // Electricity already keeps its own cached series for the price view,
+    // so reuse it rather than fetching the same history twice.
+    if (key === "electric") { utilityHistoryPoints = cachedHistoryPoints; return; }
+    utilityHistoryLoading = true;
+    const points = await loadHistoryFor(def.rate || def.total);
+    utilityHistoryLoading = false;
+    if (utilityView !== key) return;
+    utilityHistoryPoints = points;
+    render();
+  }
+
   function wireEnergyLayout() {
     const layout = BeastConfig.get("pageLayouts.energy.energyLayout") || {};
     const hidden = new Set(Array.isArray(layout.hidden) ? layout.hidden : []);
@@ -595,6 +815,124 @@
     }
   }
 
+  // The page covers whichever utilities the household actually measures.
+  // Electricity keeps its full treatment (prices, per-device breakdown);
+  // heat and water get the same shape -- a live rate, a running total for
+  // today and the same graph -- because that is all the data those meters
+  // provide. A utility with nothing configured is not shown at all, so an
+  // install that only measures electricity looks exactly as it did before.
+  function utilityDefs() {
+    const config = energyConfig();
+    return {
+      electric: {
+        label: "El", rate: POWER_ENTITY_ID(), total: TOTAL_ENERGY_ID(),
+        rateUnit: "kW", totalUnit: "kWh", chartKey: "overview.utility.electric", scale: 0.001, icon: "bolt",
+        rateLabel: "Forbrug lige nu", totalLabel: "I dag"
+      },
+      heat: {
+        label: "Varme", rate: config.heatPowerSensor, total: config.heatEnergySensor,
+        rateUnit: "kW", totalUnit: "kWh", chartKey: "overview.utility.heat", scale: 1, icon: "thermometer",
+        rateLabel: "Varmeeffekt nu", totalLabel: "Varme i dag"
+      },
+      water: {
+        label: "Vand", rate: config.waterFlowSensor, total: config.waterUsageSensor,
+        rateUnit: "L/t", totalUnit: "m³", chartKey: "overview.utility.water", scale: 1, icon: "droplet", totalMeta: "Siden midnat",
+        rateLabel: "Vandflow nu", totalLabel: "Vand i dag"
+      }
+    };
+  }
+
+  // A utility counts as available once it has at least one sensor; the
+  // view copes with only one of the two being set.
+  function availableUtilities() {
+    const defs = utilityDefs();
+    return Object.entries(defs).filter(([, def]) => def.rate || def.total).map(([key]) => key);
+  }
+
+  function utilityNumber(entityId) {
+    const reading = numericState(entityId);
+    return reading ? reading.value : null;
+  }
+
+  function formatUtilityValue(value, unit) {
+    if (value === null || !Number.isFinite(value)) return "–";
+    if (unit === "m³") return value.toFixed(3);
+    if (unit === "L/t") return Math.round(value).toString();
+    return value.toFixed(2);
+  }
+
+  function formatUtility(value, unit) {
+    if (value === null) return "–";
+    const decimals = unit === "m³" ? 3 : unit === "L/t" ? 0 : 2;
+    return `${value.toFixed(decimals)} ${unit}`;
+  }
+
+  async function loadHistoryFor(entityId) {
+    if (!entityId) return [];
+    try {
+      const result = await BeastAuth.haFetch(`/api/history/period/${startOfTodayIso()}?filter_entity_id=${entityId}&minimal_response`);
+      const series = (result && result[0]) || [];
+      return series.map((entry) => Number(entry.state ?? entry.s)).filter((value) => Number.isFinite(value));
+    } catch (error) {
+      BeastCore.log(`Forbrug: kunne ikke hente historik (${error.message}).`);
+      return [];
+    }
+  }
+
+  function renderUtilityView(key) {
+    const def = utilityDefs()[key];
+    if (!def) return "";
+    const scale = def.scale ?? 1;
+    const rate = utilityNumber(def.rate);
+    const total = utilityNumber(def.total);
+    const points = utilityHistoryPoints;
+    const chartType = BeastCore.chartType(def.chartKey);
+    const scaled = points.map((value) => value * scale);
+    const stats = scaled.length
+      ? {
+          avg: scaled.reduce((sum, value) => sum + value, 0) / scaled.length,
+          max: Math.max(...scaled),
+          min: Math.min(...scaled)
+        }
+      : null;
+    // Same four-tile summary the electricity view opens with, so the page
+    // reads the same whichever utility is selected -- the tiles just carry
+    // that meter's own numbers and units.
+    const rateNow = rate === null ? null : rate * (key === "electric" ? 0.001 : 1);
+    return `
+      <div class="beast-stat-grid">
+        ${BeastCore.statTile({ icon: def.icon, label: def.rateLabel, value: rateNow === null ? "–" : `${formatUtilityValue(rateNow, def.rateUnit)}<small>${def.rateUnit}</small>`, meta: stats ? `Snit i dag ${formatUtilityValue(stats.avg, def.rateUnit)} ${def.rateUnit}` : "" })}
+        ${BeastCore.statTile({ icon: "grid", label: def.totalLabel, value: total === null ? "–" : `${formatUtilityValue(total, def.totalUnit)}<small>${def.totalUnit}</small>`, meta: def.totalMeta || "" })}
+        ${BeastCore.statTile({ icon: "bolt", label: "Højeste i dag", value: stats ? `${formatUtilityValue(stats.max, def.rateUnit)}<small>${def.rateUnit}</small>` : "–", meta: stats ? "Målt siden midnat" : "" })}
+        ${BeastCore.statTile({ icon: "grid", label: "Laveste i dag", value: stats ? `${formatUtilityValue(stats.min, def.rateUnit)}<small>${def.rateUnit}</small>` : "–", meta: stats ? "Målt siden midnat" : "" })}
+      </div>
+      <div class="beast-energy-chart-wrap beast-energy-chart-usage">
+        <div class="beast-energy-chart-head">
+          <button type="button" class="beast-energy-utility-edit${utilityEditing ? " is-active" : ""}" data-utility-edit aria-pressed="${utilityEditing}" title="${utilityEditing ? "Luk redigering" : "Rediger graf"}">${BeastCore.icon("settings", { size: 16 })}</button>
+          ${BeastCore.chartTypeToggleMarkup(def.chartKey, "")}
+          <span class="beast-panel-title">${escapeHtml(def.label)} i dag</span>
+          <div class="beast-energy-price-range beast-energy-chart-head-stats">
+            ${stats ? `<span>Snit <strong>${formatUtilityValue(stats.avg, def.rateUnit)} ${def.rateUnit}</strong></span>
+            <span>Top <strong>${formatUtilityValue(stats.max, def.rateUnit)} ${def.rateUnit}</strong></span>
+            <span>Bund <strong>${formatUtilityValue(stats.min, def.rateUnit)} ${def.rateUnit}</strong></span>` : ""}
+          </div>
+        </div>
+        ${points.length
+          ? (chartType === "bars" ? buildDetailedUsageBars(points, def) : buildDetailedUsageChart(points, def))
+          : `<p class="beast-music-empty">${utilityHistoryLoading ? "Henter historik…" : "Ingen historik for i dag."}</p>`}
+      </div>
+      ${def.rate && def.total ? "" : `<p class="admin-field-hint">Tilføj de manglende sensorer under Administration → Enheder → Energi for at få alle tal med.</p>`}`;
+  }
+
+  function utilityTabsMarkup() {
+    const available = availableUtilities();
+    if (available.length < 2) return "";
+    const defs = utilityDefs();
+    return `<div class="beast-content-toggle beast-energy-utility-tabs">
+      ${available.map((key) => `<button type="button" class="beast-content-toggle-btn${utilityView === key ? " is-active" : ""}" data-utility-view="${key}">${escapeHtml(defs[key].label)}</button>`).join("")}
+    </div>`;
+  }
+
   function render() {
     if (!containerEl) return;
     if (!POWER_ENTITY_ID() && !PRICE_ENTITY_ID()) {
@@ -614,6 +952,28 @@
       } else {
         updateNowView();
       }
+      return;
+    }
+    // Heat and water have no prices or per-device breakdown, so they render
+    // their own compact view rather than reusing the electricity layout.
+    // Critically, that view must NOT carry the electricity view's
+    // .has-native-layout class: that class puts the container into a CSS
+    // grid whose children are positioned entirely via --energy-native-x/y/
+    // w/h custom properties set by applyNativeLayout() (see there and the
+    // matching rules in ha-smartdash-misc.css). This view reuses card
+    // classes like .beast-stat-grid for a consistent look, but never runs
+    // applyNativeLayout() on them -- with the grid class still attached
+    // from the last electric-view render, those elements were left
+    // unpositioned and got crushed into the grid's tiny default cell
+    // instead of laid out normally.
+    if (utilityView !== "electric" && utilityDefs()[utilityView]) {
+      containerEl.classList.remove("has-native-layout", "is-now", "is-native-editing");
+      containerEl.innerHTML = `${renderViewBar()}<div class="beast-energy-utility-view${utilityEditing ? " is-utility-editing" : ""}">${renderUtilityView(utilityView)}</div>`;
+      wireUtilityTabs();
+      containerEl.querySelectorAll("[data-energy-view]").forEach((button) => button.addEventListener("click", () => {
+        energyView = button.dataset.energyView;
+        render();
+      }));
       return;
     }
     const powerState = BeastHaSocket.getState(POWER_ENTITY_ID());
@@ -681,8 +1041,9 @@
       </div>
       <div class="beast-energy-chart-wrap beast-energy-chart-price">
         <div class="beast-energy-chart-head">
+          ${BeastCore.chartTypeToggleMarkup(PRICE_CHART_KEY, "")}
           <span class="beast-panel-title">${escapeHtml(nativeCard("energy-price-chart")?.label || "Elpris time for time")}</span>
-          <div class="beast-content-toggle beast-energy-day-toggle">
+          <div class="beast-content-toggle beast-energy-day-toggle beast-energy-chart-head-stats">
             ${priceDays.map((day) => `<button type="button" class="beast-content-toggle-btn${priceView === day.key ? " is-active" : ""}" data-view="${day.key}">${day.label}</button>`).join("")}
           </div>
         </div>
@@ -698,15 +1059,17 @@
       </div>
       <div class="beast-energy-chart-wrap beast-energy-chart-usage">
         <div class="beast-energy-chart-head">
+          ${usageChartToggleMarkup()}
           <span class="beast-panel-title">${escapeHtml(nativeCard("energy-usage-chart")?.label || "Forbrug i dag")}</span>
-          <div class="beast-energy-price-range" ${nativeOption("energy-usage-chart", "stats", true) ? "" : "hidden"}>
+          <div class="beast-energy-price-range beast-energy-chart-head-stats" ${nativeOption("energy-usage-chart", "stats", true) ? "" : "hidden"}>
             ${historyAvg !== null ? `<span>Snit <strong>${historyAvg.toFixed(2)} kW</strong></span><span>Top <strong>${historyMax.toFixed(2)} kW</strong></span><span>Bund <strong>${historyMin.toFixed(2)} kW</strong></span>` : ""}
           </div>
         </div>
-        ${cachedHistoryPoints.length ? buildDetailedUsageChart(cachedHistoryPoints) : '<p class="beast-music-empty">Henter historik…</p>'}
+        ${cachedHistoryPoints.length ? buildUsageChart(cachedHistoryPoints) : '<p class="beast-music-empty">Henter historik…</p>'}
       </div>
     `;
     wireEnergyLayout();
+    wireUtilityTabs();
 
     containerEl.querySelectorAll("[data-view]").forEach((btn) => {
       btn.addEventListener("click", () => {
@@ -770,6 +1133,12 @@
     });
     [TOTAL_ENERGY_ID(), TOTAL_COST_ID()].filter(Boolean).forEach((id) => BeastHaSocket.subscribeEntity(id, refreshTodayTotals));
   }
+
+  document.addEventListener("beast:chart-type-changed", (event) => {
+    const key = event.detail?.key;
+    if (key === "*" || key === USAGE_CHART_KEY || key === PRICE_CHART_KEY) render();
+  });
+  document.addEventListener("beast:config-changed", () => render());
 
   BeastCore.registerPanel("energy", "beastEnergyZone", init);
   window.BeastEnergyEditor = { open: enterNativeEditor };

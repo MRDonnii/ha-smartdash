@@ -247,6 +247,15 @@
 .beast-ov-mail-modal-switch { display:flex; gap:8px; margin-top:var(--space-3); }
 .beast-ov-mail-modal-actions { display:flex; gap:10px; margin-top:var(--space-4); }
 .beast-ov-mail-modal-actions .beast-btn { flex:1; display:inline-flex; align-items:center; justify-content:center; gap:8px; }
+/* Snooze trigger + its popover menu (mail/printer/doors popups share this,
+   see snoozeActionMarkup() in ha-smartdash-overview.js). */
+.beast-snooze-wrap { position: relative; flex: 1; display: flex; }
+.beast-snooze-wrap > .beast-btn { width: 100%; }
+.beast-snooze-menu { position: absolute; bottom: calc(100% + 8px); left: 0; right: 0; z-index: 5; display: grid; gap: 4px; padding: 6px; border: 1px solid var(--border-strong); border-radius: 12px; background: var(--surface-solid); box-shadow: 0 18px 44px rgba(0,0,0,.42); }
+.beast-snooze-menu[hidden] { display: none; }
+.beast-snooze-menu button { min-height: 38px; padding: 0 12px; border: 0; border-radius: 8px; background: transparent; color: var(--ink); font: 700 13px/1 var(--font-sans); text-align: left; cursor: pointer; touch-action: manipulation; }
+.beast-snooze-menu button:hover { background: var(--surface-2); }
+.beast-snooze-menu button.is-until-event { border-top: 1px solid var(--border); margin-top: 2px; padding-top: 10px; color: var(--accent); font-weight: 800; }
 .beast-ov-mail-modal-switch button { flex:1; min-height:44px; padding:0 14px; border:1px solid var(--border-strong); border-radius:999px; background:transparent; color:var(--ink-muted); font-weight:750; }
 .beast-ov-mail-modal-switch button.is-active { border-color:var(--accent-a); background:var(--accent-soft); color:var(--ink); box-shadow:var(--accent-glow); }
 .beast-ov-printer-modal-progress { width:100%; height:10px; margin-top:var(--space-3); border-radius:999px; background:var(--surface-2); overflow:hidden; }
@@ -2078,3 +2087,16 @@
   .beast-ov-energy-value { font-size: clamp(2.4rem, 4.5vw, 3.2rem); }
 }
 .beast-overview-grid.has-empty-slots { grid-auto-flow:dense; grid-template-rows:repeat(2,minmax(240px,1fr)); }.beast-overview-grid.has-empty-slots .beast-ov-card { grid-row:auto; grid-column:span 3; }.beast-overview-grid.has-empty-slots :is(.beast-ov-card--weather,.beast-ov-card--energy) { grid-column:span 5; }.beast-overview-grid.has-empty-slots .beast-ov-card--wide { grid-column:span 4; grid-row:span 2; }
+
+/* Bars variant of the front page's usage graph (see
+   buildOverviewUsageBars in ha-smartdash-overview.js). Shares the line
+   version's wrapper and SVG sizing; only the series' own fill differs. */
+.beast-ov-utility-bars rect { fill: #4fb8ff; opacity: .85; }
+:root[data-color-mode="light"] .beast-ov-utility-bars rect { fill: #2f7fd0; opacity: .9; }
+
+/* Same exception as the native page editor's (see ha-smartdash-misc.css):
+   the front page's edit mode disables pointer events inside cards so they
+   can be dragged, but the line/bars switch is an edit-mode-only control
+   and must remain usable. */
+.beast-overview-grid.is-editing .beast-ov-card .beast-chart-type,
+.beast-overview-grid.is-editing .beast-ov-card .beast-chart-type * { pointer-events: auto; }
