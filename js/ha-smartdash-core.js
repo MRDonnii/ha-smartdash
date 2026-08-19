@@ -174,6 +174,7 @@ const BeastCore = (() => {
   // never has to fall back to emoji glyphs, which render inconsistently and read as "generic".
   const ICONS = {
     play: '<polygon points="6 3 20 12 6 21 6 3" fill="currentColor" stroke="none"/>',
+    palette: '<path d="M12 3a9 9 0 1 0 0 18c1 0 1.7-.8 1.7-1.7 0-.5-.2-.9-.5-1.2-.3-.3-.5-.7-.5-1.1 0-.9.8-1.7 1.7-1.7H16a5 5 0 0 0 5-5c0-4-4-7.3-9-7.3Z"/><circle cx="7.5" cy="11" r="1.2" fill="currentColor" stroke="none"/><circle cx="10.5" cy="7.5" r="1.2" fill="currentColor" stroke="none"/><circle cx="15" cy="8.5" r="1.2" fill="currentColor" stroke="none"/>',
     pause: '<rect x="6" y="4" width="4" height="16" rx="1" fill="currentColor" stroke="none"/><rect x="14" y="4" width="4" height="16" rx="1" fill="currentColor" stroke="none"/>',
     power: '<path d="M18.36 6.64a9 9 0 1 1-12.73 0"/><line x1="12" y1="2" x2="12" y2="12"/>',
     fan: '<path d="M12 11C8.3 9.4 8.5 3 12 3s3.7 6.4 0 8Z" fill="currentColor" stroke="none"/><path d="M13 12c1.6-3.7 8-3.5 8 0s-6.4 3.7-8 0Z" fill="currentColor" stroke="none"/><path d="M12 13c3.7 1.6 3.5 8 0 8s-3.7-6.4 0-8Z" fill="currentColor" stroke="none"/><path d="M11 12c-1.6 3.7-8 3.5-8 0s6.4-3.7 8 0Z" fill="currentColor" stroke="none"/><circle cx="12" cy="12" r="2" fill="var(--surface-solid,#111827)" stroke="currentColor"/>',
@@ -251,7 +252,14 @@ const BeastCore = (() => {
     return d;
   }
 
+  // Shared by every small history graph in the dashboard (pool temperature,
+  // the entity cards' own history, ...). `chartKey` names the individual
+  // graph so each can be switched between line and bars independently --
+  // see chartType()/setChartType() below; `type` overrides that lookup for
+  // callers that already know which they want.
   function sparkline(points, options = {}) {
+    const type = options.type || (options.chartKey ? chartType(options.chartKey) : "line");
+    if (type === "bars") return sparklineBars(points, options);
     const width = options.width || 600;
     const height = options.height || 120;
     const color = options.color || "currentColor";
@@ -277,6 +285,211 @@ const BeastCore = (() => {
         <path d="${linePath}" class="beast-sparkline-line" style="stroke:${color};" fill="none"></path>
       </svg>
     `;
+  }
+
+  // Bars variant of sparkline(): same data, scale and box, drawn as
+  // columns coloured by how high each value sits in the series' own range
+  // (calm green at the bottom through amber to red at the top), matching
+  // the energy and price charts elsewhere so every graph reads the same.
+  function sparklineBars(points, options = {}) {
+    if (!points.length) return "";
+    const width = options.width || 600;
+    const height = options.height || 120;
+    const min = Math.min(...points);
+    const max = Math.max(...points);
+    const range = max - min || 1;
+    const pad = height * 0.08;
+    const barCount = Math.min(options.maxBars || 48, points.length);
+    const bucketed = Array.from({ length: barCount }, (_, index) => {
+      const start = Math.floor((index * points.length) / barCount);
+      const end = Math.max(start + 1, Math.floor(((index + 1) * points.length) / barCount));
+      const bucket = points.slice(start, end);
+      return bucket.reduce((sum, value) => sum + value, 0) / bucket.length;
+    });
+    const slot = width / barCount;
+    const barWidth = Math.max(1.5, slot * 0.68);
+    const bars = bucketed.map((value, index) => {
+      const ratio = (value - min) / range;
+      const barHeight = Math.max(1, ratio * (height - pad * 2) + pad);
+      const x = slot * index + (slot - barWidth) / 2;
+      const fill = chartColorForRatio(ratio);
+      return `<rect x="${x.toFixed(1)}" y="${(height - barHeight).toFixed(1)}" width="${barWidth.toFixed(1)}" height="${barHeight.toFixed(1)}" rx="${Math.min(2, barWidth / 2).toFixed(1)}" style="fill:${fill}"></rect>`;
+    }).join("");
+    return `<svg viewBox="0 0 ${width} ${height}" preserveAspectRatio="none" class="beast-sparkline beast-sparkline-bars">${bars}</svg>`;
+  }
+
+  // One shared place for "should this graph be a line or bars", keyed per
+  // graph so each can differ, falling back to the Administration-set
+  // default (panels.energy.usageChartType) until a graph is given its own.
+  // How a graph is coloured, shared by lines and bars so both react the
+  // same way. "static" is the original single colour; "usage" splits the
+  // series' own range into four bands, so the same shape reads as calm or
+  // alarming at a glance. Four rather than a continuous ramp because a
+  // handful of distinct steps is far easier to recognise -- and to pick
+  // colours for -- than an infinite gradient.
+  const CHART_COLOR_DEFAULTS = { mode: "static", static: "#4fb8ff", steps: ["#3ddc84", "#ffd166", "#ff9f43", "#ef4444"] };
+
+  function chartColorSettings() {
+    const saved = BeastConfig.get("chartColors") || {};
+    const steps = Array.isArray(saved.steps) && saved.steps.length === 4 ? saved.steps : CHART_COLOR_DEFAULTS.steps;
+    return {
+      mode: saved.mode === "usage" ? "usage" : "static",
+      static: saved.static || CHART_COLOR_DEFAULTS.static,
+      steps
+    };
+  }
+
+  // ratio is the value's position within its own series (0 = lowest,
+  // 1 = highest), not an absolute consumption -- what counts as "high" in
+  // one household is ordinary in another.
+  function hexToRgb(hex) {
+    const value = String(hex || "").trim().replace("#", "");
+    const full = value.length === 3 ? value.split("").map((c) => c + c).join("") : value;
+    const int = Number.parseInt(full, 16);
+    return Number.isFinite(int) && full.length === 6
+      ? [(int >> 16) & 255, (int >> 8) & 255, int & 255]
+      : [79, 184, 255];
+  }
+
+  // The four colours are anchors, not buckets: a value lands *between* two
+  // of them and gets the blend. Hard steps produced visible vertical bands
+  // where a line (and the fill under it) jumped from one colour straight to
+  // the next, which read as a rendering fault rather than as a scale.
+  function chartColorForRatio(ratio, settings = chartColorSettings()) {
+    if (settings.mode !== "usage") return settings.static;
+    const safe = Math.max(0, Math.min(1, Number(ratio) || 0));
+    const steps = settings.steps;
+    const scaled = safe * (steps.length - 1);
+    const index = Math.min(steps.length - 2, Math.floor(scaled));
+    const blend = scaled - index;
+    const from = hexToRgb(steps[index]);
+    const to = hexToRgb(steps[index + 1]);
+    const mixed = from.map((channel, i) => Math.round(channel + (to[i] - channel) * blend));
+    return `rgb(${mixed[0]}, ${mixed[1]}, ${mixed[2]})`;
+  }
+
+  // A line can't be one flat colour if it's meant to show level, so it is
+  // stroked with a gradient whose stops follow the data: each point
+  // contributes its own colour at its own x position. Returns null when a
+  // plain colour will do, so callers can skip the extra <defs>.
+  // Always returns something to stroke with, so a line is never left on
+  // whatever colour its stylesheet happens to set: in "static" mode that's
+  // the chosen single colour (which is the whole point of the picker), and
+  // in "usage" mode it's the value-following gradient below.
+  function chartLineStroke(coordinates, values, options = {}) {
+    const settings = chartColorSettings();
+    const gradient = chartLineGradient(coordinates, values, options);
+    return gradient || { id: null, defs: "", stroke: settings.static };
+  }
+
+  // The area under a line has to follow the same colours as the line, or a
+  // green-to-red curve sits on top of a flat blue wash and the two read as
+  // unrelated. Two gradients are needed because SVG gradients only run in
+  // one direction: one across (the value colours) and one down (the fade
+  // to nothing at the bottom), combined with a mask.
+  // Colour follows *height*, not position along the series. A gradient tied
+  // to each point's x meant two neighbouring samples of very different value
+  // put unrelated colours side by side, so a spiky trace flickered red and
+  // yellow with no readable meaning. Anchoring the gradient to the y axis
+  // instead gives fixed bands -- green along the bottom, then amber, orange,
+  // red only at the top -- so a spike is red at its tip and green at its
+  // base, and the fill beneath agrees automatically. userSpaceOnUse pins the
+  // bands to the plot area rather than each path's own bounding box, which
+  // is what keeps line and fill aligned with each other and with the axis.
+  function chartBandStops(settings, opacity) {
+    const alpha = opacity === undefined ? "" : ` stop-opacity="${opacity}"`;
+    return settings.steps
+      .map((color, index) => ({ offset: (1 - index / (settings.steps.length - 1)) * 100, color }))
+      .sort((a, b) => a.offset - b.offset)
+      .map(({ offset, color }) => `<stop offset="${offset.toFixed(1)}%" stop-color="${color}"${alpha}></stop>`)
+      .join("");
+  }
+
+  function chartPlotBounds(options) {
+    return { top: options.top ?? 0, bottom: options.bottom ?? (options.height || 1) };
+  }
+
+  // Fill under a line, coloured by the same vertical bands as the line
+  // itself so the two always agree: red only where the line is high, green
+  // along the bottom. Anchored to the plot area with userSpaceOnUse rather
+  // than each path's bounding box -- a tall spike and the flat trace beside
+  // it must show the same colour at the same height, which a per-path box
+  // would break.
+  function chartAreaFill(coordinates, values, options = {}) {
+    const settings = chartColorSettings();
+    const id = `beast-chart-area-${sparklineIdCounter++}`;
+    const maskId = `${id}-mask`;
+    const { top, bottom } = chartPlotBounds(options);
+    const topOpacity = options.topOpacity ?? 0.38;
+    const stops = settings.mode === "usage"
+      ? chartBandStops(settings, topOpacity)
+      : `<stop offset="0%" stop-color="${settings.static}" stop-opacity="${topOpacity}"></stop><stop offset="100%" stop-color="${settings.static}" stop-opacity="${topOpacity}"></stop>`;
+    // A second, vertical fade so the fill dissolves toward the baseline
+    // instead of ending in a hard edge.
+    const defs = `<linearGradient id="${id}" gradientUnits="userSpaceOnUse" x1="0" y1="${top}" x2="0" y2="${bottom}">${stops}</linearGradient>
+      <linearGradient id="${maskId}-grad" gradientUnits="userSpaceOnUse" x1="0" y1="${top}" x2="0" y2="${bottom}">
+        <stop offset="0%" stop-color="#fff" stop-opacity="1"></stop>
+        <stop offset="100%" stop-color="#fff" stop-opacity="0.5"></stop>
+      </linearGradient>
+      <mask id="${maskId}"><rect x="0" y="0" width="${options.width || 1}" height="${options.height || 1}" fill="url(#${maskId}-grad)"></rect></mask>`;
+    return { defs, fill: `url(#${id})`, mask: `url(#${maskId})` };
+  }
+
+  function chartLineGradient(coordinates, values, options = {}) {
+    const settings = chartColorSettings();
+    if (settings.mode !== "usage" || !values.length) return null;
+    const { top, bottom } = chartPlotBounds(options);
+    const id = `beast-chart-grad-${sparklineIdCounter++}`;
+    return {
+      id,
+      defs: `<linearGradient id="${id}" gradientUnits="userSpaceOnUse" x1="0" y1="${top}" x2="0" y2="${bottom}">${chartBandStops(settings)}</linearGradient>`,
+      stroke: `url(#${id})`
+    };
+  }
+
+  function chartType(key) {
+    const types = BeastConfig.get("chartTypes") || {};
+    const value = types[key] || BeastConfig.get("panels.energy.usageChartType");
+    return value === "bars" ? "bars" : "line";
+  }
+
+  function setChartType(key, type) {
+    return BeastConfig.set("chartTypes", {
+      ...(BeastConfig.get("chartTypes") || {}),
+      [key]: type === "bars" ? "bars" : "line"
+    });
+  }
+
+  // Standard markup for the line/bars switch. Callers decide when to show
+  // it (edit mode) and wire the clicks; keeping the markup here means every
+  // one of them looks and behaves the same.
+  function chartTypeToggleMarkup(key, label) {
+    const current = chartType(key);
+    const colors = chartColorSettings();
+    // The colour panel is folded away behind its own button rather than
+    // shown inline: shape is a per-graph choice, colour is one shared
+    // setting for every graph, so putting them side by side would suggest
+    // the colours only applied to this one.
+    return `<div class="beast-chart-type" data-chart-type-key="${String(key).replace(/"/g, "&quot;")}">
+      ${label ? `<span>${String(label).replace(/[<>&]/g, "")}</span>` : ""}
+      <button type="button" data-chart-type="line" class="${current === "line" ? "is-active" : ""}">Linje</button>
+      <button type="button" data-chart-type="bars" class="${current === "bars" ? "is-active" : ""}">Søjler</button>
+      <button type="button" class="beast-chart-colors-btn" data-chart-colors aria-expanded="false" title="Farver">${icon("palette", { size: 15 })}</button>
+      <div class="beast-chart-colors" data-chart-colors-panel hidden>
+        <label><span>Farvelægning</span>
+          <select data-chart-color-mode>
+            <option value="static" ${colors.mode === "static" ? "selected" : ""}>Fast farve</option>
+            <option value="usage" ${colors.mode === "usage" ? "selected" : ""}>Efter forbrug</option>
+          </select>
+        </label>
+        <label class="beast-chart-color-row"><span>Fast farve</span><input type="color" data-chart-color-static value="${colors.static}"></label>
+        <div class="beast-chart-color-steps" ${colors.mode === "usage" ? "" : "hidden"}>
+          <span>Lavt forbrug → højt</span>
+          <div>${colors.steps.map((color, index) => `<input type="color" data-chart-color-step="${index}" value="${color}" title="Trin ${index + 1}">`).join("")}</div>
+        </div>
+        <small>Farverne gælder alle grafer.</small>
+      </div>
+    </div>`;
   }
 
   function barChart(bars, options = {}) {
@@ -446,6 +659,14 @@ const BeastCore = (() => {
     notConfiguredMarkup,
     wireNotConfiguredLinks,
     sparkline,
+    chartColorSettings,
+    chartColorForRatio,
+    chartLineGradient,
+    chartLineStroke,
+    chartAreaFill,
+    chartType,
+    setChartType,
+    chartTypeToggleMarkup,
     barChart,
     weatherMeta,
     animatedWeatherIcon,

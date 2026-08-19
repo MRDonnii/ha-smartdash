@@ -1024,6 +1024,7 @@ function renderAppShell(root) {
   document.addEventListener("beast:navigate", () => window.setTimeout(() => window.BeastPageEditor?.mountAll(), 80));
   BeastHaSocket.connect();
   BeastWeatherFx.mount();
+  setupChartTypeToggles();
   setupEventFocus();
   window.BeastScreenLock?.init();
   lastDoorbellBinaryState = BeastHaSocket.getState(DOORBELL_BINARY_ID())?.state || null;
@@ -1059,12 +1060,96 @@ function applyDashboardBranding() {
   favicon.href = BeastConfig.get("faviconUrl") || "./favicon.svg";
 }
 
+// One delegated listener for every line/bars switch in the dashboard (see
+// BeastCore.chartTypeToggleMarkup). Delegation rather than per-panel wiring
+// because these graphs are re-rendered constantly -- a listener bound to
+// the button itself would be lost on the next redraw, and every panel would
+// have to remember to re-bind it. The panels only decide *when* to show the
+// control; reacting to it is the same everywhere.
+function setupChartTypeToggles() {
+  // Colour panel: opening it, and closing it again when the press lands
+  // anywhere else. Colours are one shared setting, so only one panel is
+  // ever open at a time.
+  document.addEventListener("click", (event) => {
+    const trigger = event.target.closest("[data-chart-colors]");
+    const insidePanel = event.target.closest("[data-chart-colors-panel]");
+    if (!insidePanel) {
+      document.querySelectorAll("[data-chart-colors-panel]").forEach((panel) => {
+        if (trigger && panel === trigger.parentElement.querySelector("[data-chart-colors-panel]")) return;
+        panel.hidden = true;
+        panel.parentElement.querySelector("[data-chart-colors]")?.setAttribute("aria-expanded", "false");
+      });
+    }
+    if (!trigger) return;
+    event.preventDefault();
+    event.stopPropagation();
+    const panel = trigger.parentElement.querySelector("[data-chart-colors-panel]");
+    if (!panel) return;
+    panel.hidden = !panel.hidden;
+    trigger.setAttribute("aria-expanded", String(!panel.hidden));
+  });
+
+  // "change" rather than "input": a colour picker fires input continuously
+  // while dragging, and each save triggers a redraw that would replace the
+  // panel mid-pick. change fires once, when the value is settled.
+  document.addEventListener("change", (event) => {
+    const panel = event.target.closest("[data-chart-colors-panel]");
+    if (!panel) return;
+    const mode = panel.querySelector("[data-chart-color-mode]")?.value === "usage" ? "usage" : "static";
+    BeastConfig.set("chartColors", {
+      mode,
+      static: panel.querySelector("[data-chart-color-static]")?.value || "#4fb8ff",
+      steps: Array.from(panel.querySelectorAll("[data-chart-color-step]"))
+        .sort((a, b) => Number(a.dataset.chartColorStep) - Number(b.dataset.chartColorStep))
+        .map((input) => input.value)
+    });
+    document.dispatchEvent(new CustomEvent("beast:chart-type-changed", { detail: { key: "*" } }));
+  });
+
+  document.addEventListener("click", (event) => {
+    const button = event.target.closest("[data-chart-type]");
+    if (!button) return;
+    const key = button.closest("[data-chart-type-key]")?.dataset.chartTypeKey;
+    if (!key) return;
+    // These sit inside cards that navigate on click and, in edit mode,
+    // inside draggable cards -- neither should trigger from this press.
+    event.preventDefault();
+    event.stopPropagation();
+    if (BeastCore.chartType(key) === button.dataset.chartType) return;
+    BeastCore.setChartType(key, button.dataset.chartType);
+    // Reflect the choice on the buttons straight away. Saving is a network
+    // round-trip, and the owning panel may redraw the whole group a moment
+    // later -- without this the control looks unresponsive in between,
+    // which reads as the press not registering at all.
+    button.closest("[data-chart-type-key]")?.querySelectorAll("[data-chart-type]")
+      .forEach((item) => item.classList.toggle("is-active", item === button));
+    // Panels own their own graphs, so they redraw themselves rather than
+    // this handler reaching into each one. Nothing listens to
+    // beast:config-changed for this, so a dedicated event keeps it explicit.
+    document.dispatchEvent(new CustomEvent("beast:chart-type-changed", { detail: { key } }));
+  });
+}
+
 function setupNavigation() {
   const rail = document.getElementById("beastRail");
   const content = document.getElementById("beastContent");
   const railButtons = Array.from(rail.querySelectorAll("[data-section]"));
   const sections = Array.from(content.querySelectorAll("[data-section]"));
-  let activeSectionId = "overview";
+  // Which page was open is remembered across a reload, so refreshing (or a
+  // kiosk's own automatic recovery reload) comes back to where you were
+  // rather than jumping to the front page. sessionStorage, not
+  // localStorage, is deliberate: it survives a refresh but not closing the
+  // tab, so a freshly opened dashboard still starts on the front page.
+  const ACTIVE_SECTION_KEY = "beast_active_section_v1";
+
+  function rememberedSection() {
+    try {
+      const saved = sessionStorage.getItem(ACTIVE_SECTION_KEY);
+      return saved && sections.some((section) => section.dataset.section === saved) ? saved : null;
+    } catch (_) { return null; }
+  }
+
+  let activeSectionId = rememberedSection() || "overview";
   let autoReturnTimerId = null;
 
   function scheduleAutoReturn() {
@@ -1075,6 +1160,7 @@ function setupNavigation() {
 
   function activate(sectionId) {
     activeSectionId = sectionId;
+    try { sessionStorage.setItem(ACTIVE_SECTION_KEY, sectionId); } catch (_) {}
     railButtons.forEach((btn) => btn.classList.toggle("is-active", btn.dataset.section === sectionId));
     sections.forEach((section) => section.classList.toggle("is-active", section.dataset.section === sectionId));
     document.dispatchEvent(new CustomEvent("beast:sectionchange", { detail: { section: sectionId } }));
@@ -1138,7 +1224,11 @@ function setupNavigation() {
     else scheduleAutoReturn();
   });
 
-  const preferredSection = featureEnabled("localFavorites") ? BeastLocalSettings.get("defaultSection", "overview") : "overview";
+  // A remembered page (from a reload) wins over the configured start page:
+  // the start page is where a *fresh* session begins, not somewhere a
+  // refresh should throw you back to.
+  const configuredSection = featureEnabled("localFavorites") ? BeastLocalSettings.get("defaultSection", "overview") : "overview";
+  const preferredSection = rememberedSection() || configuredSection;
   activate(railButtons.some((button) => button.dataset.section === preferredSection) ? preferredSection : "overview");
 }
 

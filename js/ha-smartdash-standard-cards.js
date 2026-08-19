@@ -81,7 +81,7 @@ window.BeastStandardCards = (function () {
     const cost = BeastHaSocket.getState(bindings.cost);
     host.innerHTML = `<div class="beast-template-energy-usage"><header><div><small>Energi</small><strong>${escape(card.dataset.label || "Forbrug 24 timer")}</strong></div><span><b>${escape(formatState(power, "–"))}</b> ${escape(power?.attributes?.unit_of_measurement || "")}</span></header><div class="beast-template-energy-usage-metrics"><span>I dag <b>${escape(formatState(energy, "–"))} ${escape(energy?.attributes?.unit_of_measurement || "")}</b></span><span>Pris <b>${escape(formatState(cost, "–"))} ${escape(cost?.attributes?.unit_of_measurement || "")}</b></span></div><div class="beast-standard-graph-history"><em>Henter historik…</em></div></div>`;
     const historyHost = host.querySelector(".beast-standard-graph-history");
-    if (bindings.power) historyPoints(bindings.power).then((points) => { if (!historyHost?.isConnected) return; historyHost.innerHTML = points.length > 1 ? BeastCore.sparkline(points, { color: "var(--accent-b)", height: 100 }) : "<em>Ingen historik endnu</em>"; });
+    if (bindings.power) historyPoints(bindings.power).then((points) => { if (!historyHost?.isConnected) return; historyHost.innerHTML = points.length > 1 ? BeastCore.sparkline(points, { color: "var(--accent-b)", height: 100, chartKey: `card.${card.id || bindings.power}` }) : "<em>Ingen historik endnu</em>"; });
   }
 
   function bound(bindings, key) { const id = bindings[key]; return id ? BeastHaSocket.getState(id) : null; }
@@ -242,7 +242,7 @@ window.BeastStandardCards = (function () {
       } else if (card.dataset.standardCard === "graph") {
         host.innerHTML = `<div class="beast-standard-graph"><small>${escape(label)}</small><strong>${escape(value)} ${escape(state?.attributes?.unit_of_measurement || "")}</strong><div class="beast-standard-graph-history"><em>Henter historik…</em></div></div>`;
         const historyHost = host.querySelector(".beast-standard-graph-history");
-        if (entityId) historyPoints(entityId).then((points) => { if (!historyHost?.isConnected) return; historyHost.innerHTML = points.length > 1 ? BeastCore.sparkline(points, { color: "var(--accent)", height: 86 }) : "<em>Ingen historik endnu</em>"; });
+        if (entityId) historyPoints(entityId).then((points) => { if (!historyHost?.isConnected) return; historyHost.innerHTML = points.length > 1 ? BeastCore.sparkline(points, { color: "var(--accent)", height: 86, chartKey: `card.${card.id || entityId}` }) : "<em>Ingen historik endnu</em>"; });
       } else if (card.dataset.standardCard === "camera") {
         const cameraGroup = window.BeastCameras?.resolveGroup?.(entityId);
         const activeCamera = cameraGroup || (state ? { entityId, entityPicture: state.attributes?.entity_picture || "", label, variants: [] } : null);

@@ -1,5 +1,44 @@
 [
   {
+    "version": "20260819-29",
+    "tag": "v0.7.123",
+    "date": "2026-08-19",
+    "changes": [
+      {
+        "da": "Nyt: forbrugssiden kan nu vise el, varme og vand som separate faner, hver med sine egne nøgletal, egen dagsgraf og egen historik. Kun de forsyningsarter der rent faktisk er sat op i Administration vises -- en installation der kun bruger el ser siden helt uændret.",
+        "en": "New: the consumption page can now show electricity, heat, and water as separate tabs, each with its own key figures, its own daily graph and its own history. Only the utilities actually configured in Administration appear -- an install using electricity alone sees the page unchanged."
+      },
+      {
+        "da": "Nyt: enhver graf i dashboardet kan nu vises som linje eller søjler, valgt individuelt pr. graf i redigeringstilstand.",
+        "en": "New: any graph in the dashboard can now be shown as a line or as bars, chosen individually per graph in edit mode."
+      },
+      {
+        "da": "Nyt: graffarver kan sættes til enten én fast farve eller til automatisk at skifte efter hvor højt niveauet er (grøn til rød), med et fire-trins farvevalg i Administration eller direkte fra den enkelte graf.",
+        "en": "New: graph colours can be set to either a single fixed colour or to automatically shift with the level (green to red), with a four-step colour picker in Administration or directly from the individual graph."
+      },
+      {
+        "da": "Nyt: 'Skjul'-knappen på advarsler (post, printer, døre/låse) åbner nu en menu med flere skjul-muligheder, inklusive at skjule indtil den samme hændelse er overstået -- fx indtil et igangværende print er færdigt -- frem for kun et fast tidsrum.",
+        "en": "New: the \"Hide\" button on alerts (mail, printer, doors/locks) now opens a menu with several hide options, including hiding until that same occurrence is over -- for instance until the current print finishes -- rather than only a fixed duration."
+      },
+      {
+        "da": "En genindlæsning af dashboardet bliver nu på den side der var åben, i stedet for altid at springe til forsiden.",
+        "en": "Reloading the dashboard now stays on the page that was open, instead of always jumping to the front page."
+      },
+      {
+        "da": "Vejr-overlayet virker nu også i lyst tema -- effekterne var kun synlige i mørkt tema før.",
+        "en": "The weather overlay now also works in light theme -- the effects were only visible in dark theme before."
+      },
+      {
+        "da": "Regnen i vejr-overlayet er gjort tættere og mere synlig.",
+        "en": "Rain in the weather overlay has been made denser and more visible."
+      },
+      {
+        "da": "Forbrugs- og prisgraferne på forsiden og Energi-siden er justeret visuelt, så de fremstår ens uanset hvilken side de vises på.",
+        "en": "The usage and price graphs on the front page and the Energy page have been visually aligned so they look the same wherever they appear."
+      }
+    ]
+  },
+  {
     "version": "20260818-2",
     "tag": "v0.7.122",
     "date": "2026-08-18",
