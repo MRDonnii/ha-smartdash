@@ -21,6 +21,8 @@ const index = read("index.html");
 const beast = read("beast.html");
 const changelog = JSON.parse(read("changelog.json"));
 const latest = changelog[0];
+const addonConfig = read("home-assistant-addon/config.yaml");
+const addonChangelog = read("home-assistant-addon/CHANGELOG.md");
 if (!latest || !/^v\d+\.\d+\.\d+$/.test(latest.tag || "")) throw new Error("Latest changelog tag must use vMAJOR.MINOR.PATCH.");
 if (!/^\d{8}-\d+$/.test(latest.version || "")) throw new Error("Latest changelog version must use YYYYMMDD-N.");
 for (const html of [index, beast]) {
@@ -36,6 +38,11 @@ for (const html of [index, beast]) {
 if (!Array.isArray(latest.changes) || !latest.changes.length || latest.changes.some((item) => !String(item?.da || "").trim() || !String(item?.en || "").trim())) {
   throw new Error("Every latest changelog change must contain non-empty da and en text.");
 }
+const semanticVersion = latest.tag.slice(1);
+if (!new RegExp(`^version:\\s*["']?${semanticVersion.replaceAll(".", "\\.")}["']?\\s*$`, "m").test(addonConfig)) {
+  throw new Error("Home Assistant App version must match the latest release tag without the leading v.");
+}
+if (!addonChangelog.includes(`## ${semanticVersion}`)) throw new Error("Home Assistant App changelog must include the latest release version.");
 console.log(`Release metadata OK: ${latest.tag} (${latest.version})`);
 NODE
 else

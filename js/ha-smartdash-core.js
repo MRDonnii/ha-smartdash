@@ -1,4 +1,7 @@
 const BeastCore = (() => {
+  const CORE_SCRIPT_URL = document.currentScript?.src || window.location.href;
+  const APP_ROOT_URL = new URL("../", CORE_SCRIPT_URL);
+  const appUrl = (path = "") => new URL(String(path).replace(/^\//, ""), APP_ROOT_URL).href;
   const panels = [];
   const debugLog = [];
   const DEBUG_LOG_MAX = 200;
@@ -539,7 +542,7 @@ const BeastCore = (() => {
   function wireNotConfiguredLinks(root) {
     root.querySelectorAll("[data-goto-setup]").forEach((button) => {
       button.addEventListener("click", () => {
-        window.location.href = "/admin/";
+        window.location.href = appUrl("admin/");
       });
     });
   }
@@ -642,6 +645,7 @@ const BeastCore = (() => {
   }
 
   return {
+    appUrl,
     registerPanel,
     mountPanels,
     log,

@@ -1,5 +1,10 @@
 # Komplet installation af HA Smartdash
 
+> Denne guide gælder installation på en eksisterende Nginx/PHP-webserver.
+> Til den nye færdige pakke bruges [Docker](DOCKER.md), [Unraid](UNRAID.md)
+> eller [Home Assistant App](HOME_ASSISTANT.md). Alle tre containerløsninger
+> bevarer opsætningen i `/data` og opdateres ved at udskifte imaget.
+
 Denne vejledning installerer HA Smartdash bag Nginx med PHP og en same-origin reverse proxy til Home Assistant. Følg rækkefølgen: webserver, Nginx-proxy, Home Assistant-tillid, forbindelsestest og til sidst login.
 
 ## 1. Før du begynder
@@ -170,4 +175,3 @@ Kontrollér derefter versionsnummeret i Administration og lav en hård genindlæ
 - Del aldrig Long-Lived Access Tokens eller indholdet af browserens lokale lager.
 - Gem aldrig `data/config.json`, HA-token eller private installationseksporter i Git.
 - Giv kun `trusted_proxies` det mindst mulige nødvendige adresseområde.
-

@@ -1,0 +1,18 @@
+services:
+  ha-smartdash:
+    image: ghcr.io/mrdonnii/ha-smartdash:beta
+    container_name: ha-smartdash
+    restart: unless-stopped
+    ports:
+      - "${SMARTDASH_PORT:-8099}:8099"
+    environment:
+      TZ: Europe/Copenhagen
+      HA_URL: http://homeassistant.local:8123
+    volumes:
+      - ./smartdash-data:/data
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://127.0.0.1:8099/healthz"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 15s

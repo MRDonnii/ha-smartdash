@@ -15,6 +15,9 @@ const RAIL_ITEMS = [
   { id: "settings", label: "Administration", icon: "settings" }
 ];
 
+const SMARTDASH_APP_ROOT = new URL("../", document.currentScript?.src || window.location.href);
+const smartdashLocalUrl = (path) => new URL(String(path || "").replace(/^\//, ""), SMARTDASH_APP_ROOT).href;
+
 const MOUNTED_SECTION_ZONES = {
   weather: "beastWeatherZone",
   rooms: "beastRoomsZone",
@@ -521,6 +524,7 @@ const UPDATE_SKIP_KEY = "beast_skipped_update_version_v1";
 const UPDATE_IDLE_AUTOAPPLY_MS = 30 * 60 * 1000;
 let pendingUpdateVersion = null;
 let pendingUpdateChangelog = [];
+let pendingUpdateContainerManaged = false;
 let updateBannerEl = null;
 
 function skippedUpdateVersion() {
@@ -581,7 +585,7 @@ function renderUpdateBanner() {
     <div class="beast-update-banner-status" hidden></div>
     <div class="beast-update-banner-actions">
       <button type="button" class="beast-update-skip">${updateBannerT("Spring over", "Skip")}</button>
-      <button type="button" class="beast-update-apply">${updateBannerT("Opdater nu", "Update now")}</button>
+      <button type="button" class="beast-update-apply">${pendingUpdateContainerManaged ? updateBannerT("Opdater via platform", "Update via platform") : updateBannerT("Opdater nu", "Update now")}</button>
     </div>
   `;
   document.body.appendChild(el);
@@ -596,6 +600,17 @@ function renderUpdateBanner() {
 
 async function installPendingUpdate(el) {
   if (updateInstallInFlight) return;
+  if (pendingUpdateContainerManaged) {
+    const statusEl = el.querySelector(".beast-update-banner-status");
+    if (statusEl) {
+      statusEl.hidden = false;
+      statusEl.textContent = updateBannerT(
+        "Åbn Docker, Unraid eller Home Assistant for at opdatere containeren. Din /data-konfiguration bevares.",
+        "Open Docker, Unraid or Home Assistant to update the container. Your /data configuration is preserved."
+      );
+    }
+    return;
+  }
   updateInstallInFlight = true;
   const statusEl = el.querySelector(".beast-update-banner-status");
   const applyBtn = el.querySelector(".beast-update-apply");
@@ -605,7 +620,7 @@ async function installPendingUpdate(el) {
   applyBtn.textContent = updateBannerT("Installerer…", "Installing…");
   if (statusEl) { statusEl.hidden = false; statusEl.textContent = updateBannerT("Henter den nyeste version fra GitHub…", "Downloading the latest version from GitHub…"); }
   try {
-    const response = await fetch("/api/update.php", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "install", tag: pendingUpdateTag || undefined, channel: BeastConfig.get("updateChannel") === "beta" ? "beta" : "stable" }) });
+    const response = await fetch(smartdashLocalUrl("api/update.php"), { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "install", tag: pendingUpdateTag || undefined, channel: BeastConfig.get("updateChannel") === "beta" ? "beta" : "stable" }) });
     const payload = await response.json().catch(() => null);
     if (!response.ok || !payload?.success) throw new Error(payload?.message || payload?.error || `HTTP ${response.status}`);
     if (pendingUpdateVersion && payload.installedVersion !== pendingUpdateVersion) {
@@ -635,7 +650,7 @@ async function installPendingUpdate(el) {
 // check Administration's Update panel uses.
 async function checkForDashboardUpdate() {
   try {
-    const response = await fetch("/api/update.php", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "check", channel: BeastConfig.get("updateChannel") === "beta" ? "beta" : "stable" }), cache: "no-store" });
+    const response = await fetch(smartdashLocalUrl("api/update.php"), { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "check", channel: BeastConfig.get("updateChannel") === "beta" ? "beta" : "stable" }), cache: "no-store" });
     if (!response.ok) return;
     const data = await response.json();
     if (!data.updateAvailable || !data.remoteVersion) return;
@@ -643,6 +658,7 @@ async function checkForDashboardUpdate() {
     if (targetVersion === skippedUpdateVersion() || targetVersion === pendingUpdateVersion) return;
     pendingUpdateVersion = targetVersion;
     pendingUpdateTag = data.tag || null;
+    pendingUpdateContainerManaged = data.containerManaged === true;
     pendingUpdateChangelog = await loadChangelogNewerThan(currentBuildId());
     if (!pendingUpdateChangelog.length && data.releaseNotes) {
       pendingUpdateChangelog = [{ version: targetVersion, changes: String(data.releaseNotes).split("\n").map((line) => line.replace(/^[-*]\s*/, "").trim()).filter(Boolean) }];
@@ -651,7 +667,7 @@ async function checkForDashboardUpdate() {
     // skipAutoInstall means this exact build is one we (or a rollback)
     // previously moved away from -- still shown/installable via the manual
     // "Opdater nu" button above, just not silently reinstalled while idle.
-    if (pendingUpdateVersion && !skippedUpdateVersion() && !data.skipAutoInstall && Date.now() - lastUserActivityAt > UPDATE_IDLE_AUTOAPPLY_MS) {
+    if (pendingUpdateVersion && !pendingUpdateContainerManaged && !skippedUpdateVersion() && !data.skipAutoInstall && Date.now() - lastUserActivityAt > UPDATE_IDLE_AUTOAPPLY_MS) {
       installPendingUpdate(updateBannerEl);
     }
   } catch (error) {
@@ -975,7 +991,7 @@ function renderAppShell(root) {
     </button>
   `).join("");
   const adminItem = visibleRailItems.find((item) => item.id === "settings");
-  const adminRailHtml = adminItem ? `<a href="/admin/" class="beast-rail-btn beast-rail-admin">${BeastCore.icon(adminItem.icon, { size: 24 })}<span class="beast-rail-admin-label"><span class="beast-rail-admin-label-full">${adminItem.label}</span><span class="beast-rail-admin-label-short">Admin</span></span></a>` : "";
+  const adminRailHtml = adminItem ? `<a href="${smartdashLocalUrl("admin/")}" class="beast-rail-btn beast-rail-admin">${BeastCore.icon(adminItem.icon, { size: 24 })}<span class="beast-rail-admin-label"><span class="beast-rail-admin-label-full">${adminItem.label}</span><span class="beast-rail-admin-label-short">Admin</span></span></a>` : "";
 
   const sectionsHtml = visibleRailItems.filter((item) => item.id !== "settings").map((item) => `
     <div class="beast-section" data-section="${item.id}">
@@ -1184,14 +1200,14 @@ function setupNavigation() {
     if (el) activate(el.dataset.nav);
   });
 
-  const adminLink = rail.querySelector('a.beast-rail-btn[href="/admin/"]');
+  const adminLink = rail.querySelector("a.beast-rail-admin");
   adminLink?.addEventListener("click", (event) => {
     if (!window.BeastScreenLock?.hasPin()) return;
     event.preventDefault();
     window.BeastScreenLock.requestPinVerification((ok) => {
       if (!ok) return;
       window.BeastScreenLock.grantAdminVerification();
-      window.location.href = "/admin/";
+      window.location.href = smartdashLocalUrl("admin/");
     });
   });
 
