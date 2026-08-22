@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.7.124
+## 0.8.0
 
 - Added the first Beta package for Home Assistant OS/Supervised with Ingress,
   optional direct kiosk port, persistent App data and platform-owned updates.
