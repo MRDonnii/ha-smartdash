@@ -57,7 +57,7 @@ docker compose up -d
 Pin a version for controlled upgrades:
 
 ```yaml
-image: ghcr.io/mrdonnii/ha-smartdash:0.7.124
+image: ghcr.io/mrdonnii/ha-smartdash:0.8.0
 ```
 
 To roll back, replace the tag with an earlier release and recreate the
