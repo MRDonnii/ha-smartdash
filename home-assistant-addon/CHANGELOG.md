@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.8.1
+
+- Home Assistant's Open Web UI button now opens the stable direct host and
+  configured port instead of a nested Ingress path, preventing invalid OAuth
+  redirect URI errors.
+
 ## 0.8.0
 
 - Added the first Beta package for Home Assistant OS/Supervised with Ingress,

@@ -1,5 +1,16 @@
 [
   {
+    "version": "20260822-3",
+    "tag": "v0.8.1",
+    "date": "2026-08-22",
+    "changes": [
+      {
+        "da": "Home Assistant-knappen Åbn webside åbner nu Smartdash direkte på Home Assistant-maskinens IP og den valgte port i stedet for en indlejret Ingress-adresse, så OAuth-login ikke længere fejler med Invalid redirect URI.",
+        "en": "Home Assistant's Open Web UI button now opens Smartdash directly on the Home Assistant host IP and selected port instead of a nested Ingress address, preventing Invalid redirect URI errors during OAuth login."
+      }
+    ]
+  },
+  {
     "version": "20260822-2",
     "tag": "v0.8.0",
     "date": "2026-08-22",

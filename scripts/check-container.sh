@@ -40,16 +40,21 @@ release_tag=$(sed -n 's/.*name="beast-release-tag" content="v\([^"]*\)".*/\1/p' 
 
 grep -q 'Target="/data"' unraid/ha-smartdash.xml
 grep -q '/data' docker-compose.yml
-grep -q 'ingress: true' home-assistant-addon/config.yaml
+grep -Fq 'webui: http://[HOST]:[PORT:8099]/' home-assistant-addon/config.yaml
+grep -Fq 'watchdog: http://[HOST]:[PORT:8099]/healthz' home-assistant-addon/config.yaml
+if grep -q '^ingress: true' home-assistant-addon/config.yaml; then
+  echo "Home Assistant App must use its direct Web UI to keep OAuth callbacks stable" >&2
+  exit 1
+fi
 grep -q '\${SMARTDASH_PORT:-8099}:8099' docker-compose.yml
 
-# Root-relative application URLs escape Home Assistant's Ingress prefix and
-# land on the Home Assistant frontend itself. HA API paths passed to haFetch
-# are intentionally exempt because BeastAuth prefixes those with /ha.
+# Keep application URLs portable across direct installs and reverse proxies.
+# HA API paths passed to haFetch are intentionally exempt because BeastAuth
+# prefixes those with /ha.
 if grep -RIE --include='*.html' --include='*.js' \
   '(src|href)="/(js|css|admin|assets|favicon)|fetch\("/api/(backup|config|update|versions)' \
   admin js index.html beast.html camera-player.html; then
-  echo "Root-relative Smartdash URL breaks Home Assistant Ingress" >&2
+  echo "Root-relative Smartdash URL breaks proxied installations" >&2
   exit 1
 fi
 

@@ -14,7 +14,7 @@ Supervised. Home Assistant Container/Core users should use
 ## Install and open
 
 Install the App, enable automatic start and optionally enable Watchdog. Use
-**Open Web UI** for Home Assistant-authenticated Ingress access.
+**Open Web UI** to open the direct Smartdash address in a new browser page.
 
 The default internal Home Assistant address is
 `http://homeassistant:8123`. Keep it unless the Core container uses a custom
@@ -23,11 +23,13 @@ network configuration.
 Smartdash still uses its own Home Assistant user session for entity access. It
 does not expose a Supervisor administrator token to wall-panel browsers.
 
-## Optional direct kiosk port
+## Direct dashboard address and custom port
 
-Ingress needs no published port. For a kiosk that opens Smartdash directly,
-open the App's **Network** section and map internal TCP port 8099 to any unused
-host port. Only the host-side value may be changed.
+The App publishes internal TCP port 8099 and **Open Web UI** resolves it to the
+Home Assistant machine's LAN address and selected host port. This stable direct
+address avoids nested Ingress OAuth callback errors and is recommended for
+kiosks and camera-heavy dashboards. Open the App's **Network** section to use
+another available host port; only the host-side value may be changed.
 
 ## Data, backup and update
 
@@ -38,9 +40,7 @@ replacement. Include the HA Smartdash App in regular Home Assistant backups.
 
 ## Troubleshooting
 
-- Blank Ingress assets normally indicate a root-relative application URL.
-  Current releases validate all application-owned URLs for Ingress safety.
+- `Invalid redirect URI` from an older release is fixed by the direct Web UI
+  address. Update the App and reopen it from **Open Web UI**.
 - HTTP 502 means the App cannot reach the configured Home Assistant address.
-- Direct access and Ingress use separate browser storage, so each browser may
-  need to sign in once.
-
+- Each browser keeps its own Smartdash session and may need to sign in once.
