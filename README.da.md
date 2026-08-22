@@ -26,53 +26,32 @@ Den [produktionslignende showcase](demo/showcase.html) gengiver dashboardets lay
 
 ## Hurtig installation
 
-Den komplette vejledning med Unraid/Docker, Home Assistant `trusted_proxies`, ændringsbekræftelse, token-login, fejllog og recovery findes i [Komplet installation](docs/INSTALLATION.da.md).
+Vælg den installationsform, der passer til værten:
 
-1. Hent projektet og læg indholdet i webserverens rodmappe.
-2. Aktivér PHP 8+ og giv webserveren skriverettighed til `data/`.
-3. Kør `sh deploy/setup-smartdash.sh`. Førstegangsopsætningen spørger efter HA-adressen, webroden og den aktive Nginx-serverfil. Den tager backup, genererer proxyen, validerer Nginx, genindlæser den og tester loginruten.
-4. Åbn `/admin/`, log ind og vælg de entities, du vil bruge.
-5. Åbn `/` for selve dashboardet.
+| Metode | Vejledning |
+| --- | --- |
+| Docker Compose | [Docker](docs/DOCKER.md) |
+| Unraid-template | [Unraid](docs/UNRAID.md) |
+| Home Assistant OS/Supervised App | [Home Assistant App](docs/HOME_ASSISTANT.md) |
+| Eksisterende Nginx + PHP | [Komplet dansk webserverinstallation](docs/INSTALLATION.da.md) |
 
-Docker og Unraid kan køre samme opsætning uden spørgsmål:
-
-```sh
-SMARTDASH_HA_URL=http://192.168.1.20:8123 \
-SMARTDASH_WEB_ROOT=/var/www/ha-smartdash \
-SMARTDASH_NGINX_CONF=/etc/nginx/conf.d/ha-smartdash.conf \
-SMARTDASH_PUBLIC_URL=http://192.168.1.50 \
-sh deploy/setup-smartdash.sh
-```
-
-Den manuelle `nginx.conf.example` og `check-install.sh` findes fortsat til fælles eller specialbyggede Nginx-konfigurationer.
-
-Kontrollen kalder `/ha/auth/providers`. HTTP 200 med JSON og feltet `providers` betyder, at proxyen virker. HTTP 405 eller HTML betyder, at Nginx stadig sender kaldet til den statiske `location /`. HTTP 502/503/504 betyder, at proxyblokken er indlæst, men at Nginx ikke kan nå den valgte Home Assistant-adresse eller port 8123.
-
-Home Assistant skal have tillid til den **umiddelbare** Nginx-proxy. Efter et afvist kald viser Home Assistant-loggen den præcise proxyadresse, der skal godkendes. Tilføj kun denne adresse eller det mindst mulige korrekte Docker-netværk i `configuration.yaml`, og genstart Home Assistant:
-
-```yaml
-http:
-  use_x_forwarded_for: true
-  trusted_proxies:
-    - 192.168.1.50      # Eksempel: Nginx-værtens LAN-adresse
-    # - 172.18.0.0/16   # Kun eksempel: brug den faktiske Docker-netværksadresse
-```
-
-Ved subnet skal netværksadressen bruges, ikke en almindelig værtsadresse med subnet-suffiks. Undgå at godkende hele lokalnettet, medmindre det er et bevidst krav. HTTP 400 fra installationskontrollen betyder normalt, at denne tillid mangler eller ikke matcher den umiddelbare proxy.
-
-Den centrale opsætning oprettes som `data/config.json`. Filen er ignoreret af Git og må ikke lægges på GitHub, da entity-id'er kan afsløre oplysninger om hjemmet.
+Alle containerløsninger bruger samme image og bevarer konfigurationen i
+`/data`. Den eksterne port kan vælges frit; containerens interne port er 8099.
 
 ## Hvad gemmes hvor?
 
 - Entity-valg, aktiverede sider, forsidekort, fælles titel og favicon gemmes centralt.
-- Login/session, pinkode, tema, kameraopsætning og kioskindstillinger gemmes lokalt i den enkelte browser.
+- Login/session og enkelte enhedsspecifikke kioskvalg gemmes lokalt i browseren; fælles PIN, sider, layouts, entities og serverindstillinger gemmes centralt.
 - Entity-listen hentes én gang, caches og genhentes kun via den tydelige opdateringsknap.
 
 Forsidebyggeren er gitterbaseret: kort kan tilføjes, fjernes, flyttes og få responsive størrelser. Den er bevidst ikke et frit pixel-lærred, fordi layoutet skal være stabilt på brede, smalle og lodrette skærme.
 
 ## Backup og opdatering
 
-Eksportér profilen under **Admin → Backup & gendannelse**, før programfiler udskiftes. Bevar `data/config.json`, eller importér profilen igen efter opdateringen. En SMB-share skal monteres af værten under `/config/backup-targets/<navn>`; HA Smartdash gemmer ikke SMB-login.
+Eksportér profilen under **Admin → Backup & gendannelse** før opdatering. Docker,
+Unraid og Home Assistant erstatter imaget og bevarer `/data`; en selvstændig
+webserver erstatter programfiler og bevarer `data/`. En SMB-share skal monteres
+af værten under `/config/backup-targets/<navn>`; HA Smartdash gemmer ikke SMB-login.
 
 Lokale backups og backups på monterede SMB-shares vises i adminpanelet og kan hentes direkte. Se [SMB-vejledningen](deploy/SMB-BACKUP.md) for Linux, Docker og Unraid.
 

@@ -161,7 +161,7 @@
         return `<button type="button" data-kiosk-action="press" data-kind="${kind}" data-entity="${entityId}" data-entity-available="${available}" class="${kind === "shutdown" ? "is-danger" : ""}">${BeastCore.icon(kind === "shutdown" ? "close" : "settings", { size: 18 })}<strong>${label}</strong><small>${available ? "HA-entitet" : "Direkte MQTT"}</small></button>`;
       }).join("")}</div>
       <div class="beast-mqtt-controls">${buildNumberControl("Zoom", ids.zoom)}${buildNumberControl("Lyd", ids.volume)}${buildSelectControl("Kiosktilstand", ids.kiosk)}${buildSelectControl("Tema", ids.theme)}</div>
-      <div class="beast-mqtt-url"><span>Sideadresse</span><code>${escapeHtml(stateValue(ids.url))}</code><button type="button" data-kiosk-action="url" data-entity="${ids.url}" data-value="${escapeHtml(new URL("/", window.location.origin).href)}">Åbn HA Smartdash</button></div>
+      <div class="beast-mqtt-url"><span>Sideadresse</span><code>${escapeHtml(stateValue(ids.url))}</code><button type="button" data-kiosk-action="url" data-entity="${ids.url}" data-value="${escapeHtml(BeastCore.appUrl())}">Åbn HA Smartdash</button></div>
       <div class="beast-mqtt-metrics">${metrics.map(([label, entityId]) => `<div><span>${label}</span><strong>${escapeHtml(stateValue(entityId))}</strong></div>`).join("")}</div>
       <p class="beast-mqtt-feedback" id="beastMqttFeedback"></p>
     `;

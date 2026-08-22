@@ -41,12 +41,42 @@ Every release must update all of these values in the same commit:
    The automated release check always enforces this for the shared misc CSS
    and the complete Overview editor bundle (Overview CSS, card editor JS and
    Overview JS), because mixing these files can hide editing controls.
+5. `home-assistant-addon/config.yaml` must use the semantic version without
+   the leading `v`. Its `image` remains the generic multi-architecture image.
+6. `home-assistant-addon/CHANGELOG.md` must begin with the same semantic
+   version.
 
 `beast-release-tag` and `changelog.json.tag` must equal the Git tag exactly.
 The two HTML files must contain identical release tags and build IDs.
 
 The build ID format is `YYYYMMDD-N`, for example `20260811-142`. Increment
 `N` for every build made on the same date. Never decrease or reuse a build ID.
+
+## Distribution and update contract
+
+One release commit is the source of truth for every installation method:
+
+| Distribution | Release artifact | Update owner | Persistent state |
+| --- | --- | --- | --- |
+| Standalone Nginx/PHP | GitHub source archive | Smartdash built-in updater or administrator | `data/` |
+| Docker Compose | `ghcr.io/mrdonnii/ha-smartdash` | Docker Compose | `/data` volume |
+| Unraid | Same GHCR image plus `unraid/ha-smartdash.xml` | Unraid Docker updater | appdata mapped to `/data` |
+| Home Assistant App | Same GHCR image plus `home-assistant-addon/config.yaml` | Home Assistant Supervisor | App `/data` volume |
+
+Container code is immutable. `api/update.php` may discover a release but must
+never replace application files when `SMARTDASH_CONTAINER=1`. Container users
+update through their platform, which replaces the image and retains `/data`.
+
+The container workflow publishes these tags:
+
+- every release: exact `vMAJOR.MINOR.PATCH` and `MAJOR.MINOR.PATCH` tags;
+- Beta release: moving `beta` tag;
+- Stable release: moving `latest` tag;
+- every main push: development-only `edge` tag.
+
+Do not point a Stable template at `beta` or `edge`. During a new runtime's Beta
+cycle, templates may explicitly use `beta` and must be switched to `latest`
+in the first Stable release.
 
 ## Changelog contract
 
@@ -112,15 +142,23 @@ release title identify the channel.
 1. Choose the next unused semantic version and build ID.
 2. Update both HTML files and prepend the bilingual changelog entry.
 3. Update cache IDs for every changed browser-loaded CSS and JavaScript asset.
-4. Run `scripts/check-release.sh` and fix every failure.
-5. Commit with an English message and push the intended commit.
-6. Create the Git tag from that exact commit.
-7. Create the GitHub release using the canonical title and English notes.
-8. Set the GitHub pre-release flag according to the selected channel.
-9. Verify the published tag, title, pre-release flag, target commit, and
+4. Update the Home Assistant App version and App changelog.
+5. Confirm Docker Compose and Unraid point at the intended Stable/Beta channel.
+6. Run `scripts/check-release.sh` and `scripts/check-container.sh`; fix every failure.
+7. Commit with an English message and push the intended commit.
+8. Create the Git tag from that exact commit.
+9. Create the GitHub release using the canonical title and English notes.
+10. Set the GitHub pre-release flag according to the selected channel. The
+    published release event starts the multi-architecture container workflow.
+11. Verify the published tag, title, pre-release flag, target commit, and
    release notes.
-10. Verify that Stable discovery returns the newest non-pre-release and Beta
+12. Wait for the container workflow and verify the exact version plus the
+    correct moving channel tag in GHCR for both `linux/amd64` and `linux/arm64`.
+13. Verify that the GHCR package is public before advertising installation.
+14. Verify that Stable discovery returns the newest non-pre-release and Beta
    discovery returns the newest release including pre-releases.
+15. Pull or install the result through at least one container path before
+    promoting a new runtime from Beta to Stable.
 
 Example commands:
 

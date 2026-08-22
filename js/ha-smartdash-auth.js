@@ -1,5 +1,10 @@
 const BeastAuth = (() => {
-  const HA_PROXY_PATH = "/ha";
+  const AUTH_SCRIPT_URL = document.currentScript?.src || window.location.href;
+  const APP_ROOT_URL = new URL("../", AUTH_SCRIPT_URL);
+  // Keep the Home Assistant proxy beneath the current application base. This
+  // is /ha on a normal Docker host and /api/hassio_ingress/<token>/ha when the
+  // same files are opened through Home Assistant Ingress.
+  const HA_PROXY_PATH = new URL("ha", APP_ROOT_URL).pathname.replace(/\/$/, "");
   const OAUTH_STORAGE_KEY = "beast_panel_ha_oauth_v1";
   const AUTH_PENDING_KEY = "beast_panel_ha_auth_pending_v1";
   const AUTH_DIAGNOSTICS_KEY = "beast_panel_ha_auth_diagnostics_v1";

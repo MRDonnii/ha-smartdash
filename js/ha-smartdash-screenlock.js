@@ -152,7 +152,7 @@ const BeastScreenLock = (() => {
   function startTrustedRecovery() {
     sessionStorage.setItem("beast_panel_pin_recovery_pending_v1", "1");
     sessionStorage.setItem("beast_panel_pin_recovery_source_v1", window.location.pathname || "/");
-    window.location.assign("/admin/?pin-recovery=1");
+    window.location.assign(BeastCore.appUrl("admin/?pin-recovery=1"));
   }
 
   function handleKeyboard(event) {

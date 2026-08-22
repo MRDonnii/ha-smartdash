@@ -1,4 +1,7 @@
 (function () {
+  const ADMIN_SCRIPT_URL = document.currentScript?.src || window.location.href;
+  const APP_ROOT_URL = new URL("../", ADMIN_SCRIPT_URL);
+  const localApiUrl = (file) => new URL(`api/${file}`, APP_ROOT_URL).href;
   // Denne installation migrerer panel for panel fra det oprindelige,
   // hardcodede HA Smartdash — kun paneller der faktisk er koblet til
   // BeastConfig optræder her, ellers ville admin vise felter der ikke gør
@@ -1313,9 +1316,9 @@
     setUpdateStatus("checking", t("Tjekker…", "Checking…"));
     try {
       const [versionsRes, changelogRes, githubRes] = await Promise.all([
-        fetch("/api/versions.php", { cache: "no-store" }),
+        fetch(localApiUrl("versions.php"), { cache: "no-store" }),
         fetch(`/changelog.json?_=${Date.now()}`, { cache: "no-store" }),
-        fetch("/api/update.php", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "check", force: Boolean(forceGithubRefresh), channel: BeastConfig.get("updateChannel") === "beta" ? "beta" : "stable" }) }).catch(() => null)
+        fetch(localApiUrl("update.php"), { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "check", force: Boolean(forceGithubRefresh), channel: BeastConfig.get("updateChannel") === "beta" ? "beta" : "stable" }) }).catch(() => null)
       ]);
       if (!versionsRes.ok) throw new Error(`HTTP ${versionsRes.status}`);
       const versionsPayload = await versionsRes.json();
@@ -1379,7 +1382,7 @@
         oldRestoreBtn.dataset.installSource = "local";
       }
       if (!versionsPayload.hasCurrentSnapshot) {
-        await fetch("/api/versions.php", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "snapshot" }) });
+        await fetch(localApiUrl("versions.php"), { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "snapshot" }) });
       }
       const checkedAt = new Date().toLocaleTimeString();
       if (updateAvailable) {
@@ -1399,13 +1402,13 @@
   }
 
   async function rollbackToVersion(version) {
-    const response = await fetch("/api/versions.php", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "rollback", version }) });
+    const response = await fetch(localApiUrl("versions.php"), { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "rollback", version }) });
     if (!response.ok) throw new Error(`HTTP ${response.status}`);
     return response.json();
   }
 
   async function installFromGithub(tag) {
-    const response = await fetch("/api/update.php", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "install", tag: tag || undefined }) });
+    const response = await fetch(localApiUrl("update.php"), { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "install", tag: tag || undefined }) });
     const payload = await response.json().catch(() => null);
     if (!response.ok || !payload?.success) throw new Error(payload?.message || payload?.error || `HTTP ${response.status}`);
     return payload;
@@ -1426,7 +1429,7 @@
     const state = document.querySelector("[data-backup-state]");
     if (!state) return;
     try {
-      const response = await fetch("/api/backup.php", { cache: "no-store" });
+      const response = await fetch(localApiUrl("backup.php"), { cache: "no-store" });
       if (!response.ok) throw new Error(`HTTP ${response.status}`);
       const payload = await response.json();
       const settings = payload.settings || {};
@@ -1446,7 +1449,7 @@
   }
 
   async function backupRequest(payload) {
-    const response = await fetch("/api/backup.php", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
+    const response = await fetch(localApiUrl("backup.php"), { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
     if (!response.ok) throw new Error(`HTTP ${response.status}`);
     return response.json();
   }
@@ -1791,7 +1794,7 @@
             <button class="${activeView === "backup" ? "is-active" : ""}" type="button" data-view="backup">Backup & gendannelse</button>
             <button class="${activeView === "updates" ? "is-active" : ""}" type="button" data-view="updates">Opdatering</button>
           </nav>
-          <div class="admin-sidebar-foot"><a class="admin-back" href="/">Åbn dashboard</a></div>
+          <div class="admin-sidebar-foot"><a class="admin-back" href="${APP_ROOT_URL.href}">Åbn dashboard</a></div>
         </aside>
         <main class="admin-main">
           <header class="admin-topbar"><div><h1>${adminViewTitle()}</h1><p>${adminViewDescription()}</p></div><div class="admin-topbar-tools"><label class="admin-language-picker"><span>${BeastCore.icon("globe", { size: 15 })}</span><select id="adminLanguageSelect" aria-label="Dashboard-sprog"><option value="en"${dashboardLanguage !== "da" ? " selected" : ""}>English</option><option value="da"${dashboardLanguage === "da" ? " selected" : ""}>Dansk</option></select></label><span class="admin-status" id="adminHaStatus" data-state="${connected ? "connected" : "connecting"}">${connected ? "Home Assistant forbundet" : "Forbinder til Home Assistant…"}</span></div></header>
@@ -1907,7 +1910,7 @@
     });
     document.getElementById("adminUpdateSkipNote")?.addEventListener("click", async (event) => {
       if (!event.target.closest("#adminClearUpdateSkip")) return;
-      await fetch("/api/update.php", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "clearSkip" }) }).catch(() => {});
+      await fetch(localApiUrl("update.php"), { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "clearSkip" }) }).catch(() => {});
       loadUpdatesSettings();
     });
     document.getElementById("adminOldVersionSelect")?.addEventListener("change", (event) => {
@@ -2547,7 +2550,7 @@
   function renderLogin(message) {
     const diagnostics = BeastAuth.getDiagnostics();
     const diagnosticText = diagnostics.length ? JSON.stringify(diagnostics, null, 2) : "Ingen loginfejl registreret i denne browserfane.";
-    root.innerHTML = `<div class="admin-login"><div class="admin-login-card"><div class="admin-login-logo">${brandLogoMarkup("login")}</div><small>Administration</small><h1>Forbind Home Assistant</h1><p class="admin-login-message">${escapeHtml(message || "Vælg almindeligt Home Assistant-login eller brug et Long-Lived Access Token. Oplysninger gemmes kun i denne browser.")}</p><form id="adminLoginForm"><input type="url" id="adminHaUrl" value="${escapeHtml(BeastAuth.getHaBaseUrl() || `${window.location.origin}/ha`)}" placeholder="Home Assistant-adresse" required><button type="submit">Log ind med Home Assistant</button></form><details class="admin-token-login"><summary>Log ind med token</summary><form id="adminTokenLoginForm"><label>Long-Lived Access Token<textarea id="adminHaToken" rows="4" autocomplete="off" spellcheck="false" placeholder="Indsæt token fra din Home Assistant-profil" required></textarea></label><small>Tokenet valideres mod Home Assistant og gemmes kun lokalt i browseren. Det vises aldrig i fejlloggen.</small><button type="submit">Kontrollér token og log ind</button></form></details><details class="admin-login-diagnostics"${diagnostics.length ? " open" : ""}><summary>Fejllog og forbindelsesdetaljer</summary><pre id="adminLoginDiagnosticText">${escapeHtml(diagnosticText)}</pre><div><button type="button" id="adminCopyLoginDiagnostics">Kopiér fejllog</button><button type="button" id="adminClearLoginDiagnostics">Ryd log</button></div></details></div></div>`;
+    root.innerHTML = `<div class="admin-login"><div class="admin-login-card"><div class="admin-login-logo">${brandLogoMarkup("login")}</div><small>Administration</small><h1>Forbind Home Assistant</h1><p class="admin-login-message">${escapeHtml(message || "Vælg almindeligt Home Assistant-login eller brug et Long-Lived Access Token. Oplysninger gemmes kun i denne browser.")}</p><form id="adminLoginForm"><input type="url" id="adminHaUrl" value="${escapeHtml(BeastAuth.getHaBaseUrl() || `${window.location.origin}${BeastAuth.HA_PROXY_PATH}`)}" placeholder="Home Assistant-adresse" required><button type="submit">Log ind med Home Assistant</button></form><details class="admin-token-login"><summary>Log ind med token</summary><form id="adminTokenLoginForm"><label>Long-Lived Access Token<textarea id="adminHaToken" rows="4" autocomplete="off" spellcheck="false" placeholder="Indsæt token fra din Home Assistant-profil" required></textarea></label><small>Tokenet valideres mod Home Assistant og gemmes kun lokalt i browseren. Det vises aldrig i fejlloggen.</small><button type="submit">Kontrollér token og log ind</button></form></details><details class="admin-login-diagnostics"${diagnostics.length ? " open" : ""}><summary>Fejllog og forbindelsesdetaljer</summary><pre id="adminLoginDiagnosticText">${escapeHtml(diagnosticText)}</pre><div><button type="button" id="adminCopyLoginDiagnostics">Kopiér fejllog</button><button type="button" id="adminClearLoginDiagnostics">Ryd log</button></div></details></div></div>`;
     document.getElementById("adminLoginForm").addEventListener("submit", async (event) => {
       event.preventDefault();
       BeastAuth.setHaBaseUrl(document.getElementById("adminHaUrl").value);
@@ -2610,7 +2613,7 @@
     const alreadyVerifiedForAdmin = window.BeastScreenLock?.consumeAdminVerification?.() === true;
     if (window.BeastScreenLock?.hasPin() && !pinRecoveryPending && !alreadyVerifiedForAdmin) {
       const verified = await new Promise((resolve) => window.BeastScreenLock.requestPinVerification(resolve));
-      if (!verified) { window.location.href = "/"; return; }
+      if (!verified) { window.location.href = APP_ROOT_URL.href; return; }
     }
     const returnView = sessionStorage.getItem("beast_admin_return_view_v1");
     if (returnView) { activeView = returnView; sessionStorage.removeItem("beast_admin_return_view_v1"); }

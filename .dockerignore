@@ -1,0 +1,9 @@
+.git
+.github
+.DS_Store
+data/*
+!data/.gitkeep
+demo
+docs/screenshots
+release-notes*.md
+

@@ -265,6 +265,7 @@ if (!is_array($body)) { http_response_code(400); echo json_encode(["error" => "i
 $action = $body["action"] ?? "";
 
 if ($action === "check") {
+  $containerManaged = getenv("SMARTDASH_CONTAINER") === "1";
   // "beta" opts into GitHub releases marked pre-release; anything else
   // (including a missing/unrecognized value) is "stable" -- the exact
   // behavior this endpoint already had before channels existed.
@@ -303,6 +304,7 @@ if ($action === "check") {
     $remoteBuildId = $cached["remoteVersion"];
     echo json_encode([
       "currentVersion" => $current,
+      "containerManaged" => $containerManaged,
       "channel" => $channel,
       "tag" => $tag,
       "remoteVersion" => $remoteBuildId,
@@ -329,6 +331,7 @@ if ($action === "check") {
       if (is_array($stale)) {
         echo json_encode([
           "currentVersion" => $current,
+          "containerManaged" => $containerManaged,
           "channel" => $channel,
           "tag" => $stale["tag"],
           "remoteVersion" => $stale["remoteVersion"],
@@ -365,6 +368,7 @@ if ($action === "check") {
 
   echo json_encode([
     "currentVersion" => $current,
+    "containerManaged" => $containerManaged,
     "channel" => $channel,
     "updateAvailable" => compareBuildIds($remoteBuildId, $current) > 0,
     "cached" => false,
@@ -374,6 +378,18 @@ if ($action === "check") {
 }
 
 if ($action === "install") {
+  // Container images are immutable release artifacts. Replacing files in a
+  // running container would disappear on restart and bypass the platform's
+  // rollback mechanism, so Docker, Unraid or Home Assistant must replace the
+  // image while preserving /data instead.
+  if (getenv("SMARTDASH_CONTAINER") === "1") {
+    http_response_code(409);
+    echo json_encode([
+      "error" => "container_managed_update",
+      "message" => "Update the HA Smartdash image through Docker, Unraid or Home Assistant. Persistent /data will be preserved."
+    ]);
+    exit;
+  }
   set_time_limit(90);
   $error = null;
 

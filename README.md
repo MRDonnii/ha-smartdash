@@ -4,6 +4,24 @@
 
 HA Smartdash is a responsive, configuration-driven Home Assistant dashboard built for wall-mounted touchscreens, kiosk computers, tablets and desktop browsers. Its purpose is to turn a large smart-home installation into one calm, coherent control surface: essential information is always visible, common actions are easy to reach, and detailed controls remain available without loading the full Home Assistant interface.
 
+## Ready-made container packages
+
+HA Smartdash can run from the same multi-architecture image on Docker,
+Unraid, and Home Assistant OS/Supervised. The package includes Nginx, PHP,
+health monitoring, automatic Home Assistant proxy configuration, and a
+persistent `/data` volume. Users can choose their own LAN port without
+changing the fixed internal Ingress port.
+
+- **Docker Compose:** use `docker-compose.yml` and select the host port with
+  `SMARTDASH_PORT`.
+- **Unraid:** import `unraid/ha-smartdash.xml`; the Web UI port, appdata path,
+  Home Assistant URL and timezone are editable fields.
+- **Home Assistant:** add this GitHub repository to the App store, then install
+  HA Smartdash with authenticated Ingress or expose a custom direct port.
+
+See [Docker, Unraid and Home Assistant installation](docs/DOCKER.md) for the
+complete installation and update flow.
+
 The project combines a touch-first dashboard, a visual page and card editor, centralized entity configuration, live camera handling, kiosk power management and an administration area. It is designed to preserve each installation's choices across updates instead of assuming that every home uses the author's devices or layout.
 
 On many kiosk computers and tablets, HA Smartdash can feel faster and use fewer client resources than Home Assistant's full interface. It loads the entity catalogue once per page session, caches it locally, updates cards in place and avoids unnecessary full-page refreshes. Actual performance depends on the device, browser, enabled pages, cameras and Home Assistant integrations.
@@ -136,9 +154,9 @@ The included [current production-style showcase](demo/current-showcase.html) rep
 
 ## Requirements
 
-- A web server with PHP 8 or newer
-- Write permission for the web server user in `data/`
-- A same-origin reverse proxy from `/ha/` to Home Assistant, including WebSocket upgrade support
+- Docker/Unraid, Home Assistant OS/Supervised, or a web server with PHP 8+
+- Persistent write access to `/data` (containers) or `data/` (web server)
+- Network access from Smartdash to Home Assistant
 - A modern browser with CSS Grid, WebSocket and ES2020 support
 - HTTPS when the dashboard is reachable outside a trusted private network
 
@@ -146,30 +164,17 @@ go2rtc, Music Assistant, MQTT, kiosk display entities and individual device inte
 
 ## Installation
 
-For the full step-by-step setup, including Docker/Unraid, Home Assistant proxy trust, token login and recovery, see the [complete Danish installation guide](docs/INSTALLATION.da.md).
+Start with [Choose an installation method](docs/INSTALLATION.md):
 
-1. Download or clone the repository into your web root and ensure PHP 8+ can write to `data/`.
-2. Run `sh deploy/setup-smartdash.sh`. First-run setup asks for the HA URL, web root and active Nginx server file. It creates a backup, generates the proxy, validates and reloads Nginx, and tests the login route.
-3. Open `/admin/`, authenticate and select the entities needed by each enabled page.
-4. Organize pages and cards, then open `/` for the dashboard.
+| Method | Install guide |
+| --- | --- |
+| Docker Compose | [Docker](docs/DOCKER.md) |
+| Unraid template | [Unraid](docs/UNRAID.md) |
+| Home Assistant OS/Supervised App | [Home Assistant App](docs/HOME_ASSISTANT.md) |
+| Existing Nginx + PHP server | [Standalone web server](docs/WEB_SERVER.md) |
 
-Docker and Unraid can run the same script unattended by setting `SMARTDASH_HA_URL`, `SMARTDASH_WEB_ROOT`, `SMARTDASH_NGINX_CONF` and `SMARTDASH_PUBLIC_URL`. The manual `nginx.conf.example` and `check-install.sh` remain available for shared or custom Nginx configurations.
-
-The proxy check requests `/ha/auth/providers`. A correct installation returns HTTP 200 with JSON containing `providers`. HTTP 405 or an HTML response means the request is still handled by the static `location /`; HTTP 502/503/504 means Nginx loaded the proxy but cannot reach the configured Home Assistant host or port.
-
-Home Assistant must trust the **immediate** Nginx proxy. Check the Home Assistant log after a rejected request; it reports the exact proxy address that must be trusted. Add that single address, or the smallest correct Docker network, to `configuration.yaml` and restart Home Assistant:
-
-```yaml
-http:
-  use_x_forwarded_for: true
-  trusted_proxies:
-    - 192.168.1.50      # Example: LAN address of the Nginx host
-    # - 172.18.0.0/16   # Example only: use the actual Docker network address
-```
-
-Use the network address when specifying a subnet, not an individual host address with a subnet suffix. Avoid trusting the whole LAN unless that is deliberately required. HTTP 400 from the installation check normally means this trust is missing or does not match the immediate proxy address.
-
-`data/config.json` is created on first save and is ignored by Git. Never commit this file: it can reveal entity IDs and details about your home.
+The Danish standalone guide remains available as
+[Komplet installation](docs/INSTALLATION.da.md).
 
 ## Configuration ownership
 
@@ -192,10 +197,13 @@ Configure quality variants only when they represent real upstream streams. The d
 
 ## Updating without losing configuration
 
-1. In **Admin → Backup & restore**, export the HA Smartdash profile.
-2. Install the update from Admin or replace the application files while preserving `data/`.
-3. Confirm the version and migration result in **Admin → Updates**.
-4. Restore the profile only if the configuration audit reports a problem.
+Container installs update through Docker, Unraid or Home Assistant by replacing
+the image while retaining `/data`. Standalone web servers may use the built-in
+updater, which replaces release-owned files while retaining `data/`.
+
+Before either update path, export a profile under **Admin → Backup & restore**.
+Never bind-mount application JS/CSS/PHP over the container image and never
+delete the persistent data directory during an upgrade.
 
 The updater preserves `data/`, explicit empty or short arrays, removed optional cards and installation-specific profile files. New neutral defaults are added only when a property is genuinely absent. Older `beast-profile` and `beast-central` profile files can also be imported.
 

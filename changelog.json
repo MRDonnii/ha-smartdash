@@ -1,5 +1,32 @@
 [
   {
+    "version": "20260822-1",
+    "tag": "v0.7.124",
+    "date": "2026-08-22",
+    "changes": [
+      {
+        "da": "HA Smartdash kan nu installeres som en samlet multi-arkitektur Dockerpakke med Nginx, PHP, healthcheck og persistent /data på både amd64 og arm64.",
+        "en": "HA Smartdash can now be installed as one multi-architecture Docker package with Nginx, PHP, health monitoring, and persistent /data on both amd64 and arm64."
+      },
+      {
+        "da": "Der er tilføjet en færdig Unraid-template med valgfri ekstern port, Home Assistant-adresse og persistent appdata-mappe.",
+        "en": "A ready-made Unraid template now provides a configurable external port, Home Assistant address, and persistent appdata directory."
+      },
+      {
+        "da": "Home Assistant OS og Supervised kan installere dashboardet direkte som en App med Ingress, valgfri direkte kioskport og backup af App-data.",
+        "en": "Home Assistant OS and Supervised can now install the dashboard directly as an App with Ingress, an optional direct kiosk port, and App-data backups."
+      },
+      {
+        "da": "Containeropdateringer håndteres nu af Docker, Unraid eller Home Assistant og bevarer /data; den indbyggede filupdatering bruges fortsat kun på selvstændige webservere.",
+        "en": "Container updates are now owned by Docker, Unraid, or Home Assistant and preserve /data; the built-in file updater remains available only to standalone web servers."
+      },
+      {
+        "da": "Links, lokale API-kald, Home Assistant-proxy og WebSocket-forbindelse følger nu programmets baseadresse, så dashboard og administration virker gennem Home Assistant Ingress.",
+        "en": "Links, local API calls, the Home Assistant proxy, and WebSocket connections now follow the application base path so the dashboard and Administration work through Home Assistant Ingress."
+      }
+    ]
+  },
+  {
     "version": "20260819-29",
     "tag": "v0.7.123",
     "date": "2026-08-19",

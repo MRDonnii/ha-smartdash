@@ -1,0 +1,20 @@
+<?xml version="1.0"?>
+<Container version="2">
+  <Name>HA-Smartdash</Name>
+  <Repository>ghcr.io/mrdonnii/ha-smartdash:beta</Repository>
+  <Registry>https://github.com/MRDonnii/ha-smartdash/pkgs/container/ha-smartdash</Registry>
+  <Network>bridge</Network>
+  <Shell>sh</Shell>
+  <Privileged>false</Privileged>
+  <Support>https://github.com/MRDonnii/ha-smartdash/issues</Support>
+  <Project>https://github.com/MRDonnii/ha-smartdash</Project>
+  <Overview>Touch-first, editable Home Assistant dashboard for wall displays, kiosks and tablets.</Overview>
+  <Category>HomeAutomation:</Category>
+  <WebUI>http://[IP]:[PORT:8099]/</WebUI>
+  <Icon>https://raw.githubusercontent.com/MRDonnii/ha-smartdash/main/assets/ha-smartdash-icon.png</Icon>
+  <ExtraParams>--health-cmd='curl -fsS http://127.0.0.1:8099/healthz || exit 1' --health-interval=30s</ExtraParams>
+  <Config Name="Web UI port" Target="8099" Default="8099" Mode="tcp" Description="HA Smartdash web interface" Type="Port" Display="always" Required="true" Mask="false">8099</Config>
+  <Config Name="Persistent data" Target="/data" Default="/mnt/user/appdata/ha-smartdash" Mode="rw" Description="Configuration, layouts, PIN and backups" Type="Path" Display="always" Required="true" Mask="false">/mnt/user/appdata/ha-smartdash</Config>
+  <Config Name="Home Assistant URL" Target="HA_URL" Default="http://homeassistant.local:8123" Description="URL reachable from this container" Type="Variable" Display="always" Required="true" Mask="false">http://homeassistant.local:8123</Config>
+  <Config Name="Timezone" Target="TZ" Default="Europe/Copenhagen" Description="IANA timezone" Type="Variable" Display="advanced" Required="true" Mask="false">Europe/Copenhagen</Config>
+</Container>

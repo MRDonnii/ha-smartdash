@@ -1,4 +1,4 @@
-import { VideoRTC } from "/js/vendor/video-rtc.js?v=3";
+import { VideoRTC } from "./vendor/video-rtc.js?v=3";
 
 const params = new URLSearchParams(window.location.search);
 let GO2RTC_BASE_URL = params.get("base") || "";
