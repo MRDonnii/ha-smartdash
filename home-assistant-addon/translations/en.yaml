@@ -6,4 +6,4 @@ configuration:
     name: Timezone
     description: IANA timezone used for logs and scheduled dashboard behavior.
 network:
-  8099/tcp: Direct dashboard access outside Home Assistant Ingress
+  8099/tcp: Smartdash web interface
