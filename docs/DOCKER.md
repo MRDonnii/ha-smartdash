@@ -4,9 +4,8 @@ HA Smartdash publishes one multi-architecture image for `amd64` and `arm64`.
 Application files come from the image; configuration, layouts, PIN settings,
 local profiles and backups remain in `/data`.
 
-The first container package is published on the `beta` channel. After the
-container runtime has completed its Beta cycle, Stable installations use the
-`latest` tag.
+Stable installations use the `latest` tag. Track pre-release builds instead
+with `beta`, or a moving `edge` tag built from every push to `main`.
 
 ## 1. Create the project directory
 
