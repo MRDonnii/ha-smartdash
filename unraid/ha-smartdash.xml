@@ -1,7 +1,7 @@
 <?xml version="1.0"?>
 <Container version="2">
   <Name>HA-Smartdash</Name>
-  <Repository>ghcr.io/mrdonnii/ha-smartdash:beta</Repository>
+  <Repository>ghcr.io/mrdonnii/ha-smartdash:latest</Repository>
   <Registry>https://github.com/MRDonnii/ha-smartdash/pkgs/container/ha-smartdash</Registry>
   <Network>bridge</Network>
   <Shell>sh</Shell>
