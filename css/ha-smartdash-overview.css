@@ -56,14 +56,24 @@
 .beast-ov-mail-banner.is-dragging { user-select: none; cursor: grabbing; transition: none; box-shadow: 0 22px 64px rgba(0,0,0,.58); }
 .beast-ov-mail-banner.has-custom-position { transform: none; }
 .beast-ov-mail-banner[hidden] { display: none; }
-.beast-ov-mail-banner-drag { width: 64px; height: 20px; flex: 0 0 auto; display: flex; align-items: center; justify-content: center; cursor: grab; touch-action: none; }
+/* height was 20px: fine for a mouse cursor's pixel-precise hit-test, but a
+   finger on a wall-mounted touchscreen routinely misses a target that
+   short and lands on the photo below instead, which only opens the detail
+   view -- reading as "dragging doesn't work at all" even though the code
+   path (pointerdown/move/up, touch-action:none) is identical for mouse and
+   touch. Widened to a normal touch-target height; the visible grip pill
+   (::before) stays the same size, just with more empty tappable margin
+   around it. */
+.beast-ov-mail-banner-drag { width: 96px; height: 40px; flex: 0 0 auto; display: flex; align-items: center; justify-content: center; cursor: grab; touch-action: none; }
 .beast-ov-mail-banner-drag::before { content: ""; width: 64px; height: 7px; border-radius: 999px; background: rgba(255,255,255,.28); }
 .beast-ov-mail-banner.is-dragging .beast-ov-mail-banner-drag::before { background: rgba(255,255,255,.5); }
 /* Bottom-right corner handle -- drag to make the card/combined card wider
    than its CSS default; wireBannerResize() clamps the drag to never go
    below that default, so this only ever makes a banner bigger, never
    smaller than what it already looks like today. */
-.beast-ov-mail-banner-resize { position: absolute; right: 4px; bottom: 4px; width: 26px; height: 26px; display: grid; place-items: center; cursor: nwse-resize; touch-action: none; }
+/* Same touch-target reasoning as the drag handle above: 26px was fine for
+   a mouse, too small to reliably catch with a finger. */
+.beast-ov-mail-banner-resize { position: absolute; right: 0; bottom: 0; width: 40px; height: 40px; display: grid; place-items: center; cursor: nwse-resize; touch-action: none; }
 .beast-ov-mail-banner-resize::before { content: ""; width: 10px; height: 10px; border-right: 2px solid rgba(255,255,255,.4); border-bottom: 2px solid rgba(255,255,255,.4); }
 .beast-ov-mail-banner.is-resizing { transition: none; }
 .beast-ov-mail-banner.is-resizing .beast-ov-mail-banner-resize::before { border-color: rgba(255,255,255,.75); }

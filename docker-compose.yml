@@ -1,6 +1,6 @@
 services:
   ha-smartdash:
-    image: ghcr.io/mrdonnii/ha-smartdash:beta
+    image: ghcr.io/mrdonnii/ha-smartdash:latest
     container_name: ha-smartdash
     restart: unless-stopped
     ports:

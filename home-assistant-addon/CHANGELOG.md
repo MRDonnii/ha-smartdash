@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.8.2
+
+- First Stable release of the Docker, Unraid, and Home Assistant App
+  distributions -- Docker Compose and the Unraid template now track the
+  `latest` image tag instead of `beta`.
+- Alert popup drag/resize handles are now large enough to use reliably on a
+  touchscreen.
+
 ## 0.8.1
 
 - Home Assistant's Open Web UI button now opens the stable direct host and

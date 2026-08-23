@@ -1,5 +1,20 @@
 [
   {
+    "version": "20260823-1",
+    "tag": "v0.8.2",
+    "date": "2026-08-23",
+    "changes": [
+      {
+        "da": "Første Stable-udgivelse der inkluderer Docker-, Unraid- og Home Assistant App-distributionerne fra de seneste Beta-udgivelser -- Docker Compose og Unraid-skabelonen følger nu det stabile 'latest'-image i stedet for 'beta'.",
+        "en": "First Stable release to include the Docker, Unraid, and Home Assistant App distributions from the recent Beta releases -- Docker Compose and the Unraid template now track the stable 'latest' image instead of 'beta'."
+      },
+      {
+        "da": "Træk- og størrelseshåndtagene på advarsels-popups (post, printer, døre/låse) er gjort væsentligt større, så de er nemme at ramme med en finger på en touchskærm -- de var kun dimensioneret til en museknap.",
+        "en": "The drag and resize handles on alert popups (mail, printer, doors/locks) have been made significantly larger so they're easy to hit with a finger on a touchscreen -- they were previously sized for a mouse cursor only."
+      }
+    ]
+  },
+  {
     "version": "20260822-3",
     "tag": "v0.8.1",
     "date": "2026-08-22",
