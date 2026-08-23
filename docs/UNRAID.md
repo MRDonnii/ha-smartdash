@@ -4,8 +4,8 @@ HA Smartdash ships with an Unraid Docker template at
 `unraid/ha-smartdash.xml`. It uses the same image as Docker Compose and keeps
 all user data in the Unraid appdata share.
 
-The initial template follows the `beta` image channel while the new container
-runtime is tested. A later Stable template will follow `latest`.
+The template follows the `latest` image channel. To track pre-release builds
+instead, edit the repository field to `ghcr.io/mrdonnii/ha-smartdash:beta`.
 
 ## Install
 
