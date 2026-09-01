@@ -1,7 +1,7 @@
-const VERSION = "0.1.26";
+const VERSION = "0.1.27";
 
 const FIELDS = [
-  ["primary_supply", "Fjernvarme fremløb"], ["primary_return", "Fjernvarme retur"], ["primary_valve", "Fjernvarme hovedventil"],
+  ["primary_supply", "Fjernvarme fremløb"], ["primary_return", "Fjernvarme retur"], ["primary_valve", "Fjernvarme hovedventil"], ["summer_cutoff", "Sommerudkobling"],
   ["primary_cooling", "Fjernvarme afkøling"], ["pressure", "Anlægstryk"],
   ["meter_power", "Aktuel effekt"], ["meter_flow", "Aktuelt flow"],
   ["meter_energy_total", "Energi total"], ["meter_volume_total", "Volumen total"],
@@ -43,7 +43,13 @@ class HAFjernvarmeHouseCard extends HTMLElement {
   }
   getCardSize() { return this._config.show_details === false ? 10 : 15; }
   getGridOptions() { return { rows: "auto", columns: 12, min_columns: 6 }; }
-  _entity(key) { const id = this._config.entities?.[key]; return id ? this._hass?.states?.[id] : undefined; }
+  _entityId(key) {
+    const configured = this._config.entities?.[key];
+    if (configured) return configured;
+    if (key === "summer_cutoff") return Object.keys(this._hass?.states || {}).find(id => /wavin_calefa.*itc_max_outdoor_temp$/.test(id));
+    return undefined;
+  }
+  _entity(key) { const id = this._entityId(key); return id ? this._hass?.states?.[id] : undefined; }
   _num(key) { const n = Number.parseFloat(String(this._entity(key)?.state ?? "").replace(",", ".")); return Number.isFinite(n) ? n : undefined; }
   _on(key) { return ["on","true","active","open","opening","running","heat","heating","ja","aktiv","kører"].includes(String(this._entity(key)?.state || "").toLowerCase()); }
   _flowing(key) { const n=this._num(key); return Number.isFinite(n) ? n > 0.01 : this._on(key); }
@@ -81,7 +87,7 @@ class HAFjernvarmeHouseCard extends HTMLElement {
   _binaryStatus(label,key,onText,offText) { const e=this._entity(key); return `<div class="metric entity-hit" data-key="${key}" tabindex="0"><small>${label}</small><strong>${e?(this._on(key)?onText:offText):"—"}</strong></div>`; }
   _bindMoreInfo() {
     const open = key => {
-      const entityId = this._config.entities?.[key];
+      const entityId = this._entityId(key);
       if (!entityId || Array.isArray(entityId)) return;
       this.dispatchEvent(new CustomEvent("hass-more-info",{detail:{entityId},bubbles:true,composed:true}));
     };
@@ -95,7 +101,6 @@ class HAFjernvarmeHouseCard extends HTMLElement {
     const ps=this._num("primary_supply"), pr=this._num("primary_return"), cs=this._num("ch_supply"), cr=this._num("ch_return"), hot=this._num("dhw_hot_out"), cold=this._num("dhw_cold_in");
     const primaryReturn=this._returnColor(ps,pr), radiatorReturn=this._returnColor(cs,cr);
     const primaryActive=this._flowing("meter_flow");
-    const primaryValve=this._entity("primary_valve") ? this._fmt("primary_valve",0) : null;
     const chActive=this._flowing("ch_flow");
     const dhwActive=this._flowing("dhw_flow");
     const bypass=this._on("bvv_bypass_status") || /aktiv|open|on/i.test(String(this._entity("bvv_bypass_status")?.state||""));
@@ -127,7 +132,7 @@ class HAFjernvarmeHouseCard extends HTMLElement {
         </g>
         <g class="radiator" transform="translate(587 102)"><rect width="146" height="135" rx="12"/></g>${this._pipe("ch-circuit","M380 119 H612 V205 H628 V119 H644 V205 H660 V119 H676 V205 H692 V119 H708 V220 H380",chActive,8)}
         <g class="label entity-hit" data-key="ch_supply" tabindex="0" transform="translate(500 60)" text-anchor="middle"><text>Radiator fremløb</text><text class="label-value" style="font-size:29.25px" y="29">${this._temp("ch_supply")}</text></g><g class="label entity-hit" data-key="ch_return" tabindex="0" transform="translate(500 161)" text-anchor="middle"><text>Radiator retur</text><text class="label-value" style="font-size:29.25px" y="29">${this._temp("ch_return")}</text></g><g class="label entity-hit" data-key="dhw_hot_out" tabindex="0" transform="translate(500 278)" text-anchor="middle"><text>Varmt brugsvand</text><text class="label-value" style="font-size:29.25px" y="29">${this._temp("dhw_hot_out")}</text></g><g class="label entity-hit" data-key="dhw_cold_in" tabindex="0" transform="translate(500 370)" text-anchor="middle"><text>Koldtvand ind</text><text class="label-value" style="font-size:29.25px" y="29">${this._temp("dhw_cold_in")}</text></g><g class="tap ${dhwActive ? "active" : ""}" transform="translate(610 270)"><path class="tap-body" d="M30 60 V31 Q30 16 45 16 H78 Q90 16 90 28 V35"/><path class="tap-handle" d="M20 31 H40 M30 21 V41"/><path class="tap-outlet" d="M90 35 V47"/><path class="basin" d="M7 68 H108 L98 88 Q58 99 17 88 Z"/><path class="drop" d="M90 54 C81 66 85 75 90 75 C96 75 100 66 90 54Z"/><text x="58" y="111" text-anchor="middle">VARMT VAND</text></g>
-        <g class="label primary in entity-hit" data-key="primary_supply" tabindex="0" transform="translate(75 68)" text-anchor="middle"><text>Fjernvarme fremløb</text><text class="label-value" style="font-size:31.5px" y="30">${this._temp("primary_supply")}</text><text class="pipe-meta" y="51"><tspan class="entity-hit" data-key="meter_flow" tabindex="0">${this._fmt("meter_flow",1)}</tspan><tspan> · </tspan><tspan class="entity-hit" data-key="meter_power" tabindex="0">${this._fmt("meter_power",1)}</tspan></text></g><g class="delta entity-hit" data-key="primary_cooling" tabindex="0" transform="translate(75 190)"><text text-anchor="middle">AFKØLING</text><text class="label-value" style="font-size:28.5px" text-anchor="middle" y="32">${this._fmt("primary_cooling",1)}</text></g>${primaryValve ? `<g class="circuit-meta entity-hit" data-key="primary_valve" tabindex="0" transform="translate(75 252)" text-anchor="middle"><text>FV-VENTIL</text><text class="label-value" style="font-size:17.5px" y="30">${primaryValve}</text></g>` : ""}<g class="label primary out entity-hit" data-key="primary_return" tabindex="0" transform="translate(75 315)" text-anchor="middle"><text>Retur</text><text class="label-value" style="font-size:31.5px" y="31">${this._temp("primary_return")}</text></g><g class="outdoor-value entity-hit" data-key="ch_outdoor" tabindex="0" transform="translate(430 -42)" text-anchor="middle"><text>UDETEMPERATUR</text><text class="value" style="font-size:22.5px" y="24">${this._temp("ch_outdoor")}</text></g>
+        <g class="label primary in entity-hit" data-key="primary_supply" tabindex="0" transform="translate(75 68)" text-anchor="middle"><text>Fjernvarme fremløb</text><text class="label-value" style="font-size:31.5px" y="30">${this._temp("primary_supply")}</text><text class="pipe-meta" y="51"><tspan class="entity-hit" data-key="meter_flow" tabindex="0">${this._fmt("meter_flow",1)}</tspan><tspan> · </tspan><tspan class="entity-hit" data-key="meter_power" tabindex="0">${this._fmt("meter_power",1)}</tspan></text></g><g class="delta entity-hit" data-key="primary_cooling" tabindex="0" transform="translate(75 176)"><text text-anchor="middle">AFKØLING</text><text class="label-value" style="font-size:28.5px" text-anchor="middle" y="32">${this._fmt("primary_cooling",1)}</text></g><g class="circuit-meta entity-hit" data-key="summer_cutoff" tabindex="0" transform="translate(75 237)" text-anchor="middle"><text y="-5">SOMMER</text><text y="7">UDKOBLING</text><text class="label-value" style="font-size:18px" y="31">${this._temp("summer_cutoff")}</text></g><g class="label primary out entity-hit" data-key="primary_return" tabindex="0" transform="translate(75 315)" text-anchor="middle"><text>Retur</text><text class="label-value" style="font-size:31.5px" y="31">${this._temp("primary_return")}</text></g><g class="outdoor-value entity-hit" data-key="ch_outdoor" tabindex="0" transform="translate(430 -42)" text-anchor="middle"><text>UDETEMPERATUR</text><text class="value" style="font-size:22.5px" y="24">${this._temp("ch_outdoor")}</text></g>
         
         
 
