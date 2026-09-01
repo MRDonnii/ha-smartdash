@@ -7,6 +7,8 @@
   afterheating status.
 - Added the responsive Wavin Calefa district-heating house card to the heating
   page with live temperatures, flow and CH/DHW valve positions.
+- Improved primary valve selection and added a clear summer-cutoff state while
+  retaining domestic hot-water status.
 
 ## 0.8.2
 

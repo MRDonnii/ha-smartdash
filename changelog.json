@@ -1,8 +1,8 @@
 [
   {
-    "version": "20260831-3",
+    "version": "20260901-1",
     "tag": "v0.8.3",
-    "date": "2026-08-31",
+    "date": "2026-09-01",
     "changes": [
       {
         "da": "Forsidens kameraområde kan nu valgfrit vise to kameraer sammen med et konfigurerbart ventilationskort med temperaturfarvet luftstrøm, varmegenvinding, bypass og eftervarme.",
@@ -19,6 +19,14 @@
       {
         "da": "Varmesiden kan nu vise det responsive Wavin Calefa-fjernvarmekort med temperaturfarvede vandrør, radiator, varmt brugsvand og faktiske CVV/BVV-ventilprocenter.",
         "en": "The heating page can now show the responsive Wavin Calefa district-heating card with temperature-coloured water pipes, radiator, domestic hot water and actual CH/DHW valve percentages."
+      },
+      {
+        "da": "Fjernvarmekortet vælger nu kun en rigtig primær reguleringsventil og undgår at vise sekundære eller beregnede ventilværdier som hovedventil.",
+        "en": "The district-heating card now selects only a real primary control valve and avoids presenting secondary or calculated valve values as the main valve."
+      },
+      {
+        "da": "Fjernvarmekortet viser nu tydeligt sommerstop, når varmeanlægget er sæsonlukket, uden at skjule status for varmt brugsvand.",
+        "en": "The district-heating card now clearly shows the summer cutoff when space heating is seasonally disabled without hiding domestic hot-water status."
       }
     ]
   },
