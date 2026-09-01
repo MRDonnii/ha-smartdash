@@ -1565,8 +1565,16 @@
   }
 
   function renderCameras() {
-    const host = document.getElementById("beastOvCameras");
-    if (!host || !window.BeastCameras) return;
+    const area = document.getElementById("beastOvCameras");
+    if (!area || !window.BeastCameras) return;
+    const ventilation = window.BeastVentilation?.enabled() === true;
+    if (area.classList.contains("hrv-enabled") !== ventilation) {
+      area.classList.toggle("hrv-enabled", ventilation);
+      area.innerHTML = ventilation ? '<div class="hrv-camera-host"></div><div class="hrv-card-host"></div>' : '';
+      lastCameraRenderSignature = null;
+    }
+    const host = ventilation ? area.querySelector('.hrv-camera-host') : area;
+    if (ventilation) BeastVentilation.render(area.querySelector('.hrv-card-host'));
     let allCameras = window.BeastCameras.getAllCameras("overview");
     const doorbellId = BeastConfig.get("appEntities.doorbellCamera");
     const doorbellCamera = doorbellId ? window.BeastCameras.resolveCamera(doorbellId) : null;
@@ -1606,8 +1614,9 @@
     if (autoFocusEnabled() && motionFocusSlug && cameraBySlug.has(motionFocusSlug)) {
       cameras = [cameraBySlug.get(motionFocusSlug), ...cameras.filter((camera) => camera.slug !== motionFocusSlug)].slice(0, OVERVIEW_CAMERA_LIMIT);
     }
+    if (ventilation) cameras = cameras.slice(0, 2);
     const isMobile = isMobileOverviewViewport();
-    if (isMobile && (!mobileFeaturedCameraSlug || !cameraBySlug.has(mobileFeaturedCameraSlug))) mobileFeaturedCameraSlug = cameras[0]?.slug || null;
+    if (isMobile && (!mobileFeaturedCameraSlug || !cameras.some(camera => camera.slug === mobileFeaturedCameraSlug))) mobileFeaturedCameraSlug = cameras[0]?.slug || null;
     // Skip rebuilding when nothing camera-relevant actually changed.
     // renderCameras() runs as part of renderAll() on every reconnect and
     // several unrelated state updates (weather, security, ...) -- without
@@ -1700,6 +1709,7 @@
           <button type="button" class="beast-modal-close" data-close aria-label="Luk">${BeastCore.icon("close", { size: 22 })}</button>
         </div>
         <div class="beast-modal-body">
+          ${window.BeastVentilation?.editorMarkup() || ""}
           <div class="beast-ov-camera-order">
             <strong>Rækkefølge på forsiden</strong>
             <div id="beastOvCameraOrder"></div>
@@ -1723,7 +1733,7 @@
 
     async function saveAndRender() {
       const entities = selected.map((slug) => cameras.find((camera) => camera.slug === slug)?.entityId).filter(Boolean);
-      const result = await BeastConfig.set("overviewCameraEntities", entities);
+      const result = await BeastConfig.setMany({ overviewCameraEntities: entities, overviewVentilation: BeastVentilation.readEditor(overlay) });
       if (result?.success === false) return false;
       localStorage.removeItem(OVERVIEW_CAMERA_KEY);
       renderCameras();
@@ -2531,7 +2541,7 @@
   // Colours are a global setting rather than a per-graph one, so any config
   // change may have altered them -- redraw so the change is visible without
   // a reload.
-  document.addEventListener("beast:config-changed", () => renderEnergy());
+  document.addEventListener("beast:config-changed", () => { renderEnergy(); renderCameras(); });
 
   function init(root) {
     applyConfig();
@@ -2637,6 +2647,9 @@
       bannerResizeTimerId = window.setTimeout(renderBanners, 150);
     });
     [CAR_BATTERY_ID, CAR_RANGE_ID, CAR_CHARGING_ID, POOL_TEMPERATURE_ID].filter(Boolean).forEach((id) => BeastHaSocket.subscribeEntity(id, renderClock));
+    ["sensor", "select", "cover", "fan", "binary_sensor"].forEach(domain => BeastHaSocket.subscribeDomain(domain, id => {
+      if (Object.values(BeastConfig.get("overviewVentilation.entities") || {}).includes(id)) renderCameras();
+    }));
     BeastHaSocket.subscribeDomain("calendar", renderClock);
     BeastHaSocket.subscribeDomain("light", renderSecurity);
     BeastHaSocket.subscribeDomain("media_player", () => { stableMusicRender(); renderSecurity(); });

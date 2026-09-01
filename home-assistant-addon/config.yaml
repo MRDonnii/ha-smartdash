@@ -1,5 +1,5 @@
 name: HA Smartdash
-version: "0.8.2"
+version: "0.8.3"
 slug: ha_smartdash
 description: Touch-first, editable dashboard for Home Assistant wall displays and tablets
 url: https://github.com/MRDonnii/ha-smartdash
