@@ -59,6 +59,7 @@
     const existing = (entityId, fallback) => BeastHaSocket.getState(entityId) ? entityId : fallback;
     return {
       primary_supply: existing("sensor.wavin_calefa_2_fjernvarme_fremlob_temperatur", DISTRICT.supply || find("fjernvarme", "freml")),
+      summer_cutoff: existing("sensor.wavin_calefa_2_itc_max_outdoor_temp", find("sommerudkobling")),
       primary_return: existing("sensor.wavin_calefa_2_fjernvarme_retur_temperatur", DISTRICT.return || find("fjernvarme", "retur")),
       primary_cooling: existing("sensor.calefa_fjernvarme_delta_t", DISTRICT.cooling),
       pressure: find("anlaegstryk"), meter_power: existing("sensor.calefa_fjernvarme_effekt_estimat", DISTRICT.power),
