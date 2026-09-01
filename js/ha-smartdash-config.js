@@ -104,6 +104,7 @@ const BeastConfig = (() => {
     // Centrally stored, ordered camera entities for the overview. An empty
     // array means "use the camera panel selection", not "restore defaults".
     overviewCameraEntities: [],
+    overviewVentilation: { enabled: false, title: "Ventilation", animation: true, showAfterheat: false, entities: {} },
     pageLayouts: {
       robots: { cards: [] },
       printer: { cards: [] },

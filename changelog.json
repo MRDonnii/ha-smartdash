@@ -1,5 +1,28 @@
 [
   {
+    "version": "20260831-3",
+    "tag": "v0.8.3",
+    "date": "2026-08-31",
+    "changes": [
+      {
+        "da": "Forsidens kameraområde kan nu valgfrit vise to kameraer sammen med et konfigurerbart ventilationskort med temperaturfarvet luftstrøm, varmegenvinding, bypass og eftervarme.",
+        "en": "The overview camera area can now optionally show two cameras alongside a configurable ventilation card with temperature-coloured airflow, heat recovery, bypass and afterheating."
+      },
+      {
+        "da": "Ventilationskortet tilpasser sig store og små skærme, stopper luftanimationen ved 0 RPM og respekterer browserens indstilling for reduceret bevægelse.",
+        "en": "The ventilation card adapts to large and small screens, stops airflow animation at 0 RPM and respects the browser's reduced-motion setting."
+      },
+      {
+        "da": "Luft- og blæseranimationerne kører nu lineært og bevarer deres fase ved sensoropdateringer, så bevægelsen ikke hakker eller starter forfra.",
+        "en": "Airflow and fan animations now run linearly and retain their phase across sensor updates, preventing visible stutter and restarts."
+      },
+      {
+        "da": "Varmesiden kan nu vise det responsive Wavin Calefa-fjernvarmekort med temperaturfarvede vandrør, radiator, varmt brugsvand og faktiske CVV/BVV-ventilprocenter.",
+        "en": "The heating page can now show the responsive Wavin Calefa district-heating card with temperature-coloured water pipes, radiator, domestic hot water and actual CH/DHW valve percentages."
+      }
+    ]
+  },
+  {
     "version": "20260823-1",
     "tag": "v0.8.2",
     "date": "2026-08-23",

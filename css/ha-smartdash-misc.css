@@ -2666,6 +2666,24 @@
 .beast-dantherm-metrics > span { padding: 7px 9px; border: 1px solid var(--border); border-radius: var(--radius-sm); }
 .beast-dantherm-metrics strong { display: block; margin-top: 4px; }
 .beast-district-compact { margin-top: 0; }
+.beast-calefa-card {
+  padding: 0;
+  overflow: hidden;
+  border-color: color-mix(in srgb, var(--danger) 22%, var(--border));
+  background: linear-gradient(155deg, color-mix(in srgb, var(--surface-2-solid) 96%, #7f1d1d 4%), var(--surface-solid));
+}
+.beast-calefa-card > ha-fjernvarme-house-card { display: block; width: 100%; min-width: 0; }
+.beast-calefa-card > ha-fjernvarme-house-card {
+  --primary-text-color: var(--ink, #f4f6fb);
+  --secondary-text-color: var(--ink-muted, #aeb8c8);
+  --primary-background-color: var(--surface-1, #111722);
+  --card-background-color: transparent;
+  --ha-card-background: transparent;
+  --divider-color: var(--border, rgba(255,255,255,.12));
+  --success-color: var(--success, #62cfad);
+  --warning-color: var(--warning, #f0b56a);
+  --error-color: var(--danger, #ef7777);
+}
 .beast-district-flow { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; text-align: center; }
 .beast-district-flow strong { display: block; font-size: var(--text-xl); }
 .beast-district-flow i { width: 46px; height: 2px; background: linear-gradient(90deg, var(--danger), var(--accent-b)); position: relative; }

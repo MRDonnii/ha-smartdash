@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.8.3
+
+- Added an optional, configurable heat-recovery ventilation card beside the
+  overview cameras, including temperature-aware airflow, bypass and
+  afterheating status.
+- Added the responsive Wavin Calefa district-heating house card to the heating
+  page with live temperatures, flow and CH/DHW valve positions.
+
 ## 0.8.2
 
 - First Stable release of the Docker, Unraid, and Home Assistant App

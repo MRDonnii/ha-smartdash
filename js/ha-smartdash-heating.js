@@ -45,6 +45,66 @@
     return s && Number.isFinite(Number(s.state)) ? Number(s.state).toFixed(decimals) : "–";
   }
 
+  function findCalefaEntity(...patterns) {
+    const states = BeastHaSocket.getAllStates();
+    for (const [entityId, state] of states) {
+      const haystack = `${entityId} ${state?.attributes?.friendly_name || ""}`.toLowerCase();
+      if (patterns.every((pattern) => haystack.includes(pattern))) return entityId;
+    }
+    return null;
+  }
+
+  function calefaEntities() {
+    const find = (...patterns) => findCalefaEntity("wavin", "calefa", ...patterns);
+    const existing = (entityId, fallback) => BeastHaSocket.getState(entityId) ? entityId : fallback;
+    return {
+      primary_supply: existing("sensor.wavin_calefa_2_fjernvarme_fremlob_temperatur", DISTRICT.supply || find("fjernvarme", "freml")),
+      primary_return: existing("sensor.wavin_calefa_2_fjernvarme_retur_temperatur", DISTRICT.return || find("fjernvarme", "retur")),
+      primary_cooling: existing("sensor.calefa_fjernvarme_delta_t", DISTRICT.cooling),
+      pressure: find("anlaegstryk"), meter_power: existing("sensor.calefa_fjernvarme_effekt_estimat", DISTRICT.power),
+      meter_flow: existing("sensor.calefa_fjernvarme_flow_aktiv", DISTRICT.flow), meter_energy_total: existing("sensor.fjernvarme_total_energy_consumption_2", findCalefaEntity("fjernvarme_total_energy")),
+      meter_volume_total: existing("sensor.fjernvarme_total_volume_2", findCalefaEntity("fjernvarme_total_volume")),
+      ch_supply: find("cvv", "freml"), ch_return: find("cvv", "retur"),
+      ch_valve: existing("sensor.wavin_calefa_2_cvv_ventilposition", find("cvv", "ventilposition")), ch_flow: existing("sensor.calefa_radiator_flow_aktiv", findCalefaEntity("calefa_radiator_flow")),
+      ch_power: existing("sensor.calefa_radiator_effekt_estimat", findCalefaEntity("calefa_radiator_effekt")), ch_outdoor: find("udetemperatur"),
+      ch_pump: find("heating_pump_status"), dhw_cold_in: find("koldtvands"),
+      dhw_hot_out: existing("sensor.wavin_calefa_2_brugsvand_ud_temperatur", find("brugsvand", "temperatur")), dhw_flow: find("brugsvandsflow"),
+      dhw_power: existing("sensor.wavin_calefa_2_varmtvand_effekt_estimat", findCalefaEntity("calefa_varmtvand_effekt")), dhw_valve: existing("sensor.wavin_calefa_2_ventilposition", find("varmtvandsventil")),
+      dhw_setpoint: find("brugsvand", "setpunkt"), dhw_status: find("brugsvand", "status"),
+      circulation_temp: find("cirkulation", "temperatur"), circulation_status: find("cirkulation", "status"),
+      circulation_bypass_temp: find("bypass", "temperatur"), bvv_bypass_status: findCalefaEntity("bvv_bypass_status"),
+      standby: existing("switch.bryggers_wavin_calefa_2", findCalefaEntity("switch.wavin_calefa", "standby")), vacation: existing("switch.bryggers_wavin_calefa_2_2", findCalefaEntity("switch.wavin_calefa", "ferie")),
+      sentio_active: existing("switch.bryggers_wavin_calefa_2_varme_varmekald", null), sentio_status: existing("sensor.bryggers_wavin_calefa_2_varmekald_status", null),
+      sentio_call_active: existing("binary_sensor.bryggers_wavin_calefa_2_varmekald_i_gang", null), sentio_fejl: existing("binary_sensor.bryggers_wavin_calefa_2_varmekald_fejl", null),
+      auto_standby_active: existing("switch.bryggers_wavin_calefa_2_varme_automatisk_standby", null), auto_standby_status: existing("sensor.bryggers_wavin_calefa_2_automatisk_standby_status", null),
+      auto_standby_engaged: existing("binary_sensor.bryggers_wavin_calefa_2_automatisk_standby_aktiv", null), auto_standby_fejl: existing("binary_sensor.bryggers_wavin_calefa_2_automatisk_standby_fejl", null),
+      alarms: [
+        "binary_sensor.wavin_calefa_2_tryk_kritisk_lav_fejl", "binary_sensor.wavin_calefa_2_tryk_lav_advarsel",
+        "binary_sensor.wavin_calefa_2_tryk_hoj_advarsel", "binary_sensor.wavin_calefa_2_district_heating_supply_sensor_failure",
+        "binary_sensor.wavin_calefa_2_district_heating_return_sensor_failure", "binary_sensor.wavin_calefa_2_dhw_motor_failure",
+        "binary_sensor.wavin_calefa_2_dhw_motor_stuck", "binary_sensor.wavin_calefa_2_dhw_sensor_failure",
+        "binary_sensor.wavin_calefa_2_cold_water_sensor_failure", "binary_sensor.wavin_calefa_2_no_secondary_pressure",
+        "binary_sensor.wavin_calefa_2_pressure_sensor_failure", "binary_sensor.wavin_calefa_2_flow_sensor_failure",
+        "binary_sensor.wavin_calefa_2_heating_supply_sensor_failure_itc", "binary_sensor.wavin_calefa_2_heating_return_sensor_failure_itc",
+        "binary_sensor.wavin_calefa_2_outdoor_sensor_failure", "binary_sensor.wavin_calefa_2_heating_valve_motor_failure_itc",
+        "binary_sensor.wavin_calefa_2_htco_error_itc", "binary_sensor.wavin_calefa_2_lav_energi_advarsel",
+        DISTRICT.alarm
+      ].filter((entityId) => entityId && BeastHaSocket.getState(entityId))
+    };
+  }
+
+  function mountCalefaCard() {
+    const card = containerEl?.querySelector("ha-fjernvarme-house-card");
+    if (!card) return;
+    card.setConfig({ title: "Fjernvarme", animation: true, show_details: false, entities: calefaEntities() });
+    card.hass = {
+      states: Object.fromEntries(BeastHaSocket.getAllStates()),
+      callService: (domain, service, data) => BeastAuth.haFetch(`/api/services/${domain}/${service}`, {
+        method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(data || {})
+      })
+    };
+  }
+
   function callService(domain, service, entityId, data = {}) {
     return BeastAuth.haFetch(`/api/services/${domain}/${service}`, {
       method: "POST",
@@ -212,11 +272,7 @@
     const extractFan = Number(BeastHaSocket.getState(DANTHERM.extractFan)?.state);
     const ventilationActive = (Number.isFinite(supplyFan) && supplyFan > 0) || (Number.isFinite(extractFan) && extractFan > 0);
     const districtPower = Number(BeastHaSocket.getState(DISTRICT.power)?.state);
-    const districtMarkup = HAS_DISTRICT ? `<section class="beast-heating-side-card beast-district-compact${Number.isFinite(districtPower) && districtPower > 0.05 ? " is-flowing" : ""}">
-      <div class="beast-heating-side-head"><span>Fjernvarme</span><small class="${alarmOk ? "is-ok" : "is-warning"}">${escapeHtml(alarm?.state || "–")}</small></div>
-      <div class="beast-district-flow"><span><small>Fremløb</small><strong>${num(DISTRICT.supply)}°</strong></span><i></i><span><small>Retur</small><strong>${num(DISTRICT.return)}°</strong></span></div>
-      <div class="beast-district-meta"><span>Afkøling ${num(DISTRICT.cooling)}°</span><span>${num(DISTRICT.power, 1)} kW</span><span>${num(DISTRICT.energyToday, 1)} kWh i dag</span></div>
-    </section>` : "";
+    const districtMarkup = HAS_DISTRICT ? `<section class="beast-heating-side-card beast-district-compact beast-calefa-card${Number.isFinite(districtPower) && districtPower > 0.05 ? " is-flowing" : ""}"><ha-fjernvarme-house-card></ha-fjernvarme-house-card></section>` : "";
 
     containerEl.innerHTML = `
       <div class="beast-heating-main">
@@ -256,6 +312,7 @@
         ${districtMarkup}
       </aside>
     `;
+    mountCalefaCard();
     wireHeatingLayout();
 
     containerEl.querySelectorAll("[data-action='heat-up'], [data-action='heat-down']").forEach((btn) => {

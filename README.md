@@ -76,6 +76,11 @@ These screenshots mirror the production dashboard's layout, card proportions and
 - Persistent weather, electricity-price and camera areas.
 - Calendar, waste collection, security, locks, energy, pool temperature and media status cards.
 - Configurable overview cards, quick tiles and centrally stored camera selection.
+- Optional heat-recovery ventilation card beside two overview cameras. It can
+  bind standard Home Assistant sensors for temperatures, fan speed, heat
+  recovery, bypass and afterheating, and is disabled by default.
+- Optional Wavin Calefa district-heating house card on the heating page with
+  live pipe temperatures, water flow, radiator and hot-water valve positions.
 - Compact notifications for mail, security conditions, equipment faults and active 3D prints.
 - Optional floating media controls that disappear when playback is inactive.
 
