@@ -1,5 +1,20 @@
 [
   {
+    "version": "20260902-26",
+    "tag": "v0.8.29",
+    "date": "2026-09-02",
+    "changes": [
+      {
+        "da": "Rettet kameraskift for go2rtc-opsætninger der viste et billede, gik i sort og til sidst viste livebilledet. camera-player.html viser allerede selv sit eget snapshot øjeblikkeligt og går blødt over i livevideo af sig selv -- koden til det store kamerabillede ventede på iframens generelle side-indlæst-hændelse før den overhovedet blev vist, og den udløses længe før det interne snapshot er indlæst, så den afslørede iframens tomme tilstand fra før snapshottet som et ekstra glimt. Iframen skiftes nu ind med det samme og styrer selv sin egen indlæsningstilstand, ligesom den altid har gjort.",
+        "en": "Fixed camera switching for go2rtc setups showing a picture, then going black, then finally the live feed. camera-player.html already shows its own snapshot instantly and crossfades smoothly to live video on its own -- the featured-camera code was waiting on the iframe's generic page-load event before revealing it at all, which fires long before that internal snapshot has even loaded, so it revealed the iframe's blank pre-snapshot state as an extra flash. The iframe now swaps in immediately and manages its own loading state, same as it always did."
+      },
+      {
+        "da": "Den øjeblikkelige pladsholder der vises under kameraskift genbruger ikke længere et go2rtc-kameras levende snapshot-URL direkte (en frisk netværksforespørgsel uden fallback hvis den fejler) -- den bliver nu forhåndsindlæst og verificeret først, ligesom det samme sikre mønster miniature-opdateringen allerede brugte, så en fejlet forespørgsel ikke længere kan vise sig som et manglende billede.",
+        "en": "The instant placeholder shown while switching cameras no longer reuses a go2rtc tile's live snapshot URL as-is (a fresh network request with no fallback if it fails) -- it's preloaded and verified first, matching the safe pattern the periodic tile refresh already used, so a failed request can no longer show up as a missing picture."
+      }
+    ]
+  },
+  {
     "version": "20260902-25",
     "tag": "v0.8.28",
     "date": "2026-09-02",

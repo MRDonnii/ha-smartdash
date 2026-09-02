@@ -412,7 +412,19 @@
     const timeout = (ms) => new Promise((resolve) => window.setTimeout(resolve, ms));
     const live = host.querySelector(".beast-shared-camera-live");
     if (live && live.tagName === "IFRAME") {
-      await Promise.race([new Promise((resolve) => live.addEventListener("load", resolve, { once: true })), timeout(8000)]);
+      // camera-player.html already solves exactly this problem *inside*
+      // itself: it shows its own poster snapshot the instant it can fetch
+      // one and smoothly crossfades to live video only once frames are
+      // actually flowing (see its "ready" class / markReady()). The
+      // iframe's DOM "load" event fires when that HTML shell finishes
+      // parsing, which happens well before any of that -- waiting on it
+      // here just delayed revealing the iframe until after its poster
+      // fetch had *also* had time to run, so what should have been an
+      // instant handoff from our own placeholder to camera-player.html's
+      // own poster instead showed its blank pre-poster state as a second,
+      // spurious black flash. Swap it in immediately and let it manage its
+      // own loading state, same as before any of this staged-swap logic
+      // existed.
       return;
     }
     if (live && live.tagName === "IMG") {
@@ -488,14 +500,33 @@
     });
 
     const clickedTileImg = containerEl.querySelector(`.beast-camera-tile[data-slug="${CSS.escape(camera.slug)}"] .beast-camera-snapshot`);
-    const reuseSrc = clickedTileImg?.getAttribute("src") || null;
+    const tileImgSrc = clickedTileImg?.getAttribute("src") || null;
+    // A blob: URL is already-decoded data sitting in memory -- reusing the
+    // string is instant and can't fail. Anything else (a go2rtc tile's
+    // plain http(s) frame.jpeg URL) is a *live* URL with no guarantee the
+    // browser will serve it from cache -- reusing that string directly
+    // fires a fresh network request with no fallback if it 404s or times
+    // out, which is exactly what showed up as "tries to show a snapshot
+    // but it's not there". Only trust it inline for blob:; anything else
+    // gets preloaded and verified first via swapSnapshot(), same as the
+    // periodic tile refresh already does.
+    const isInstantReuse = tileImgSrc?.startsWith("blob:");
     const priorNodes = Array.from(featuredWrap.children);
     const priorObjectUrl = priorNodes.map((node) => node.querySelector?.(".beast-shared-camera-snapshot")?.dataset.objectUrl).find(Boolean);
     priorNodes.forEach((node) => node.remove());
     const placeholderHost = document.createElement("div");
-    placeholderHost.innerHTML = placeholderCameraMarkup(camera, reuseSrc);
+    placeholderHost.innerHTML = placeholderCameraMarkup(camera, isInstantReuse ? tileImgSrc : null);
     featuredWrap.appendChild(placeholderHost.firstElementChild);
-    if (!reuseSrc) wireSharedCameras(featuredWrap);
+    const placeholderImg = featuredWrap.querySelector(".is-placeholder .beast-shared-camera-snapshot");
+    if (isInstantReuse) {
+      // already showing, nothing more to do
+    } else if (tileImgSrc && clickedTileImg.complete && clickedTileImg.naturalWidth) {
+      swapSnapshot(placeholderImg, tileImgSrc).then((succeeded) => {
+        if (!succeeded && camera.entityPicture) BeastAuth.setAuthedImageSrc(placeholderImg, camera.entityPicture);
+      });
+    } else if (camera.entityPicture) {
+      BeastAuth.setAuthedImageSrc(placeholderImg, camera.entityPicture);
+    }
     if (priorObjectUrl) URL.revokeObjectURL(priorObjectUrl);
 
     const host = document.createElement("div");

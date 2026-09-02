@@ -1,5 +1,22 @@
 # Changelog
 
+## 0.8.29
+
+- Fixed camera switching for go2rtc setups showing a picture, then
+  going black, then finally the live feed. camera-player.html already
+  shows its own snapshot instantly and crossfades smoothly to live
+  video on its own -- the featured-camera code was waiting on the
+  iframe's generic page-load event before revealing it at all, which
+  fires long before that internal snapshot has even loaded, so it
+  revealed the iframe's blank pre-snapshot state as an extra flash.
+  The iframe now swaps in immediately and manages its own loading
+  state, same as it always did.
+- The instant placeholder shown while switching cameras no longer
+  reuses a go2rtc tile's live snapshot URL as-is (a fresh network
+  request with no fallback if it fails) -- it's preloaded and verified
+  first, matching the safe pattern the periodic tile refresh already
+  used, so a failed request can no longer show up as a missing picture.
+
 ## 0.8.28
 
 - Fixed the real cause of the featured camera taking a long time to
