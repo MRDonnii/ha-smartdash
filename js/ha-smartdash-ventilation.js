@@ -289,7 +289,11 @@ window.BeastVentilation = (() => {
     if (width < 1 || height < 1) return;
     const ratio = width / height;
     const w = Math.max(440, 270 * ratio), h = Math.max(270, 440 / ratio);
-    const signature = `${w.toFixed(1)}:${h.toFixed(1)}`;
+    // Whole-pixel signature, not fractional: this function re-samples ~500
+    // SVG point positions below, expensive enough that it must not re-run
+    // on sub-pixel layout jitter (font metrics settling, zoom rounding) --
+    // only on a resize a user would actually notice.
+    const signature = `${Math.round(w)}:${Math.round(h)}`;
     if (svg.dataset.fit === signature) return;
     svg.dataset.fit = signature;
     svg.setAttribute('viewBox', `0 0 ${w} ${h}`);
@@ -383,11 +387,20 @@ window.BeastVentilation = (() => {
     if (!host._hrvResize && typeof ResizeObserver !== 'undefined') {
       host._hrvResize = new ResizeObserver(() => {
         if (!host.isConnected) { host._hrvResize.disconnect(); host._hrvResize = null; return; }
-        // The card this host was fitted for may no longer be the active one
-        // (another ventilation-typed card could theoretically render in
-        // between) -- fitDiagram() only reads geometry and the entities
-        // dataset already baked into the DOM, so this is safe either way.
-        fitDiagram(host);
+        // Collapse a burst of notifications (e.g. a sibling's CSS transition
+        // nudging layout over several frames) into a single fitDiagram()
+        // call per frame instead of once per notification -- the function
+        // itself already no-ops on an unchanged whole-pixel size, but that
+        // check still costs a forced layout read on every call.
+        if (host._hrvResizeFrame) return;
+        host._hrvResizeFrame = requestAnimationFrame(() => {
+          host._hrvResizeFrame = null;
+          // The card this host was fitted for may no longer be the active
+          // one (another ventilation-typed card could theoretically render
+          // in between) -- fitDiagram() only reads geometry and the
+          // entities dataset already baked into the DOM, so this is safe.
+          fitDiagram(host);
+        });
       });
       host._hrvResize.observe(host);
     }
