@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.8.23
+
+- Fixed a bug where switching the featured camera on the Cameras page
+  rebuilt the entire panel and refetched every thumbnail, turning both
+  the featured picture and all thumbnails black for several seconds --
+  worst on setups without go2rtc, using Home Assistant's own camera
+  proxy with large snapshots. Clicking a camera now only fetches that
+  one camera's picture, keeps the previous picture on screen until the
+  new one has actually loaded, and no longer touches the other
+  thumbnails at all.
+
 ## 0.8.22
 
 - Text, icons and buttons on the Security page's own status, systems and

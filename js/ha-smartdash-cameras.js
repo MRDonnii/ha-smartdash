@@ -287,7 +287,11 @@
   }
 
   function wireSharedCameras(root, onQualityChanged) {
-    root?.querySelectorAll(".beast-shared-camera-snapshot[data-camera-picture]").forEach((img) => { if (img.dataset.cameraPicture) BeastAuth.setAuthedImageSrc(img, img.dataset.cameraPicture); });
+    // Skip images a caller already loaded itself (selectFeaturedCamera awaits
+    // the fetch before swapping the element in, then calls this to wire the
+    // quality menu) -- re-fetching here would start a second, redundant
+    // request and immediately revoke the blob URL just handed to the image.
+    root?.querySelectorAll(".beast-shared-camera-snapshot[data-camera-picture]").forEach((img) => { if (img.dataset.cameraPicture && !img.dataset.objectUrl) BeastAuth.setAuthedImageSrc(img, img.dataset.cameraPicture); });
     root?.querySelectorAll(".beast-shared-camera-ha-stream[data-camera-fallback-picture]").forEach((img) => {
       img.addEventListener("error", () => {
         const picture = img.dataset.cameraFallbackPicture;
@@ -368,6 +372,102 @@
     });
   }
 
+  // Wires the audio toggle and the go2rtc iframe's initial mute state on
+  // whichever element currently holds the featured camera's markup. Split
+  // out of render() so selectFeaturedCamera() can re-run it after an
+  // in-place swap without touching the rest of the panel.
+  function wireFeaturedMedia(featuredWrap) {
+    const iframe = featuredWrap.querySelector(".beast-shared-camera-live");
+    if (!iframe || iframe.tagName !== "IFRAME") return;
+    iframe.contentWindow?.postMessage({ type: "camera-player-audio", muted: true }, window.location.origin);
+    const audioButton = featuredWrap.querySelector("#beastCameraAudioToggle");
+    audioButton?.addEventListener("click", () => {
+      const muted = audioButton.getAttribute("aria-pressed") === "true";
+      audioButton.setAttribute("aria-pressed", String(!muted));
+      audioButton.innerHTML = muted
+        ? `${BeastCore.icon("volume-mute", { size: 17 })}<span>Lyd fra</span>`
+        : `${BeastCore.icon("volume", { size: 17 })}<span>Lyd til</span>`;
+      iframe.contentWindow?.postMessage({ type: "camera-player-audio", muted }, window.location.origin);
+    });
+  }
+
+  // Resolves once the new featured camera's media has actually produced a
+  // frame (or failed/timed out) -- never before. This is what lets the old
+  // picture stay on screen for the whole handover instead of going black
+  // the instant the element is created.
+  function waitForFeaturedMedia(host) {
+    const timeout = (ms) => new Promise((resolve) => window.setTimeout(resolve, ms));
+    const live = host.querySelector(".beast-shared-camera-live");
+    if (live && live.tagName === "IFRAME") {
+      return Promise.race([new Promise((resolve) => live.addEventListener("load", resolve, { once: true })), timeout(8000)]);
+    }
+    if (live && live.tagName === "IMG") {
+      if (live.complete && live.naturalWidth) return Promise.resolve();
+      return Promise.race([
+        new Promise((resolve) => {
+          live.addEventListener("load", resolve, { once: true });
+          // Same HA-stream-unavailable fallback wireSharedCameras() wires for
+          // *later* failures -- needed here too because by the time this
+          // element is handed to wireSharedCameras() after the swap, the
+          // {once:true} error listener it attaches would already have missed
+          // an error that happened during this initial load.
+          live.addEventListener("error", () => {
+            const picture = live.dataset.cameraFallbackPicture;
+            if (live.classList.contains("beast-shared-camera-ha-stream") && picture) {
+              live.classList.remove("beast-shared-camera-ha-stream");
+              live.classList.add("beast-shared-camera-snapshot");
+              BeastAuth.setAuthedImageSrc(live, picture).then(resolve);
+            } else {
+              resolve();
+            }
+          }, { once: true });
+        }),
+        timeout(8000)
+      ]);
+    }
+    const snapshotImg = host.querySelector(".beast-shared-camera-snapshot[data-camera-picture]");
+    if (snapshotImg) {
+      const picture = snapshotImg.dataset.cameraPicture;
+      return picture ? BeastAuth.setAuthedImageSrc(snapshotImg, picture) : Promise.resolve();
+    }
+    return Promise.resolve();
+  }
+
+  // Switching the featured camera used to call render(), which tore down
+  // and recreated every tile and the featured view via containerEl.innerHTML
+  // -- blanking every <img> (including the seven cameras nobody clicked) and
+  // refetching them from scratch, several seconds of black tiles on
+  // anything but a fast link. This instead toggles the tile highlight in
+  // place, builds the new featured content off to the side while the old
+  // one stays fully visible, and only swaps once the new media is ready.
+  function selectFeaturedCamera(camera) {
+    if (!camera) return;
+    const featuredWrap = containerEl?.querySelector(".beast-camera-featured");
+    if (!containerEl || !featuredWrap) { featuredSlug = camera.slug; if (containerEl) render(); return; }
+    if (camera.slug === featuredSlug) return;
+    featuredSlug = camera.slug;
+    containerEl.querySelectorAll(".beast-camera-tile").forEach((tile) => {
+      tile.classList.toggle("is-featured", tile.dataset.slug === camera.slug);
+    });
+    const host = document.createElement("div");
+    host.style.cssText = "position:absolute;inset:0;visibility:hidden;pointer-events:none;";
+    host.innerHTML = `${sharedCameraMarkup(camera, { className: "beast-camera-featured-render", audio: true, label: true, motion: true })}${camera.streamName ? `<button type="button" class="beast-camera-audio-toggle" id="beastCameraAudioToggle" aria-pressed="false">${BeastCore.icon("volume-mute", { size: 17 })}<span>Lyd fra</span></button>` : ""}`;
+    featuredWrap.appendChild(host);
+    waitForFeaturedMedia(host).then(() => {
+      // A later click may have superseded this one while we were waiting.
+      if (featuredSlug !== camera.slug || !host.isConnected) { host.remove(); return; }
+      const oldNodes = Array.from(featuredWrap.children).filter((node) => node !== host);
+      const oldObjectUrl = oldNodes.map((node) => node.querySelector?.(".beast-shared-camera-snapshot")?.dataset.objectUrl).find(Boolean);
+      oldNodes.forEach((node) => node.remove());
+      host.removeAttribute("style");
+      while (host.firstChild) featuredWrap.appendChild(host.firstChild);
+      host.remove();
+      wireFeaturedMedia(featuredWrap);
+      wireSharedCameras(featuredWrap, render);
+      if (oldObjectUrl) URL.revokeObjectURL(oldObjectUrl);
+    });
+  }
+
   function escapeHtml(value) {
     return String(value ?? "").replace(/[&<>"']/g, (char) => ({
       "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"
@@ -398,20 +498,7 @@
     `;
     wireCameraLayout();
     wireSharedCameras(containerEl, render);
-    const iframe = containerEl.querySelector(".beast-camera-featured .beast-shared-camera-live");
-    if (iframe) {
-      iframe.contentWindow?.postMessage({ type: "camera-player-audio", muted: true }, window.location.origin);
-
-      const audioButton = document.getElementById("beastCameraAudioToggle");
-      audioButton?.addEventListener("click", () => {
-        const muted = audioButton.getAttribute("aria-pressed") === "true";
-        audioButton.setAttribute("aria-pressed", String(!muted));
-        audioButton.innerHTML = muted
-          ? `${BeastCore.icon("volume-mute", { size: 17 })}<span>Lyd fra</span>`
-          : `${BeastCore.icon("volume", { size: 17 })}<span>Lyd til</span>`;
-        iframe.contentWindow?.postMessage({ type: "camera-player-audio", muted }, window.location.origin);
-      });
-    }
+    wireFeaturedMedia(containerEl.querySelector(".beast-camera-featured"));
 
     const strip = document.getElementById("beastCameraStrip");
     cameras.slice(0, cameraLimit).forEach((camera) => {
@@ -428,8 +515,7 @@
       `;
       if ((!GO2RTC_BASE_URL || !camera.streamName) && camera.entityPicture) BeastAuth.setAuthedImageSrc(tile.querySelector("img"), camera.entityPicture);
       tile.addEventListener("click", () => {
-        featuredSlug = camera.slug;
-        render();
+        selectFeaturedCamera(camera);
       });
       strip.appendChild(tile);
     });
@@ -488,9 +574,9 @@
     resolveCamera: (entityId) => cameraInfoFor(entityId),
     resolveGroup: (entityIdOrSlug) => { const slug = cameraIdentity(entityIdOrSlug || "").slug; return discoverCameras().find((camera) => camera.slug === slug) || null; },
     selectCamera: (slug) => {
-      if (!discoverCameras().some((camera) => camera.slug === slug)) return false;
-      featuredSlug = slug;
-      render();
+      const camera = discoverCameras().find((item) => item.slug === slug);
+      if (!camera) return false;
+      selectFeaturedCamera(camera);
       return true;
     },
     snapshotUrl,
