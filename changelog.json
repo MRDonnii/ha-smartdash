@@ -1,5 +1,16 @@
 [
   {
+    "version": "20260903-2",
+    "tag": "v0.8.31",
+    "date": "2026-09-03",
+    "changes": [
+      {
+        "da": "Fortrød v0.8.30: forsidens 3 kameraer er tilbage til livevideo, som ønsket. Bemærk at det også bringer den båndbredde-/afkodningsomkostning tilbage der forårsagede den rapporterede opbremsning -- hvis det opstår igen, kan det være værd at kigge på (fx færre livekameraer eller en lavere standardkvalitet specifikt på forsiden) i stedet for at droppe livevisning helt.",
+        "en": "Reverted v0.8.30: the overview page's 3 cameras are back to live video, as requested. Note this also brings back the bandwidth/decode cost that was causing the reported slowdown -- if it recurs, worth revisiting (e.g. fewer live cameras or a lower default quality on the overview page specifically) rather than dropping live view."
+      }
+    ]
+  },
+  {
     "version": "20260903-1",
     "tag": "v0.8.30",
     "date": "2026-09-03",
