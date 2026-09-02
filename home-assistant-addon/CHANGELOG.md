@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.8.31
+
+- Reverted v0.8.30: the overview page's 3 cameras are back to live
+  video, as requested. Note this also brings back the bandwidth/decode
+  cost that was causing the reported slowdown -- if it recurs, worth
+  revisiting (e.g. fewer live cameras or a lower default quality on
+  the overview page specifically) rather than dropping live view.
+
 ## 0.8.30
 
 - Found and fixed the real cause of broad kiosk slowness reported

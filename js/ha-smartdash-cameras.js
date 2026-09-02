@@ -277,32 +277,17 @@
     // go2rtc is optional. Without an explicitly configured endpoint the
     // authenticated Home Assistant camera image is the reliable fallback.
     const baseUrl = go2rtcBaseUrl();
-    // snapshotOnly forces the cheap single-frame branch below even when a
-    // live stream would normally be preferred -- for callers showing
-    // several cameras at once as glanceable previews (the overview page's
-    // 3-camera strip), not a single deliberately-opened live view. A go2rtc
-    // WebRTC connection is a real, continuous cost (bandwidth, and on the
-    // receiving end decode CPU) per camera per second it's connected; three
-    // of those running non-stop on whatever page a kiosk idles on is a
-    // completely different resource picture than the one live view the
-    // dedicated Cameras page opens for whichever camera was actually
-    // selected. This is what "three simultaneous live streams on the front
-    // page, all the time" turned into once diagnosed.
-    const streamName = !options.snapshotOnly && baseUrl ? (camera.resolvedStreamName || camera.streamName) : null;
+    const streamName = baseUrl ? (camera.resolvedStreamName || camera.streamName) : null;
     // haStreamUrl points at Home Assistant's own /api/camera_proxy_stream/,
     // a continuously proxied (often transcoded) MJPEG feed -- much heavier
     // to establish on the HA host than the single-frame snapshot the
     // thumbnail strip already uses successfully, and the actual cause of
     // "shows a picture eventually, just takes forever": callers that pass
     // liveFallback:false skip it and go straight to the same fast snapshot.
-    const useHaStream = !options.snapshotOnly && options.liveFallback !== false && camera.haStreamUrl;
-    // Same cheap frame.jpeg endpoint the Cameras page's own thumbnail strip
-    // already relies on, reused here instead of always falling back to
-    // HA's own (heavier) camera_proxy when go2rtc already has a fast path.
-    const go2rtcSnapshot = options.snapshotOnly && baseUrl && (camera.resolvedStreamName || camera.streamName) ? snapshotUrl(camera.resolvedStreamName || camera.streamName) : null;
+    const useHaStream = options.liveFallback !== false && camera.haStreamUrl;
     return `<div class="beast-shared-camera ${className}" data-shared-camera="${escapeHtml(camera.slug)}">
-      <div class="beast-shared-camera-frame">${streamName ? `<iframe class="beast-shared-camera-live" src="./camera-player.html?v=19&base=${encodeURIComponent(baseUrl)}&transport=webrtc&src=${encodeURIComponent(streamName)}${options.audio ? "&audio=1" : ""}" title="${escapeHtml(camera.label)} livekamera" frameborder="0" allow="autoplay"></iframe>` : useHaStream ? `<img class="beast-shared-camera-live beast-shared-camera-ha-stream" src="${escapeHtml(camera.haStreamUrl)}" data-camera-fallback-picture="${escapeHtml(camera.entityPicture || "")}" alt="${escapeHtml(camera.label)} livekamera">` : `<img class="beast-shared-camera-snapshot"${go2rtcSnapshot ? ` src="${escapeHtml(go2rtcSnapshot)}"` : ""} data-camera-picture="${go2rtcSnapshot ? "" : escapeHtml(camera.entityPicture || "")}" alt="${escapeHtml(camera.label)}" loading="lazy">`}</div>
-      ${options.snapshotOnly ? "" : qualityMenuMarkup(camera)}
+      <div class="beast-shared-camera-frame">${streamName ? `<iframe class="beast-shared-camera-live" src="./camera-player.html?v=19&base=${encodeURIComponent(baseUrl)}&transport=webrtc&src=${encodeURIComponent(streamName)}${options.audio ? "&audio=1" : ""}" title="${escapeHtml(camera.label)} livekamera" frameborder="0" allow="autoplay"></iframe>` : useHaStream ? `<img class="beast-shared-camera-live beast-shared-camera-ha-stream" src="${escapeHtml(camera.haStreamUrl)}" data-camera-fallback-picture="${escapeHtml(camera.entityPicture || "")}" alt="${escapeHtml(camera.label)} livekamera">` : `<img class="beast-shared-camera-snapshot" data-camera-picture="${escapeHtml(camera.entityPicture || "")}" alt="${escapeHtml(camera.label)}">`}</div>
+      ${qualityMenuMarkup(camera)}
       ${options.motion !== false && camera.motion ? `<span class="beast-camera-motion-badge">${BeastCore.icon("bolt", { size: 11 })} ${escapeHtml(camera.motionLabel || "Hændelse")}</span>` : ""}
       ${options.label === false ? "" : `<span class="beast-shared-camera-label">${escapeHtml(camera.label)}</span>`}
     </div>`;
