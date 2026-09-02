@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.8.21
+
+- Text, icons and buttons on the climate, security, room, media player,
+  pool, car, tyre pressure, robot, printer, weather and energy template
+  cards now scale proportionally with the card's own size instead of
+  clipping or overflowing when the card is made smaller, extending the
+  0.8.20 scaling to the rest of the card types.
+
 ## 0.8.20
 
 - Text and icons on the touch-button, graph, media player, calendar,
