@@ -170,7 +170,7 @@ window.BeastCardEditor = (function () {
       const bindingFields = entities.length ? fields.map((field, index) => { const allowed = rankedEntities(entities.filter((entity) => !field.domains?.length || field.domains.includes(entity.id.split(".")[0])), editorSection, field.domains || []); const listId = `beastBinding_${Date.now()}_${index}`; return `<label class="beast-page-editor-field beast-card-binding-field">${safe(field.label)}${field.required ? "<b>Krævet</b>" : "<small>Valgfri</small>"}<input type="search" data-binding-key="${safe(field.key)}" data-binding-required="${field.required ? "true" : "false"}" list="${listId}" value="${safe(bindings[field.key] || "")}" placeholder="Søg eller vælg entity…"><datalist id="${listId}">${allowed.map((entity) => `<option value="${safe(entity.id)}">${safe(entity.name)}${entity.area ? ` · ${safe(entity.area)}` : ""}</option>`).join("")}</datalist></label>`; }).join("") : "";
       const actionFields = card.type === "toggle" ? `<div class="beast-page-editor-size-fields"><label class="beast-page-editor-field">Handling<select class="beast-basic-card-service"><option value="auto">Automatisk til/fra</option>${["toggle","turn_on","turn_off","lock","unlock","open_cover","close_cover"].map((service) => `<option value="${service}" ${card.action?.service === service ? "selected" : ""}>${service}</option>`).join("")}</select></label><label class="beast-page-editor-check"><input type="checkbox" class="beast-basic-card-confirm" ${card.action?.confirm ? "checked" : ""}> Kræv bekræftelse</label></div>` : "";
       const visibilityFields = `<details class="beast-card-advanced"><summary>Avanceret visning</summary><label class="beast-page-editor-field">Vis kun når entity<input class="beast-basic-visibility-entity" value="${safe(card.visibility?.entity || "")}" placeholder="Valgfrit"></label><label class="beast-page-editor-field">Har tilstand<input class="beast-basic-visibility-state" value="${safe(card.visibility?.state || "")}" placeholder="fx on, open eller playing"></label></details>`;
-      overlay.innerHTML = `<div class="beast-modal beast-page-entity-modal" role="dialog" aria-modal="true"><div class="beast-modal-header"><div><small>${template ? safe(template.category) : "Genbrugt skabelon"}</small><h3>Rediger kort</h3></div><button type="button" class="beast-modal-close" data-close>${BeastCore.icon("close", { size: 22 })}</button></div><div class="beast-modal-body"><label class="beast-page-editor-field">Navn<input class="beast-basic-card-name" value="${safe(card.label || "")}"></label><label class="beast-page-editor-field">Ikon<input class="beast-basic-card-icon" value="${safe(card.icon || "grid")}"></label><div class="beast-page-editor-size-fields"><label class="beast-page-editor-field">Bredde<select class="beast-basic-card-width">${Array.from({ length: 24 }, (_, i) => (i + 1) / 2).map((v) => `<option value="${v}" ${v === width ? "selected" : ""}>${v} / 12</option>`).join("")}</select></label><label class="beast-page-editor-field">Højde<select class="beast-basic-card-height">${Array.from({ length: 24 }, (_, i) => (i + 1) / 2).map((v) => `<option value="${v}" ${v === height ? "selected" : ""}>${v} række${v === 1 ? "" : "r"}</option>`).join("")}</select></label></div>${bindingFields}${actionFields}${visibilityFields}<button type="button" class="beast-btn beast-btn-primary" data-basic-save>Gem ændringer</button></div></div>`;
+      overlay.innerHTML = `<div class="beast-modal beast-page-entity-modal" role="dialog" aria-modal="true"><div class="beast-modal-header"><div><small>${template ? safe(template.category) : "Genbrugt skabelon"}</small><h3>Rediger kort</h3></div><button type="button" class="beast-modal-close" data-close>${BeastCore.icon("close", { size: 22 })}</button></div><div class="beast-modal-body"><label class="beast-page-editor-field">Navn<input class="beast-basic-card-name" value="${safe(card.label || "")}"></label><label class="beast-page-editor-field">Ikon<input class="beast-basic-card-icon" value="${safe(card.icon || "grid")}"></label><div class="beast-page-editor-size-fields"><label class="beast-page-editor-field">Bredde (/ 12)<input type="number" class="beast-basic-card-width" value="${width}" min="0.25" max="12" step="0.25"></label><label class="beast-page-editor-field">Højde (rækker)<input type="number" class="beast-basic-card-height" value="${height}" min="0.25" max="12" step="0.25"></label></div>${bindingFields}${actionFields}${visibilityFields}<button type="button" class="beast-btn beast-btn-primary" data-basic-save>Gem ændringer</button></div></div>`;
       document.body.appendChild(overlay);
       overlay.addEventListener("click", (event) => {
         if (event.target === overlay || event.target.closest("[data-close]")) return overlay.remove();
@@ -185,7 +185,17 @@ window.BeastCardEditor = (function () {
           overlay.querySelector("[data-basic-save]").before(message); missingRequired[0].focus(); return;
         }
         const visibilityEntity = overlay.querySelector(".beast-basic-visibility-entity")?.value.trim() || ""; const visibilityState = overlay.querySelector(".beast-basic-visibility-state")?.value.trim() || "";
-        commit({ ...card, label: overlay.querySelector(".beast-basic-card-name")?.value.trim() || "", icon: overlay.querySelector(".beast-basic-card-icon")?.value.trim() || "grid", entity: nextBindings[fields[0].key] || card.entity || null, bindings: nextBindings, action: card.type === "toggle" ? { service: overlay.querySelector(".beast-basic-card-service")?.value || "auto", confirm: overlay.querySelector(".beast-basic-card-confirm")?.checked === true } : card.action, visibility: visibilityEntity ? { entity: visibilityEntity, state: visibilityState } : null, desktop: { ...(card.desktop || {}), w: Number(overlay.querySelector(".beast-basic-card-width")?.value) || width, h: Number(overlay.querySelector(".beast-basic-card-height")?.value) || height } });
+        // Snap the typed value to a valid quarter-unit multiple -- the grid
+        // track math (BEAST_GRID_UNIT_MULTIPLIER, ha-smartdash-core.js)
+        // needs value * that multiplier to be a whole number, since
+        // grid-column/row: span only accepts an integer track count. A
+        // free-typed value like 3.7 would silently produce invalid CSS.
+        const snapSize = (value, fallback) => {
+          const parsed = Number(value);
+          if (!Number.isFinite(parsed) || parsed <= 0) return fallback;
+          return Math.max(1 / BEAST_GRID_UNIT_MULTIPLIER, Math.min(12, Math.round(parsed * BEAST_GRID_UNIT_MULTIPLIER) / BEAST_GRID_UNIT_MULTIPLIER));
+        };
+        commit({ ...card, label: overlay.querySelector(".beast-basic-card-name")?.value.trim() || "", icon: overlay.querySelector(".beast-basic-card-icon")?.value.trim() || "grid", entity: nextBindings[fields[0].key] || card.entity || null, bindings: nextBindings, action: card.type === "toggle" ? { service: overlay.querySelector(".beast-basic-card-service")?.value || "auto", confirm: overlay.querySelector(".beast-basic-card-confirm")?.checked === true } : card.action, visibility: visibilityEntity ? { entity: visibilityEntity, state: visibilityState } : null, desktop: { ...(card.desktop || {}), w: snapSize(overlay.querySelector(".beast-basic-card-width")?.value, width), h: snapSize(overlay.querySelector(".beast-basic-card-height")?.value, height) } });
         overlay.remove();
       });
     }
@@ -352,15 +362,21 @@ window.BeastCardEditor = (function () {
       const ordered = elements.map((element, index) => {
         const card = byId.get(element.dataset.builderCard);
         if (!card) return null;
-        // --desktop-w/-h on the DOM element are emitted pre-doubled (see
+        // --desktop-w/-h on the DOM element are emitted pre-multiplied by
+        // BEAST_GRID_UNIT_MULTIPLIER (ha-smartdash-core.js -- see
         // overviewCardMarkup() and its siblings, and .beast-overview-grid
-        // .is-freeform in ha-smartdash-layout.css) so half-unit sizes land
-        // on a whole grid track. Divide back out here, or every Save
-        // silently doubles every card's stored size again -- including
-        // cards nobody touched this session, since this runs
-        // unconditionally for the whole DOM on every save.
-        const width = Number(element.style.getPropertyValue("--desktop-w")) / 2;
-        const height = Number(element.style.getPropertyValue("--desktop-h")) / 2;
+        // .is-freeform in ha-smartdash-layout.css) so quarter-unit sizes
+        // land on a whole grid track. Divide back out by the SAME shared
+        // constant here, or every Save silently multiplies every card's
+        // stored size again -- including cards nobody touched this
+        // session, since this runs unconditionally for the whole DOM on
+        // every save. (This drifted out of sync once already: v0.8.11
+        // introduced the multiplier here as a literal 2, this function
+        // wasn't updated to match, and every Save doubled every card's
+        // size until v0.8.13 fixed it. BEAST_GRID_UNIT_MULTIPLIER exists
+        // so emission and read-back can never drift apart again.)
+        const width = Number(element.style.getPropertyValue("--desktop-w")) / BEAST_GRID_UNIT_MULTIPLIER;
+        const height = Number(element.style.getPropertyValue("--desktop-h")) / BEAST_GRID_UNIT_MULTIPLIER;
         if (Number.isFinite(width) && width > 0 && Number.isFinite(height) && height > 0) {
           card.desktop = { ...(card.desktop || {}), w: width, h: height };
         }
@@ -399,18 +415,18 @@ window.BeastCardEditor = (function () {
         if (!resize || event.pointerId !== resize.pointerId) return;
         const dx = event.clientX - resize.startX;
         const dy = event.clientY - resize.startY;
-        // Snap to half-unit steps, not just whole units -- Math.round(x*2)/2
-        // is the standard "round to nearest 0.5" trick.
-        const w = Math.max(0.5, Math.min(12, Math.round((resize.startW + dx / resize.colPx) * 2) / 2));
+        // Snap to quarter-unit steps -- Math.round(x*M)/M is the standard
+        // "round to nearest 1/M" trick, M = BEAST_GRID_UNIT_MULTIPLIER.
+        const w = Math.max(1 / BEAST_GRID_UNIT_MULTIPLIER, Math.min(12, Math.round((resize.startW + dx / resize.colPx) * BEAST_GRID_UNIT_MULTIPLIER) / BEAST_GRID_UNIT_MULTIPLIER));
         // Full-page views may contain cameras and graphs that need more than
         // the overview's original two rows.  Keep the drag bounded, but allow
         // enough vertical span for a real 16:9 camera card on a touch screen.
-        const h = Math.max(0.5, Math.min(12, Math.round((resize.startH + dy / resize.rowPx) * 2) / 2));
-        // The CSS custom properties are consumed pre-doubled (24 desktop
-        // tracks, not 12 -- see .beast-overview-grid.is-freeform), so a
-        // half-unit size lands on a whole track during the live preview too.
-        card.style.setProperty("--desktop-w", w * 2);
-        card.style.setProperty("--desktop-h", h * 2);
+        const h = Math.max(1 / BEAST_GRID_UNIT_MULTIPLIER, Math.min(12, Math.round((resize.startH + dy / resize.rowPx) * BEAST_GRID_UNIT_MULTIPLIER) / BEAST_GRID_UNIT_MULTIPLIER));
+        // The CSS custom properties are consumed pre-multiplied (see
+        // .beast-overview-grid.is-freeform), so a quarter-unit size lands
+        // on a whole track during the live preview too.
+        card.style.setProperty("--desktop-w", w * BEAST_GRID_UNIT_MULTIPLIER);
+        card.style.setProperty("--desktop-h", h * BEAST_GRID_UNIT_MULTIPLIER);
         resize.pendingW = w;
         resize.pendingH = h;
       });

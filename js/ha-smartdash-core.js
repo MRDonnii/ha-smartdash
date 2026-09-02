@@ -1,3 +1,15 @@
+// Every freeform card grid (overview, and the shared page/printer/robots
+// editors) emits --desktop-w/-h pre-multiplied by this factor, and the grid's
+// own track count/span caps in ha-smartdash-layout.css (.is-freeform) are
+// multiplied by the same factor, so quarter-unit sizes land on a whole grid
+// track (grid-column/row: span only accepts an integer). Read back out by
+// syncDraftCardsFromDom() in ha-smartdash-card-editor.js when Save is
+// pressed. A SINGLE constant, not a literal repeated in every file: emission
+// and read-back drifting out of sync silently doubled every card's size on
+// every Save in v0.8.11-v0.8.12 (fixed in v0.8.13) -- this is exactly the
+// kind of two-sided change that must never be edited in just one place.
+const BEAST_GRID_UNIT_MULTIPLIER = 4;
+
 const BeastCore = (() => {
   const CORE_SCRIPT_URL = document.currentScript?.src || window.location.href;
   const APP_ROOT_URL = new URL("../", CORE_SCRIPT_URL);

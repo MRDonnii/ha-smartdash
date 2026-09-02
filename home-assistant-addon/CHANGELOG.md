@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.8.14
+
+- Cards on the overview and other pages can now be resized in
+  quarter-unit steps (4 levels per unit) instead of only half, both by
+  dragging the corner handle and from the card's own settings dialog,
+  which now has a number field instead of a dropdown.
+- The factor card sizes are multiplied by in the CSS is now a single
+  shared constant in one place, not a repeated literal across six
+  files -- the exact class of bug behind the v0.8.11-v0.8.13 issue
+  can't happen the same way again.
+
 ## 0.8.13
 
 - Fixed a serious bug where a card on the overview or other pages

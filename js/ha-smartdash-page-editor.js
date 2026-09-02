@@ -33,9 +33,10 @@ window.BeastPageEditor = (() => {
     });
   }
   function cardMarkup(card) {
-    // --desktop-w/-h are emitted pre-doubled to match the freeform grid's
-    // 24-track desktop resolution -- see ha-smartdash-layout.css.
-    const size = `data-builder-card="${escape(card.id)}" style="--desktop-w:${(Number(card.desktop?.w) || 3) * 2};--desktop-h:${(Number(card.desktop?.h) || 1) * 2};--tablet-w:${Number(card.tablet?.w) || 1};--tablet-h:${Number(card.tablet?.h) || 1};--portrait-h:${Number(card.portrait?.h) || 1};"`;
+    // --desktop-w/-h are emitted pre-multiplied by BEAST_GRID_UNIT_MULTIPLIER
+    // (ha-smartdash-core.js) to match the freeform grid's desktop
+    // resolution -- see ha-smartdash-layout.css.
+    const size = `data-builder-card="${escape(card.id)}" style="--desktop-w:${(Number(card.desktop?.w) || 3) * BEAST_GRID_UNIT_MULTIPLIER};--desktop-h:${(Number(card.desktop?.h) || 1) * BEAST_GRID_UNIT_MULTIPLIER};--tablet-w:${Number(card.tablet?.w) || 1};--tablet-h:${Number(card.tablet?.h) || 1};--portrait-h:${Number(card.portrait?.h) || 1};"`;
     const standard = ["stat", "toggle", "graph", "camera", "media", "calendar"].includes(card.type) ? card.type : "custom";
     const host = standard === "custom" ? "<div class=\"beastOvGeneric\"></div>" : "<div class=\"beastStandardCardBody\"></div>";
     const bindings = encodeURIComponent(JSON.stringify(card.bindings || {}));
