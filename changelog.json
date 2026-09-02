@@ -1,5 +1,24 @@
 [
   {
+    "version": "20260902-1",
+    "tag": "v0.8.4",
+    "date": "2026-09-02",
+    "changes": [
+      {
+        "da": "Rettet en visuel fejl hvor fjernvarmekortets afrundede hjørner kunne vise små halvbue-artefakter uden for selve Home Assistant, herunder på Smartdash-forsiden.",
+        "en": "Fixed a rendering glitch where the district-heating card's rounded corners could show small crescent artifacts outside real Home Assistant, including on the Smartdash overview."
+      },
+      {
+        "da": "Fjernvarmekortets husomrids har nu et konstant, sart varmt skær i stedet for at være helt gennemsigtigt.",
+        "en": "The district-heating card's house outline now shows a constant, subtle warm tint instead of being fully transparent."
+      },
+      {
+        "da": "Ventilationskortet har fået et nyt venstre metrik-panel (bypass, luftkvalitet, varmeoverførsel, alarm) der matcher det eksisterende højre panel, samme varme skær, og en fuld GUI-konfigurationseditor.",
+        "en": "The ventilation card gained a new left-side metrics panel (bypass, air quality, heat transfer, alarm) mirroring the existing right panel, the same warm tint, and a full GUI configuration editor."
+      }
+    ]
+  },
+  {
     "version": "20260901-1",
     "tag": "v0.8.3",
     "date": "2026-09-01",
