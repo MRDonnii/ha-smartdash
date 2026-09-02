@@ -1,5 +1,16 @@
 [
   {
+    "version": "20260902-7",
+    "tag": "v0.8.10",
+    "date": "2026-09-02",
+    "changes": [
+      {
+        "da": "Migreringen af et allerede aktiveret ventilationskort placerer nu kortet lige efter kamerakortet i layoutet, så det havner samme sted som før, og reducerer automatisk et gemt kameravalg på mere end 2 til 2 -- samme balance som den gamle delte visning havde.",
+        "en": "Migrating an already-enabled ventilation card now places it right after the cameras card in the layout, landing in the same area as before, and automatically caps a saved camera selection of more than 2 down to 2 -- the same balance the old shared view had."
+      }
+    ]
+  },
+  {
     "version": "20260902-6",
     "tag": "v0.8.9",
     "date": "2026-09-02",

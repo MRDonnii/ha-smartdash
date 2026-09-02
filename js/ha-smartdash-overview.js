@@ -2454,20 +2454,35 @@
   // exactly once, even for installs that never turned the widget on.
   function migrateVentilationCardOnce() {
     if (BeastConfig.get("overviewVentilationMigrated") === true) return;
+    const patch = { overviewVentilationMigrated: true };
     const legacy = BeastConfig.get("overviewVentilation");
     if (legacy?.enabled === true && legacy.entities && Object.keys(legacy.entities).length) {
       const cards = BeastConfig.get("overviewCards") || [];
       if (!cards.some((card) => card.type === "ventilation")) {
         const seeded = cards.length ? cards : seedCardsFromOverviewSlots();
-        seeded.push({
+        const ventilationCard = {
           id: "card_ventilation_migrated", type: "ventilation", label: legacy.title || "", title: legacy.title || "",
           animation: legacy.animation !== false, showAfterheat: legacy.showAfterheat === true, entities: legacy.entities,
           desktop: { w: 6, h: 3 }, tablet: { w: 2, h: 3 }, portrait: { h: 3 }
-        });
-        BeastConfig.set("overviewCards", seeded);
+        };
+        // Insert right after the cameras card (not at the end) so it lands
+        // in the same area it used to occupy, since freeform cards flow in
+        // array order.
+        const camerasIndex = seeded.findIndex((card) => card.type === "cameras");
+        seeded.splice(camerasIndex < 0 ? seeded.length : camerasIndex + 1, 0, ventilationCard);
+        patch.overviewCards = seeded;
+      }
+      // The old layout auto-capped the camera strip to 2 whenever
+      // ventilation shared its area, freeing up room for the diagram. Now
+      // that they're independent cards, preserve that same 2-camera look
+      // by capping the saved selection once, instead of silently reverting
+      // to however many cameras were configured underneath the old cap.
+      const selectedCameras = BeastConfig.get("overviewCameraEntities");
+      if (Array.isArray(selectedCameras) && selectedCameras.length > 2) {
+        patch.overviewCameraEntities = selectedCameras.slice(0, 2);
       }
     }
-    BeastConfig.set("overviewVentilationMigrated", true);
+    BeastConfig.setMany(patch);
   }
 
   // Shared by the top-level car/pool/robots/printer overview cards and the
