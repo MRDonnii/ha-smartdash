@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.8.13
+
+- Fixed a serious bug where a card on the overview or other pages
+  doubled in size every single time Save was pressed in edit mode --
+  including cards that were never touched that session. The size grew
+  exponentially with each save, making the layout impossible to
+  properly edit into shape.
+
 ## 0.8.12
 
 - Fixed a serious bug from the last release where every card on the

@@ -352,8 +352,15 @@ window.BeastCardEditor = (function () {
       const ordered = elements.map((element, index) => {
         const card = byId.get(element.dataset.builderCard);
         if (!card) return null;
-        const width = Number(element.style.getPropertyValue("--desktop-w"));
-        const height = Number(element.style.getPropertyValue("--desktop-h"));
+        // --desktop-w/-h on the DOM element are emitted pre-doubled (see
+        // overviewCardMarkup() and its siblings, and .beast-overview-grid
+        // .is-freeform in ha-smartdash-layout.css) so half-unit sizes land
+        // on a whole grid track. Divide back out here, or every Save
+        // silently doubles every card's stored size again -- including
+        // cards nobody touched this session, since this runs
+        // unconditionally for the whole DOM on every save.
+        const width = Number(element.style.getPropertyValue("--desktop-w")) / 2;
+        const height = Number(element.style.getPropertyValue("--desktop-h")) / 2;
         if (Number.isFinite(width) && width > 0 && Number.isFinite(height) && height > 0) {
           card.desktop = { ...(card.desktop || {}), w: width, h: height };
         }
