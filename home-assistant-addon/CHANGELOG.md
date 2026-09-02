@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.8.18
+
+- Fixed a bug where the ventilation card showed a double frame (a card
+  inside a card), because the card's own background/border from when
+  it shared space with the cameras was still there after it became
+  its own independent card. The card now fills its whole area with a
+  single frame, like every other card.
+
 ## 0.8.17
 
 - The ventilation card's auto-detect now also finds the heating coil's

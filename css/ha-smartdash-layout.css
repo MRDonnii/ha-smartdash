@@ -679,6 +679,12 @@ a.beast-rail-btn:visited {
   position: relative;
 }
 :root[data-density="compact"] .beast-panel { padding:var(--space-3); }
+/* Content that already renders its own edge-to-edge frame (camera video,
+   the ventilation card's own house diagram) shouldn't sit inset from the
+   panel's padding -- that reads as a second, nested container. Zero the
+   padding here rather than in each content type's own CSS, so anything
+   using this class benefits and gets exactly one card frame: the panel's. */
+.beast-ov-card--flush { padding: 0; }
 :root[data-density="compact"] .beast-content { gap:var(--space-3); }
 :root[data-density="large"] button { min-height:48px; }
 :root[data-density="large"] .beast-rail-btn { min-height:62px; }

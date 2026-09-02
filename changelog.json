@@ -1,5 +1,16 @@
 [
   {
+    "version": "20260902-15",
+    "tag": "v0.8.18",
+    "date": "2026-09-02",
+    "changes": [
+      {
+        "da": "Rettet en fejl hvor ventilationskortet viste en dobbelt ramme (et kort inde i et kort), fordi kortets egen baggrund/kant fra dengang det delte plads med kameraerne stadig var der efter det blev sit eget selvstændige kort. Kortet fylder nu hele sit område med kun én ramme, ligesom alle andre kort.",
+        "en": "Fixed a bug where the ventilation card showed a double frame (a card inside a card), because the card's own background/border from when it shared space with the cameras was still there after it became its own independent card. The card now fills its whole area with a single frame, like every other card."
+      }
+    ]
+  },
+  {
     "version": "20260902-14",
     "tag": "v0.8.17",
     "date": "2026-09-02",
