@@ -13,7 +13,8 @@ window.BeastVentilation = (() => {
     extract_temperature: ['Udsugning', 'Extract air'], exhaust_temperature: ['Afkast', 'Exhaust air'],
     co2: ['CO₂', 'CO₂'], power: ['Effekt', 'Power'], heat_recovery: ['Varmegenvinding', 'Heat recovery'], humidity: ['Luftfugtighed', 'Humidity'],
     bypass: ['Bypass', 'Bypass'], mode: ['Driftstilstand', 'Operation mode'],
-    level: ['Ventilatortrin', 'Fan level'], filter_days: ['Filter, dage tilbage', 'Filter days remaining']
+    level: ['Ventilatortrin', 'Fan level'], filter_days: ['Filter, dage tilbage', 'Filter days remaining'],
+    air_quality: ['Luftkvalitet', 'Air quality'], heat_transfer: ['Varmeoverførsel', 'Heat transfer'], alarm: ['Alarm', 'Alarm']
   };
   const t = (da, en) => BeastLocalSettings.get('language', 'en') === 'da' ? da : en;
   const esc = value => String(value ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -27,6 +28,19 @@ window.BeastVentilation = (() => {
   function number(key, suffix, digits=0) {
     const entity = state(key), value = entity ? Number(entity.state) : NaN;
     return Number.isFinite(value) ? value.toLocaleString(t('da-DK','en-GB'), {maximumFractionDigits:digits}) + suffix : '—';
+  }
+  function entityValue(key, fallbackSuffix='') {
+    const entity = state(key);
+    if (!entity) return '—';
+    const value = Number(entity.state);
+    if (!Number.isFinite(value)) return esc(entity.state);
+    const suffix = entity.attributes?.unit_of_measurement || fallbackSuffix;
+    return value.toLocaleString(t('da-DK','en-GB')) + (suffix ? ' ' + suffix : '');
+  }
+  function airQualityValue() {
+    const raw = state('air_quality')?.state?.toLowerCase();
+    const labels = {good: t('God','Good'), moderate: t('Moderat','Moderate'), poor: t('Dårlig','Poor')};
+    return labels[raw] || (raw ? esc(state('air_quality').state) : '—');
   }
   // Shared scale for both air streams: the same measured temperature
   // always has the same colour, regardless of route or operating mode.
@@ -97,6 +111,9 @@ window.BeastVentilation = (() => {
         ? (changed + interval * 86400000 - now) / 86400000 : NaN;
     const filterValue = Number.isFinite(remaining) ? Math.max(0, Math.ceil(remaining)).toLocaleString(t('da-DK','en-GB')) + ' d' : '—';
     const filterLabel = t('Filter tilbage','Filter left');
+    const alarmEntity = state('alarm');
+    const alarmActive = alarmEntity?.state === 'on';
+    const alarmText = alarmEntity ? (alarmActive ? t('Alarm','Alarm') : 'OK') : '—';
     const coilDetails = coil ? `<g class="hrv-coil ${coilActive?'active':''}" aria-label="${t('Varmeflade','Heating coil')}: ${coilStatus}">
       <text class="hrv-svg-delta" x="310" y="132" text-anchor="middle"><title>${t('Fremløb minus retur','Flow minus return')}</title>ΔT ${deltaText}</text>
       <rect class="hrv-coil-glow" x="256" y="145" width="108" height="50" rx="10" aria-hidden="true"/>
@@ -108,6 +125,12 @@ window.BeastVentilation = (() => {
     return `<article class="smartdash-hrv ${open ? 'hrv-bypass' : ''} ${c.animation === false ? 'hrv-still' : ''}">
       <header><div><small>${t('VENTILATION','VENTILATION')}</small><h3>${esc(c.title || t('Ventilation','Ventilation'))}</h3></div><span class="hrv-mode ${hasData?'':'hrv-offline'}">${esc(mode || t('Ingen driftsdata','No operation data'))}</span></header>
       <div class="hrv-body">
+      <div class="hrv-metrics hrv-metrics-left">
+        <div class="${open ? 'hrv-metric-info' : ''}"><strong>${open ? t('Åben','Open') : t('Lukket','Closed')}</strong><small>${t(...fields.bypass)}</small></div>
+        <div><strong>${airQualityValue()}</strong><small>${t(...fields.air_quality)}</small></div>
+        <div><strong>${entityValue('heat_transfer','W')}</strong><small>${t(...fields.heat_transfer)}</small></div>
+        <div class="${alarmActive ? 'hrv-metric-danger' : alarmEntity ? 'hrv-metric-ok' : ''}"><strong>${alarmText}</strong><small>${t(...fields.alarm)}</small></div>
+      </div>
       <div class="hrv-airflow">
         <svg data-diagram-id="${id}" viewBox="0 0 440 270" preserveAspectRatio="xMidYMid meet" role="img" aria-label="${t('Ventilationsanlæg i huset. Udeluft og afkast udenfor; udsugning og indblæsning indenfor.','Ventilation unit inside the house. Outdoor air and exhaust outside; extract and supply inside.')}">
           <defs class="hrv-temperature-gradients"></defs>
