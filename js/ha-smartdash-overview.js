@@ -1632,11 +1632,11 @@
       host.innerHTML = `
         <div class="beast-ov-camera-mobile">
           <div class="beast-ov-camera-mobile-featured" data-slug="${featured.slug}">
-            ${window.BeastCameras.sharedCameraMarkup(featured, { className: "beast-overview-camera-render", label: true, motion: true })}
+            ${window.BeastCameras.sharedCameraMarkup(featured, { className: "beast-overview-camera-render", label: true, motion: true, snapshotOnly: true })}
           </div>
           ${others.length ? `<div class="beast-ov-camera-mobile-thumbs">${others.map((camera) => `
             <button type="button" class="beast-ov-camera-mobile-thumb${camera.motion ? " has-motion" : ""}" data-slug="${camera.slug}" aria-label="Vis ${escapeHtml(camera.label)}">
-              ${window.BeastCameras.sharedCameraMarkup(camera, { className: "beast-overview-camera-render", label: true, motion: true })}
+              ${window.BeastCameras.sharedCameraMarkup(camera, { className: "beast-overview-camera-render", label: true, motion: true, snapshotOnly: true })}
             </button>
           `).join("")}</div>` : ""}
         </div>
@@ -1655,7 +1655,7 @@
     host.innerHTML = `
       <div class="beast-ov-camera-strip" data-count="${cameras.length}">${cameras.map((camera) => `
         <div class="beast-ov-camera-thumb${camera.motion ? " has-motion" : ""}" data-slug="${camera.slug}" role="button" tabindex="0" aria-label="Åbn ${escapeHtml(camera.label)}">
-          ${window.BeastCameras.sharedCameraMarkup(camera, { className: "beast-overview-camera-render", label: true, motion: true })}
+          ${window.BeastCameras.sharedCameraMarkup(camera, { className: "beast-overview-camera-render", label: true, motion: true, snapshotOnly: true })}
         </div>
       `).join("")}</div>
     `;
@@ -1798,13 +1798,19 @@
   function refreshCameraSnapshots() {
     if (!window.BeastCameras || !BeastCore.isPanelVisible(zoneEl)) return;
     const cams = window.BeastCameras.getAllCameras("overview");
-    // Only cameras without a go2rtc mapping get a plain <img> here (ones
-    // with one use a live iframe instead, nothing to refresh); go through
-    // HA's own authenticated camera image for those.
-    document.querySelectorAll("#beastOvCameras .beast-ov-camera-thumb img").forEach((img) => {
-      const slug = img.closest(".beast-ov-camera-thumb")?.dataset.slug;
+    // All three overview previews are cheap snapshots now, not live
+    // streams (see sharedCameraMarkup's snapshotOnly option) -- a camera
+    // with a go2rtc mapping gets its frame refreshed through go2rtc's own
+    // fast endpoint (preloaded and verified before committing, same as the
+    // Cameras page's own thumbnail strip), everything else through HA's
+    // authenticated camera image.
+    document.querySelectorAll("#beastOvCameras .beast-ov-camera-mobile-featured img, #beastOvCameras .beast-ov-camera-mobile-thumb img, #beastOvCameras .beast-ov-camera-thumb img").forEach((img) => {
+      const slug = img.closest("[data-slug]")?.dataset.slug;
       const cam = cams.find((c) => c.slug === slug);
-      if (cam?.entityPicture) BeastAuth.setAuthedImageSrc(img, cam.entityPicture);
+      if (!cam) return;
+      const streamName = window.BeastCameras.hasGo2rtc() ? (cam.resolvedStreamName || cam.streamName) : null;
+      if (streamName) window.BeastCameras.swapSnapshot(img, window.BeastCameras.snapshotUrl(streamName));
+      else if (cam.entityPicture) BeastAuth.setAuthedImageSrc(img, cam.entityPicture);
     });
   }
 
