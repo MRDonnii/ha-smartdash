@@ -1,5 +1,20 @@
 # Changelog
 
+## 0.8.30
+
+- Found and fixed the real cause of broad kiosk slowness reported
+  alongside the camera investigation: the overview page's 3-camera
+  strip was opening a full live go2rtc video connection for *every*
+  camera shown there (not just one), all running continuously
+  whenever the overview page is on screen -- typically the page a
+  kiosk idles on most of the time. That's a real, ongoing bandwidth
+  and decode cost per camera per second connected, unlike the
+  dedicated Cameras page (which already only opens one live stream,
+  for the camera actually selected). The overview strip now shows the
+  same kind of lightweight, periodically-refreshed snapshot the
+  Cameras page's own thumbnails use; tapping a camera still opens a
+  real live view on the Cameras page.
+
 ## 0.8.29
 
 - Fixed camera switching for go2rtc setups showing a picture, then

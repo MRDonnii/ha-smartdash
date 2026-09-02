@@ -1,5 +1,16 @@
 [
   {
+    "version": "20260903-1",
+    "tag": "v0.8.30",
+    "date": "2026-09-03",
+    "changes": [
+      {
+        "da": "Fandt og rettede den reelle årsag til bred langsomhed i kiosken der blev rapporteret sammen med kamera-undersøgelsen: forsidens 3-kamera-strip åbnede en fuld live go2rtc-videoforbindelse for *hvert* kamera der vises der (ikke kun ét), som alle kørte konstant så længe forsiden var fremme -- typisk den side en kiosk står på størstedelen af tiden. Det er en reel, løbende båndbredde- og afkodningsomkostning pr. kamera pr. sekund den er forbundet, i modsætning til den dedikerede Kamera-side (som allerede kun åbner én livestream, for det kamera der faktisk er valgt). Forsidens strip viser nu samme slags let, periodisk opdaterede snapshot som Kamera-sidens egne miniaturebilleder bruger; et tryk på et kamera åbner stadig en rigtig livevisning på Kamera-siden.",
+        "en": "Found and fixed the real cause of broad kiosk slowness reported alongside the camera investigation: the overview page's 3-camera strip was opening a full live go2rtc video connection for *every* camera shown there (not just one), all running continuously whenever the overview page is on screen -- typically the page a kiosk idles on most of the time. That's a real, ongoing bandwidth and decode cost per camera per second connected, unlike the dedicated Cameras page (which already only opens one live stream, for the camera actually selected). The overview strip now shows the same kind of lightweight, periodically-refreshed snapshot the Cameras page's own thumbnails use; tapping a camera still opens a real live view on the Cameras page."
+      }
+    ]
+  },
+  {
     "version": "20260902-26",
     "tag": "v0.8.29",
     "date": "2026-09-02",
