@@ -1,5 +1,24 @@
 [
   {
+    "version": "20260902-3",
+    "tag": "v0.8.6",
+    "date": "2026-09-02",
+    "changes": [
+      {
+        "da": "Overbliksskærmens ventilationskort matcher nu det rigtige Home Assistant-kort ved bypass: lige rør i stedet for krydsende, korrekt byttet indblæsnings-/udsugningsvisning, og eftervarmefladen skjules, når bypass er åben.",
+        "en": "The overview ventilation card now matches the real Home Assistant card during bypass: straight ducts instead of crossing ones, correctly swapped supply/extract readings, and the heating coil panel is hidden while bypass is open."
+      },
+      {
+        "da": "Overbliksskærmens ventilationskort viser ikke længere varmegenvinding to gange; det højre panel har nu fire felter i stedet for fem, ligesom det rigtige kort.",
+        "en": "The overview ventilation card no longer shows heat recovery twice; the right-hand panel now has four fields instead of five, matching the real card."
+      },
+      {
+        "da": "Reduceret overflødig luft over husets tag og \"INDE\"-titlen i overbliksskærmens ventilationskort.",
+        "en": "Reduced excess space above the house roof and the \"INDE\" title on the overview ventilation card."
+      }
+    ]
+  },
+  {
     "version": "20260902-2",
     "tag": "v0.8.5",
     "date": "2026-09-02",

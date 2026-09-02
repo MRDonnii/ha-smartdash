@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.8.6
+
+- The overview ventilation card now matches the real Home Assistant card
+  during bypass: straight ducts instead of crossing ones, correctly swapped
+  supply/extract readings, and the heating coil panel is hidden while bypass
+  is open.
+- The overview ventilation card no longer shows heat recovery twice; the
+  right-hand panel now has four fields instead of five, matching the real
+  card.
+- Reduced excess space above the house roof and the "INDE" title on the
+  overview ventilation card.
+
 ## 0.8.5
 
 - Fixed a navigation bug where tapping the ventilation card on the overview

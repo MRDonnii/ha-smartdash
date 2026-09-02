@@ -70,7 +70,7 @@ window.BeastVentilation = (() => {
     const level = /^level_[1-9]$/.test(rawLevel || '') ? rawLevel.slice(6) : rawLevel;
     const hasData = Object.keys(fields).some(key => state(key));
     const recovery = open ? '—' : number('heat_recovery', '%');
-    const coil = c.showAfterheat === true;
+    const coil = c.showAfterheat === true && !open;
     const coilState = state('afterheat_active')?.state;
     const coilActive = coilState === 'on';
     const coilStatus = coilActive ? t('Varmer','Heating') : coilState === 'off' ? t('Inaktiv','Inactive') : t('Ukendt','Unknown');
@@ -134,7 +134,7 @@ window.BeastVentilation = (() => {
       <div class="hrv-airflow">
         <svg data-diagram-id="${id}" viewBox="0 0 440 270" preserveAspectRatio="xMidYMid meet" role="img" aria-label="${t('Ventilationsanlæg i huset. Udeluft og afkast udenfor; udsugning og indblæsning indenfor.','Ventilation unit inside the house. Outdoor air and exhaust outside; extract and supply inside.')}">
           <defs class="hrv-temperature-gradients"></defs>
-          <path class="hrv-house" d="M112 58 L273 12 L436 58 V263 H112 Z"/>
+          <path class="hrv-house" d="M112 54 L273 4 L436 54 V263 H112 Z"/>
           <text class="hrv-svg-zone" x="14" y="39">${t('UDE','OUTSIDE')}</text><text class="hrv-svg-zone" x="273" y="25" text-anchor="middle">${t('INDE','INSIDE')}</text>
           <g class="hrv-room-climate" transform="translate(273 43)" text-anchor="middle" aria-label="${t('Rumtemperatur og luftfugtighed','Room temperature and humidity')}">
             <text class="hrv-room-label" x="-35" y="0">${t('Rum','Room')}</text><text class="hrv-room-value" x="-35" y="19">${temperature('room_temperature')}</text>
@@ -147,12 +147,12 @@ window.BeastVentilation = (() => {
           ${fan('supply_fan_rpm','supply',106)}${fan('extract_fan_rpm','extract',170)}
           ${coilDetails}
           ${svgTemp('outdoor_temperature',t('Udeluft','Outdoor air'),14,63,'start','#80cfee')}
-          ${svgTemp('extract_temperature',t('Udsugning','Extract air'),426,63,'end','#ebbd99')}
+          ${svgTemp(open ? supplyKey : 'extract_temperature',open ? t('Indblæsning','Supply air') : t('Udsugning','Extract air'),426,63,'end','#ebbd99')}
           ${svgTemp('exhaust_temperature',t('Afkast','Exhaust air'),14,205,'start','#d4dfeb')}
-          ${svgTemp(supplyKey,t('Indblæsning','Supply air'),426,205,'end','#ebbd99')}
+          ${svgTemp(open ? 'extract_temperature' : supplyKey,open ? t('Udsugning','Extract air') : t('Indblæsning','Supply air'),426,205,'end','#ebbd99')}
         </svg>
       </div>
-      <div class="hrv-metrics"><div data-hrv-co2><strong>${number('co2','')}</strong><small>CO₂ · ppm</small></div><div><strong>${recovery}</strong><small>${t('Genvinding','Recovery')}</small></div><div><strong>${esc(level || '—')}</strong><small>${t('Ventilatortrin','Fan level')}</small></div><div class="hrv-metric-secondary"><strong>${number('power',' W')}</strong><small>${t('Effekt','Power')}</small></div><div data-hrv-filter title="${t('Dage til filterskift. Fra valgt sensor eller beregnet af seneste skift og filterinterval','Days until filter change. From the selected sensor or calculated from last change and filter interval')}"><strong>${filterValue}</strong><small>${filterLabel}</small></div></div>
+      <div class="hrv-metrics"><div data-hrv-co2><strong>${number('co2','')}</strong><small>CO₂ · ppm</small></div><div><strong>${esc(level || '—')}</strong><small>${t('Ventilatortrin','Fan level')}</small></div><div class="hrv-metric-secondary"><strong>${number('power',' W')}</strong><small>${t('Effekt','Power')}</small></div><div data-hrv-filter title="${t('Dage til filterskift. Fra valgt sensor eller beregnet af seneste skift og filterinterval','Days until filter change. From the selected sensor or calculated from last change and filter interval')}"><strong>${filterValue}</strong><small>${filterLabel}</small></div></div>
       </div>
 
     </article>`;
@@ -175,8 +175,8 @@ window.BeastVentilation = (() => {
     const top = cy - 32, bottom = cy + 32;
     const left = 24, right = w - 24;
     const bypassOpen = host.querySelector('.smartdash-hrv').classList.contains('hrv-bypass');
-    const cold = bypassOpen ? `M${left} ${top} H${cx-88} Q${cx-76} ${top} ${cx-76} ${top-12} V${cy-66} Q${cx-76} ${cy-78} ${cx-64} ${cy-78} H${cx+58} Q${cx+70} ${cy-78} ${cx+70} ${cy-66} V${bottom-12} Q${cx+70} ${bottom} ${cx+82} ${bottom} H${right}` : `M${left} ${top} H${cx-49} Q${cx-30} ${top} ${cx-13} ${cy-8} L${cx+17} ${cy+15} Q${cx+30} ${bottom} ${cx+50} ${bottom} H${right}`;
-    const warm = `M${right} ${top} H${cx+50} Q${cx+30} ${top} ${cx+13} ${cy-8} L${cx-17} ${cy+15} Q${cx-30} ${bottom} ${cx-49} ${bottom} H${left}`;
+    const cold = bypassOpen ? `M${left} ${top} H${right}` : `M${left} ${top} H${cx-49} Q${cx-30} ${top} ${cx-13} ${cy-8} L${cx+17} ${cy+15} Q${cx+30} ${bottom} ${cx+50} ${bottom} H${right}`;
+    const warm = bypassOpen ? `M${right} ${bottom} H${left}` : `M${right} ${top} H${cx+50} Q${cx+30} ${top} ${cx+13} ${cy-8} L${cx-17} ${cy+15} Q${cx-30} ${bottom} ${cx-49} ${bottom} H${left}`;
     svg.querySelector('.hrv-house').setAttribute('transform', `scale(${sx} ${sy})`);
     svg.querySelectorAll('.hrv-core,.hrv-fin').forEach(el => el.setAttribute('transform', `translate(${cx-194} ${cy-138})`));
     const coilXForColor = (cx + 50 + right) / 2;
