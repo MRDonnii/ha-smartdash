@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.8.7
+
+- Removed redundant arrow markers from the overview ventilation card's ducts;
+  the animated airflow already conveys direction.
+
 ## 0.8.6
 
 - The overview ventilation card now matches the real Home Assistant card
