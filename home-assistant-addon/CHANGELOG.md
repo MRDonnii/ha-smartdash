@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.8.15
+
+- The ventilation card's editor can now auto-detect a Dantherm HCH
+  PassivLink device from its sensors and fill in the 13 fields it
+  covers with a single click, instead of typing them in one at a time.
+
 ## 0.8.14
 
 - Cards on the overview and other pages can now be resized in
