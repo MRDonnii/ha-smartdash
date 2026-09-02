@@ -343,15 +343,21 @@ const BeastAuth = (() => {
   }
 
   async function setAuthedImageSrc(imgEl, path) {
-    if (!path) { imgEl.removeAttribute("src"); return; }
+    if (!path) { imgEl.removeAttribute("src"); return false; }
     try {
       const blob = await haFetchBlob(path);
       const objectUrl = URL.createObjectURL(blob);
       if (imgEl.dataset.objectUrl) URL.revokeObjectURL(imgEl.dataset.objectUrl);
       imgEl.dataset.objectUrl = objectUrl;
       imgEl.src = objectUrl;
+      return true;
     } catch (error) {
-      imgEl.removeAttribute("src");
+      // Leave whatever picture is already showing alone -- callers that
+      // periodically refresh a persistent <img> (camera tiles, the printer's
+      // live view, banner cameras) would otherwise go blank on one transient
+      // fetch failure and stay that way until their next successful refresh,
+      // instead of just keeping the last-known-good frame on screen.
+      return false;
     }
   }
 

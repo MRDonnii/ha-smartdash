@@ -1,5 +1,24 @@
 [
   {
+    "version": "20260902-23",
+    "tag": "v0.8.26",
+    "date": "2026-09-02",
+    "changes": [
+      {
+        "da": "Rettet en reel regression fra v0.8.23's kameraskift-rettelse: en enkelt forbigående fejl ved hentning af et billede (Home Assistant kortvarigt travl) skiftede med det samme til et tomt/sort billede i stedet for at beholde det forrige kameras billede og prøve igen. Den prøver nu et par gange mere med en kort ventetid, før den giver op.",
+        "en": "Fixed a real regression from v0.8.23's camera click-switch fix: a single transient picture-fetch failure (Home Assistant briefly busy) swapped in a blank/black picture immediately instead of keeping the previous camera's picture on screen and trying again. It now retries a couple of times with a short backoff before giving up."
+      },
+      {
+        "da": "Autentificerede billeder (kamerabilleder, printer-snapshots, bannerfotos) i hele appen bliver ikke længere tomme ved én mislykket opdatering -- det sidst kendte gode billede bliver nu siddende indtil en opdatering rent faktisk lykkes.",
+        "en": "Authenticated images (camera pictures, printer snapshots, banner photos) across the whole app no longer go blank on one failed refresh -- the last-known-good picture now stays on screen until a refresh actually succeeds."
+      },
+      {
+        "da": "Kamerastribens periodiske opdatering af miniaturebilleder bruger nu det samme fallback for kamerabillede som resten af appen i stedet for et rått attributopslag -- kameraer hvis integration slet ikke stiller en entity_picture-attribut til rådighed blev aldrig opdateret igen efter deres første indlæsning.",
+        "en": "The camera strip's periodic thumbnail refresh now uses the same entity-picture fallback as everything else, instead of a raw attribute read -- cameras whose integration doesn't expose an entity_picture attribute at all were never refreshed again after their first load."
+      }
+    ]
+  },
+  {
     "version": "20260902-22",
     "tag": "v0.8.25",
     "date": "2026-09-02",

@@ -342,8 +342,14 @@
       const tile = img.closest(".beast-camera-tile");
       const streamName = tile?.dataset.streamName || go2rtcVariantsForCamera(tile?.dataset.slug)[0]?.streamName;
       if (streamName) { swapSnapshot(img, snapshotUrl(streamName)); return; }
-      const state = tile?.dataset.entityId && BeastHaSocket.getState(tile.dataset.entityId);
-      if (state?.attributes?.entity_picture) BeastAuth.setAuthedImageSrc(img, state.attributes.entity_picture);
+      // Reads state.attributes.entity_picture through cameraInfoFor()'s own
+      // fallback (some integrations expose a valid camera entity without an
+      // entity_picture attribute at all) instead of the raw attribute --
+      // otherwise every periodic refresh silently no-ops for those cameras
+      // and the tile just keeps showing whatever frame it loaded once, on
+      // the very first render, forever.
+      const entityPicture = tile?.dataset.entityId && cameraInfoFor(tile.dataset.entityId)?.entityPicture;
+      if (entityPicture) BeastAuth.setAuthedImageSrc(img, entityPicture);
     });
     // The featured view only gets a plain <img> (no go2rtc mapping for
     // that camera) -- refresh it on the same cadence as the strip.
@@ -395,15 +401,16 @@
   // frame (or failed/timed out) -- never before. This is what lets the old
   // picture stay on screen for the whole handover instead of going black
   // the instant the element is created.
-  function waitForFeaturedMedia(host) {
+  async function waitForFeaturedMedia(host) {
     const timeout = (ms) => new Promise((resolve) => window.setTimeout(resolve, ms));
     const live = host.querySelector(".beast-shared-camera-live");
     if (live && live.tagName === "IFRAME") {
-      return Promise.race([new Promise((resolve) => live.addEventListener("load", resolve, { once: true })), timeout(8000)]);
+      await Promise.race([new Promise((resolve) => live.addEventListener("load", resolve, { once: true })), timeout(8000)]);
+      return;
     }
     if (live && live.tagName === "IMG") {
-      if (live.complete && live.naturalWidth) return Promise.resolve();
-      return Promise.race([
+      if (live.complete && live.naturalWidth) return;
+      await Promise.race([
         new Promise((resolve) => {
           live.addEventListener("load", resolve, { once: true });
           // Same HA-stream-unavailable fallback wireSharedCameras() wires for
@@ -424,13 +431,21 @@
         }),
         timeout(8000)
       ]);
+      return;
     }
     const snapshotImg = host.querySelector(".beast-shared-camera-snapshot[data-camera-picture]");
-    if (snapshotImg) {
-      const picture = snapshotImg.dataset.cameraPicture;
-      return picture ? BeastAuth.setAuthedImageSrc(snapshotImg, picture) : Promise.resolve();
+    if (!snapshotImg) return;
+    const picture = snapshotImg.dataset.cameraPicture;
+    if (!picture) return;
+    // A single transient fetch failure (HA momentarily busy, a brief network
+    // hiccup) used to swap in a blank picture immediately and rely entirely
+    // on the next 8-second periodic refresh to fill it back in. Try a couple
+    // more times first, with a short backoff, before accepting defeat.
+    for (let attempt = 0; attempt < 3; attempt += 1) {
+      const ok = await BeastAuth.setAuthedImageSrc(snapshotImg, picture);
+      if (ok || attempt === 2 || !host.isConnected) return;
+      await timeout(500 * (attempt + 1));
     }
-    return Promise.resolve();
   }
 
   // Switching the featured camera used to call render(), which tore down
