@@ -1,5 +1,20 @@
 [
   {
+    "version": "20260902-6",
+    "tag": "v0.8.9",
+    "date": "2026-09-02",
+    "changes": [
+      {
+        "da": "Ventilationskortet er nu et rigtigt, selvstændigt kort på forsiden, som kan tilføjes, fjernes og indstilles på samme måde som alle andre kort — med samme tandhjul-editor med søgbare entity-felter. Det er ikke længere en skjult indstilling i \"Vælg kameraer\".",
+        "en": "The ventilation card is now a real, independent overview card that can be added, removed and configured the same way as every other card — with the same gear-icon editor and searchable entity fields. It is no longer a hidden setting inside \"Choose cameras\"."
+      },
+      {
+        "da": "Et allerede aktiveret ventilationskort migreres automatisk til det nye kortformat, så eksisterende entity-valg bevares.",
+        "en": "An already-enabled ventilation card is migrated automatically to the new card format, so existing entity choices are preserved."
+      }
+    ]
+  },
+  {
     "version": "20260902-5",
     "tag": "v0.8.8",
     "date": "2026-09-02",

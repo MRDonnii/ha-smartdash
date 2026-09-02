@@ -877,6 +877,9 @@ function overviewSlotMarkup(slot, position, size) {
   if (slot.type === "cameras") return `<section class="beast-panel beast-ov-card ${position} beast-ov-card--flush"${size} data-nav="cameras" data-card="cameras" data-fixed="true" aria-label="Åbn alle kameraer">
       <div id="beastOvCameras"></div>
     </section>`;
+  if (slot.type === "ventilation") return `<section class="beast-panel beast-ov-card ${position} beast-ov-card--flush"${size} data-nav="heating" data-card="ventilation" aria-label="Ventilation">
+      <div class="hrv-card-host"></div>
+    </section>`;
   const builtins = {
     clock:["overview","beastOvClock","Tid, kalender og affald"], weather:["weather","beastOvWeather","Vejr"], security:["security","beastOvSecurity","Sikkerhed"], energy:["energy","beastOvEnergy","Energi"]
   };
@@ -909,6 +912,7 @@ function mobileOverviewMarkup() {
     <div class="beast-overview-mobile" id="beastOverviewZone">
       <div id="beastOvBanners"></div>
       <section class="beast-panel beast-ov-m-card beast-ov-m-card--cameras" data-nav="cameras" aria-label="Kameraer"><div id="beastOvCameras"></div></section>
+      <section class="beast-panel beast-ov-m-card" data-nav="heating" data-card="ventilation" aria-label="Ventilation" hidden><div class="hrv-card-host"></div></section>
       <section class="beast-panel beast-ov-m-card" data-nav="overview" aria-label="Tid, kalender og affald"><div id="beastOvClock"></div></section>
       <section class="beast-panel beast-ov-m-card" data-nav="weather" aria-label="Vejr"><div id="beastOvWeather"></div></section>
       <section class="beast-panel beast-ov-m-card" data-nav="security" aria-label="Sikkerhed"><div id="beastOvSecurity"></div></section>
@@ -1196,11 +1200,6 @@ function setupNavigation() {
   content.addEventListener("click", (event) => {
     if (window.beastCardEditorActive) return;
     if (Date.now() < (window.beastCardDraggedUntil || 0)) return;
-    // The ventilation card shares its wrapping section with the camera
-    // grid (data-nav="cameras"), since it optionally takes the third
-    // camera's slot. Route clicks on the card itself to the heating page
-    // instead of inheriting the camera section's navigation.
-    if (event.target.closest(".hrv-card-host")) { activate("heating"); return; }
     const el = event.target.closest("[data-nav]");
     if (el) activate(el.dataset.nav);
   });
