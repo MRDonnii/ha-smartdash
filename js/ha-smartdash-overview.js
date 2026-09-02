@@ -2450,6 +2450,22 @@
   // user could add/remove/configure the same way as everything else.
   // Carries an already-enabled setup over into a proper freeform
   // "ventilation" card so switching to the new editor doesn't lose
+  // Unconditional, idempotent repair -- NOT gated by the once-only
+  // migration flag below, so it also fixes an install that already ran
+  // that migration before this check existed and ended up with a
+  // freeform layout missing its cameras card (see the fuller explanation
+  // on migrateVentilationCardOnce). Cheap no-op everywhere else: legacy
+  // (non-freeform) installs have an empty overviewCards and are skipped,
+  // and a layout that already has a cameras card is left untouched.
+  function repairMissingCamerasCard() {
+    const cards = BeastConfig.get("overviewCards") || [];
+    if (!cards.length || cards.some((card) => card.type === "cameras")) return;
+    BeastConfig.set("overviewCards", [
+      { id: "card_cameras_repaired", type: "cameras", desktop: { w: 4, h: 2 }, tablet: { w: 2, h: 2 }, portrait: { h: 2 } },
+      ...cards
+    ]);
+  }
+
   // anyone's existing entity mappings. Guarded by a flag so it runs
   // exactly once, even for installs that never turned the widget on.
   function migrateVentilationCardOnce() {
@@ -2459,11 +2475,22 @@
     if (legacy?.enabled === true && legacy.entities && Object.keys(legacy.entities).length) {
       const cards = BeastConfig.get("overviewCards") || [];
       if (!cards.some((card) => card.type === "ventilation")) {
-        const seeded = cards.length ? cards : seedCardsFromOverviewSlots();
+        const seeded = cards.length ? [...cards] : seedCardsFromOverviewSlots();
+        // A non-empty overviewCards doesn't guarantee it already has a
+        // cameras card (e.g. an install that had freeform edits without
+        // ever touching the camera area) -- without one, the camera strip's
+        // host element never gets created and the cameras vanish entirely
+        // once ventilation is no longer sharing that section with it.
+        if (!seeded.some((card) => card.type === "cameras")) {
+          seeded.unshift({ id: "card_cameras_migrated", type: "cameras", desktop: { w: 4, h: 2 }, tablet: { w: 2, h: 2 }, portrait: { h: 2 } });
+        }
         const ventilationCard = {
+          // Same row, same height as the cameras card by default, so it
+          // reads as one continuous area (like the old shared camera+
+          // ventilation panel) instead of a card dropped somewhere else.
           id: "card_ventilation_migrated", type: "ventilation", label: legacy.title || "", title: legacy.title || "",
           animation: legacy.animation !== false, showAfterheat: legacy.showAfterheat === true, entities: legacy.entities,
-          desktop: { w: 6, h: 3 }, tablet: { w: 2, h: 3 }, portrait: { h: 3 }
+          desktop: { w: 6, h: 2 }, tablet: { w: 2, h: 2 }, portrait: { h: 2 }
         };
         // Insert right after the cameras card (not at the end) so it lands
         // in the same area it used to occupy, since freeform cards flow in
@@ -2607,6 +2634,7 @@
   function init(root) {
     applyConfig();
     migrateVentilationCardOnce();
+    repairMissingCamerasCard();
     zoneEl = root;
     stableMusicRender = BeastCore.stableUpdater(zoneEl, renderMusic, 250);
     overviewCardEditor = BeastCardEditor.attach({
