@@ -1,5 +1,16 @@
 [
   {
+    "version": "20260902-17",
+    "tag": "v0.8.20",
+    "date": "2026-09-02",
+    "changes": [
+      {
+        "da": "Skrift og ikoner på touch-knap-, graf-, medieafspiller-, kalender- og de sammensatte skabelonkort skalerer nu proportionalt med kortets egen størrelse i stedet for at klippe eller flyde ud over kanten, når kortet gøres mindre.",
+        "en": "Text and icons on the touch-button, graph, media player, calendar, and composite template cards now scale proportionally with the card's own size instead of clipping or overflowing when the card is made smaller."
+      }
+    ]
+  },
+  {
     "version": "20260902-16",
     "tag": "v0.8.19",
     "date": "2026-09-02",

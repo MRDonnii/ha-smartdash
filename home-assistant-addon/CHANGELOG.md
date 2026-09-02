@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.8.20
+
+- Text and icons on the touch-button, graph, media player, calendar,
+  and composite template cards now scale proportionally with the
+  card's own size instead of clipping or overflowing when the card is
+  made smaller.
+
 ## 0.8.19
 
 - The heating coil in the ventilation card now sits nearly invisible
