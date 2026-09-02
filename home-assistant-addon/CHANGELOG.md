@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.8.24
+
+- The ventilation card's heat exchanger now shows the heat recovery
+  percentage in the middle of the rotor, matching the real Home
+  Assistant card, and hides it (shows "--") while bypass is open. The
+  value was already being read from the correct Dantherm sensor
+  (temperature efficiency) but was never actually displayed anywhere.
+
 ## 0.8.23
 
 - Fixed a bug where switching the featured camera on the Cameras page
