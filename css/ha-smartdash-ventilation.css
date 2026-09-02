@@ -13,6 +13,12 @@
 @media(max-width:760px){.hrv-card-host{min-height:285px}.smartdash-hrv{min-height:285px}}
 
 .hrv-house{fill:#f2994a14;stroke:#86afc244;stroke-width:1.3;stroke-linejoin:round}.hrv-svg-zone{font-size:10px;font-weight:600;letter-spacing:1.5px;fill:var(--ink-muted,#a8b2c2)}.hrv-svg-temp .label{font-size:11px;fill:var(--ink-muted,#a8b2c2)}.hrv-svg-temp .value{font-size:24px;font-weight:600;letter-spacing:-.7px}.hrv-coil-face{fill:#222c38;stroke:#ad927877;stroke-width:1}.hrv-coil-divider{stroke:#ffffff20;stroke-width:1}.hrv-svg-small{font-size:9px;fill:var(--ink-muted,#a8b2c2)}.hrv-svg-coil-value{font-size:17px;font-weight:600;fill:var(--ink,#eef2f9)}.hrv-svg-delta{font-size:13px;fill:var(--ink,#eef2f9)}.hrv-coil.active .hrv-coil-face{stroke:#da767080;fill:#302529}
+/* Inactive: nearly transparent, reading as sitting behind the duct it's
+   painted on top of. Active: back to full opacity plus a warm accent, so
+   the transition itself (not just the glow) sells "the coil switched on". */
+.hrv-coil-face,.hrv-coil-divider,.hrv-svg-small,.hrv-svg-coil-value,.hrv-svg-delta{transition:opacity .45s ease,fill .45s ease,stroke .45s ease}
+.hrv-coil:not(.active) .hrv-coil-face,.hrv-coil:not(.active) .hrv-coil-divider{opacity:.24}
+.hrv-coil:not(.active) .hrv-svg-small,.hrv-coil:not(.active) .hrv-svg-coil-value,.hrv-coil:not(.active) .hrv-svg-delta{opacity:.38}
 
 .hrv-coil-glow{fill:#ed5c58;filter:blur(7px);opacity:0;pointer-events:none}.hrv-coil.active .hrv-coil-glow{animation:hrv-coil-pulse 3.6s ease-in-out infinite;opacity:.25}@keyframes hrv-coil-pulse{0%,100%{opacity:.12}50%{opacity:.4}}.hrv-still .hrv-coil.active .hrv-coil-glow{animation:none;opacity:.22}@media(prefers-reduced-motion:reduce){.hrv-coil.active .hrv-coil-glow{animation:none;opacity:.22}}
 

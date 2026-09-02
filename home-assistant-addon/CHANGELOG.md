@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.8.19
+
+- The heating coil in the ventilation card now sits nearly invisible
+  behind the duct when inactive, and becomes solid with a pulse again
+  once it switches on -- matching the real Home Assistant card.
+
 ## 0.8.18
 
 - Fixed a bug where the ventilation card showed a double frame (a card
