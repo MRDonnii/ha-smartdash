@@ -1,5 +1,22 @@
 # Changelog
 
+## 0.8.26
+
+- Fixed a real regression from v0.8.23's camera click-switch fix: a
+  single transient picture-fetch failure (Home Assistant briefly busy)
+  swapped in a blank/black picture immediately instead of keeping the
+  previous camera's picture on screen and trying again. It now retries
+  a couple of times with a short backoff before giving up.
+- Authenticated images (camera pictures, printer snapshots, banner
+  photos) across the whole app no longer go blank on one failed
+  refresh -- the last-known-good picture now stays on screen until a
+  refresh actually succeeds.
+- The camera strip's periodic thumbnail refresh now uses the same
+  entity-picture fallback as everything else, instead of a raw
+  attribute read -- cameras whose integration doesn't expose an
+  entity_picture attribute at all were never refreshed again after
+  their first load.
+
 ## 0.8.25
 
 - Hardened the ventilation card's diagram-fitting: it re-samples close
