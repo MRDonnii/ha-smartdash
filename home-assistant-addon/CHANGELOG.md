@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.8.22
+
+- Text, icons and buttons on the Security page's own status, systems and
+  entry cards now scale proportionally with the card's own size instead
+  of clipping or overflowing when it is made smaller in the layout
+  editor, matching every other card type.
+
 ## 0.8.21
 
 - Text, icons and buttons on the climate, security, room, media player,

@@ -1,5 +1,16 @@
 [
   {
+    "version": "20260902-19",
+    "tag": "v0.8.22",
+    "date": "2026-09-02",
+    "changes": [
+      {
+        "da": "Skrift, ikoner og knapper på Sikkerheds-sidens egne status-, system- og indgangskort skalerer nu proportionalt med kortets egen størrelse i stedet for at klippe eller flyde ud over kanten, når det gøres mindre i layout-redigeringen -- ligesom alle andre korttyper.",
+        "en": "Text, icons and buttons on the Security page's own status, systems and entry cards now scale proportionally with the card's own size instead of clipping or overflowing when it is made smaller in the layout editor, matching every other card type."
+      }
+    ]
+  },
+  {
     "version": "20260902-18",
     "tag": "v0.8.21",
     "date": "2026-09-02",
