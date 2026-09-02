@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.8.17
+
+- The ventilation card's auto-detect now also finds the heating coil's
+  active status, air after the coil, and flow/return temperatures
+  from the associated Dantherm device.
+
 ## 0.8.16
 
 - The ventilation card's auto-detect now also finds filter-change and
