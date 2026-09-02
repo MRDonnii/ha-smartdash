@@ -1,5 +1,16 @@
 [
   {
+    "version": "20260902-20",
+    "tag": "v0.8.23",
+    "date": "2026-09-02",
+    "changes": [
+      {
+        "da": "Rettet en fejl hvor skift af det store kamera på Kamera-siden genopbyggede hele panelet og hentede alle miniaturebilleder igen, hvilket gjorde både hovedbilledet og alle miniaturer sorte i flere sekunder -- værst på opsætninger uden go2rtc, der bruger Home Assistants egen kameraproxy med store snapshots. Et klik på et kamera henter nu kun det ene kameras billede, beholder det gamle billede synligt indtil det nye rent faktisk er indlæst, og rører slet ikke ved de andre miniaturer.",
+        "en": "Fixed a bug where switching the featured camera on the Cameras page rebuilt the entire panel and refetched every thumbnail, turning both the featured picture and all thumbnails black for several seconds -- worst on setups without go2rtc, using Home Assistant's own camera proxy with large snapshots. Clicking a camera now only fetches that one camera's picture, keeps the previous picture on screen until the new one has actually loaded, and no longer touches the other thumbnails at all."
+      }
+    ]
+  },
+  {
     "version": "20260902-19",
     "tag": "v0.8.22",
     "date": "2026-09-02",
