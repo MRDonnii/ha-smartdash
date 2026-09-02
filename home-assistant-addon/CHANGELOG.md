@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.8.10
+
+- Migrating an already-enabled ventilation card now places it right
+  after the cameras card in the layout, landing in the same area as
+  before, and automatically caps a saved camera selection of more than
+  2 down to 2 -- the same balance the old shared view had.
+
 ## 0.8.9
 
 - The ventilation card is now a real, independent overview card that can
