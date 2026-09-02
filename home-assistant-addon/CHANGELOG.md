@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.8.12
+
+- Fixed a serious bug from the last release where every card on the
+  overview and other pages rendered at double its intended height, with
+  large empty gaps.
+- An already-migrated ventilation card whose setup was missing a cameras
+  card now automatically gets one back, so the cameras no longer
+  disappear.
+- The migrated ventilation card now defaults to the same height as the
+  cameras card, so it lands in the same row and resembles the old
+  shared view.
+
 ## 0.8.11
 
 - Cards on the overview and every other page can now be resized in

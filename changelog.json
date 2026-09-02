@@ -1,5 +1,24 @@
 [
   {
+    "version": "20260902-9",
+    "tag": "v0.8.12",
+    "date": "2026-09-02",
+    "changes": [
+      {
+        "da": "Rettet en alvorlig fejl fra sidste udgivelse, hvor alle kort på forsiden og andre sider blev vist dobbelt så høje som tilsigtet, med store tomme mellemrum.",
+        "en": "Fixed a serious bug from the last release where every card on the overview and other pages rendered at double its intended height, with large empty gaps."
+      },
+      {
+        "da": "Et allerede migreret ventilationskort, hvis opsætning manglede et kamerakort, får nu automatisk et kamerakort tilbage, så kameraerne ikke forsvinder.",
+        "en": "An already-migrated ventilation card whose setup was missing a cameras card now automatically gets one back, so the cameras no longer disappear."
+      },
+      {
+        "da": "Det migrerede ventilationskort har nu samme højde som kamerakortet som udgangspunkt, så det lander i samme række og ligner den gamle fælles visning.",
+        "en": "The migrated ventilation card now defaults to the same height as the cameras card, so it lands in the same row and resembles the old shared view."
+      }
+    ]
+  },
+  {
     "version": "20260902-8",
     "tag": "v0.8.11",
     "date": "2026-09-02",
