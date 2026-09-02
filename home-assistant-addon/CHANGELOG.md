@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.8.5
+
+- Fixed a navigation bug where tapping the ventilation card on the overview
+  incorrectly opened the cameras page instead of the heating page.
+
 ## 0.8.4
 
 - Fixed a rendering glitch where the district-heating card's rounded corners
