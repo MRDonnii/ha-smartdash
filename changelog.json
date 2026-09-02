@@ -1,5 +1,16 @@
 [
   {
+    "version": "20260902-10",
+    "tag": "v0.8.13",
+    "date": "2026-09-02",
+    "changes": [
+      {
+        "da": "Rettet en alvorlig fejl hvor et kort på forsiden eller andre sider blev dobbelt så stort, hver eneste gang man trykkede Gem i redigeringstilstand -- inklusive kort man slet ikke havde rørt i den session. Størrelsen voksede eksponentielt for hver gemning og gjorde layoutet umuligt at redigere ordentligt til.",
+        "en": "Fixed a serious bug where a card on the overview or other pages doubled in size every single time Save was pressed in edit mode -- including cards that were never touched that session. The size grew exponentially with each save, making the layout impossible to properly edit into shape."
+      }
+    ]
+  },
+  {
     "version": "20260902-9",
     "tag": "v0.8.12",
     "date": "2026-09-02",
