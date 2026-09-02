@@ -1,4 +1,19 @@
-const VERSION = "0.2.37";
+const VERSION = "0.2.38";
+
+const ENTITY_FIELDS = [
+  ["outdoor_temperature", "Udeluft"], ["supply_temperature", "Indblæsning"],
+  ["extract_temperature", "Udsugning"], ["exhaust_temperature", "Afkast"],
+  ["afterheat_after", "Luft efter varmeflade"],
+  ["supply_fan_rpm", "Indblæsningsblæser, RPM"], ["extract_fan_rpm", "Udsugningsblæser, RPM"],
+  ["supply_fan_percent", "Indblæsning, hastighed %"], ["extract_fan_percent", "Udsugning, hastighed %"],
+  ["room_temperature", "Rumtemperatur"], ["humidity", "Luftfugtighed"],
+  ["co2", "CO₂"], ["power", "Effekt"], ["heat_recovery", "Varmegenvinding"],
+  ["level", "Ventilatortrin"], ["mode", "Driftstilstand"], ["bypass", "Bypass"],
+  ["filter_days", "Filter, dage tilbage"], ["air_quality", "Luftkvalitet"],
+  ["heat_transfer", "Varmeoverførsel"], ["alarm", "Alarm"],
+  ["afterheat_active", "Varmeflade aktiv"], ["water_flow", "Varmeflade fremløb"],
+  ["water_return", "Varmeflade retur"], ["water_delta", "Varmeflade ΔT (beregnet hvis ikke sat)"]
+];
 
 class HAVentilationCard extends HTMLElement {
   static getStubConfig() {
@@ -16,6 +31,7 @@ class HAVentilationCard extends HTMLElement {
       }
     };
   }
+  static async getConfigElement() { return document.createElement("ha-ventilation-card-editor"); }
 
   constructor() {
     super();
@@ -398,7 +414,26 @@ class HAVentilationCard extends HTMLElement {
   }
 }
 
+class HAVentilationCardEditor extends HTMLElement {
+  setConfig(config) { this._config = config || {}; this._render(); }
+  set hass(hass) { this._hass = hass; if (this._form) this._form.hass = hass; }
+  _render() {
+    if (!this._config) return;
+    this.innerHTML = `<style>:host{display:block;padding:12px}.hint{color:var(--secondary-text-color);font-size:12px;margin:0 0 12px}</style><p class="hint">Alle felter kan ændres. Tomme felter vises som — på kortet.</p><ha-form></ha-form>`;
+    this._form = this.querySelector("ha-form"); this._form.hass = this._hass; this._form.data = this._config;
+    this._form.schema = [
+      { name: "title", selector: { text: {} } },
+      { name: "animation", selector: { boolean: {} } },
+      { name: "show_afterheat", selector: { boolean: {} } },
+      { type: "expandable", name: "entities", title: "Entiteter", schema: ENTITY_FIELDS.map(([name, label]) => ({ name, label, selector: { entity: {} } })) }
+    ];
+    this._form.computeLabel = s => s.label || s.name;
+    this._form.addEventListener("value-changed", e => { this.dispatchEvent(new CustomEvent("config-changed", { detail: { config: e.detail.value }, bubbles: true, composed: true })); });
+  }
+}
+
 if (!customElements.get("ha-ventilation-card")) customElements.define("ha-ventilation-card", HAVentilationCard);
+if (!customElements.get("ha-ventilation-card-editor")) customElements.define("ha-ventilation-card-editor", HAVentilationCardEditor);
 window.customCards = window.customCards || [];
 window.customCards.push({ type: "ha-ventilation-card", name: "HA Ventilation Card", description: "Temperature-aware heat-recovery ventilation card", preview: true });
 console.info(`%c HA-VENTILATION-CARD %c ${VERSION} `, "color:#fff;background:#28789f;font-weight:700", "color:#28789f;background:#fff");
