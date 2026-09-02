@@ -1,5 +1,16 @@
 [
   {
+    "version": "20260902-2",
+    "tag": "v0.8.5",
+    "date": "2026-09-02",
+    "changes": [
+      {
+        "da": "Rettet en navigationsfejl hvor et klik på ventilationskortet på forsiden fejlagtigt åbnede kamerasiden i stedet for varmesiden.",
+        "en": "Fixed a navigation bug where tapping the ventilation card on the overview incorrectly opened the cameras page instead of the heating page."
+      }
+    ]
+  },
+  {
     "version": "20260902-1",
     "tag": "v0.8.4",
     "date": "2026-09-02",

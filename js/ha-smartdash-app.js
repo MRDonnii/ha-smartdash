@@ -1196,6 +1196,11 @@ function setupNavigation() {
   content.addEventListener("click", (event) => {
     if (window.beastCardEditorActive) return;
     if (Date.now() < (window.beastCardDraggedUntil || 0)) return;
+    // The ventilation card shares its wrapping section with the camera
+    // grid (data-nav="cameras"), since it optionally takes the third
+    // camera's slot. Route clicks on the card itself to the heating page
+    // instead of inheriting the camera section's navigation.
+    if (event.target.closest(".hrv-card-host")) { activate("heating"); return; }
     const el = event.target.closest("[data-nav]");
     if (el) activate(el.dataset.nav);
   });
