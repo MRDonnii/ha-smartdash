@@ -1,5 +1,16 @@
 [
   {
+    "version": "20260902-18",
+    "tag": "v0.8.21",
+    "date": "2026-09-02",
+    "changes": [
+      {
+        "da": "Skrift, ikoner og knapper på klima-, sikkerheds-, rum-, medieafspiller-, pool-, bil-, dæktryks-, robot-, printer-, vejr- og energiskabelonkortene skalerer nu også proportionalt med kortets egen størrelse i stedet for at klippe eller flyde ud over kanten, når kortet gøres mindre -- en udvidelse af skaleringen fra v0.8.20 til resten af korttyperne.",
+        "en": "Text, icons and buttons on the climate, security, room, media player, pool, car, tyre pressure, robot, printer, weather and energy template cards now also scale proportionally with the card's own size instead of clipping or overflowing when the card is made smaller -- extending the v0.8.20 scaling to the rest of the card types."
+      }
+    ]
+  },
+  {
     "version": "20260902-17",
     "tag": "v0.8.20",
     "date": "2026-09-02",
