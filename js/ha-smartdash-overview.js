@@ -1567,14 +1567,7 @@
   function renderCameras() {
     const area = document.getElementById("beastOvCameras");
     if (!area || !window.BeastCameras) return;
-    const ventilation = window.BeastVentilation?.enabled() === true;
-    if (area.classList.contains("hrv-enabled") !== ventilation) {
-      area.classList.toggle("hrv-enabled", ventilation);
-      area.innerHTML = ventilation ? '<div class="hrv-camera-host"></div><div class="hrv-card-host"></div>' : '';
-      lastCameraRenderSignature = null;
-    }
-    const host = ventilation ? area.querySelector('.hrv-camera-host') : area;
-    if (ventilation) BeastVentilation.render(area.querySelector('.hrv-card-host'));
+    const host = area;
     let allCameras = window.BeastCameras.getAllCameras("overview");
     const doorbellId = BeastConfig.get("appEntities.doorbellCamera");
     const doorbellCamera = doorbellId ? window.BeastCameras.resolveCamera(doorbellId) : null;
@@ -1614,7 +1607,6 @@
     if (autoFocusEnabled() && motionFocusSlug && cameraBySlug.has(motionFocusSlug)) {
       cameras = [cameraBySlug.get(motionFocusSlug), ...cameras.filter((camera) => camera.slug !== motionFocusSlug)].slice(0, OVERVIEW_CAMERA_LIMIT);
     }
-    if (ventilation) cameras = cameras.slice(0, 2);
     const isMobile = isMobileOverviewViewport();
     if (isMobile && (!mobileFeaturedCameraSlug || !cameras.some(camera => camera.slug === mobileFeaturedCameraSlug))) mobileFeaturedCameraSlug = cameras[0]?.slug || null;
     // Skip rebuilding when nothing camera-relevant actually changed.
@@ -1709,7 +1701,6 @@
           <button type="button" class="beast-modal-close" data-close aria-label="Luk">${BeastCore.icon("close", { size: 22 })}</button>
         </div>
         <div class="beast-modal-body">
-          ${window.BeastVentilation?.editorMarkup() || ""}
           <div class="beast-ov-camera-order">
             <strong>Rækkefølge på forsiden</strong>
             <div id="beastOvCameraOrder"></div>
@@ -1733,7 +1724,7 @@
 
     async function saveAndRender() {
       const entities = selected.map((slug) => cameras.find((camera) => camera.slug === slug)?.entityId).filter(Boolean);
-      const result = await BeastConfig.setMany({ overviewCameraEntities: entities, overviewVentilation: BeastVentilation.readEditor(overlay) });
+      const result = await BeastConfig.set("overviewCameraEntities", entities);
       if (result?.success === false) return false;
       localStorage.removeItem(OVERVIEW_CAMERA_KEY);
       renderCameras();
@@ -2429,10 +2420,54 @@
     renderClock();
     renderWeather();
     renderCameras();
+    renderVentilation();
     renderSecurity();
     renderEnergy();
     renderGenericWidgets();
     applyOverviewLayout();
+  }
+
+  // Ventilation is a real freeform card (type "ventilation") like any
+  // other, not bolted onto the camera area anymore. Its host section can
+  // exist in two shapes: a freeform card the user placed (desktop/tablet),
+  // or the fixed mobile-template section (mobileOverviewMarkup) -- both
+  // carry data-card="ventilation" so one function handles either. Hidden
+  // entirely when no ventilation card is configured, since the mobile
+  // section is always present in the DOM regardless.
+  function renderVentilation() {
+    const card = (BeastConfig.get("overviewCards") || []).find((item) => item.type === "ventilation");
+    document.querySelectorAll('[data-card="ventilation"]').forEach((section) => {
+      section.hidden = !card;
+      if (!card) return;
+      const host = section.querySelector(".hrv-card-host");
+      if (host) window.BeastVentilation?.render(host, card);
+    });
+  }
+
+  // One-time migration: the ventilation widget used to be a toggle bolted
+  // onto the camera area (overviewVentilation), configured through a
+  // fieldset buried in the camera picker, rather than a real card any
+  // user could add/remove/configure the same way as everything else.
+  // Carries an already-enabled setup over into a proper freeform
+  // "ventilation" card so switching to the new editor doesn't lose
+  // anyone's existing entity mappings. Guarded by a flag so it runs
+  // exactly once, even for installs that never turned the widget on.
+  function migrateVentilationCardOnce() {
+    if (BeastConfig.get("overviewVentilationMigrated") === true) return;
+    const legacy = BeastConfig.get("overviewVentilation");
+    if (legacy?.enabled === true && legacy.entities && Object.keys(legacy.entities).length) {
+      const cards = BeastConfig.get("overviewCards") || [];
+      if (!cards.some((card) => card.type === "ventilation")) {
+        const seeded = cards.length ? cards : seedCardsFromOverviewSlots();
+        seeded.push({
+          id: "card_ventilation_migrated", type: "ventilation", label: legacy.title || "", title: legacy.title || "",
+          animation: legacy.animation !== false, showAfterheat: legacy.showAfterheat === true, entities: legacy.entities,
+          desktop: { w: 6, h: 3 }, tablet: { w: 2, h: 3 }, portrait: { h: 3 }
+        });
+        BeastConfig.set("overviewCards", seeded);
+      }
+    }
+    BeastConfig.set("overviewVentilationMigrated", true);
   }
 
   // Shared by the top-level car/pool/robots/printer overview cards and the
@@ -2543,8 +2578,20 @@
   // a reload.
   document.addEventListener("beast:config-changed", () => { renderEnergy(); renderCameras(); });
 
+  // Declines every card except "ventilation" (returns false, so
+  // BeastCardEditor falls back to its own generic single/multi-binding
+  // modal for everything else) and opens the rich multi-field editor for
+  // that one type -- same "gear icon on the card" entry point as every
+  // other card, instead of a setting buried in the camera picker.
+  function overviewConfigureCard(card, commit) {
+    if (card.type !== "ventilation") return false;
+    window.BeastVentilation?.openEditor(card, commit);
+    return true;
+  }
+
   function init(root) {
     applyConfig();
+    migrateVentilationCardOnce();
     zoneEl = root;
     stableMusicRender = BeastCore.stableUpdater(zoneEl, renderMusic, 250);
     overviewCardEditor = BeastCardEditor.attach({
@@ -2552,9 +2599,9 @@
       configPath: "overviewCards",
       cardTypes: [
         ["cameras","Kameraer"], ["clock","Ur, kalender og affald"], ["weather","Vejr"], ["security","Sikkerhed"], ["energy","Energi"],
-        ["car","Bil"], ["pool","Pool"], ["robots","Robotter"], ["printer","3D-printer"], ["heatpump","Varmepumpe"], ["custom","Valgfri HA-entity"]
+        ["car","Bil"], ["pool","Pool"], ["robots","Robotter"], ["printer","3D-printer"], ["heatpump","Varmepumpe"], ["ventilation","Ventilation"], ["custom","Valgfri HA-entity"]
       ],
-      singleInstanceTypes: ["cameras", "clock", "weather", "security", "energy"],
+      singleInstanceTypes: ["cameras", "clock", "weather", "security", "energy", "ventilation"],
       renderCardMarkup: (card) => window.overviewCardMarkup(card),
       seedCards: seedCardsFromOverviewSlots,
       allEntities: (type) => {
@@ -2562,6 +2609,7 @@
         return type === "heatpump" ? entities.filter((entity) => entity.id.startsWith("climate.")) : entities;
       },
       entityPickerTypes: ["custom", "heatpump"],
+      configureCard: overviewConfigureCard,
       editLabel: "Redigerer forsiden",
       onAfterRender: overviewCardEditorOnAfterRender,
       renderEmptyState: overviewRenderEmptyState,
@@ -2648,7 +2696,8 @@
     });
     [CAR_BATTERY_ID, CAR_RANGE_ID, CAR_CHARGING_ID, POOL_TEMPERATURE_ID].filter(Boolean).forEach((id) => BeastHaSocket.subscribeEntity(id, renderClock));
     ["sensor", "select", "cover", "fan", "binary_sensor"].forEach(domain => BeastHaSocket.subscribeDomain(domain, id => {
-      if (Object.values(BeastConfig.get("overviewVentilation.entities") || {}).includes(id)) renderCameras();
+      const ventilationCard = (BeastConfig.get("overviewCards") || []).find((card) => card.type === "ventilation");
+      if (ventilationCard && Object.values(ventilationCard.entities || {}).includes(id)) renderVentilation();
     }));
     BeastHaSocket.subscribeDomain("calendar", renderClock);
     BeastHaSocket.subscribeDomain("light", renderSecurity);

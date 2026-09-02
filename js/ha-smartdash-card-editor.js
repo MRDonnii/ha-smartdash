@@ -246,15 +246,22 @@ window.BeastCardEditor = (function () {
           const current = draftCards?.find((item) => item.id === card.dataset.builderCard);
           if (!current) return;
           const isStandard = window.BeastStandardCards?.isStandardType?.(current.type);
-          const openSettings = configureCard && !isStandard ? configureCard : configureBasicCard;
-          openSettings(JSON.parse(JSON.stringify(current)), (updatedCard) => {
+          const commit = (updatedCard) => {
             if (!updatedCard) return;
             const index = draftCards.findIndex((item) => item.id === current.id);
             if (index < 0) return;
             rememberDraft();
             draftCards[index] = { ...draftCards[index], ...updatedCard, id: current.id };
             renderCardsDom(draftCards);
-          });
+          };
+          // A page-specific configureCard can decline a card by returning
+          // false (without opening anything) to fall back to the shared
+          // basic-card modal below -- this is how a page mixes a bespoke
+          // multi-field editor (e.g. a rich custom widget) with the generic
+          // single/multi-binding editor for everything else, without having
+          // to reimplement the generic one itself.
+          const handled = configureCard && !isStandard && configureCard(JSON.parse(JSON.stringify(current)), commit) !== false;
+          if (!handled) configureBasicCard(JSON.parse(JSON.stringify(current)), commit);
         });
         const duplicate = document.createElement("button");
         duplicate.type = "button";

@@ -18,8 +18,13 @@ window.BeastVentilation = (() => {
   };
   const t = (da, en) => BeastLocalSettings.get('language', 'en') === 'da' ? da : en;
   const esc = value => String(value ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-  const config = () => BeastConfig.get('overviewVentilation') || {};
-  const enabled = () => config().enabled === true;
+  // The card currently being rendered/fitted -- set by render()/fitDiagram()
+  // before calling into markup()/state()/etc., which all read it instead of
+  // taking a card argument through every helper. Safe because rendering is
+  // synchronous and single-threaded; mirrors the existing diagramSequence
+  // module-level state below.
+  let activeCard = null;
+  const config = () => activeCard || {};
   function state(key) {
     const id = config().entities?.[key];
     const entity = id ? BeastHaSocket.getState(id) : null;
@@ -241,8 +246,9 @@ window.BeastVentilation = (() => {
     zones[1].setAttribute('y', 25*sy);
     svg.querySelector('.hrv-room-climate').setAttribute('transform', `translate(${273*sx} ${43*sy})`);
   }
-  function render(host) {
+  function render(host, card) {
     if (!host) return;
+    activeCard = card || {};
     host._hrvDiagramId ||= `hrv-diagram-${++diagramSequence}`;
     const template = markup(host._hrvDiagramId);
     if (host._hrvMarkup !== template) {
@@ -258,26 +264,52 @@ window.BeastVentilation = (() => {
     if (!host._hrvResize && typeof ResizeObserver !== 'undefined') {
       host._hrvResize = new ResizeObserver(() => {
         if (!host.isConnected) { host._hrvResize.disconnect(); host._hrvResize = null; return; }
+        // The card this host was fitted for may no longer be the active one
+        // (another ventilation-typed card could theoretically render in
+        // between) -- fitDiagram() only reads geometry and the entities
+        // dataset already baked into the DOM, so this is safe either way.
         fitDiagram(host);
       });
       host._hrvResize.observe(host);
     }
   }
-  function editorMarkup() {
-    const c = config();
-    return `<fieldset class="hrv-editor"><legend>${t('Kameraområde','Camera area')}</legend>
-      <label>${t('Layout','Layout')}<select data-hrv-enabled><option value="false" ${!enabled()?'selected':''}>${t('3 kameraer','3 cameras')}</option><option value="true" ${enabled()?'selected':''}>${t('2 kameraer + ventilation','2 cameras + ventilation')}</option></select></label>
-      <p>${t('Det tredje kameravalg bevares, når ventilationskortet vises.','The third camera selection is preserved while the ventilation card is shown.')}</p>
-      <details><summary>${t('Rediger ventilationskort','Edit ventilation card')}</summary>
-      <label>${t('Kortets navn','Card title')}<input data-hrv-title value="${esc(c.title || t('Ventilation','Ventilation'))}" maxlength="80"></label>
-      <label><input type="checkbox" data-hrv-coil ${c.showAfterheat === true?'checked':''}> ${t('Vis varmeflade','Show heating coil')}</label>
-      <label><input type="checkbox" data-hrv-animation ${c.animation !== false?'checked':''}> ${t('Animeret luftstrøm','Animated airflow')}</label>
-      ${Object.entries(fields).map(([key,label])=>`<label>${t(...label)}<input list="hrv-entities" data-hrv-entity="${key}" value="${esc(c.entities?.[key] || '')}" placeholder="${key==='mode'||key==='level'?'select.':'sensor.'}"></label>`).join('')}
-      <datalist id="hrv-entities">${Array.from(BeastHaSocket.getAllStates().keys()).filter(id=>/^(sensor|binary_sensor|select|cover|fan)\./.test(id)).map(id=>`<option value="${esc(id)}">${esc(BeastHaSocket.getState(id)?.attributes?.friendly_name || id)}</option>`).join('')}</datalist>
-      </details></fieldset>`;
+  // Standalone "Indstil kort" editor, opened the same way as every other
+  // freeform overview card (gear icon -> modal), instead of the old
+  // fieldset buried inside the camera picker. commit(null) on cancel,
+  // commit(updatedCard) to save -- same contract as configureBasicCard().
+  function openEditor(card, commit) {
+    const safe = esc;
+    const overlay = document.createElement('div');
+    overlay.className = 'beast-modal-overlay';
+    const entityIds = Array.from(BeastHaSocket.getAllStates().keys()).filter(id => /^(sensor|binary_sensor|select|cover|fan)\./.test(id));
+    const datalist = entityIds.map(id => `<option value="${safe(id)}">${safe(BeastHaSocket.getState(id)?.attributes?.friendly_name || id)}</option>`).join('');
+    const entityFields = Object.entries(fields).map(([key, label]) => `<label class="beast-page-editor-field">${safe(t(...label))}<input type="search" list="hrv-entities-datalist" data-hrv-entity="${key}" value="${safe(card.entities?.[key] || '')}" placeholder="${key === 'mode' || key === 'level' ? 'select.' : 'sensor.'}"></label>`).join('');
+    overlay.innerHTML = `<div class="beast-modal beast-page-entity-modal" role="dialog" aria-modal="true">
+      <div class="beast-modal-header"><div><small>${safe(t('Varme','Heating'))}</small><h3>${safe(t('Rediger ventilationskort','Edit ventilation card'))}</h3></div><button type="button" class="beast-modal-close" data-close>${BeastCore.icon('close', {size: 22})}</button></div>
+      <div class="beast-modal-body">
+        <label class="beast-page-editor-field">${safe(t('Kortets navn','Card title'))}<input data-hrv-title value="${safe(card.title || t('Ventilation','Ventilation'))}" maxlength="80"></label>
+        <label class="beast-page-editor-check"><input type="checkbox" data-hrv-coil ${card.showAfterheat === true ? 'checked' : ''}> ${safe(t('Vis varmeflade','Show heating coil'))}</label>
+        <label class="beast-page-editor-check"><input type="checkbox" data-hrv-animation ${card.animation !== false ? 'checked' : ''}> ${safe(t('Animeret luftstrøm','Animated airflow'))}</label>
+        ${entityFields}
+        <datalist id="hrv-entities-datalist">${datalist}</datalist>
+        <button type="button" class="beast-btn beast-btn-primary" data-hrv-save>${safe(t('Gem ændringer','Save changes'))}</button>
+      </div>
+    </div>`;
+    document.body.appendChild(overlay);
+    overlay.addEventListener('click', (event) => {
+      if (event.target === overlay || event.target.closest('[data-close]')) { overlay.remove(); commit(null); return; }
+      if (!event.target.closest('[data-hrv-save]')) return;
+      const entities = Object.fromEntries(Array.from(overlay.querySelectorAll('[data-hrv-entity]'), input => [input.dataset.hrvEntity, input.value.trim()]).filter(([, value]) => value));
+      commit({
+        ...card,
+        label: overlay.querySelector('[data-hrv-title]').value.trim() || t('Ventilation','Ventilation'),
+        title: overlay.querySelector('[data-hrv-title]').value.trim() || t('Ventilation','Ventilation'),
+        animation: overlay.querySelector('[data-hrv-animation]').checked,
+        showAfterheat: overlay.querySelector('[data-hrv-coil]').checked,
+        entities
+      });
+      overlay.remove();
+    });
   }
-  function readEditor(root) {
-    return {...config(), enabled:root.querySelector('[data-hrv-enabled]').value==='true',title:root.querySelector('[data-hrv-title]').value.trim() || t('Ventilation','Ventilation'),animation:root.querySelector('[data-hrv-animation]').checked,showAfterheat:root.querySelector('[data-hrv-coil]').checked,entities:Object.fromEntries(Array.from(root.querySelectorAll('[data-hrv-entity]'), input=>[input.dataset.hrvEntity,input.value.trim()]))};
-  }
-  return {enabled, render, editorMarkup, readEditor};
+  return {render, openEditor, fields};
 })();

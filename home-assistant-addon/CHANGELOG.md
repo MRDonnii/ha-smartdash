@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.8.9
+
+- The ventilation card is now a real, independent overview card that can
+  be added, removed and configured the same way as every other card --
+  with the same gear-icon editor and searchable entity fields. It is no
+  longer a hidden setting inside "Choose cameras".
+- An already-enabled ventilation card is migrated automatically to the
+  new card format, so existing entity choices are preserved.
+
 ## 0.8.8
 
 - The overview ventilation card now shows more vivid blue and red duct
