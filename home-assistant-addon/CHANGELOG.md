@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.8.4
+
+- Fixed a rendering glitch where the district-heating card's rounded corners
+  could show small crescent artifacts outside real Home Assistant, including
+  on the Smartdash overview.
+- The district-heating card's house outline now shows a constant, subtle warm
+  tint instead of being fully transparent.
+- The ventilation card gained a new left-side metrics panel (bypass, air
+  quality, heat transfer, alarm) mirroring the existing right panel, the same
+  warm tint, and a full GUI configuration editor.
+
 ## 0.8.3
 
 - Added an optional, configurable heat-recovery ventilation card beside the
