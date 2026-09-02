@@ -143,7 +143,6 @@ window.BeastVentilation = (() => {
           ${duct('cold',coldPath,'supply_fan_rpm')}${duct('warm',warmPath,'extract_fan_rpm')}
           <path class="hrv-core" d="M194 99 L230 138 194 177 158 138Z"/><path class="hrv-fin" d="M177 119 L211 156 M171 128 L203 164 M187 111 L218 145"/>
 
-          <path class="hrv-arrow cold" d="M126 102 L132 106 126 110 M399 166 L405 170 399 174"/><path class="hrv-arrow warm" d="M400 102 L394 106 400 110 M39 166 L33 170 39 174"/>
           ${fan('supply_fan_rpm','supply',106)}${fan('extract_fan_rpm','extract',170)}
           ${coilDetails}
           ${svgTemp('outdoor_temperature',t('Udeluft','Outdoor air'),14,63,'start','#80cfee')}
@@ -237,14 +236,10 @@ window.BeastVentilation = (() => {
     svg.querySelector('.hrv-fan.extract')?.setAttribute('transform', `translate(${86*sx} ${bottom})`);
     const temps = svg.querySelectorAll('.hrv-svg-temp');
     [[14,top-51],[w-14,top-51],[14,bottom+39],[w-14,bottom+39]].forEach(([x,y],i) => temps[i].setAttribute('transform', `translate(${x} ${y})`));
-    svg.querySelector('.hrv-arrow.cold').style.stroke = `url(#${id}-cold)`;
-    svg.querySelector('.hrv-arrow.warm').style.stroke = `url(#${id}-warm)`;
     const zones = svg.querySelectorAll('.hrv-svg-zone');
     zones[1].setAttribute('x', 273*sx);
     zones[1].setAttribute('y', 25*sy);
     svg.querySelector('.hrv-room-climate').setAttribute('transform', `translate(${273*sx} ${43*sy})`);
-    svg.querySelector('.hrv-arrow.cold').setAttribute('d', `M${112*sx+14} ${top-4} l6 4 -6 4 M${right-17} ${bottom-4} l6 4 -6 4`);
-    svg.querySelector('.hrv-arrow.warm').setAttribute('d', `M${right-16} ${top-4} l-6 4 6 4 M39 ${bottom-4} l-6 4 6 4`);
   }
   function render(host) {
     if (!host) return;

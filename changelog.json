@@ -1,5 +1,16 @@
 [
   {
+    "version": "20260902-4",
+    "tag": "v0.8.7",
+    "date": "2026-09-02",
+    "changes": [
+      {
+        "da": "Fjernet overflødige pilemarkører i ventilationskortets rør på forsiden; den animerede luftstrøm viser allerede retningen.",
+        "en": "Removed redundant arrow markers from the overview ventilation card's ducts; the animated airflow already conveys direction."
+      }
+    ]
+  },
+  {
     "version": "20260902-3",
     "tag": "v0.8.6",
     "date": "2026-09-02",

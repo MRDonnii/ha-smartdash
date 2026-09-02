@@ -1,4 +1,4 @@
-const VERSION = "0.2.38";
+const VERSION = "0.2.39";
 
 const ENTITY_FIELDS = [
   ["outdoor_temperature", "Udeluft"], ["supply_temperature", "Indblæsning"],
@@ -193,7 +193,7 @@ class HAVentilationCard extends HTMLElement {
     const maximum = Math.max(...samples.map(sample => sample.value));
     const span = maximum - minimum;
     if (span < .2) return Object.fromEntries(keys.map(key => [key, "rgb(165,180,185)"]));
-    const palette = [[55,128,220], [84,188,211], [224,190,125], [236,91,70]];
+    const palette = [[24,96,235], [64,185,222], [230,180,80], [230,42,38]];
     const colorFor = value => {
       const position = Math.max(0, Math.min(1, (value - minimum) / span));
       const scaled = position * (palette.length - 1);
