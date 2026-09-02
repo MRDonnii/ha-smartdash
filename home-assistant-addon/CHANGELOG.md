@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.8.28
+
+- Fixed the real cause of the featured camera taking a long time to
+  load even after the instant placeholder appeared: without go2rtc,
+  it was preferring Home Assistant's own continuously-proxied (often
+  transcoded) MJPEG stream over a plain snapshot whenever the camera
+  exposed an access_token, which is common -- a much heavier
+  connection to establish on the Home Assistant host than the single-
+  frame snapshot the thumbnail strip already used successfully. The
+  featured view now always uses the same fast, periodically-refreshed
+  snapshot as the thumbnails when go2rtc isn't configured.
+
 ## 0.8.27
 
 - Clicking a camera now shows that camera's own last-known thumbnail

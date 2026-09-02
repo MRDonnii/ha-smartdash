@@ -278,8 +278,15 @@
     // authenticated Home Assistant camera image is the reliable fallback.
     const baseUrl = go2rtcBaseUrl();
     const streamName = baseUrl ? (camera.resolvedStreamName || camera.streamName) : null;
+    // haStreamUrl points at Home Assistant's own /api/camera_proxy_stream/,
+    // a continuously proxied (often transcoded) MJPEG feed -- much heavier
+    // to establish on the HA host than the single-frame snapshot the
+    // thumbnail strip already uses successfully, and the actual cause of
+    // "shows a picture eventually, just takes forever": callers that pass
+    // liveFallback:false skip it and go straight to the same fast snapshot.
+    const useHaStream = options.liveFallback !== false && camera.haStreamUrl;
     return `<div class="beast-shared-camera ${className}" data-shared-camera="${escapeHtml(camera.slug)}">
-      <div class="beast-shared-camera-frame">${streamName ? `<iframe class="beast-shared-camera-live" src="./camera-player.html?v=19&base=${encodeURIComponent(baseUrl)}&transport=webrtc&src=${encodeURIComponent(streamName)}${options.audio ? "&audio=1" : ""}" title="${escapeHtml(camera.label)} livekamera" frameborder="0" allow="autoplay"></iframe>` : camera.haStreamUrl ? `<img class="beast-shared-camera-live beast-shared-camera-ha-stream" src="${escapeHtml(camera.haStreamUrl)}" data-camera-fallback-picture="${escapeHtml(camera.entityPicture || "")}" alt="${escapeHtml(camera.label)} livekamera">` : `<img class="beast-shared-camera-snapshot" data-camera-picture="${escapeHtml(camera.entityPicture || "")}" alt="${escapeHtml(camera.label)}">`}</div>
+      <div class="beast-shared-camera-frame">${streamName ? `<iframe class="beast-shared-camera-live" src="./camera-player.html?v=19&base=${encodeURIComponent(baseUrl)}&transport=webrtc&src=${encodeURIComponent(streamName)}${options.audio ? "&audio=1" : ""}" title="${escapeHtml(camera.label)} livekamera" frameborder="0" allow="autoplay"></iframe>` : useHaStream ? `<img class="beast-shared-camera-live beast-shared-camera-ha-stream" src="${escapeHtml(camera.haStreamUrl)}" data-camera-fallback-picture="${escapeHtml(camera.entityPicture || "")}" alt="${escapeHtml(camera.label)} livekamera">` : `<img class="beast-shared-camera-snapshot" data-camera-picture="${escapeHtml(camera.entityPicture || "")}" alt="${escapeHtml(camera.label)}">`}</div>
       ${qualityMenuMarkup(camera)}
       ${options.motion !== false && camera.motion ? `<span class="beast-camera-motion-badge">${BeastCore.icon("bolt", { size: 11 })} ${escapeHtml(camera.motionLabel || "Hændelse")}</span>` : ""}
       ${options.label === false ? "" : `<span class="beast-shared-camera-label">${escapeHtml(camera.label)}</span>`}
@@ -493,7 +500,7 @@
 
     const host = document.createElement("div");
     host.style.cssText = "position:absolute;inset:0;visibility:hidden;pointer-events:none;";
-    host.innerHTML = `${sharedCameraMarkup(camera, { className: "beast-camera-featured-render", audio: true, label: true, motion: true })}${camera.streamName ? `<button type="button" class="beast-camera-audio-toggle" id="beastCameraAudioToggle" aria-pressed="false">${BeastCore.icon("volume-mute", { size: 17 })}<span>Lyd fra</span></button>` : ""}`;
+    host.innerHTML = `${sharedCameraMarkup(camera, { className: "beast-camera-featured-render", audio: true, label: true, motion: true, liveFallback: false })}${camera.streamName ? `<button type="button" class="beast-camera-audio-toggle" id="beastCameraAudioToggle" aria-pressed="false">${BeastCore.icon("volume-mute", { size: 17 })}<span>Lyd fra</span></button>` : ""}`;
     featuredWrap.appendChild(host);
     waitForFeaturedMedia(host).then(() => {
       // A later click may have superseded this one while we were waiting.
@@ -533,7 +540,7 @@
     containerEl.innerHTML = `
       <button type="button" class="beast-page-edit-trigger" id="beastCamerasLayoutEdit" aria-label="Rediger kameralayout">⋮</button>
       <div class="beast-camera-featured" data-camera-fit="${featuredFit}">
-        ${sharedCameraMarkup(featured, { className: "beast-camera-featured-render", audio: true, label: true, motion: true })}
+        ${sharedCameraMarkup(featured, { className: "beast-camera-featured-render", audio: true, label: true, motion: true, liveFallback: false })}
         ${featured.streamName ? `<button type="button" class="beast-camera-audio-toggle" id="beastCameraAudioToggle" aria-pressed="false">${BeastCore.icon("volume-mute", { size: 17 })}<span>Lyd fra</span></button>` : ""}
       </div>
       <div class="beast-camera-strip" id="beastCameraStrip"></div>
