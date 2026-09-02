@@ -16,6 +16,12 @@
 .beast-shared-camera-live, .beast-shared-camera-snapshot { width: 100%; height: 100%; display: block; border: 0; background: #000; object-fit: contain; object-position: center; }
 .beast-shared-camera-label { position: absolute; z-index: 3; left: 0; right: 0; bottom: 0; min-height: 48px; display: flex; align-items: flex-end; padding: 18px 14px 10px; background: linear-gradient(to top, rgba(0,0,0,.86), transparent); color: #fff; font-size: var(--text-sm); font-weight: 800; text-shadow: 0 1px 5px rgba(0,0,0,.7); pointer-events: none; }
 .beast-camera-featured-render { position: absolute; inset: 0; }
+/* Instant stand-in shown the moment a camera is picked, before its real
+   stream/high-res picture is ready -- a touch dim and desaturated so it
+   reads as "still loading" without looking broken, brightening back to
+   normal the instant the real content actually swaps in and this class
+   goes away with it. */
+.beast-camera-featured-render.is-placeholder .beast-shared-camera-snapshot { filter: saturate(.82) brightness(.86); }
 .beast-shared-camera > .beast-camera-motion-badge { top: 12px; left: 12px; right: auto; z-index: 4; }
 .beast-camera-featured .beast-shared-camera > .beast-camera-motion-badge { left: 118px; }
 

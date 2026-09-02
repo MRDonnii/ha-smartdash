@@ -448,13 +448,28 @@
     }
   }
 
+  // A lightweight stand-in for the clicked camera while its real stream or
+  // full picture is still loading -- just a label and a snapshot, reusing
+  // the clicked tile's own already-decoded thumbnail (instant, nothing to
+  // wait for) when there is one, so the featured view reflects the picked
+  // camera immediately instead of either continuing to show the *previous*
+  // camera's live feed or going black.
+  function placeholderCameraMarkup(camera, reuseSrc) {
+    return `<div class="beast-shared-camera beast-camera-featured-render is-placeholder" data-shared-camera="${escapeHtml(camera.slug)}">
+      <div class="beast-shared-camera-frame"><img class="beast-shared-camera-snapshot"${reuseSrc ? ` src="${escapeHtml(reuseSrc)}"` : ""} data-camera-picture="${escapeHtml(camera.entityPicture || "")}" alt="${escapeHtml(camera.label)}"></div>
+      ${camera.motion ? `<span class="beast-camera-motion-badge">${BeastCore.icon("bolt", { size: 11 })} ${escapeHtml(camera.motionLabel || "Hændelse")}</span>` : ""}
+      <span class="beast-shared-camera-label">${escapeHtml(camera.label)}</span>
+    </div>`;
+  }
+
   // Switching the featured camera used to call render(), which tore down
   // and recreated every tile and the featured view via containerEl.innerHTML
   // -- blanking every <img> (including the seven cameras nobody clicked) and
   // refetching them from scratch, several seconds of black tiles on
   // anything but a fast link. This instead toggles the tile highlight in
-  // place, builds the new featured content off to the side while the old
-  // one stays fully visible, and only swaps once the new media is ready.
+  // place, shows an instant snapshot placeholder for the newly picked
+  // camera, builds the real content off to the side, and only swaps the
+  // placeholder out once that real media is actually ready.
   function selectFeaturedCamera(camera) {
     if (!camera) return;
     const featuredWrap = containerEl?.querySelector(".beast-camera-featured");
@@ -464,6 +479,18 @@
     containerEl.querySelectorAll(".beast-camera-tile").forEach((tile) => {
       tile.classList.toggle("is-featured", tile.dataset.slug === camera.slug);
     });
+
+    const clickedTileImg = containerEl.querySelector(`.beast-camera-tile[data-slug="${CSS.escape(camera.slug)}"] .beast-camera-snapshot`);
+    const reuseSrc = clickedTileImg?.getAttribute("src") || null;
+    const priorNodes = Array.from(featuredWrap.children);
+    const priorObjectUrl = priorNodes.map((node) => node.querySelector?.(".beast-shared-camera-snapshot")?.dataset.objectUrl).find(Boolean);
+    priorNodes.forEach((node) => node.remove());
+    const placeholderHost = document.createElement("div");
+    placeholderHost.innerHTML = placeholderCameraMarkup(camera, reuseSrc);
+    featuredWrap.appendChild(placeholderHost.firstElementChild);
+    if (!reuseSrc) wireSharedCameras(featuredWrap);
+    if (priorObjectUrl) URL.revokeObjectURL(priorObjectUrl);
+
     const host = document.createElement("div");
     host.style.cssText = "position:absolute;inset:0;visibility:hidden;pointer-events:none;";
     host.innerHTML = `${sharedCameraMarkup(camera, { className: "beast-camera-featured-render", audio: true, label: true, motion: true })}${camera.streamName ? `<button type="button" class="beast-camera-audio-toggle" id="beastCameraAudioToggle" aria-pressed="false">${BeastCore.icon("volume-mute", { size: 17 })}<span>Lyd fra</span></button>` : ""}`;
@@ -471,15 +498,15 @@
     waitForFeaturedMedia(host).then(() => {
       // A later click may have superseded this one while we were waiting.
       if (featuredSlug !== camera.slug || !host.isConnected) { host.remove(); return; }
-      const oldNodes = Array.from(featuredWrap.children).filter((node) => node !== host);
-      const oldObjectUrl = oldNodes.map((node) => node.querySelector?.(".beast-shared-camera-snapshot")?.dataset.objectUrl).find(Boolean);
-      oldNodes.forEach((node) => node.remove());
+      const staleNodes = Array.from(featuredWrap.children).filter((node) => node !== host);
+      const staleObjectUrl = staleNodes.map((node) => node.querySelector?.(".beast-shared-camera-snapshot")?.dataset.objectUrl).find(Boolean);
+      staleNodes.forEach((node) => node.remove());
       host.removeAttribute("style");
       while (host.firstChild) featuredWrap.appendChild(host.firstChild);
       host.remove();
       wireFeaturedMedia(featuredWrap);
       wireSharedCameras(featuredWrap, render);
-      if (oldObjectUrl) URL.revokeObjectURL(oldObjectUrl);
+      if (staleObjectUrl) URL.revokeObjectURL(staleObjectUrl);
     });
   }
 
