@@ -1,5 +1,16 @@
 [
   {
+    "version": "20260902-25",
+    "tag": "v0.8.28",
+    "date": "2026-09-02",
+    "changes": [
+      {
+        "da": "Rettet den reelle årsag til at det store kamerabillede tog lang tid om at loade selv efter den øjeblikkelige pladsholder dukkede op: uden go2rtc foretrak den Home Assistants egen løbende proxede (ofte transkodede) MJPEG-stream frem for et almindeligt snapshot, når kameraet havde en access_token-attribut, hvilket er almindeligt -- en langt tungere forbindelse at oprette på Home Assistant-serveren end det enkeltbillede-snapshot miniaturestriben allerede brugte med succes. Det store kamerabillede bruger nu altid det samme hurtige, periodisk opdaterede snapshot som miniaturerne, når go2rtc ikke er sat op.",
+        "en": "Fixed the real cause of the featured camera taking a long time to load even after the instant placeholder appeared: without go2rtc, it was preferring Home Assistant's own continuously-proxied (often transcoded) MJPEG stream over a plain snapshot whenever the camera exposed an access_token, which is common -- a much heavier connection to establish on the Home Assistant host than the single-frame snapshot the thumbnail strip already used successfully. The featured view now always uses the same fast, periodically-refreshed snapshot as the thumbnails when go2rtc isn't configured."
+      }
+    ]
+  },
+  {
     "version": "20260902-24",
     "tag": "v0.8.27",
     "date": "2026-09-02",
