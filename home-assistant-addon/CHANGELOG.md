@@ -1,5 +1,21 @@
 # Changelog
 
+## 0.8.25
+
+- Hardened the ventilation card's diagram-fitting: it re-samples close
+  to 500 SVG point positions whenever the card's own size changes, and
+  was previously gated by an exact fractional-pixel size match, which
+  sub-pixel layout jitter could defeat and cause to re-run needlessly.
+  It's now gated to whole pixels and coalesced to at most once per
+  animation frame, avoiding needless CPU work on a wall display left
+  running for many hours.
+- Investigated a report of the Admin button becoming briefly
+  unresponsive in kiosk mode: traced the click handler and confirmed
+  it does not block native navigation when no PIN is configured, so
+  this was not a broken Admin link. The report's own diagnosis (a
+  stalled renderer/main thread, not specific to this button, also seen
+  on earlier builds) matches what the code shows.
+
 ## 0.8.24
 
 - The ventilation card's heat exchanger now shows the heat recovery
