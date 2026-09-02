@@ -47,7 +47,7 @@ window.BeastVentilation = (() => {
   function temperatureColor(key) {
     const entity = state(key), value = entity ? Number(entity.state) : NaN;
     if (!Number.isFinite(value)) return '#8c9aa8';
-    const stops = [[0,[101,159,237]],[12,[109,195,224]],[18,[165,210,209]],[23,[234,185,145]],[32,[237,133,99]],[45,[226,88,88]]];
+    const stops = [[0,[83,156,255]],[12,[83,208,250]],[18,[155,220,219]],[23,[254,183,125]],[32,[255,124,81]],[45,[255,59,59]]];
     if (value <= stops[0][0]) return `rgb(${stops[0][1].join(',')})`;
     for (let i=1;i<stops.length;i++) {
       if (value <= stops[i][0]) {
