@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.8.8
+
+- The overview ventilation card now shows more vivid blue and red duct
+  colors for cold and warm airflow, matching the real Home Assistant card.
+
 ## 0.8.7
 
 - Removed redundant arrow markers from the overview ventilation card's ducts;
