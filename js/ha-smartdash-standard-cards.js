@@ -164,7 +164,9 @@ window.BeastStandardCards = (function () {
   // properties -- same contract the front page's overviewCardMarkup()
   // already follows.
   function renderMarkup(card) {
-    const size = ` data-builder-card="${escape(card.id)}" style="--desktop-w:${Number(card.desktop?.w) || 3};--desktop-h:${Number(card.desktop?.h) || 1};--tablet-w:${Number(card.tablet?.w) || 1};--tablet-h:${Number(card.tablet?.h) || 1};--portrait-h:${Number(card.portrait?.h) || 1};"`;
+    // --desktop-w/-h are emitted pre-doubled to match the freeform grid's
+    // 24-track desktop resolution -- see ha-smartdash-layout.css.
+    const size = ` data-builder-card="${escape(card.id)}" style="--desktop-w:${(Number(card.desktop?.w) || 3) * 2};--desktop-h:${(Number(card.desktop?.h) || 1) * 2};--tablet-w:${Number(card.tablet?.w) || 1};--tablet-h:${Number(card.tablet?.h) || 1};--portrait-h:${Number(card.portrait?.h) || 1};"`;
     const meta = ` data-template-id="${escape(card.templateId || "")}" data-bindings="${encodeURIComponent(JSON.stringify(card.bindings || {}))}" data-action="${encodeURIComponent(JSON.stringify(card.action || {}))}" data-visibility="${encodeURIComponent(JSON.stringify(card.visibility || {}))}" data-label="${escape(card.label || "")}" data-icon="${escape(card.icon || "grid")}"`;
     if (card.type === "stat") {
       return `<div class="beast-panel beast-panel-fill beast-ov-card beast-ov-card--stat"${size}${meta} data-standard-card="stat" data-entity="${escape(card.entity)}"><div class="beastStandardCardBody"></div></div>`;

@@ -398,7 +398,13 @@ a.beast-rail-btn:visited {
 .beast-overview-grid.is-dynamic :is(.beast-ov-card--weather,.beast-ov-card--energy) { grid-column:span 5; }
 .beast-overview-grid.is-dynamic .beast-ov-card--wide { grid-column:span 4; grid-row:span 2; }
 .beast-overview-grid.is-freeform {
-  grid-template-columns: repeat(12, minmax(0, 1fr));
+  /* Double the desktop track count (24 instead of 12) so --desktop-w/-h
+     (themselves emitted pre-doubled, see overviewCardMarkup() and its
+     siblings) can express half-unit sizes as a whole number of tracks --
+     grid-column/row: span only accepts an integer track count. Tablet and
+     portrait keep their own, separate 12-column rule (ha-smartdash-
+     responsive.css) and are unaffected. */
+  grid-template-columns: repeat(24, minmax(0, 1fr));
   grid-template-rows: none;
   grid-auto-flow: dense;
   grid-auto-rows: minmax(260px, 1fr);
@@ -407,8 +413,8 @@ a.beast-rail-btn:visited {
   overflow-y: auto;
 }
 .beast-overview-grid.is-freeform > .beast-ov-card {
-  grid-column: span min(var(--desktop-w), 12) !important;
-  grid-row: span min(var(--desktop-h), 6) !important;
+  grid-column: span min(var(--desktop-w), 24) !important;
+  grid-row: span min(var(--desktop-h), 12) !important;
   align-self: stretch;
   height: auto;
   min-width: 0;

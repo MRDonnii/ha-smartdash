@@ -25,7 +25,9 @@
   }
 
   function cardSize(card) {
-    return `data-builder-card="${escapeHtml(card.id)}" style="--desktop-w:${Number(card.desktop?.w) || 4};--desktop-h:${Number(card.desktop?.h) || 1};--tablet-w:${Number(card.tablet?.w) || 1};--tablet-h:${Number(card.tablet?.h) || 1};--portrait-h:${Number(card.portrait?.h) || 1};"`;
+    // --desktop-w/-h are emitted pre-doubled to match the freeform grid's
+    // 24-track desktop resolution -- see ha-smartdash-layout.css.
+    return `data-builder-card="${escapeHtml(card.id)}" style="--desktop-w:${(Number(card.desktop?.w) || 4) * 2};--desktop-h:${(Number(card.desktop?.h) || 1) * 2};--tablet-w:${Number(card.tablet?.w) || 1};--tablet-h:${Number(card.tablet?.h) || 1};--portrait-h:${Number(card.portrait?.h) || 1};"`;
   }
 
   function applyConfig() {

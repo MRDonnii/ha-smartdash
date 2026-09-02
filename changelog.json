@@ -1,5 +1,16 @@
 [
   {
+    "version": "20260902-8",
+    "tag": "v0.8.11",
+    "date": "2026-09-02",
+    "changes": [
+      {
+        "da": "Kort på forsiden og alle andre sider kan nu justeres i halve felter, ikke kun hele, både ved at trække i hjørnet og i kortets egen indstillingsdialog.",
+        "en": "Cards on the overview and every other page can now be resized in half-unit steps, not just whole ones, both by dragging the corner handle and from the card's own settings dialog."
+      }
+    ]
+  },
+  {
     "version": "20260902-7",
     "tag": "v0.8.10",
     "date": "2026-09-02",
