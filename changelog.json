@@ -1,5 +1,16 @@
 [
   {
+    "version": "20260902-13",
+    "tag": "v0.8.16",
+    "date": "2026-09-02",
+    "changes": [
+      {
+        "da": "Ventilationskortets autodetektion udvidet: finder nu også filterskifte- og eftervarmesensorer på selve enheden, kombinerer op til 5 separate fejlsensorer (fra flere del-enheder) til alarmfeltet uden nogen Home Assistant-hjælper, og udfylder rumtemperatur, luftfugtighed og varmeoverførsel fra andre Dantherm-tilknyttede enheder når der kun findes én entydig kandidat.",
+        "en": "The ventilation card's auto-detect now also finds filter-change and afterheat sensors on the unit itself, combines up to 5 separate fault sensors (from several sub-devices) into the alarm field with no Home Assistant helper required, and fills room temperature, humidity and heat transfer from other Dantherm-linked devices when exactly one unambiguous candidate exists."
+      }
+    ]
+  },
+  {
     "version": "20260902-12",
     "tag": "v0.8.15",
     "date": "2026-09-02",

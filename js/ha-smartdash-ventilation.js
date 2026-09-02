@@ -28,7 +28,8 @@ window.BeastVentilation = (() => {
     heat_recovery: 'temperature_efficiency', co2: 'co2', mode: 'operating_mode',
     level: 'current_ventilation_level', bypass: 'bypass_active',
     supply_fan_rpm: 'supply_fan_speed', extract_fan_rpm: 'extract_fan_speed',
-    supply_fan_percent: 'supply_fan_control', extract_fan_percent: 'extract_fan_control'
+    supply_fan_percent: 'supply_fan_control', extract_fan_percent: 'extract_fan_control',
+    filter_changed: 'last_filter_change', afterheat_setpoint: 'after_heater_setpoint'
   };
   // Groups every entity whose id ends in a known Dantherm suffix by its
   // shared prefix (the device), keeping only groups that matched enough of
@@ -56,6 +57,80 @@ window.BeastVentilation = (() => {
         return { prefix, label, matches, count: Object.keys(matches).length };
       })
       .sort((a, b) => b.count - a.count);
+  }
+  // The Dantherm integration -- and community setups built on top of it --
+  // never expose one single combined "alarm" entity covering everything;
+  // fault signals are scattered: four electrical/thermal fault booleans
+  // (over-current/-heating/-powering/-voltage) under one device, and a
+  // separate single "filter alarm" under the filter-tracking device, each
+  // potentially under its own prefix. No Home Assistant helper is required
+  // to combine them: the card does it itself. entities.alarm can hold a
+  // comma-separated list of source entities; alarmSummary() below treats
+  // "any is on" as active.
+  const DANTHERM_ALARM_GROUP_SUFFIXES = ['overcurrent', 'overheating', 'overpowering', 'overvoltage'];
+  const DANTHERM_ALARM_SINGLE_SUFFIXES = ['filter_alarm'];
+  function detectDanthermAlarmSources() {
+    const groups = new Map();
+    for (const id of BeastHaSocket.getAllStates().keys()) {
+      const dot = id.indexOf('.');
+      const rest = id.slice(dot + 1);
+      for (const suffix of DANTHERM_ALARM_GROUP_SUFFIXES) {
+        if (rest !== suffix && !rest.endsWith(`_${suffix}`)) continue;
+        const prefix = rest.slice(0, rest.length - suffix.length).replace(/_$/, '');
+        if (!groups.has(prefix)) groups.set(prefix, new Set());
+        groups.get(prefix).add(id);
+      }
+    }
+    const ids = new Set();
+    Array.from(groups.values()).filter(set => set.size >= 2).forEach(set => set.forEach(id => ids.add(id)));
+    // Single-entity alarm suffixes (e.g. a filter-due alarm) only count as
+    // a real match when there's exactly one candidate -- an install with
+    // several similarly-named sensors is ambiguous, and a wrong guess here
+    // is worse than leaving the field for manual entry.
+    for (const suffix of DANTHERM_ALARM_SINGLE_SUFFIXES) {
+      const match = findUniqueSuffixMatch(suffix);
+      if (match) ids.add(match);
+    }
+    return ids.size ? [{ ids: Array.from(ids).sort() }] : [];
+  }
+  // Fields that live on their own separate Home Assistant device (not the
+  // main unit) -- an indoor-climate add-on sensor, an afterheat coil, etc.
+  // -- so they never share the main device's entity-id prefix and can't be
+  // grouped with it. Matched independently, each on its own suffix, and
+  // only auto-filled when there's exactly one candidate: some of these
+  // (air quality especially) are common enough sensor types that a large
+  // install can have several unrelated ones, and picking the wrong one
+  // silently would be worse than leaving it for manual entry.
+  const DANTHERM_STANDALONE_SUFFIXES = {
+    room_temperature: 'house_temperature', humidity: 'measured_relative_humidity',
+    air_quality: 'air_quality', heat_transfer: 'heat_transfer'
+  };
+  function findUniqueSuffixMatch(suffix) {
+    const matches = [];
+    for (const id of BeastHaSocket.getAllStates().keys()) {
+      const rest = id.slice(id.indexOf('.') + 1);
+      if (rest === suffix || rest.endsWith(`_${suffix}`)) matches.push(id);
+    }
+    return matches.length === 1 ? matches[0] : null;
+  }
+  function detectDanthermStandaloneFields() {
+    const matches = {};
+    for (const [fieldKey, suffix] of Object.entries(DANTHERM_STANDALONE_SUFFIXES)) {
+      const match = findUniqueSuffixMatch(suffix);
+      if (match) matches[fieldKey] = match;
+    }
+    return matches;
+  }
+  // entities.alarm holds one entity id or a comma-separated list (the
+  // multi-source case built by the auto-detect above). Active if any
+  // listed entity is "on"; "known" (vs. "no alarm configured") if at
+  // least one listed entity currently has a real state.
+  function alarmSummary() {
+    const ids = String(config().entities?.alarm || '').split(',').map(id => id.trim()).filter(Boolean);
+    if (!ids.length) return { known: false, active: false };
+    const states = ids.map(id => BeastHaSocket.getState(id)).filter(entity => entity && !['unknown','unavailable',''].includes(entity.state));
+    if (!states.length) return { known: false, active: false };
+    return { known: true, active: states.some(entity => entity.state === 'on') };
   }
   const t = (da, en) => BeastLocalSettings.get('language', 'en') === 'da' ? da : en;
   const esc = value => String(value ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -157,9 +232,9 @@ window.BeastVentilation = (() => {
         ? (changed + interval * 86400000 - now) / 86400000 : NaN;
     const filterValue = Number.isFinite(remaining) ? Math.max(0, Math.ceil(remaining)).toLocaleString(t('da-DK','en-GB')) + ' d' : '—';
     const filterLabel = t('Filter tilbage','Filter left');
-    const alarmEntity = state('alarm');
-    const alarmActive = alarmEntity?.state === 'on';
-    const alarmText = alarmEntity ? (alarmActive ? t('Alarm','Alarm') : 'OK') : '—';
+    const alarm = alarmSummary();
+    const alarmActive = alarm.active;
+    const alarmText = alarm.known ? (alarmActive ? t('Alarm','Alarm') : 'OK') : '—';
     const coilDetails = coil ? `<g class="hrv-coil ${coilActive?'active':''}" aria-label="${t('Varmeflade','Heating coil')}: ${coilStatus}">
       <text class="hrv-svg-delta" x="310" y="132" text-anchor="middle"><title>${t('Fremløb minus retur','Flow minus return')}</title>ΔT ${deltaText}</text>
       <rect class="hrv-coil-glow" x="256" y="145" width="108" height="50" rx="10" aria-hidden="true"/>
@@ -175,7 +250,7 @@ window.BeastVentilation = (() => {
         <div class="${open ? 'hrv-metric-info' : ''}"><strong>${open ? t('Åben','Open') : t('Lukket','Closed')}</strong><small>${t(...fields.bypass)}</small></div>
         <div><strong>${airQualityValue()}</strong><small>${t(...fields.air_quality)}</small></div>
         <div><strong>${entityValue('heat_transfer','W')}</strong><small>${t(...fields.heat_transfer)}</small></div>
-        <div class="${alarmActive ? 'hrv-metric-danger' : alarmEntity ? 'hrv-metric-ok' : ''}"><strong>${alarmText}</strong><small>${t(...fields.alarm)}</small></div>
+        <div class="${alarmActive ? 'hrv-metric-danger' : alarm.known ? 'hrv-metric-ok' : ''}"><strong>${alarmText}</strong><small>${t(...fields.alarm)}</small></div>
       </div>
       <div class="hrv-airflow">
         <svg data-diagram-id="${id}" viewBox="0 0 440 270" preserveAspectRatio="xMidYMid meet" role="img" aria-label="${t('Ventilationsanlæg i huset. Udeluft og afkast udenfor; udsugning og indblæsning indenfor.','Ventilation unit inside the house. Outdoor air and exhaust outside; extract and supply inside.')}">
@@ -324,16 +399,24 @@ window.BeastVentilation = (() => {
     overlay.className = 'beast-modal-overlay';
     const entityIds = Array.from(BeastHaSocket.getAllStates().keys()).filter(id => /^(sensor|binary_sensor|select|cover|fan)\./.test(id));
     const datalist = entityIds.map(id => `<option value="${safe(id)}">${safe(BeastHaSocket.getState(id)?.attributes?.friendly_name || id)}</option>`).join('');
-    const entityFields = Object.entries(fields).map(([key, label]) => `<label class="beast-page-editor-field">${safe(t(...label))}<input type="search" list="hrv-entities-datalist" data-hrv-entity="${key}" value="${safe(card.entities?.[key] || '')}" placeholder="${key === 'mode' || key === 'level' ? 'select.' : 'sensor.'}"></label>`).join('');
+    const entityFields = Object.entries(fields).map(([key, label]) => `<label class="beast-page-editor-field">${safe(t(...label))}${key === 'alarm' ? `<small>${safe(t('Kan være flere entities adskilt af komma','Can be several entities separated by commas'))}</small>` : ''}<input type="search" list="hrv-entities-datalist" data-hrv-entity="${key}" value="${safe(card.entities?.[key] || '')}" placeholder="${key === 'mode' || key === 'level' ? 'select.' : 'sensor.'}"></label>`).join('');
     const detected = detectDanthermDevices();
-    const detectFieldCount = Object.keys(DANTHERM_SUFFIXES).length;
+    const alarmSources = detectDanthermAlarmSources();
+    const standaloneFields = detectDanthermStandaloneFields();
+    const standaloneCount = Object.keys(standaloneFields).length;
+    const bonusCount = (alarmSources.length ? 1 : 0) + standaloneCount;
+    const detectFieldCount = Object.keys(DANTHERM_SUFFIXES).length + bonusCount;
+    const bonusNotes = [
+      alarmSources.length ? t(`${alarmSources[0].ids.length} separate fejlsensorer, kombineret til alarmfeltet`, `${alarmSources[0].ids.length} separate fault sensors, combined into the alarm field`) : null,
+      standaloneCount ? t(`${standaloneCount} felt(er) fra andre Dantherm-enheder (${Object.keys(standaloneFields).map(key => t(...fields[key])).join(', ')})`, `${standaloneCount} field(s) from other Dantherm devices (${Object.keys(standaloneFields).map(key => t(...fields[key])).join(', ')})`) : null
+    ].filter(Boolean);
     const detectMarkup = detected.length ? `<div class="beast-page-editor-field">
         <strong>${safe(t('Autodetekteret Dantherm-enhed','Auto-detected Dantherm device'))}</strong>
         ${detected.length > 1
           ? `<select data-hrv-autodetect-device>${detected.map((item, index) => `<option value="${index}">${safe(item.label)} (${item.count}/${detectFieldCount})</option>`).join('')}</select>`
-          : `<span>${safe(detected[0].label)} (${detected[0].count}/${detectFieldCount} ${safe(t('felter fundet','fields found'))})</span>`}
+          : `<span>${safe(detected[0].label)} (${detected[0].count + bonusCount}/${detectFieldCount} ${safe(t('felter fundet','fields found'))})</span>`}
         <button type="button" class="beast-btn" data-hrv-autofill>${safe(t('Udfyld automatisk','Fill automatically'))}</button>
-        <small>${safe(t('Udfylder kun de felter der hører til selve ventilationsenheden. Overskriver eventuelle værdier i de felter.','Only fills the fields belonging to the ventilation unit itself. Overwrites any values already in those fields.'))}</small>
+        <small>${safe(t('Udfylder kun de felter der hører til selve ventilationsenheden. Overskriver eventuelle værdier i de felter.','Only fills the fields belonging to the ventilation unit itself. Overwrites any values already in those fields.'))}${bonusNotes.length ? ' ' + safe(t('Fandt også: ','Also found: ') + bonusNotes.join('; ') + '.') : ''}</small>
       </div>` : '';
     overlay.innerHTML = `<div class="beast-modal beast-page-entity-modal" role="dialog" aria-modal="true">
       <div class="beast-modal-header"><div><small>${safe(t('Varme','Heating'))}</small><h3>${safe(t('Rediger ventilationskort','Edit ventilation card'))}</h3></div><button type="button" class="beast-modal-close" data-close>${BeastCore.icon('close', {size: 22})}</button></div>
@@ -353,6 +436,23 @@ window.BeastVentilation = (() => {
       const chosen = detected[deviceSelect ? Number(deviceSelect.value) : 0];
       if (!chosen) return;
       Object.entries(chosen.matches).forEach(([key, entityId]) => {
+        const input = overlay.querySelector(`[data-hrv-entity="${key}"]`);
+        if (input) input.value = entityId;
+      });
+      // The alarm field accepts a comma-separated list of source entities
+      // (see alarmSummary()) -- fill it from whichever fault-sensor group
+      // was found, independent of the main device's prefix, since the
+      // Dantherm integration exposes these under a separate device on this
+      // install.
+      if (alarmSources.length) {
+        const alarmInput = overlay.querySelector('[data-hrv-entity="alarm"]');
+        if (alarmInput) alarmInput.value = alarmSources[0].ids.join(',');
+      }
+      // Fields that live on their own separate device (indoor-climate
+      // add-on sensor, afterheat coil, ...) and so never shared the main
+      // device's prefix -- only filled when detection found exactly one
+      // unambiguous candidate.
+      Object.entries(standaloneFields).forEach(([key, entityId]) => {
         const input = overlay.querySelector(`[data-hrv-entity="${key}"]`);
         if (input) input.value = entityId;
       });

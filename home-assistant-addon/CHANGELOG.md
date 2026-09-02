@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.8.16
+
+- The ventilation card's auto-detect now also finds filter-change and
+  afterheat sensors on the unit itself, combines up to 5 separate
+  fault sensors (from several sub-devices) into the alarm field with
+  no Home Assistant helper required, and fills room temperature,
+  humidity and heat transfer from other Dantherm-linked devices when
+  exactly one unambiguous candidate exists.
+
 ## 0.8.15
 
 - The ventilation card's editor can now auto-detect a Dantherm HCH
