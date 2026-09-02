@@ -16,6 +16,47 @@ window.BeastVentilation = (() => {
     level: ['Ventilatortrin', 'Fan level'], filter_days: ['Filter, dage tilbage', 'Filter days remaining'],
     air_quality: ['Luftkvalitet', 'Air quality'], heat_transfer: ['Varmeoverførsel', 'Heat transfer'], alarm: ['Alarm', 'Alarm']
   };
+  // Entity-id suffixes the Home Assistant Dantherm integration itself
+  // assigns (e.g. "..._outdoor_air_temperature", "..._bypass_active"),
+  // shared by every install using that integration -- not this user's own
+  // data, just the integration's fixed naming convention. Used to detect a
+  // Dantherm device from its entities and auto-fill the fields it covers,
+  // instead of hand-typing 13 sensor IDs one at a time.
+  const DANTHERM_SUFFIXES = {
+    outdoor_temperature: 'outdoor_air_temperature', supply_temperature: 'supply_air_temperature',
+    extract_temperature: 'extract_air_temperature', exhaust_temperature: 'exhaust_air_temperature',
+    heat_recovery: 'temperature_efficiency', co2: 'co2', mode: 'operating_mode',
+    level: 'current_ventilation_level', bypass: 'bypass_active',
+    supply_fan_rpm: 'supply_fan_speed', extract_fan_rpm: 'extract_fan_speed',
+    supply_fan_percent: 'supply_fan_control', extract_fan_percent: 'extract_fan_control'
+  };
+  // Groups every entity whose id ends in a known Dantherm suffix by its
+  // shared prefix (the device), keeping only groups that matched enough of
+  // the known fields to be a real Dantherm device rather than one
+  // coincidentally-named unrelated sensor.
+  function detectDanthermDevices() {
+    const groups = new Map();
+    for (const id of BeastHaSocket.getAllStates().keys()) {
+      const dot = id.indexOf('.');
+      const rest = id.slice(dot + 1);
+      for (const [fieldKey, suffix] of Object.entries(DANTHERM_SUFFIXES)) {
+        if (rest !== suffix && !rest.endsWith(`_${suffix}`)) continue;
+        const prefix = rest.slice(0, rest.length - suffix.length).replace(/_$/, '');
+        if (!groups.has(prefix)) groups.set(prefix, {});
+        groups.get(prefix)[fieldKey] = id;
+      }
+    }
+    const threshold = Math.ceil(Object.keys(DANTHERM_SUFFIXES).length / 2);
+    return Array.from(groups.entries())
+      .filter(([, matches]) => Object.keys(matches).length >= threshold)
+      .map(([prefix, matches]) => {
+        const sampleId = matches.bypass || matches.co2 || Object.values(matches)[0];
+        const friendly = BeastHaSocket.getState(sampleId)?.attributes?.friendly_name || prefix;
+        const label = friendly.replace(/\s+(Bypass active|CO2|Co2|Operating mode)\s*$/i, '').trim() || prefix;
+        return { prefix, label, matches, count: Object.keys(matches).length };
+      })
+      .sort((a, b) => b.count - a.count);
+  }
   const t = (da, en) => BeastLocalSettings.get('language', 'en') === 'da' ? da : en;
   const esc = value => String(value ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   // The card currently being rendered/fitted -- set by render()/fitDiagram()
@@ -284,18 +325,38 @@ window.BeastVentilation = (() => {
     const entityIds = Array.from(BeastHaSocket.getAllStates().keys()).filter(id => /^(sensor|binary_sensor|select|cover|fan)\./.test(id));
     const datalist = entityIds.map(id => `<option value="${safe(id)}">${safe(BeastHaSocket.getState(id)?.attributes?.friendly_name || id)}</option>`).join('');
     const entityFields = Object.entries(fields).map(([key, label]) => `<label class="beast-page-editor-field">${safe(t(...label))}<input type="search" list="hrv-entities-datalist" data-hrv-entity="${key}" value="${safe(card.entities?.[key] || '')}" placeholder="${key === 'mode' || key === 'level' ? 'select.' : 'sensor.'}"></label>`).join('');
+    const detected = detectDanthermDevices();
+    const detectFieldCount = Object.keys(DANTHERM_SUFFIXES).length;
+    const detectMarkup = detected.length ? `<div class="beast-page-editor-field">
+        <strong>${safe(t('Autodetekteret Dantherm-enhed','Auto-detected Dantherm device'))}</strong>
+        ${detected.length > 1
+          ? `<select data-hrv-autodetect-device>${detected.map((item, index) => `<option value="${index}">${safe(item.label)} (${item.count}/${detectFieldCount})</option>`).join('')}</select>`
+          : `<span>${safe(detected[0].label)} (${detected[0].count}/${detectFieldCount} ${safe(t('felter fundet','fields found'))})</span>`}
+        <button type="button" class="beast-btn" data-hrv-autofill>${safe(t('Udfyld automatisk','Fill automatically'))}</button>
+        <small>${safe(t('Udfylder kun de felter der hører til selve ventilationsenheden. Overskriver eventuelle værdier i de felter.','Only fills the fields belonging to the ventilation unit itself. Overwrites any values already in those fields.'))}</small>
+      </div>` : '';
     overlay.innerHTML = `<div class="beast-modal beast-page-entity-modal" role="dialog" aria-modal="true">
       <div class="beast-modal-header"><div><small>${safe(t('Varme','Heating'))}</small><h3>${safe(t('Rediger ventilationskort','Edit ventilation card'))}</h3></div><button type="button" class="beast-modal-close" data-close>${BeastCore.icon('close', {size: 22})}</button></div>
       <div class="beast-modal-body">
         <label class="beast-page-editor-field">${safe(t('Kortets navn','Card title'))}<input data-hrv-title value="${safe(card.title || t('Ventilation','Ventilation'))}" maxlength="80"></label>
         <label class="beast-page-editor-check"><input type="checkbox" data-hrv-coil ${card.showAfterheat === true ? 'checked' : ''}> ${safe(t('Vis varmeflade','Show heating coil'))}</label>
         <label class="beast-page-editor-check"><input type="checkbox" data-hrv-animation ${card.animation !== false ? 'checked' : ''}> ${safe(t('Animeret luftstrøm','Animated airflow'))}</label>
+        ${detectMarkup}
         ${entityFields}
         <datalist id="hrv-entities-datalist">${datalist}</datalist>
         <button type="button" class="beast-btn beast-btn-primary" data-hrv-save>${safe(t('Gem ændringer','Save changes'))}</button>
       </div>
     </div>`;
     document.body.appendChild(overlay);
+    overlay.querySelector('[data-hrv-autofill]')?.addEventListener('click', () => {
+      const deviceSelect = overlay.querySelector('[data-hrv-autodetect-device]');
+      const chosen = detected[deviceSelect ? Number(deviceSelect.value) : 0];
+      if (!chosen) return;
+      Object.entries(chosen.matches).forEach(([key, entityId]) => {
+        const input = overlay.querySelector(`[data-hrv-entity="${key}"]`);
+        if (input) input.value = entityId;
+      });
+    });
     overlay.addEventListener('click', (event) => {
       if (event.target === overlay || event.target.closest('[data-close]')) { overlay.remove(); commit(null); return; }
       if (!event.target.closest('[data-hrv-save]')) return;

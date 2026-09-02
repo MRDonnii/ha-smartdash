@@ -1,5 +1,16 @@
 [
   {
+    "version": "20260902-12",
+    "tag": "v0.8.15",
+    "date": "2026-09-02",
+    "changes": [
+      {
+        "da": "Ventilationskortets editor kan nu autodetektere en Dantherm HCH PassivLink-enhed ud fra dens sensorer og udfylde de 13 tilhørende felter automatisk med ét klik, i stedet for at de skal indtastes ét ad gangen.",
+        "en": "The ventilation card's editor can now auto-detect a Dantherm HCH PassivLink device from its sensors and fill in the 13 fields it covers with a single click, instead of typing them in one at a time."
+      }
+    ]
+  },
+  {
     "version": "20260902-11",
     "tag": "v0.8.14",
     "date": "2026-09-02",
