@@ -1,5 +1,16 @@
 [
   {
+    "version": "20260902-14",
+    "tag": "v0.8.17",
+    "date": "2026-09-02",
+    "changes": [
+      {
+        "da": "Ventilationskortets autodetektion finder nu også varmefladens aktiv-status, luft efter varmeflade samt fremløb og retur fra den tilhørende Dantherm-enhed.",
+        "en": "The ventilation card's auto-detect now also finds the heating coil's active status, air after the coil, and flow/return temperatures from the associated Dantherm device."
+      }
+    ]
+  },
+  {
     "version": "20260902-13",
     "tag": "v0.8.16",
     "date": "2026-09-02",

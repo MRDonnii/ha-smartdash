@@ -103,7 +103,9 @@ window.BeastVentilation = (() => {
   // silently would be worse than leaving it for manual entry.
   const DANTHERM_STANDALONE_SUFFIXES = {
     room_temperature: 'house_temperature', humidity: 'measured_relative_humidity',
-    air_quality: 'air_quality', heat_transfer: 'heat_transfer'
+    air_quality: 'air_quality', heat_transfer: 'heat_transfer',
+    afterheat_active: 'afterheat_active', afterheat_after: 'air_after_heating_coil',
+    water_flow: 'flow_temperature', water_return: 'return_temperature'
   };
   function findUniqueSuffixMatch(suffix) {
     const matches = [];
