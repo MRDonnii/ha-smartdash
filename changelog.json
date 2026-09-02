@@ -1,5 +1,20 @@
 [
   {
+    "version": "20260902-11",
+    "tag": "v0.8.14",
+    "date": "2026-09-02",
+    "changes": [
+      {
+        "da": "Kort på forsiden og andre sider kan nu justeres i kvarte enheder (4 niveauer pr. felt) i stedet for kun halve, både ved at trække i hjørnet og i kortets egen indstillingsdialog, som nu har et talfelt i stedet for en rulleliste.",
+        "en": "Cards on the overview and other pages can now be resized in quarter-unit steps (4 levels per unit) instead of only half, both by dragging the corner handle and from the card's own settings dialog, which now has a number field instead of a dropdown."
+      },
+      {
+        "da": "Den faktor kortstørrelser ganges op med i CSS'en er nu ét delt tal ét sted i koden, ikke et gentaget tal i seks forskellige filer -- den præcise fejltype der forårsagede v0.8.11-v0.8.13-fejlen kan ikke opstå på samme måde igen.",
+        "en": "The factor card sizes are multiplied by in the CSS is now a single shared constant in one place, not a repeated literal across six files -- the exact class of bug behind the v0.8.11-v0.8.13 issue can't happen the same way again."
+      }
+    ]
+  },
+  {
     "version": "20260902-10",
     "tag": "v0.8.13",
     "date": "2026-09-02",

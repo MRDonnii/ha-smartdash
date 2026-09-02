@@ -398,32 +398,42 @@ a.beast-rail-btn:visited {
 .beast-overview-grid.is-dynamic :is(.beast-ov-card--weather,.beast-ov-card--energy) { grid-column:span 5; }
 .beast-overview-grid.is-dynamic .beast-ov-card--wide { grid-column:span 4; grid-row:span 2; }
 .beast-overview-grid.is-freeform {
-  /* Double the desktop track count (24 instead of 12) so --desktop-w/-h
-     (themselves emitted pre-doubled, see overviewCardMarkup() and its
-     siblings) can express half-unit sizes as a whole number of tracks --
-     grid-column/row: span only accepts an integer track count. Tablet and
-     portrait keep their own, separate 12-column rule (ha-smartdash-
-     responsive.css) and are unaffected.
+  /* The desktop track count is 4x the nominal 12-column / 6-row unit scale
+     (48 / 24) so --desktop-w/-h (emitted pre-multiplied by 4, see
+     overviewCardMarkup() and its siblings) can express quarter-unit sizes
+     as a whole number of tracks -- grid-column/row: span only accepts an
+     integer track count. Tablet and portrait keep their own, separate
+     12-column rule (ha-smartdash-responsive.css) and are unaffected.
 
      Columns use minmax(0, 1fr): a fraction of the container's own width,
-     so doubling the track count and the span together is neutral -- each
-     track is half as wide, but a whole-unit card now spans twice as many
-     of them, landing at the exact same pixel width. Rows are NOT the same
-     shape: grid-auto-rows below is an absolute 260px floor, not a fraction
-     of anything, so doubling the row span without also halving that floor
-     would double every card's rendered height. Halving it here keeps a
-     whole-unit card's height identical to before. */
-  grid-template-columns: repeat(24, minmax(0, 1fr));
+     so multiplying the track count and the span together is neutral for
+     the CARD'S OWN width -- each track is a quarter as wide, but a
+     whole-unit card now spans four times as many of them, landing at the
+     same pixel width, IF the container is wide enough. `gap` is a fixed
+     12px between every adjacent track, and that overhead scales with the
+     multiplier (47 gaps at 4x vs 11 at 1x): push the multiplier too high
+     on too narrow a container and the gap overhead alone can exceed the
+     available width, silently pushing cards outside the grid entirely
+     (verified failure mode at 10x on anything under ~1500px). 4x keeps
+     enough margin to stay correct down to a ~700px-wide grid.
+
+     Rows are NOT the same shape as columns: grid-auto-rows below is an
+     absolute pixel floor, not a fraction of anything, so multiplying the
+     row span without dividing that floor by the same factor would
+     multiply every card's rendered height (this broke v0.8.11). Dividing
+     it here (260px / 4) keeps a whole-unit card's height identical to
+     before. */
+  grid-template-columns: repeat(48, minmax(0, 1fr));
   grid-template-rows: none;
   grid-auto-flow: dense;
-  grid-auto-rows: minmax(130px, 1fr);
+  grid-auto-rows: minmax(65px, 1fr);
   align-content: start;
   overflow-x: hidden;
   overflow-y: auto;
 }
 .beast-overview-grid.is-freeform > .beast-ov-card {
-  grid-column: span min(var(--desktop-w), 24) !important;
-  grid-row: span min(var(--desktop-h), 12) !important;
+  grid-column: span min(var(--desktop-w), 48) !important;
+  grid-row: span min(var(--desktop-h), 24) !important;
   align-self: stretch;
   height: auto;
   min-width: 0;
