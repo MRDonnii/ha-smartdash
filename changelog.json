@@ -1,5 +1,16 @@
 [
   {
+    "version": "20260902-21",
+    "tag": "v0.8.24",
+    "date": "2026-09-02",
+    "changes": [
+      {
+        "da": "Ventilationskortets veksler viser nu varmegenvindings-procenten i midten af rotoren, ligesom det rigtige Home Assistant-kort, og skjuler den (viser \"--\") mens bypass er åben. Værdien blev allerede hentet fra den korrekte Dantherm-sensor (temperatureffektivitet), men blev aldrig faktisk vist noget sted.",
+        "en": "The ventilation card's heat exchanger now shows the heat recovery percentage in the middle of the rotor, matching the real Home Assistant card, and hides it (shows \"--\") while bypass is open. The value was already being read from the correct Dantherm sensor (temperature efficiency) but was never actually displayed anywhere."
+      }
+    ]
+  },
+  {
     "version": "20260902-20",
     "tag": "v0.8.23",
     "date": "2026-09-02",

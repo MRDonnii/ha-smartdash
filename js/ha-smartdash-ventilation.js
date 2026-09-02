@@ -265,6 +265,7 @@ window.BeastVentilation = (() => {
           </g>
           ${duct('cold',coldPath,'supply_fan_rpm')}${duct('warm',warmPath,'extract_fan_rpm')}
           <path class="hrv-core" d="M194 99 L230 138 194 177 158 138Z"/><path class="hrv-fin" d="M177 119 L211 156 M171 128 L203 164 M187 111 L218 145"/>
+          <g class="hrv-core-label" text-anchor="middle" aria-label="${t(...fields.heat_recovery)}: ${recovery}"><text class="hrv-core-value" x="194" y="134">${recovery}</text><text class="hrv-core-caption" x="194" y="148">${t('Genvinding','Recovery')}</text></g>
 
           ${fan('supply_fan_rpm','supply',106)}${fan('extract_fan_rpm','extract',170)}
           ${coilDetails}
@@ -300,7 +301,7 @@ window.BeastVentilation = (() => {
     const cold = bypassOpen ? `M${left} ${top} H${right}` : `M${left} ${top} H${cx-49} Q${cx-30} ${top} ${cx-13} ${cy-8} L${cx+17} ${cy+15} Q${cx+30} ${bottom} ${cx+50} ${bottom} H${right}`;
     const warm = bypassOpen ? `M${right} ${bottom} H${left}` : `M${right} ${top} H${cx+50} Q${cx+30} ${top} ${cx+13} ${cy-8} L${cx-17} ${cy+15} Q${cx-30} ${bottom} ${cx-49} ${bottom} H${left}`;
     svg.querySelector('.hrv-house').setAttribute('transform', `scale(${sx} ${sy})`);
-    svg.querySelectorAll('.hrv-core,.hrv-fin').forEach(el => el.setAttribute('transform', `translate(${cx-194} ${cy-138})`));
+    svg.querySelectorAll('.hrv-core,.hrv-fin,.hrv-core-label').forEach(el => el.setAttribute('transform', `translate(${cx-194} ${cy-138})`));
     const coilXForColor = (cx + 50 + right) / 2;
     const hasCoil = config().showAfterheat === true;
     const finalKey = hasCoil && config().entities?.afterheat_after ? 'afterheat_after' : 'supply_temperature';

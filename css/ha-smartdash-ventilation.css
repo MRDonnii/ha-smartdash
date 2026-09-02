@@ -13,6 +13,7 @@
 @media(max-width:760px){.hrv-card-host{min-height:285px}.smartdash-hrv{min-height:285px}}
 
 .hrv-house{fill:#f2994a14;stroke:#86afc244;stroke-width:1.3;stroke-linejoin:round}.hrv-svg-zone{font-size:10px;font-weight:600;letter-spacing:1.5px;fill:var(--ink-muted,#a8b2c2)}.hrv-svg-temp .label{font-size:11px;fill:var(--ink-muted,#a8b2c2)}.hrv-svg-temp .value{font-size:24px;font-weight:600;letter-spacing:-.7px}.hrv-coil-face{fill:#222c38;stroke:#ad927877;stroke-width:1}.hrv-coil-divider{stroke:#ffffff20;stroke-width:1}.hrv-svg-small{font-size:9px;fill:var(--ink-muted,#a8b2c2)}.hrv-svg-coil-value{font-size:17px;font-weight:600;fill:var(--ink,#eef2f9)}.hrv-svg-delta{font-size:13px;fill:var(--ink,#eef2f9)}.hrv-coil.active .hrv-coil-face{stroke:#da767080;fill:#302529}
+.hrv-core-value{font-size:14px;font-weight:650;fill:var(--ink,#eef2f9)}.hrv-core-caption{font-size:6px;letter-spacing:.04em;fill:var(--ink-muted,#a8b2c2)}
 /* Inactive: nearly transparent, reading as sitting behind the duct it's
    painted on top of. Active: back to full opacity plus a warm accent, so
    the transition itself (not just the glow) sells "the coil switched on". */
