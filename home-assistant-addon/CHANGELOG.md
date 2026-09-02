@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.8.27
+
+- Clicking a camera now shows that camera's own last-known thumbnail
+  immediately as a placeholder, reusing the picture already sitting in
+  the camera strip -- no waiting, no black frame -- while the real
+  live stream or full-resolution picture loads in behind it, then
+  swaps in automatically once that's ready. The placeholder is shown
+  slightly dimmed so it reads as "still loading" without looking
+  broken.
+
 ## 0.8.26
 
 - Fixed a real regression from v0.8.23's camera click-switch fix: a

@@ -1,5 +1,16 @@
 [
   {
+    "version": "20260902-24",
+    "tag": "v0.8.27",
+    "date": "2026-09-02",
+    "changes": [
+      {
+        "da": "Klik på et kamera viser nu straks det kameras eget senest kendte billede som en pladsholder, ved at genbruge billedet der allerede sidder i kamerastriben -- ingen ventetid, intet sort billede -- mens den rigtige livestream eller det fulde billede i høj opløsning hentes i baggrunden og skiftes ind automatisk når det er klar. Pladsholderen vises let nedtonet, så den læses som \"stadig ved at indlæse\" uden at se defekt ud.",
+        "en": "Clicking a camera now shows that camera's own last-known thumbnail immediately as a placeholder, reusing the picture already sitting in the camera strip -- no waiting, no black frame -- while the real live stream or full-resolution picture loads in behind it, then swaps in automatically once that's ready. The placeholder is shown slightly dimmed so it reads as \"still loading\" without looking broken."
+      }
+    ]
+  },
+  {
     "version": "20260902-23",
     "tag": "v0.8.26",
     "date": "2026-09-02",
