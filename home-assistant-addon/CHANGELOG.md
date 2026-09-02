@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.8.11
+
+- Cards on the overview and every other page can now be resized in
+  half-unit steps, not just whole ones, both by dragging the corner
+  handle and from the card's own settings dialog.
+
 ## 0.8.10
 
 - Migrating an already-enabled ventilation card now places it right

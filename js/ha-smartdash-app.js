@@ -894,7 +894,10 @@ function overviewSlotMarkup(slot, position, size) {
 // and which has no per-card sizing at all.
 function overviewCardMarkup(card) {
   const position = `beast-ov-card--${card.type}`;
-  const size = ` data-builder-card="${overviewEscape(card.id)}" style="--desktop-w:${Number(card.desktop?.w)||4};--desktop-h:${Number(card.desktop?.h)||1};--tablet-w:${Number(card.tablet?.w)||1};--tablet-h:${Number(card.tablet?.h)||1};--portrait-h:${Number(card.portrait?.h)||1};"`;
+  // --desktop-w/-h are emitted pre-doubled: the freeform grid runs 24
+  // desktop tracks (not 12) so half-unit sizes land on a whole track --
+  // see .beast-overview-grid.is-freeform in ha-smartdash-layout.css.
+  const size = ` data-builder-card="${overviewEscape(card.id)}" style="--desktop-w:${(Number(card.desktop?.w)||4)*2};--desktop-h:${(Number(card.desktop?.h)||1)*2};--tablet-w:${Number(card.tablet?.w)||1};--tablet-h:${Number(card.tablet?.h)||1};--portrait-h:${Number(card.portrait?.h)||1};"`;
   return overviewSlotMarkup(card, position, size);
 }
 
