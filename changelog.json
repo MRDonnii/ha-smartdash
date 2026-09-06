@@ -1,5 +1,20 @@
 [
   {
+    "version": "20260906-1",
+    "tag": "v0.8.32",
+    "date": "2026-09-06",
+    "changes": [
+      {
+        "da": "Nyt: administrationens login-skærm søger nu automatisk efter Home Assistant på det lokale netværk, så adressen som regel ikke skal skrives ind manuelt. Fundne installationer vises som valgmuligheder; en gemt adresse gør at søgningen springes over.",
+        "en": "New: Administration's login screen now automatically searches the local network for Home Assistant, so the address usually doesn't need to be typed in by hand. Found installations are offered as choices; an already-saved address skips the search."
+      },
+      {
+        "da": "Nyt: det store kamera på Kamera-siden kan nu vise en rigtig direkte visning for kameraer uden en go2rtc-stream (fx nogle UniFi Protect- eller indbyggede kameraer), i stedet for kun stillbilleder. Vælges under Administration som standard, eller pr. kamera fra kameraets eget menu-punkt (⋮).",
+        "en": "New: the featured camera on the Cameras page can now show a genuine live view for cameras without a go2rtc stream (e.g. some UniFi Protect or built-in cameras), instead of stills only. Set as a default in Administration, or per camera from that camera's own menu (⋮)."
+      }
+    ]
+  },
+  {
     "version": "20260903-2",
     "tag": "v0.8.31",
     "date": "2026-09-03",

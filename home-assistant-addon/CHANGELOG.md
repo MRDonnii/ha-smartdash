@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.8.32
+
+- Administration's login screen now automatically searches the local
+  network for Home Assistant instances.
+- The Cameras page's featured view can now show a genuine live stream for
+  cameras without a go2rtc stream (e.g. some UniFi Protect or built-in
+  cameras), as a default or per camera.
+
 ## 0.8.31
 
 - Reverted v0.8.30: the overview page's 3 cameras are back to live

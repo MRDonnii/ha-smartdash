@@ -184,6 +184,7 @@
       groups.get(info.slug).push(info);
     });
     const qualityByCamera = BeastConfig.get("pageLayouts.cameras.qualityByCamera") || {};
+    const liveFallbackOverrides = BeastConfig.get("pageLayouts.cameras.liveFallbackByCamera") || {};
     const rank = { high: 0, medium: 1, standard: 2, low: 3 };
     const cameras = [...groups.values()].map((variants) => {
       variants.sort((a, b) => (rank[a.quality] ?? 9) - (rank[b.quality] ?? 9));
@@ -201,7 +202,8 @@
       const selected = selectedOption?.entityId ? (variants.find((variant) => variant.entityId === selectedOption.entityId) || variants[0]) : variants[0];
       const selectedQuality = selectedOption?.quality || selected.quality;
       const resolvedStreamName = selectedOption?.streamName || selected.streamName || null;
-      return { ...selected, variants, selectedQuality, qualityOptions, useSub: selectedQuality === "low", resolvedStreamName, streamName: resolvedStreamName || selected.streamName };
+      const liveFallbackMode = liveFallbackOverrides[variants[0].slug] || "auto";
+      return { ...selected, variants, selectedQuality, qualityOptions, useSub: selectedQuality === "low", resolvedStreamName, streamName: resolvedStreamName || selected.streamName, liveFallbackMode };
     });
     const savedOrder = BeastConfig.get("pageLayouts.cameras.cameraOrder") || [];
     const orderIndex = new Map((Array.isArray(savedOrder) ? savedOrder : []).map((slug, index) => [slug, index]));
@@ -255,9 +257,57 @@
     document.dispatchEvent(new CustomEvent("beast:camera-quality-changed", { detail: { slug: camera.slug, quality } }));
   }
 
+  // The Cameras page's own featured view is the one place in the app that
+  // still hard-codes snapshot-only for a camera without a go2rtc stream
+  // (see render()/selectFeaturedCamera() below) -- go2rtc cameras are
+  // already live everywhere via the WebRTC iframe branch above, and every
+  // *other* caller of sharedCameraMarkup() (overview, rooms, pool, the
+  // doorbell/mail/printer banners) already attempts Home Assistant's own
+  // live proxy stream by default, untouched by any of this. This setting
+  // exists only to make that one remaining gap -- a UniFi Protect camera,
+  // or any other source, added straight to Home Assistant without going
+  // through go2rtc -- user-choosable there too, instead of permanently off.
+  function liveFallbackDefault() {
+    return BeastConfig.get("panels.cameras.liveFallback") === "always" ? "always" : "auto";
+  }
+
+  // A per-camera choice always wins over the admin-wide default -- "auto"
+  // literally means "follow that default", not a third state of its own.
+  function effectiveLiveFallback(camera) {
+    if (camera?.liveFallbackMode === "always") return true;
+    if (camera?.liveFallbackMode === "never") return false;
+    return liveFallbackDefault() === "always";
+  }
+
+  function setCameraLiveFallback(camera, mode) {
+    if (!camera) return;
+    const current = BeastConfig.get("pageLayouts.cameras.liveFallbackByCamera") || {};
+    const next = { ...current };
+    if (mode === "auto") delete next[camera.slug]; else next[camera.slug] = mode;
+    BeastConfig.set("pageLayouts.cameras.liveFallbackByCamera", next);
+    document.dispatchEvent(new CustomEvent("beast:camera-quality-changed", { detail: { slug: camera.slug } }));
+  }
+
+  const LIVE_FALLBACK_CHOICES = [
+    ["auto", "Følg standardindstilling"],
+    ["always", "Altid direkte visning"],
+    ["never", "Kun stillbilleder"]
+  ];
+
   function qualityMenuMarkup(camera) {
-    if (!camera?.qualityOptions || camera.qualityOptions.length < 2) return "";
-    return `<div class="beast-camera-quality-menu" data-camera-quality-slug="${escapeHtml(camera.slug)}"><button type="button" class="beast-camera-quality-toggle" aria-label="Vælg kamerakvalitet" aria-expanded="false">⋮</button><div class="beast-camera-quality-popover" hidden><small>Livekvalitet</small>${camera.qualityOptions.map((option) => `<button type="button" data-camera-quality="${option.quality}" class="${option.quality === camera.selectedQuality ? "is-active" : ""}"><span>${escapeHtml(option.label)}</span>${option.quality === camera.selectedQuality ? BeastCore.icon("check", { size: 16 }) : ""}</button>`).join("")}</div></div>`;
+    const hasQualityChoice = camera?.qualityOptions?.length > 1;
+    // Meaningless (and hidden) for a go2rtc-backed camera: it already gets
+    // a real live WebRTC feed unconditionally, and this setting has no
+    // effect on that branch at all -- see sharedCameraMarkup() below.
+    const hasLiveFallbackChoice = camera && !camera.streamName;
+    if (!hasQualityChoice && !hasLiveFallbackChoice) return "";
+    const qualitySection = hasQualityChoice
+      ? `<small>Livekvalitet</small>${camera.qualityOptions.map((option) => `<button type="button" data-camera-quality="${option.quality}" class="${option.quality === camera.selectedQuality ? "is-active" : ""}"><span>${escapeHtml(option.label)}</span>${option.quality === camera.selectedQuality ? BeastCore.icon("check", { size: 16 }) : ""}</button>`).join("")}`
+      : "";
+    const liveFallbackSection = hasLiveFallbackChoice
+      ? `<small>Det store kamera</small>${LIVE_FALLBACK_CHOICES.map(([value, label]) => `<button type="button" data-camera-live-fallback="${value}" class="${(camera.liveFallbackMode || "auto") === value ? "is-active" : ""}"><span>${escapeHtml(label)}</span>${(camera.liveFallbackMode || "auto") === value ? BeastCore.icon("check", { size: 16 }) : ""}</button>`).join("")}`
+      : "";
+    return `<div class="beast-camera-quality-menu" data-camera-quality-slug="${escapeHtml(camera.slug)}"><button type="button" class="beast-camera-quality-toggle" aria-label="Kameraindstillinger" aria-expanded="false">⋮</button><div class="beast-camera-quality-popover" hidden>${qualitySection}${liveFallbackSection}</div></div>`;
   }
 
   // GO2RTC_BASE_URL is only assigned in init(), i.e. when the Cameras panel
@@ -310,7 +360,16 @@
     root?.querySelectorAll("[data-camera-quality-slug]").forEach((menu) => {
       const toggle = menu.querySelector(".beast-camera-quality-toggle"); const popover = menu.querySelector(".beast-camera-quality-popover");
       toggle?.addEventListener("click", (event) => { event.preventDefault(); event.stopPropagation(); const open = toggle.getAttribute("aria-expanded") === "true"; toggle.setAttribute("aria-expanded", String(!open)); popover.hidden = open; });
-      popover?.addEventListener("click", (event) => { const button = event.target.closest("[data-camera-quality]"); if (!button) return; event.preventDefault(); event.stopPropagation(); const camera = discoverCameras().find((item) => item.slug === menu.dataset.cameraQualitySlug); setCameraQuality(camera, button.dataset.cameraQuality); onQualityChanged?.(); });
+      popover?.addEventListener("click", (event) => {
+        const qualityButton = event.target.closest("[data-camera-quality]");
+        const liveFallbackButton = event.target.closest("[data-camera-live-fallback]");
+        if (!qualityButton && !liveFallbackButton) return;
+        event.preventDefault(); event.stopPropagation();
+        const camera = discoverCameras().find((item) => item.slug === menu.dataset.cameraQualitySlug);
+        if (qualityButton) setCameraQuality(camera, qualityButton.dataset.cameraQuality);
+        else setCameraLiveFallback(camera, liveFallbackButton.dataset.cameraLiveFallback);
+        onQualityChanged?.();
+      });
     });
   }
 
@@ -531,7 +590,7 @@
 
     const host = document.createElement("div");
     host.style.cssText = "position:absolute;inset:0;visibility:hidden;pointer-events:none;";
-    host.innerHTML = `${sharedCameraMarkup(camera, { className: "beast-camera-featured-render", audio: true, label: true, motion: true, liveFallback: false })}${camera.streamName ? `<button type="button" class="beast-camera-audio-toggle" id="beastCameraAudioToggle" aria-pressed="false">${BeastCore.icon("volume-mute", { size: 17 })}<span>Lyd fra</span></button>` : ""}`;
+    host.innerHTML = `${sharedCameraMarkup(camera, { className: "beast-camera-featured-render", audio: true, label: true, motion: true, liveFallback: effectiveLiveFallback(camera) })}${camera.streamName ? `<button type="button" class="beast-camera-audio-toggle" id="beastCameraAudioToggle" aria-pressed="false">${BeastCore.icon("volume-mute", { size: 17 })}<span>Lyd fra</span></button>` : ""}`;
     featuredWrap.appendChild(host);
     waitForFeaturedMedia(host).then(() => {
       // A later click may have superseded this one while we were waiting.
@@ -571,7 +630,7 @@
     containerEl.innerHTML = `
       <button type="button" class="beast-page-edit-trigger" id="beastCamerasLayoutEdit" aria-label="Rediger kameralayout">⋮</button>
       <div class="beast-camera-featured" data-camera-fit="${featuredFit}">
-        ${sharedCameraMarkup(featured, { className: "beast-camera-featured-render", audio: true, label: true, motion: true, liveFallback: false })}
+        ${sharedCameraMarkup(featured, { className: "beast-camera-featured-render", audio: true, label: true, motion: true, liveFallback: effectiveLiveFallback(featured) })}
         ${featured.streamName ? `<button type="button" class="beast-camera-audio-toggle" id="beastCameraAudioToggle" aria-pressed="false">${BeastCore.icon("volume-mute", { size: 17 })}<span>Lyd fra</span></button>` : ""}
       </div>
       <div class="beast-camera-strip" id="beastCameraStrip"></div>
