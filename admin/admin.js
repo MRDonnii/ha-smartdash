@@ -76,7 +76,10 @@
       { key: "go2rtcBaseUrl", label: "go2rtc-adresse", type: "text", placeholder: "http://server:1984",
         hint: "Valgfri, men anbefalet: adressen på en go2rtc-server (ofte en Home Assistant-tilføjelse) gør kameraerne rigtig live med det samme, uden forsinkelse. Uden den vises kameraerne stadig, men opdateres langsommere via Home Assistant." },
       { key: "cameraEntities", label: "Kamera-entities", type: "multi", domain: "camera",
-        hint: "Kameraer mærket \"Live\" har en go2rtc-stream og vises hurtigt og direkte. Kameraer mærket \"Langsommere\" vises stadig fint, men opdateres med lidt forsinkelse, fordi de går via Home Assistant i stedet." }
+        hint: "Kameraer mærket \"Live\" har en go2rtc-stream og vises hurtigt og direkte. Kameraer mærket \"Langsommere\" vises stadig fint, men opdateres med lidt forsinkelse, fordi de går via Home Assistant i stedet." },
+      { key: "liveFallback", label: "Det store kamera uden go2rtc", type: "select",
+        choices: [["auto", "Stillbilleder (anbefalet, sparer båndbredde)"], ["always", "Altid direkte visning"]],
+        hint: "Gælder kun det store kamera på Kamera-siden, og kun for kameraer uden en go2rtc-stream (fx nogle UniFi Protect- eller indbyggede kameraer). \"Altid direkte visning\" bruger Home Assistants egen proxy-stream, som er tungere for Home Assistant-serveren end et stillbillede -- kan sættes pr. kamera fra kameraets eget menu-punkt (⋮) også." }
     ]},
     { id: "security", title: "Sikkerhed", description: "Alarmpaneler, dørlåse og sensorer for døre og vinduer.", fields: [
       { key: "primaryAlarm", label: "Primært alarmsystem", type: "single", domain: "alarm_control_panel" },
@@ -2547,10 +2550,46 @@
     }
   });
 
+  // Home Assistant instances found automatically on the local network by
+  // api/discover-ha.php (server-side, since the server -- not the browser
+  // tab -- is what actually sits on the LAN). Only offered when there's no
+  // address already configured: once BeastAuth/BeastConfig already knows
+  // one, re-scanning on every login-screen visit would just be noise.
+  async function discoverHaCandidates() {
+    try {
+      const response = await fetch(localApiUrl("discover-ha.php"), { cache: "no-store" });
+      if (!response.ok) return [];
+      const payload = await response.json();
+      return Array.isArray(payload?.candidates) ? payload.candidates : [];
+    } catch (_) {
+      return [];
+    }
+  }
+
   function renderLogin(message) {
     const diagnostics = BeastAuth.getDiagnostics();
     const diagnosticText = diagnostics.length ? JSON.stringify(diagnostics, null, 2) : "Ingen loginfejl registreret i denne browserfane.";
-    root.innerHTML = `<div class="admin-login"><div class="admin-login-card"><div class="admin-login-logo">${brandLogoMarkup("login")}</div><small>Administration</small><h1>Forbind Home Assistant</h1><p class="admin-login-message">${escapeHtml(message || "Vælg almindeligt Home Assistant-login eller brug et Long-Lived Access Token. Oplysninger gemmes kun i denne browser.")}</p><form id="adminLoginForm"><input type="url" id="adminHaUrl" value="${escapeHtml(BeastAuth.getHaBaseUrl() || `${window.location.origin}${BeastAuth.HA_PROXY_PATH}`)}" placeholder="Home Assistant-adresse" required><button type="submit">Log ind med Home Assistant</button></form><details class="admin-token-login"><summary>Log ind med token</summary><form id="adminTokenLoginForm"><label>Long-Lived Access Token<textarea id="adminHaToken" rows="4" autocomplete="off" spellcheck="false" placeholder="Indsæt token fra din Home Assistant-profil" required></textarea></label><small>Tokenet valideres mod Home Assistant og gemmes kun lokalt i browseren. Det vises aldrig i fejlloggen.</small><button type="submit">Kontrollér token og log ind</button></form></details><details class="admin-login-diagnostics"${diagnostics.length ? " open" : ""}><summary>Fejllog og forbindelsesdetaljer</summary><pre id="adminLoginDiagnosticText">${escapeHtml(diagnosticText)}</pre><div><button type="button" id="adminCopyLoginDiagnostics">Kopiér fejllog</button><button type="button" id="adminClearLoginDiagnostics">Ryd log</button></div></details></div></div>`;
+    const existingAddress = BeastAuth.getHaBaseUrl();
+    root.innerHTML = `<div class="admin-login"><div class="admin-login-card"><div class="admin-login-logo">${brandLogoMarkup("login")}</div><small>Administration</small><h1>Forbind Home Assistant</h1><p class="admin-login-message">${escapeHtml(message || "Vælg almindeligt Home Assistant-login eller brug et Long-Lived Access Token. Oplysninger gemmes kun i denne browser.")}</p><form id="adminLoginForm"><input type="url" id="adminHaUrl" value="${escapeHtml(existingAddress || `${window.location.origin}${BeastAuth.HA_PROXY_PATH}`)}" placeholder="Home Assistant-adresse" required><div class="admin-login-discovery" id="adminLoginDiscovery" hidden></div><button type="submit">Log ind med Home Assistant</button></form><details class="admin-token-login"><summary>Log ind med token</summary><form id="adminTokenLoginForm"><label>Long-Lived Access Token<textarea id="adminHaToken" rows="4" autocomplete="off" spellcheck="false" placeholder="Indsæt token fra din Home Assistant-profil" required></textarea></label><small>Tokenet valideres mod Home Assistant og gemmes kun lokalt i browseren. Det vises aldrig i fejlloggen.</small><button type="submit">Kontrollér token og log ind</button></form></details><details class="admin-login-diagnostics"${diagnostics.length ? " open" : ""}><summary>Fejllog og forbindelsesdetaljer</summary><pre id="adminLoginDiagnosticText">${escapeHtml(diagnosticText)}</pre><div><button type="button" id="adminCopyLoginDiagnostics">Kopiér fejllog</button><button type="button" id="adminClearLoginDiagnostics">Ryd log</button></div></details></div></div>`;
+    if (!existingAddress) {
+      const discoveryEl = document.getElementById("adminLoginDiscovery");
+      discoveryEl.hidden = false;
+      discoveryEl.innerHTML = `<small>${BeastCore.icon("wifi", { size: 13 })}Søger efter Home Assistant på netværket…</small>`;
+      discoverHaCandidates().then((candidates) => {
+        const addressField = document.getElementById("adminHaUrl");
+        if (!addressField || !candidates.length) { discoveryEl.hidden = true; return; }
+        // A single match is filled in but left for the user to confirm with
+        // "Log ind" -- not submitted automatically, since that would log in
+        // to whatever the scan found the moment the screen opens.
+        if (candidates.length === 1) addressField.value = candidates[0].url;
+        discoveryEl.innerHTML = `<small>${BeastCore.icon("wifi", { size: 13 })}${candidates.length === 1 ? "Fundet på netværket:" : "Fundet på netværket -- vælg én:"}</small>
+          <div class="admin-login-discovery-list">${candidates.map((candidate) => `<button type="button" data-discovered-url="${escapeHtml(candidate.url)}">${escapeHtml(candidate.label)}</button>`).join("")}</div>`;
+        discoveryEl.querySelectorAll("[data-discovered-url]").forEach((button) => button.addEventListener("click", () => {
+          addressField.value = button.dataset.discoveredUrl;
+          discoveryEl.querySelectorAll("[data-discovered-url]").forEach((other) => other.classList.toggle("is-active", other === button));
+        }));
+      });
+    }
     document.getElementById("adminLoginForm").addEventListener("submit", async (event) => {
       event.preventDefault();
       BeastAuth.setHaBaseUrl(document.getElementById("adminHaUrl").value);

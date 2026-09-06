@@ -418,6 +418,17 @@ button { cursor: pointer; }
 .admin-login-card input { min-height: 48px; padding: 0 13px; border: 1px solid var(--border-strong); border-radius: 11px; background: var(--surface-solid); color: var(--ink); }
 .admin-login-card button { min-height: 48px; border: 0; border-radius: 11px; background: var(--accent-b); color: #04120e; font-weight: 850; }
 .admin-login-message { padding: 11px 13px; border: 1px solid var(--border); border-radius: 11px; background: var(--surface-solid); }
+/* Home Assistant instances found by api/discover-ha.php -- see renderLogin()
+   in admin.js. Sits between the address field and the submit button so a
+   found candidate reads as "here, pick one" rather than a separate,
+   disconnected panel. */
+.admin-login-discovery { display: grid; gap: 8px; margin-top: -4px; }
+.admin-login-discovery[hidden] { display: none; }
+.admin-login-discovery > small { display: flex; align-items: center; gap: 6px; color: var(--ink-muted); font-size: 12px; font-weight: 800; }
+.admin-login-discovery-list { display: flex; flex-wrap: wrap; gap: 8px; }
+.admin-login-discovery-list button { min-height: 38px; padding: 0 14px; border: 1px solid var(--border-strong); border-radius: 999px; background: var(--surface-solid); color: var(--ink); font-size: 13px; font-weight: 700; cursor: pointer; touch-action: manipulation; }
+.admin-login-discovery-list button:hover { border-color: var(--accent-border); }
+.admin-login-discovery-list button.is-active { border-color: var(--accent-b); background: var(--accent-soft); color: var(--accent-b); }
 .admin-token-login,.admin-login-diagnostics { margin-top: 14px; border: 1px solid var(--border); border-radius: 12px; background: var(--surface-solid); }
 .admin-token-login summary,.admin-login-diagnostics summary { padding: 13px 15px; cursor: pointer; font-weight: 800; }
 .admin-token-login form { margin: 0; padding: 0 14px 14px; }
