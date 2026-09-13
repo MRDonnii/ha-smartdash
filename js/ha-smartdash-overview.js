@@ -46,8 +46,36 @@
   let AULA_LESSON_MINUTES = 10;
   const NOTIFICATION_SNOOZE_KEY = "beast_notification_snooze_v1";
   const OVERVIEW_CAMERA_LIMIT = 3;
+  const OVERVIEW_DETECTION_HOLD_MS = 30000;
+  const OVERVIEW_DETECTION_TYPES = [
+    { key: "smoke", patterns: ["smoke alarm"] },
+    { key: "co", patterns: ["carbon monoxide", " co detected"] },
+    { key: "person", patterns: ["person detected", "person"] },
+    { key: "vehicle", patterns: ["vehicle detected", "vehicle"] },
+    { key: "animal", patterns: ["animal detected", "animal"] },
+    { key: "package", patterns: ["package"] },
+    { key: "license_plate", patterns: ["license plate"] },
+    { key: "face", patterns: ["face detected", "face"] },
+    { key: "car", patterns: ["car detected"] },
+    { key: "pet", patterns: ["pet detected"] },
+    { key: "doorbell", patterns: ["doorbell", "ring"] },
+    { key: "speaking", patterns: ["speaking detected", "speaking"] },
+    { key: "audio", patterns: ["audio object detected", "sound detection"] },
+    { key: "siren", patterns: ["siren"] },
+    { key: "bark", patterns: ["bark"] },
+    { key: "car_alarm", patterns: ["car alarm"] },
+    { key: "car_horn", patterns: ["car horn"] },
+    { key: "glass_break", patterns: ["glass break"] },
+    { key: "object", patterns: ["object detected"] },
+    { key: "motion", patterns: ["motion detection", "motion"] }
+  ];
   let UTILITY_VIEWS = {};
   const overviewCameraSelectorUnsubscribers = new Map();
+  const overviewCameraDetectionUnsubscribers = new Map();
+  let overviewCameraDetectionRegistry = null;
+  let overviewCameraDetectionLoad = null;
+  let overviewCameraDetectionBindings = new Map();
+  let overviewCameraDetectionExpiryTimer = null;
 
   function overviewCameraGroups() {
     const configured = BeastConfig.get("overviewCameraGroups");
@@ -131,6 +159,16 @@
     return groups.map((group) => ({ ...group, cameras: everyCamera }));
   }
 
+  function defaultOverviewCameraGroups(allCameras) {
+    const cameras = allCameras.map((camera) => ({ key: camera.slug, name: camera.label, entityId: camera.entityId }));
+    return Array.from({ length: Math.min(OVERVIEW_CAMERA_LIMIT, cameras.length) }, (_, index) => ({
+      id: `view-${index + 1}`,
+      name: t(`Kameravindue ${index + 1}`, `Camera view ${index + 1}`),
+      selectorEntity: "",
+      cameras
+    }));
+  }
+
   function ensureOverviewCameraSelectorSubscriptions(groups) {
     const wanted = new Set(groups.map((group) => group.selectorEntity).filter(Boolean));
     overviewCameraSelectorUnsubscribers.forEach((unsubscribe, entityId) => {
@@ -144,13 +182,82 @@
     });
   }
 
+  function detectionTypesForEntry(entry) {
+    const state = BeastHaSocket.getState(entry.entity_id);
+    const advertised = Array.isArray(state?.attributes?.event_types) ? state.attributes.event_types : [];
+    const direct = OVERVIEW_DETECTION_TYPES.find((type) => {
+      const text = `${entry.original_name || ""} ${entry.name || ""} ${entry.entity_id || ""}`.toLowerCase().replaceAll("_", " ");
+      return type.patterns.some((pattern) => text.includes(pattern));
+    });
+    return [...new Set([...advertised, direct?.key].filter((key) => OVERVIEW_DETECTION_TYPES.some((type) => type.key === key)))];
+  }
+
+  function rebuildOverviewCameraDetectionBindings(groups) {
+    if (!Array.isArray(overviewCameraDetectionRegistry)) return;
+    const next = new Map();
+    groups.flatMap((group) => group.cameras).forEach((camera) => {
+      if (next.has(camera.key)) return;
+      const cameraEntry = overviewCameraDetectionRegistry.find((entry) => entry.entity_id === camera.entityId);
+      if (!cameraEntry?.device_id) { next.set(camera.key, []); return; }
+      const bindings = [];
+      overviewCameraDetectionRegistry
+        .filter((entry) => entry.device_id === cameraEntry.device_id && !entry.disabled_by && (entry.entity_id.startsWith("binary_sensor.") || entry.entity_id.startsWith("event.")) && BeastHaSocket.getState(entry.entity_id))
+        .forEach((entry) => detectionTypesForEntry(entry).forEach((eventType) => bindings.push({ entityId: entry.entity_id, eventType })));
+      next.set(camera.key, bindings);
+    });
+    overviewCameraDetectionBindings = next;
+    const wanted = new Set([...next.values()].flat().map((binding) => binding.entityId));
+    overviewCameraDetectionUnsubscribers.forEach((unsubscribe, entityId) => {
+      if (wanted.has(entityId)) return;
+      unsubscribe(); overviewCameraDetectionUnsubscribers.delete(entityId);
+    });
+    wanted.forEach((entityId) => {
+      if (!overviewCameraDetectionUnsubscribers.has(entityId)) overviewCameraDetectionUnsubscribers.set(entityId, BeastHaSocket.subscribeEntity(entityId, renderCameras));
+    });
+  }
+
+  function ensureOverviewCameraDetectionDiscovery(groups) {
+    if (overviewCameraDetectionRegistry) { rebuildOverviewCameraDetectionBindings(groups); return; }
+    if (overviewCameraDetectionLoad) return;
+    overviewCameraDetectionLoad = BeastHaSocket.sendCommand("config/entity_registry/list")
+      .then((entries) => { overviewCameraDetectionRegistry = Array.isArray(entries) ? entries : []; rebuildOverviewCameraDetectionBindings(groups); renderCameras(); })
+      .catch(() => {})
+      .finally(() => { overviewCameraDetectionLoad = null; });
+  }
+
+  function overviewDetectionTimestamp(cameraKey) {
+    let newest = 0;
+    (overviewCameraDetectionBindings.get(cameraKey) || []).forEach((binding) => {
+      const state = BeastHaSocket.getState(binding.entityId);
+      if (!state) return;
+      if (binding.entityId.startsWith("binary_sensor.")) {
+        if (state.state === "on") newest = Math.max(newest, Date.parse(state.last_changed || "") || Date.now());
+        return;
+      }
+      const actual = [state.attributes?.event_type, ...(state.attributes?.smart_detect_types || [])].filter(Boolean);
+      if (actual.length && !actual.includes(binding.eventType)) return;
+      const changed = Math.max(Date.parse(state.state || "") || 0, Date.parse(state.last_changed || "") || 0);
+      if (changed && Date.now() - changed < OVERVIEW_DETECTION_HOLD_MS) newest = Math.max(newest, changed);
+    });
+    return newest;
+  }
+
   function resolveOverviewCameraGroup(group, modes) {
     const automaticKey = String(BeastHaSocket.getState(group.selectorEntity)?.state || "");
     const fixedKey = String(modes[group.id] || "");
     const savedAuto = overviewCameraAuto()[group.id];
     const autoKeys = Array.isArray(savedAuto) && savedAuto.length ? savedAuto : group.cameras.map((camera) => camera.key);
     const fallbackKey = String(overviewCameraFallbacks()[group.id] || "");
-    const requestedKey = fixedKey || (autoKeys.includes(automaticKey) ? automaticKey : fallbackKey || autoKeys[0]);
+    const detected = group.cameras
+      .filter((camera) => autoKeys.includes(camera.key))
+      .map((camera) => ({ key: camera.key, changed: overviewDetectionTimestamp(camera.key) }))
+      .filter((item) => item.changed > 0)
+      .sort((a, b) => b.changed - a.changed)[0];
+    const requestedKey = fixedKey || detected?.key || (autoKeys.includes(automaticKey) ? automaticKey : fallbackKey || autoKeys[0]);
+    if (detected) {
+      window.clearTimeout(overviewCameraDetectionExpiryTimer);
+      overviewCameraDetectionExpiryTimer = window.setTimeout(renderCameras, Math.max(250, detected.changed + OVERVIEW_DETECTION_HOLD_MS - Date.now() + 50));
+    }
     const choice = group.cameras.find((camera) => camera.key === requestedKey) || group.cameras[0];
     const camera = window.BeastCameras.resolveCamera(choice.entityId);
     return camera ? { group, choice, camera, fixedKey, automaticKey } : null;
@@ -1682,7 +1789,7 @@
     if (!area || !window.BeastCameras) return;
     const host = area;
     let allCameras = window.BeastCameras.getAllCameras("overview");
-    const configuredGroups = overviewCameraGroups();
+    let configuredGroups = overviewCameraGroups();
     const doorbellId = BeastConfig.get("appEntities.doorbellCamera");
     const doorbellCamera = doorbellId ? window.BeastCameras.resolveCamera(doorbellId) : null;
     if (doorbellCamera && !allCameras.some((camera) => camera.slug === doorbellCamera.slug)) allCameras = [doorbellCamera, ...allCameras];
@@ -1690,9 +1797,11 @@
       host.innerHTML = `<p class="beast-music-empty">Ingen kameraer.</p>`;
       return;
     }
+    if (!configuredGroups.length) configuredGroups = defaultOverviewCameraGroups(allCameras);
     const selectableGroups = groupsWithEveryOverviewCamera(configuredGroups, allCameras);
     const activeGroups = visibleOverviewCameraGroups(selectableGroups);
     ensureOverviewCameraSelectorSubscriptions(activeGroups);
+    ensureOverviewCameraDetectionDiscovery(activeGroups);
     const cameraBySlug = new Map(allCameras.map((camera) => [camera.slug, camera]));
     const groupSelections = activeGroups.map((group) => resolveOverviewCameraGroup(group, overviewCameraModes())).filter(Boolean);
     const centralSelection = BeastConfig.get("overviewCameraEntities");
@@ -1817,7 +1926,7 @@
     overlay.className = "beast-modal-overlay";
     overlay.innerHTML = `
       <div class="beast-modal beast-ov-camera-picker-modal" role="dialog" aria-modal="true" aria-label="${t("Vælg kameraer til forsiden", "Choose overview cameras")}">
-        <div class="beast-modal-header"><div><h3>${t("Vælg kameraer", "Choose cameras")}</h3><p class="beast-ov-camera-picker-help">${t("Hvert kamerafelt kan vælge mellem alle kameraer. Automatisk følger bevægelsesvalget fra Home Assistant; et fast valg bliver stående på denne skærm.", "Each camera tile can use any camera. Automatic follows Home Assistant's motion selection; a fixed choice stays on this display.")}</p></div><button type="button" class="beast-modal-close" data-close aria-label="${t("Luk", "Close")}">${BeastCore.icon("close", { size: 22 })}</button></div>
+        <div class="beast-modal-header"><div><h3>${t("Kameraopsætning", "Camera setup")}</h3><p class="beast-ov-camera-picker-help">${t("Vælg 1–3 kameravinduer. Automatisk skifter til det senest aktive kamera ud fra kameraets smart-, lyd- og bevægelsesdetektioner og går derefter tilbage til stjernen. Et fast valg bliver stående på denne skærm.", "Choose 1–3 camera views. Automatic switches to the most recently active camera using its smart, audio and motion detections, then returns to the starred fallback. A fixed choice stays on this display.")}</p></div><button type="button" class="beast-modal-close" data-close aria-label="${t("Luk", "Close")}">${BeastCore.icon("close", { size: 22 })}</button></div>
         <div class="beast-modal-body beast-ov-camera-group-editor">
           ${groups.map((group) => {
             const active = modes[group.id] || "";
