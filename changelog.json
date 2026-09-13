@@ -1,5 +1,14 @@
 [
   {
+    "version": "20260913-16",
+    "tag": "v0.8.48",
+    "date": "2026-09-13",
+    "changes": [{
+      "da": "Notifikations-popup'en har nu en 96 % tæt mørk flade, tydelig lys tekst og en let 12 px blur, så indholdet forbliver læsbart i både lyse og mørke temaer.",
+      "en": "The notification popup now uses a 96% opaque dark surface, clear light text and a subtle 12px blur so its content remains readable in both light and dark themes."
+    }]
+  },
+  {
     "version": "20260913-15",
     "tag": "v0.8.47",
     "date": "2026-09-13",
