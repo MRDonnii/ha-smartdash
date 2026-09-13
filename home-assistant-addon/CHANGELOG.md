@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.8.47
+
+- Completed notification history with category, time, navigation, snooze,
+  acknowledge and dismiss actions.
+
 ## 0.8.46
 
 - Preserved control focus while Health Center retests update in place.
