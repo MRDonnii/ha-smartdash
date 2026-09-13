@@ -1824,16 +1824,12 @@
             return `<fieldset data-overview-camera-group="${escapeHtml(group.id)}"><legend>${escapeHtml(group.name)}</legend>
               <label class="beast-ov-camera-group-visibility"><input type="checkbox" data-camera-group-visible ${visibleIds.has(group.id) ? "checked" : ""}><span><b>${t("Vis på forsiden", "Show on overview")}</b><small>${t("Slå fra for at vise færre kameraer", "Turn off to show fewer cameras")}</small></span></label>
               <label><input type="radio" name="camera-${escapeHtml(group.id)}" value="" ${active ? "" : "checked"}><span><b>${t("Automatisk", "Automatic")}</b><small>${t(`Følg ${group.name} fra Home Assistant`, `Follow ${group.name} from Home Assistant`)}</small></span></label>
-              ${group.cameras.map((camera) => `<div class="beast-ov-camera-group-camera"><label><input type="radio" name="camera-${escapeHtml(group.id)}" value="${escapeHtml(camera.key)}" ${active === camera.key ? "checked" : ""}><span><b>${escapeHtml(camera.name)}</b><small>${t("Fast kameravalg", "Fixed camera")}</small></span></label></div>`).join("")}
-              <div class="beast-ov-camera-auto-settings">
-                <strong>${t("Kameraer i automatisk skift", "Cameras in automatic rotation")}</strong>
-                <div class="beast-ov-camera-auto-grid">${group.cameras.map((camera) => {
-                  const saved = autoByGroup[group.id];
-                  const checked = !Array.isArray(saved) || saved.includes(camera.key);
-                  return `<label><input type="checkbox" data-camera-auto="${escapeHtml(camera.key)}" ${checked ? "checked" : ""}><span>${escapeHtml(camera.name)}</span></label>`;
-                }).join("")}</div>
-                <label class="beast-ov-camera-fallback"><span><b>${t("Fallback / favorit", "Fallback / favourite")}</b><small>${t("Vises når HA-valget ikke er med i automatisk skift", "Shown when HA selects a camera outside the automatic rotation")}</small></span><select data-camera-fallback><option value="">${t("Første valgte kamera", "First selected camera")}</option>${group.cameras.map((camera) => `<option value="${escapeHtml(camera.key)}" ${fallbackByGroup[group.id] === camera.key ? "selected" : ""}>${escapeHtml(camera.name)}</option>`).join("")}</select></label>
-              </div>
+              ${group.cameras.map((camera) => {
+                const saved = autoByGroup[group.id];
+                const inAutomatic = !Array.isArray(saved) || saved.includes(camera.key);
+                const favourite = fallbackByGroup[group.id] === camera.key;
+                return `<div class="beast-ov-camera-group-camera"><label><input type="radio" name="camera-${escapeHtml(group.id)}" value="${escapeHtml(camera.key)}" ${active === camera.key ? "checked" : ""}><span><b>${escapeHtml(camera.name)}</b><small>${t("Fast kameravalg", "Fixed camera")}</small></span></label><label class="beast-ov-camera-auto-toggle" title="${t("Med i automatisk skift", "Include in automatic rotation")}"><input type="checkbox" data-camera-auto="${escapeHtml(camera.key)}" ${inAutomatic ? "checked" : ""}><span>Auto</span></label><button type="button" class="beast-ov-camera-star${favourite ? " is-active" : ""}" data-camera-fallback="${escapeHtml(camera.key)}" aria-pressed="${favourite}" title="${t("Favorit og fallback", "Favourite and fallback")}">${favourite ? "★" : "☆"}</button></div>`;
+              }).join("")}
             </fieldset>`;
           }).join("")}
           <div class="beast-ov-camera-picker-actions"><span class="beast-ov-camera-picker-save-state" role="status" aria-live="polite"></span><button type="button" class="beast-btn beast-ov-camera-picker-done" data-save-camera-groups>${t("Gem kameravalg", "Save camera selection")}</button></div>
@@ -1841,6 +1837,14 @@
       </div>`;
     const close = () => overlay.remove();
     overlay.addEventListener("click", (event) => { if (event.target === overlay || event.target.closest("[data-close]")) close(); });
+    overlay.querySelectorAll("[data-camera-fallback]").forEach((button) => button.addEventListener("click", () => {
+      const fieldset = button.closest("[data-overview-camera-group]");
+      const wasActive = button.classList.contains("is-active");
+      fieldset.querySelectorAll("[data-camera-fallback]").forEach((item) => {
+        item.classList.remove("is-active"); item.textContent = "☆"; item.setAttribute("aria-pressed", "false");
+      });
+      if (!wasActive) { button.classList.add("is-active"); button.textContent = "★"; button.setAttribute("aria-pressed", "true"); }
+    }));
     overlay.querySelector("[data-save-camera-groups]")?.addEventListener("click", () => {
       const visible = groups.filter((group) => overlay.querySelector(`[data-overview-camera-group="${CSS.escape(group.id)}"] [data-camera-group-visible]`)?.checked).map((group) => group.id);
       if (!visible.length) {
@@ -1858,7 +1862,7 @@
           return;
         }
         nextAuto[group.id] = automatic;
-        const fallback = fieldset.querySelector("[data-camera-fallback]")?.value || "";
+        const fallback = fieldset.querySelector("[data-camera-fallback].is-active")?.dataset.cameraFallback || "";
         if (fallback) nextFallbacks[group.id] = fallback;
       }
       groups.forEach((group) => {
