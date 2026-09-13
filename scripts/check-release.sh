@@ -24,6 +24,7 @@ const latest = changelog[0];
 const addonConfig = read("home-assistant-addon/config.yaml");
 const addonChangelog = read("home-assistant-addon/CHANGELOG.md");
 const power = read("js/ha-smartdash-power.js");
+const auth = read("js/ha-smartdash-auth.js");
 const cameras = read("js/ha-smartdash-cameras.js");
 const overview = read("js/ha-smartdash-overview.js");
 const app = read("js/ha-smartdash-app.js");
@@ -57,6 +58,7 @@ if (!overview.includes("beast-ov-camera-star") || overview.includes("<select dat
 if (!overview.includes('sendCommand("config/entity_registry/list")') || !overview.includes("overviewDetectionTimestamp") || !overview.includes("defaultOverviewCameraGroups")) throw new Error("Overview cameras must use detection-driven automatic views by default.");
 if (!cameras.includes('querySelectorAll("img.beast-camera-snapshot")')) throw new Error("Periodic snapshot refresh must target image elements only.");
 if (!app.includes('!frame.closest("#beastOvCameras")')) throw new Error("Overview camera players must recover internally without outer iframe reloads.");
+if (!auth.includes("preloadAuthedImage") || !cameras.includes("preloadOverviewSnapshots") || !overview.includes("current.replaceWith(tile)")) throw new Error("Overview camera switching must use warmed posters and per-tile reconciliation.");
 if (!admin.includes('data-admin-view="health"') || !admin.includes('runHealthCheck') || !admin.includes('BeastHaSocket.sendCommand("get_config")')) throw new Error("Admin must include the Health Center checks.");
 for (const asset of ["admin.css", "admin.js", "ha-smartdash-cameras.js"]) if (!adminHtml.includes(`${asset}?v=${latest.version}`)) throw new Error(`Admin cache ID must match for ${asset}.`);
 for (const html of [index, beast]) {

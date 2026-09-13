@@ -1808,6 +1808,9 @@
       return;
     }
     if (!configuredGroups.length) configuredGroups = defaultOverviewCameraGroups(allCameras);
+    // Warm one authenticated still image per available camera. This makes a
+    // motion-driven switch immediate without keeping every live stream open.
+    window.BeastCameras.preloadOverviewSnapshots?.(allCameras);
     const selectableGroups = groupsWithEveryOverviewCamera(configuredGroups, allCameras);
     const activeGroups = visibleOverviewCameraGroups(selectableGroups);
     ensureOverviewCameraSelectorSubscriptions(activeGroups);
@@ -1894,19 +1897,17 @@
       });
       return;
     }
-    host.innerHTML = `
-      <div class="beast-ov-camera-strip" data-count="${cameras.length}">${cameras.map((camera) => `
-        <div class="beast-ov-camera-thumb${camera.motion ? " has-motion" : ""}" data-slug="${camera.slug}" role="button" tabindex="0" aria-label="Åbn ${escapeHtml(camera.label)}">
-          ${window.BeastCameras.overviewCameraMarkup(camera, { className: "beast-overview-camera-render", label: true, motion: true })}
-        </div>
-      `).join("")}</div>
-    `;
-    window.BeastCameras.wireSharedCameras(host, renderCameras, "overview");
     const openCamera = (slug) => {
       if (!window.BeastCameras.selectCamera(slug)) return;
       document.dispatchEvent(new CustomEvent("beast:navigate", { detail: { section: "cameras" } }));
     };
-    host.querySelectorAll(".beast-ov-camera-thumb").forEach((tile) => {
+    const makeTile = (camera) => {
+      const template = document.createElement("template");
+      template.innerHTML = `<div class="beast-ov-camera-thumb${camera.motion ? " has-motion" : ""}" data-slug="${escapeHtml(camera.slug)}" role="button" tabindex="0" aria-label="Åbn ${escapeHtml(camera.label)}">
+        ${window.BeastCameras.overviewCameraMarkup(camera, { className: "beast-overview-camera-render", label: true, motion: true })}
+      </div>`;
+      const tile = template.content.firstElementChild;
+      window.BeastCameras.wireSharedCameras(tile, renderCameras, "overview");
       tile.addEventListener("click", (event) => {
         if (event.target.closest("[data-camera-quality-slug]")) return;
         openCamera(tile.dataset.slug);
@@ -1916,7 +1917,22 @@
         event.preventDefault();
         openCamera(tile.dataset.slug);
       });
+      return tile;
+    };
+    let strip = host.querySelector(":scope > .beast-ov-camera-strip");
+    if (!strip) {
+      strip = document.createElement("div");
+      strip.className = "beast-ov-camera-strip";
+      host.replaceChildren(strip);
+    }
+    strip.dataset.count = String(cameras.length);
+    cameras.forEach((camera, index) => {
+      const current = strip.children[index];
+      if (current?.dataset.slug === camera.slug) return;
+      const tile = makeTile(camera);
+      if (current) current.replaceWith(tile); else strip.appendChild(tile);
     });
+    while (strip.children.length > cameras.length) strip.lastElementChild.remove();
     const cameraPickerButton = document.getElementById("beastOvCameraPicker");
     if (cameraPickerButton) cameraPickerButton.onclick = (event) => {
       event.stopPropagation();
