@@ -152,7 +152,7 @@ const BeastConfig = (() => {
       cameraEntities: [],
       brightnessEnabled: false, brightnessPercent: 80
     },
-    screenLock: { pinHash: null, autoLockEnabled: false, alarmScreenOffEnabled: false, alarmEntity: null, alarmUnlockMode: "pin" },
+    screenLock: { pinHash: null, autoLockEnabled: false, alarmScreenOffEnabled: false, alarmEntity: null, alarmEntities: [], alarmUnlockMode: "pin" },
     panels: DEFAULT_PANELS
   };
 
