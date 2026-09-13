@@ -1,5 +1,16 @@
 [
   {
+    "version": "20260913-5",
+    "tag": "v0.8.37",
+    "date": "2026-09-13",
+    "changes": [
+      {
+        "da": "Gem i forsidens kameraeditor bevarer nu de eksisterende live-player-elementer, når det valgte antal og de viste kameraer er uændrede. Kun et reelt skift af kamera eller antal genopbygger mediet.",
+        "en": "Saving the overview camera editor now preserves the existing live player elements when the selected count and displayed cameras are unchanged. Only an actual camera or count change rebuilds media."
+      }
+    ]
+  },
+  {
     "version": "20260913-4",
     "tag": "v0.8.36",
     "date": "2026-09-13",
