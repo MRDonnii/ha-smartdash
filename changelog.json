@@ -5,8 +5,8 @@
     "date": "2026-09-13",
     "changes": [
       {
-        "da": "Under Rediger -> Vælg kameraer kan hver af de tre kameragrupper nu slås til eller fra. Dermed kan den enkelte skærm vise præcis 1, 2 eller 3 kamerafelter og samtidig bevare Automatisk eller fast valg for hver synlig gruppe. Mindst én gruppe skal være aktiv.",
-        "en": "Under Edit -> Choose cameras, each of the three camera groups can now be shown or hidden. Each display can therefore show exactly 1, 2, or 3 camera tiles while retaining Automatic or fixed selection for every visible group. At least one group must remain enabled."
+        "da": "Under Rediger -> Vælg kameraer kan hver kameragruppe slås til eller fra, og gruppens tilladte livekameraer kan vælges enkeltvis. Dermed kan skærmen vise præcis 1, 2 eller 3 kamerafelter; Automatisk respekterer live-listen og falder sikkert tilbage til gruppens første tilladte kamera, mens et fast valg også skal være tilladt.",
+        "en": "Under Edit -> Choose cameras, each camera group can be shown or hidden and its allowed live cameras can be selected individually. The display can show exactly 1, 2, or 3 camera tiles; Automatic respects the live list and safely falls back to the group's first allowed camera, while a fixed choice must also be allowed."
       }
     ]
   },
