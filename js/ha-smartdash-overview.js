@@ -1716,7 +1716,6 @@
       mobile: isMobile,
       featured: isMobile ? mobileFeaturedCameraSlug : null,
       cameras: cameras.map((camera) => `${camera.slug}:${camera.resolvedStreamName || camera.streamName || ""}`),
-      groups: groupSelections.map((selection) => `${selection.group.id}:${selection.fixedKey || "auto"}:${selection.automaticKey}`)
     });
     if (cameraRenderSignature === lastCameraRenderSignature) return;
     lastCameraRenderSignature = cameraRenderSignature;
@@ -1839,7 +1838,6 @@
       });
       setOverviewCameraAllowed(nextAllowed);
       setVisibleOverviewCameraGroups(visible);
-      lastCameraRenderSignature = null;
       renderCameras();
       close();
     });
