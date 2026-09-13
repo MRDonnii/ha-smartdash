@@ -5,6 +5,8 @@
 - Each Home Camera Card-style overview group can now be shown or hidden from
   Edit -> Choose cameras, allowing each display to show one, two, or three
   camera tiles while retaining its automatic or fixed selection.
+- Cameras can be included or excluded per group; automatic selection only
+  uses allowed cameras and safely falls back when HA selects an excluded one.
 
 ## 0.8.34
 
