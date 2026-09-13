@@ -1632,11 +1632,11 @@
       host.innerHTML = `
         <div class="beast-ov-camera-mobile">
           <div class="beast-ov-camera-mobile-featured" data-slug="${featured.slug}">
-            ${window.BeastCameras.sharedCameraMarkup(featured, { className: "beast-overview-camera-render", label: true, motion: true })}
+            ${window.BeastCameras.overviewCameraMarkup(featured, { className: "beast-overview-camera-render", label: true, motion: true })}
           </div>
           ${others.length ? `<div class="beast-ov-camera-mobile-thumbs">${others.map((camera) => `
             <button type="button" class="beast-ov-camera-mobile-thumb${camera.motion ? " has-motion" : ""}" data-slug="${camera.slug}" aria-label="Vis ${escapeHtml(camera.label)}">
-              ${window.BeastCameras.sharedCameraMarkup(camera, { className: "beast-overview-camera-render", label: true, motion: true })}
+              ${window.BeastCameras.overviewCameraMarkup(camera, { className: "beast-overview-camera-render", label: true, motion: true })}
             </button>
           `).join("")}</div>` : ""}
         </div>
@@ -1655,7 +1655,7 @@
     host.innerHTML = `
       <div class="beast-ov-camera-strip" data-count="${cameras.length}">${cameras.map((camera) => `
         <div class="beast-ov-camera-thumb${camera.motion ? " has-motion" : ""}" data-slug="${camera.slug}" role="button" tabindex="0" aria-label="Åbn ${escapeHtml(camera.label)}">
-          ${window.BeastCameras.sharedCameraMarkup(camera, { className: "beast-overview-camera-render", label: true, motion: true })}
+          ${window.BeastCameras.overviewCameraMarkup(camera, { className: "beast-overview-camera-render", label: true, motion: true })}
         </div>
       `).join("")}</div>
     `;

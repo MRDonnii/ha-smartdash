@@ -17,6 +17,7 @@ const BeastHaSocket = (() => {
 
   const stateByEntity = new Map();
   const pendingCommands = new Map();
+  const subscriptionCallbacks = new Map();
   const entitySubscribers = new Map();
   const domainSubscribers = new Map();
   const wildcardSubscribers = new Set();
@@ -100,6 +101,28 @@ const BeastHaSocket = (() => {
       }
       const id = nextId();
       pendingCommands.set(id, { resolve, reject });
+      ws.send(JSON.stringify({ id, type, ...extra }));
+    });
+  }
+
+  function subscribeMessage(type, extra, callback) {
+    return new Promise((resolve, reject) => {
+      if (!ws || ws.readyState !== WebSocket.OPEN) {
+        reject(new Error("SOCKET_NOT_OPEN"));
+        return;
+      }
+      const id = nextId();
+      subscriptionCallbacks.set(id, callback);
+      pendingCommands.set(id, {
+        resolve: () => resolve(() => {
+          subscriptionCallbacks.delete(id);
+          sendCommand("unsubscribe_events", { subscription: id }).catch(() => {});
+        }),
+        reject: (error) => {
+          subscriptionCallbacks.delete(id);
+          reject(error);
+        }
+      });
       ws.send(JSON.stringify({ id, type, ...extra }));
     });
   }
@@ -192,6 +215,11 @@ const BeastHaSocket = (() => {
         if (data.new_state) stateByEntity.set(data.entity_id, data.new_state);
         else stateByEntity.delete(data.entity_id);
         notify(data.entity_id, data.new_state, oldState);
+        return;
+      }
+
+      if (message.type === "event" && subscriptionCallbacks.has(message.id)) {
+        safeCall(subscriptionCallbacks.get(message.id), message.event);
       }
     });
 
@@ -199,6 +227,7 @@ const BeastHaSocket = (() => {
       window.clearTimeout(connectTimeoutId);
       pendingCommands.forEach(({ reject }) => reject(new Error("SOCKET_CLOSED")));
       pendingCommands.clear();
+      subscriptionCallbacks.clear();
       if (intentionalClose) return;
       if (!disconnectedAt && lastMessageAt) disconnectedAt = Date.now();
       setStatus("connecting");
@@ -299,6 +328,7 @@ const BeastHaSocket = (() => {
     getState,
     getAllStates,
     refreshSnapshot,
-    sendCommand
+    sendCommand,
+    subscribeMessage
   };
 })();
