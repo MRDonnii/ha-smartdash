@@ -1180,7 +1180,16 @@
     const container = document.getElementById("beastOvBanners");
     if (!container) return;
     const banners = visibleBanners();
-    document.dispatchEvent(new CustomEvent("beast:notifications-changed", { detail: { items: banners.map((banner) => ({ type:banner.type, icon:banner.icon, title:banner.title, detail:banner.detail || "", occurrenceKey:banner.occurrenceKey || banner.title })) } }));
+    const notificationMeta = {
+      mail:{ category:"Post", section:"security" }, printer:{ category:"3D-printer", section:"printer" },
+      doors:{ category:"Sikkerhed", section:"security" }, aulaMessage:{ category:"AULA", section:"waste" },
+      aulaLesson:{ category:"Kalender", section:"waste" }
+    };
+    document.dispatchEvent(new CustomEvent("beast:notifications-changed", { detail: { items: banners.map((banner) => ({
+      type:banner.type, icon:banner.icon, title:banner.title, detail:banner.detail || "",
+      occurrenceKey:banner.occurrenceKey || banner.title, occurrenceLabel:banner.occurrenceLabel || "Indtil næste hændelse",
+      category:notificationMeta[banner.type]?.category || "Smartdash", section:notificationMeta[banner.type]?.section || "overview"
+    })) } }));
     if (BeastConfig.get("banners.layoutMode") === "stacked") {
       // ":scope >" is load-bearing. This exists to tear down the *other*
       // layout mode's leftovers -- its banner hosts, which are direct
@@ -3067,5 +3076,11 @@
     return visibleBanners().map((banner) => ({ type: banner.type, icon: banner.icon, title: banner.title, detail:banner.detail || "", occurrenceKey:banner.occurrenceKey || banner.title }));
   }
 
-  window.BeastOverview = { isFloatingPlayerEnabled, setFloatingPlayerEnabled, activeBannerSummaries };
+  function snoozeNotification(type, minutes = 30, occurrenceKey = "") {
+    if (minutes === 0 && occurrenceKey) snoozeBannerUntilEvent(type, occurrenceKey);
+    else snoozeBanner(type, minutes || 30);
+    renderBanners();
+  }
+
+  window.BeastOverview = { isFloatingPlayerEnabled, setFloatingPlayerEnabled, activeBannerSummaries, snoozeNotification };
 })();

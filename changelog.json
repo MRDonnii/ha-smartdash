@@ -1,5 +1,14 @@
 [
   {
+    "version": "20260913-15",
+    "tag": "v0.8.47",
+    "date": "2026-09-13",
+    "changes": [{
+      "da": "Notifikationscenteret viser nu kategori og tidspunkt samt handlingerne Åbn, udsæt 30 minutter, kvittér og fjern. Åbn navigerer til den relevante Smartdash-side, og snooze genbruger bannerets eksisterende skjulningslogik.",
+      "en": "The notification center now shows category and timestamp plus Open, snooze for 30 minutes, acknowledge and dismiss actions. Open navigates to the relevant Smartdash page, while snooze reuses the banner's existing suppression logic."
+    }]
+  },
+  {
     "version": "20260913-14",
     "tag": "v0.8.46",
     "date": "2026-09-13",
