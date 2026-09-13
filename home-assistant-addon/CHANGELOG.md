@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.8.48
+
+- Made the notification popup nearly opaque with high-contrast text and a
+  subtle backdrop blur in both light and dark themes.
+
 ## 0.8.47
 
 - Completed notification history with category, time, navigation, snooze,
