@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.8.50
+
+- Reissued the camera-switch optimization under a fresh release identity so
+  standalone installations cannot receive a stale GitHub source archive.
+
 ## 0.8.49
 
 - Preloaded authenticated camera posters for instant motion-driven switches
