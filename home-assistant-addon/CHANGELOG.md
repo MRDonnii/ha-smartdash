@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.8.41
+
+- Made detection-driven camera views the default overview camera experience.
+  Automatic mode discovers smart, audio and motion events on each camera's
+  Home Assistant device, focuses the newest event and returns to the starred
+  fallback after the hold time. One to three views, fixed choices and the
+  existing compact setup menu remain available without changing Cameras.
+
 ## 0.8.40
 
 - Simplified each overview camera row to a fixed-camera choice, compact Auto
