@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.8.35
+
+- Each Home Camera Card-style overview group can now be shown or hidden from
+  Edit -> Choose cameras, allowing each display to show one, two, or three
+  camera tiles while retaining its automatic or fixed selection.
+
 ## 0.8.34
 
 - The overview camera editor can now mirror HA Home Camera Card groups: each
