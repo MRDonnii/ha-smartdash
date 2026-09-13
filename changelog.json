@@ -1,5 +1,14 @@
 [
   {
+    "version": "20260913-14",
+    "tag": "v0.8.46",
+    "date": "2026-09-13",
+    "changes": [{
+      "da": "Health Centers gentest bevarer nu tastatur- og touchfokus, mens resultaterne opdateres målrettet uden at genopbygge Admin-skallen.",
+      "en": "Health Center retests now preserve keyboard and touch focus while results update in place without rebuilding the Admin shell."
+    }]
+  },
+  {
     "version": "20260913-13",
     "tag": "v0.8.45",
     "date": "2026-09-13",

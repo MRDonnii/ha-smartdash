@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.8.46
+
+- Preserved control focus while Health Center retests update in place.
+
 ## 0.8.45
 
 - Fixed power-profile and multi-alarm initialization against the real global

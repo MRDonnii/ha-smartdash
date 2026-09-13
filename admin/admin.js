@@ -1486,7 +1486,7 @@
     const host = document.getElementById("adminHealthResults");
     const checked = document.getElementById("adminHealthCheckedAt");
     const button = document.getElementById("adminHealthRefresh");
-    if (button) { button.disabled = healthProbeRunning; button.textContent = healthProbeRunning ? t("Tester…", "Testing…") : t("Test igen", "Test again"); }
+    if (button) { button.setAttribute("aria-busy", String(healthProbeRunning)); button.setAttribute("aria-disabled", String(healthProbeRunning)); button.textContent = healthProbeRunning ? t("Tester…", "Testing…") : t("Test igen", "Test again"); }
     if (!host) return;
     host.innerHTML = healthSnapshot ? healthSnapshot.items.map(healthCard).join("") : `<p class="admin-health-loading">${t("Tester forbindelser og tjenester…", "Testing connections and services…")}</p>`;
     if (checked) checked.textContent = healthSnapshot ? `${t("Senest testet", "Last checked")}: ${new Date(healthSnapshot.at).toLocaleString()}` : "";
