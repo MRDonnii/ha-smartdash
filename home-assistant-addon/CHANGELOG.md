@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.8.34
+
+- The overview camera editor can now mirror HA Home Camera Card groups: each
+  tile either follows its Home Assistant selector automatically or stays on a
+  fixed camera selected from the existing overview edit menu.
+- Camera selection controls no longer cover the video tiles, and opening the
+  editor does not rebuild or restart live streams.
+
 ## 0.8.33
 
 - Overview camera tiles now use the medium-resolution Home Assistant WebRTC
