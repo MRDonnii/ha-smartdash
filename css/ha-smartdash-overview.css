@@ -874,6 +874,7 @@
   cursor:pointer;
 }
 .beast-ov-camera-group-editor label:has(input:checked) { border-color:var(--accent-a); background:var(--accent-soft); }
+.beast-ov-camera-group-editor .beast-ov-camera-group-visibility { grid-column:1 / -1; background:rgba(255,255,255,.035); }
 .beast-ov-camera-group-editor input { accent-color:var(--accent-a); }
 .beast-ov-camera-group-editor label span { min-width:0; display:grid; gap:2px; }
 .beast-ov-camera-group-editor label b { color:var(--ink); font-size:var(--text-sm); }
