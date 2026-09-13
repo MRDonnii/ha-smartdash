@@ -30,6 +30,9 @@
   const OVERVIEW_CAMERA_KEY = "beast_overview_cameras_v1";
   const OVERVIEW_CAMERA_MODE_KEY = "beast_overview_camera_modes_v1";
   const OVERVIEW_CAMERA_VISIBLE_KEY = "beast_overview_camera_visible_groups_v1";
+  const OVERVIEW_CAMERA_AUTO_KEY = "beast_overview_camera_auto_v1";
+  const OVERVIEW_CAMERA_FALLBACK_KEY = "beast_overview_camera_fallback_v1";
+  const OVERVIEW_CAMERA_LEGACY_ALLOWED_KEY = "beast_overview_camera_allowed_v1";
   const OVERVIEW_LAYOUT_KEY = "beast_overview_layout_v1";
   const OVERVIEW_AUTO_FOCUS_KEY = "beast_overview_auto_focus_v1";
   let ROBOT_IDS = [];
@@ -89,6 +92,23 @@
     localStorage.setItem(OVERVIEW_CAMERA_VISIBLE_KEY, JSON.stringify(groupIds));
   }
 
+  function localObject(key) {
+    try {
+      const value = JSON.parse(localStorage.getItem(key) || "{}");
+      return value && typeof value === "object" && !Array.isArray(value) ? value : {};
+    } catch (_) { return {}; }
+  }
+
+  function overviewCameraAuto() {
+    const current = localObject(OVERVIEW_CAMERA_AUTO_KEY);
+    if (Object.keys(current).length) return current;
+    return localObject(OVERVIEW_CAMERA_LEGACY_ALLOWED_KEY);
+  }
+
+  function overviewCameraFallbacks() { return localObject(OVERVIEW_CAMERA_FALLBACK_KEY); }
+  function setOverviewCameraAuto(value) { localStorage.setItem(OVERVIEW_CAMERA_AUTO_KEY, JSON.stringify(value)); }
+  function setOverviewCameraFallbacks(value) { localStorage.setItem(OVERVIEW_CAMERA_FALLBACK_KEY, JSON.stringify(value)); }
+
   function groupsWithEveryOverviewCamera(groups, allCameras) {
     const identity = (entityId) => String(entityId || "")
       .replace(/^camera\./, "")
@@ -127,7 +147,10 @@
   function resolveOverviewCameraGroup(group, modes) {
     const automaticKey = String(BeastHaSocket.getState(group.selectorEntity)?.state || "");
     const fixedKey = String(modes[group.id] || "");
-    const requestedKey = fixedKey || automaticKey;
+    const savedAuto = overviewCameraAuto()[group.id];
+    const autoKeys = Array.isArray(savedAuto) && savedAuto.length ? savedAuto : group.cameras.map((camera) => camera.key);
+    const fallbackKey = String(overviewCameraFallbacks()[group.id] || "");
+    const requestedKey = fixedKey || (autoKeys.includes(automaticKey) ? automaticKey : fallbackKey || autoKeys[0]);
     const choice = group.cameras.find((camera) => camera.key === requestedKey) || group.cameras[0];
     const camera = window.BeastCameras.resolveCamera(choice.entityId);
     return camera ? { group, choice, camera, fixedKey, automaticKey } : null;
@@ -1786,6 +1809,8 @@
   function openCameraGroupPicker(groups) {
     document.getElementById("beastOvCameraPickerModal")?.remove();
     const modes = overviewCameraModes();
+    const autoByGroup = overviewCameraAuto();
+    const fallbackByGroup = overviewCameraFallbacks();
     const visibleIds = new Set(visibleOverviewCameraGroups(groups).map((group) => group.id));
     const overlay = document.createElement("div");
     overlay.id = "beastOvCameraPickerModal";
@@ -1800,6 +1825,15 @@
               <label class="beast-ov-camera-group-visibility"><input type="checkbox" data-camera-group-visible ${visibleIds.has(group.id) ? "checked" : ""}><span><b>${t("Vis på forsiden", "Show on overview")}</b><small>${t("Slå fra for at vise færre kameraer", "Turn off to show fewer cameras")}</small></span></label>
               <label><input type="radio" name="camera-${escapeHtml(group.id)}" value="" ${active ? "" : "checked"}><span><b>${t("Automatisk", "Automatic")}</b><small>${t(`Følg ${group.name} fra Home Assistant`, `Follow ${group.name} from Home Assistant`)}</small></span></label>
               ${group.cameras.map((camera) => `<div class="beast-ov-camera-group-camera"><label><input type="radio" name="camera-${escapeHtml(group.id)}" value="${escapeHtml(camera.key)}" ${active === camera.key ? "checked" : ""}><span><b>${escapeHtml(camera.name)}</b><small>${t("Fast kameravalg", "Fixed camera")}</small></span></label></div>`).join("")}
+              <div class="beast-ov-camera-auto-settings">
+                <strong>${t("Kameraer i automatisk skift", "Cameras in automatic rotation")}</strong>
+                <div class="beast-ov-camera-auto-grid">${group.cameras.map((camera) => {
+                  const saved = autoByGroup[group.id];
+                  const checked = !Array.isArray(saved) || saved.includes(camera.key);
+                  return `<label><input type="checkbox" data-camera-auto="${escapeHtml(camera.key)}" ${checked ? "checked" : ""}><span>${escapeHtml(camera.name)}</span></label>`;
+                }).join("")}</div>
+                <label class="beast-ov-camera-fallback"><span><b>${t("Fallback / favorit", "Fallback / favourite")}</b><small>${t("Vises når HA-valget ikke er med i automatisk skift", "Shown when HA selects a camera outside the automatic rotation")}</small></span><select data-camera-fallback><option value="">${t("Første valgte kamera", "First selected camera")}</option>${group.cameras.map((camera) => `<option value="${escapeHtml(camera.key)}" ${fallbackByGroup[group.id] === camera.key ? "selected" : ""}>${escapeHtml(camera.name)}</option>`).join("")}</select></label>
+              </div>
             </fieldset>`;
           }).join("")}
           <div class="beast-ov-camera-picker-actions"><span class="beast-ov-camera-picker-save-state" role="status" aria-live="polite"></span><button type="button" class="beast-btn beast-ov-camera-picker-done" data-save-camera-groups>${t("Gem kameravalg", "Save camera selection")}</button></div>
@@ -1813,11 +1847,27 @@
         overlay.querySelector(".beast-ov-camera-picker-save-state").textContent = t("Vælg mindst én kameragruppe.", "Select at least one camera group.");
         return;
       }
+      const nextAuto = {};
+      const nextFallbacks = {};
+      for (const group of groups) {
+        const fieldset = overlay.querySelector(`[data-overview-camera-group="${CSS.escape(group.id)}"]`);
+        const automatic = [...fieldset.querySelectorAll("[data-camera-auto]:checked")].map((input) => input.dataset.cameraAuto);
+        const automaticMode = !fieldset.querySelector('input[type="radio"]:checked')?.value;
+        if (visible.includes(group.id) && automaticMode && !automatic.length) {
+          overlay.querySelector(".beast-ov-camera-picker-save-state").textContent = t(`${group.name}: vælg mindst ét kamera til automatisk skift.`, `${group.name}: select at least one camera for automatic rotation.`);
+          return;
+        }
+        nextAuto[group.id] = automatic;
+        const fallback = fieldset.querySelector("[data-camera-fallback]")?.value || "";
+        if (fallback) nextFallbacks[group.id] = fallback;
+      }
       groups.forEach((group) => {
         const selected = overlay.querySelector(`[data-overview-camera-group="${CSS.escape(group.id)}"] input[type="radio"]:checked`);
         setOverviewCameraMode(group.id, selected?.value || "");
       });
       setVisibleOverviewCameraGroups(visible);
+      setOverviewCameraAuto(nextAuto);
+      setOverviewCameraFallbacks(nextFallbacks);
       renderCameras();
       close();
     });

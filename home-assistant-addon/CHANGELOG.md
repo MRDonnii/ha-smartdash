@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.8.39
+
+- Each overview camera tile now has its own automatic-rotation camera list and
+  fallback/favourite camera, while every camera remains available as a fixed choice.
+
 ## 0.8.38
 
 - Every overview camera tile can now select any camera available in Smartdash,
