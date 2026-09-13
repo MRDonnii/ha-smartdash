@@ -1,5 +1,16 @@
 [
   {
+    "version": "20260913-1",
+    "tag": "v0.8.33",
+    "date": "2026-09-13",
+    "changes": [
+      {
+        "da": "Forsidens kamerakort genbruger nu modellen fra HA Home Camera Card: et skarpt snapshot vises straks, mens Home Assistants medium-opløste WebRTC-stream starter bagved og fader ind, når den er klar. Det reducerer komprimeringsstøj og afkodningsbelastning i de små felter. Et tryk åbner fortsat den uændrede Kamera-side med dens valgte højopløste hovedstream.",
+        "en": "Overview camera tiles now reuse the HA Home Camera Card model: a sharp snapshot appears immediately while Home Assistant's medium-resolution WebRTC stream starts behind it and fades in when ready. This reduces compression artefacts and decoding load in the small tiles. Tapping still opens the unchanged Cameras page with its selected high-resolution main stream."
+      }
+    ]
+  },
+  {
     "version": "20260906-1",
     "tag": "v0.8.32",
     "date": "2026-09-06",

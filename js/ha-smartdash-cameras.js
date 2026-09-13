@@ -161,6 +161,209 @@
     };
   }
 
+  // The compact Home Assistant camera card on the main HA dashboard uses the
+  // medium entity for its small tiles. At that size it gives the encoder far
+  // more useful bits per pixel than a heavily compressed 4 MP main stream.
+  // Keep this choice local to Overview: the Cameras page continues to use the
+  // quality selected in Administration (normally the high/main stream).
+  function overviewCameraVariant(camera) {
+    const medium = camera?.variants?.find((variant) => variant.quality === "medium");
+    if (!medium) return camera;
+    return {
+      ...camera,
+      ...medium,
+      label: camera.label,
+      motion: camera.motion,
+      motionType: camera.motionType,
+      motionLabel: camera.motionLabel,
+      motionChangedAt: camera.motionChangedAt
+    };
+  }
+
+  class BeastHaCameraStream extends HTMLElement {
+    connectedCallback() {
+      if (this._mounted) return;
+      this._mounted = true;
+      this.innerHTML = `<img class="beast-ha-camera-poster" alt=""><video class="beast-ha-camera-video" autoplay muted playsinline disablepictureinpicture aria-hidden="true"></video>`;
+      this._poster = this.querySelector("img");
+      this._video = this.querySelector("video");
+      const picture = this.dataset.cameraPicture;
+      if (picture) BeastAuth.setAuthedImageSrc(this._poster, picture);
+      this._video.addEventListener("playing", () => this.classList.add("is-ready"));
+      this._video.addEventListener("loadeddata", () => this.classList.add("is-ready"));
+      this._onSectionChange = () => window.setTimeout(() => this._syncVisibility(), 0);
+      this._onVisibilityChange = () => this._syncVisibility();
+      document.addEventListener("beast:sectionchange", this._onSectionChange);
+      document.addEventListener("visibilitychange", this._onVisibilityChange);
+      this._unsubscribeStatus = BeastHaSocket.onStatusChange((status) => {
+        if (status === "connected") this._syncVisibility(true);
+      });
+      this._syncVisibility();
+    }
+
+    disconnectedCallback() {
+      document.removeEventListener("beast:sectionchange", this._onSectionChange);
+      document.removeEventListener("visibilitychange", this._onVisibilityChange);
+      this._unsubscribeStatus?.();
+      this._stop();
+      this._mounted = false;
+    }
+
+    _isVisible() {
+      const section = this.closest(".beast-section");
+      return !document.hidden && (!section || section.classList.contains("is-active"));
+    }
+
+    _syncVisibility(reconnect = false) {
+      if (!this.isConnected || !this._isVisible()) { this._stop(); return; }
+      if (reconnect) this._stop();
+      this._start();
+    }
+
+    async _start() {
+      if (this._fallback || this._pc || this._starting || !this.dataset.entityId) return;
+      const generation = (this._generation || 0) + 1;
+      this._generation = generation;
+      this._starting = true;
+      this.classList.remove("is-ready");
+      try {
+        // This is the same signalling path used by Home Assistant's native
+        // ha-web-rtc-player (and therefore by HA Home Camera Card), including
+        // its per-camera ICE configuration and trickle candidates.
+        const client = await BeastHaSocket.sendCommand("camera/webrtc/get_client_config", {
+          entity_id: this.dataset.entityId
+        });
+        if (generation !== this._generation) return;
+        const pc = new RTCPeerConnection(client?.configuration || {});
+        this._pc = pc;
+        if (client?.dataChannel) pc.createDataChannel(client.dataChannel);
+        this._remoteStream = new MediaStream();
+        this._sessionId = null;
+        this._localCandidates = [];
+        pc.addEventListener("track", (event) => {
+          if (generation !== this._generation || !this._video) return;
+          if (event.track.kind !== "video") return;
+          this._remoteStream.addTrack(event.track);
+          this._video.srcObject = this._remoteStream;
+          this._video.play().catch(() => {});
+        });
+        pc.addEventListener("icecandidate", (event) => {
+          if (generation !== this._generation || !event.candidate?.candidate) return;
+          if (!this._sessionId) { this._localCandidates.push(event.candidate); return; }
+          this._sendCandidate(event.candidate);
+        });
+        pc.addEventListener("connectionstatechange", () => {
+          if (generation !== this._generation) return;
+          if (["failed", "disconnected"].includes(pc.connectionState)) {
+            this._stop();
+            if (this._isVisible()) window.setTimeout(() => this._start(), 800);
+          }
+        });
+        pc.addTransceiver("audio", { direction: "recvonly" });
+        pc.addTransceiver("video", { direction: "recvonly" });
+        const offer = await pc.createOffer({ offerToReceiveAudio: true, offerToReceiveVideo: true });
+        await pc.setLocalDescription(offer);
+        if (generation !== this._generation || pc !== this._pc) { pc.close(); return; }
+        this._unsubscribeOffer = await BeastHaSocket.subscribeMessage("camera/webrtc/offer", {
+          entity_id: this.dataset.entityId,
+          offer: offer.sdp
+        }, (event) => this._handleOfferEvent(event, generation));
+      } catch (error) {
+        if (generation === this._generation) {
+          console.warn(`[Kameraer] HA WebRTC kunne ikke starte ${this.dataset.entityId}`, error);
+          this._stop();
+          this._fallbackToGo2rtc();
+        }
+      } finally {
+        if (generation === this._generation) this._starting = false;
+      }
+    }
+
+    async _handleOfferEvent(event, generation) {
+      if (generation !== this._generation || !this._pc || !event) return;
+      if (event.type === "session") {
+        this._sessionId = event.session_id;
+        const candidates = this._localCandidates.splice(0);
+        candidates.forEach((candidate) => this._sendCandidate(candidate));
+        return;
+      }
+      if (event.type === "answer") {
+        try { await this._pc.setRemoteDescription({ type: "answer", sdp: event.answer }); }
+        catch (error) { console.warn("[Kameraer] HA WebRTC-svar blev afvist", error); this._fallbackToGo2rtcAfterStop(); }
+        return;
+      }
+      if (event.type === "candidate") {
+        const candidate = event.candidate?.sdpMid || event.candidate?.sdpMLineIndex != null
+          ? event.candidate
+          : { ...event.candidate, sdpMid: "0" };
+        try { await this._pc.addIceCandidate(candidate); } catch (error) { console.warn("[Kameraer] Ugyldig ICE-kandidat", error); }
+        return;
+      }
+      if (event.type === "error") {
+        console.warn(`[Kameraer] HA WebRTC afviste ${this.dataset.entityId}: ${event.message || event.code}`);
+        this._fallbackToGo2rtcAfterStop();
+      }
+    }
+
+    _sendCandidate(candidate) {
+      if (!this._sessionId) return;
+      BeastHaSocket.sendCommand("camera/webrtc/candidate", {
+        entity_id: this.dataset.entityId,
+        session_id: this._sessionId,
+        candidate: candidate.toJSON ? candidate.toJSON() : candidate
+      }).catch(() => {});
+    }
+
+    _stop() {
+      this._generation = (this._generation || 0) + 1;
+      this._starting = false;
+      this.classList.remove("is-ready");
+      if (this._video) {
+        this._video.pause();
+        this._video.srcObject = null;
+      }
+      this._remoteStream?.getTracks().forEach((track) => track.stop());
+      this._remoteStream = null;
+      this._unsubscribeOffer?.();
+      this._unsubscribeOffer = null;
+      this._sessionId = null;
+      this._localCandidates = [];
+      try { this._pc?.close(); } catch (_) {}
+      this._pc = null;
+    }
+
+    _fallbackToGo2rtcAfterStop() {
+      this._stop();
+      this._fallbackToGo2rtc();
+    }
+
+    _fallbackToGo2rtc() {
+      const base = this.dataset.go2rtcBase;
+      const source = this.dataset.go2rtcSource;
+      if (!base || !source || !this.isConnected || !this._isVisible()) return;
+      this._fallback = true;
+      this.innerHTML = `<iframe class="beast-shared-camera-live" src="./camera-player.html?v=19&base=${encodeURIComponent(base)}&transport=webrtc&src=${encodeURIComponent(source)}" title="${escapeHtml(this.dataset.cameraLabel || "Kamera")} livekamera" frameborder="0" allow="autoplay"></iframe>`;
+    }
+  }
+
+  if (!customElements.get("beast-ha-camera-stream")) customElements.define("beast-ha-camera-stream", BeastHaCameraStream);
+
+  function overviewCameraMarkup(camera, options = {}) {
+    const selected = overviewCameraVariant(camera);
+    if (!selected) return "";
+    // Not every HA camera platform implements camera/web_rtc_offer. For
+    // those installations retain the existing go2rtc player as a fallback.
+    if (selected.quality !== "medium") return sharedCameraMarkup(camera, options);
+    const className = options.className || "";
+    const baseUrl = go2rtcBaseUrl();
+    const fallbackSource = camera.resolvedStreamName || camera.streamName || "";
+    return `<div class="beast-shared-camera ${className}" data-shared-camera="${escapeHtml(camera.slug)}">
+      <div class="beast-shared-camera-frame"><beast-ha-camera-stream data-entity-id="${escapeHtml(selected.entityId)}" data-camera-picture="${escapeHtml(selected.entityPicture || "")}" data-camera-label="${escapeHtml(camera.label)}" data-go2rtc-base="${escapeHtml(baseUrl)}" data-go2rtc-source="${escapeHtml(fallbackSource)}"></beast-ha-camera-stream></div>
+      ${options.motion !== false && camera.motion ? `<span class="beast-camera-motion-badge">${BeastCore.icon("bolt", { size: 11 })} ${escapeHtml(camera.motionLabel || "Hændelse")}</span>` : ""}
+      ${options.label === false ? "" : `<span class="beast-shared-camera-label">${escapeHtml(camera.label)}</span>`}
+    </div>`;
+  }
+
   function discoverCameras() {
     const states = BeastHaSocket.getAllStates();
     const groups = new Map();
@@ -723,6 +926,7 @@
     setQuality: (slug, quality) => setCameraQuality(discoverCameras().find((camera) => camera.slug === slug), quality),
     qualityLabel,
     sharedCameraMarkup,
+    overviewCameraMarkup,
     wireSharedCameras,
     hasGo2rtc,
     isSmartDetectionEntity,
