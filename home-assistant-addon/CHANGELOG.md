@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.8.37
+
+- Saving an unchanged overview camera configuration now preserves the existing
+  live player elements instead of restarting all streams.
+
 ## 0.8.36
 
 - Added a lightweight Kiosk Warden power-state bridge. In idle mode Smartdash
