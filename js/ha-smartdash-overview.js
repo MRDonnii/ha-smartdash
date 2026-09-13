@@ -1180,6 +1180,7 @@
     const container = document.getElementById("beastOvBanners");
     if (!container) return;
     const banners = visibleBanners();
+    document.dispatchEvent(new CustomEvent("beast:notifications-changed", { detail: { items: banners.map((banner) => ({ type:banner.type, icon:banner.icon, title:banner.title, detail:banner.detail || "", occurrenceKey:banner.occurrenceKey || banner.title })) } }));
     if (BeastConfig.get("banners.layoutMode") === "stacked") {
       // ":scope >" is load-bearing. This exists to tear down the *other*
       // layout mode's leftovers -- its banner hosts, which are direct
@@ -1836,6 +1837,9 @@
     if (!groupSelections.length && autoFocusEnabled() && motionFocusSlug && cameraBySlug.has(motionFocusSlug)) {
       cameras = [cameraBySlug.get(motionFocusSlug), ...cameras.filter((camera) => camera.slug !== motionFocusSlug)].slice(0, OVERVIEW_CAMERA_LIMIT);
     }
+    // Low power is a per-kiosk rendering profile. It never alters the saved
+    // camera selection; it only limits concurrent Overview streams here.
+    if (window.BeastPower?.getProfile?.() === "low") cameras = cameras.slice(0, 2);
     const isMobile = isMobileOverviewViewport();
     if (isMobile && (!mobileFeaturedCameraSlug || !cameras.some(camera => camera.slug === mobileFeaturedCameraSlug))) mobileFeaturedCameraSlug = cameras[0]?.slug || null;
     // Skip rebuilding when nothing camera-relevant actually changed.
@@ -2971,6 +2975,7 @@
     utilityHistoryTimerId = window.setInterval(loadUtilityHistory, 5 * 60 * 1000);
     document.addEventListener("beast:overview-player-setting-changed", () => stableMusicRender());
     document.addEventListener("beast:camera-streams-changed", () => renderAll());
+    document.addEventListener("beast:powerprofilechange", () => renderCameras());
 
     let hasConnectedOnce = false;
     let reconnectRefreshTimerId = null;
@@ -3059,7 +3064,7 @@
   // hidden) surface the same active alerts as compact pills, without
   // duplicating the banner-detection/snooze/schedule logic above.
   function activeBannerSummaries() {
-    return visibleBanners().map((banner) => ({ type: banner.type, icon: banner.icon, title: banner.title }));
+    return visibleBanners().map((banner) => ({ type: banner.type, icon: banner.icon, title: banner.title, detail:banner.detail || "", occurrenceKey:banner.occurrenceKey || banner.title }));
   }
 
   window.BeastOverview = { isFloatingPlayerEnabled, setFloatingPlayerEnabled, activeBannerSummaries };

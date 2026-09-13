@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.8.44
+
+- Added calm offline/last-known-data status, per-device power profiles,
+  multi-alarm any-armed kiosk locking and a local notification center.
+
 ## 0.8.43
 
 - Added a Health Center in Administration with on-demand checks for Home

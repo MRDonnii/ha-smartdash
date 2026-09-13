@@ -17,6 +17,41 @@ const RAIL_ITEMS = [
 
 const SMARTDASH_APP_ROOT = new URL("../", document.currentScript?.src || window.location.href);
 const smartdashLocalUrl = (path) => new URL(String(path || "").replace(/^\//, ""), SMARTDASH_APP_ROOT).href;
+const NOTIFICATION_HISTORY_KEY = "beast_notification_history_v1";
+
+function setupNotificationCenter() {
+  const button = document.getElementById("beastNotificationButton");
+  const drawer = document.getElementById("beastNotificationCenter");
+  const list = document.getElementById("beastNotificationList");
+  const badge = document.getElementById("beastNotificationBadge");
+  if (!button || !drawer || !list || !badge) return;
+  const read = () => { try { const value = JSON.parse(localStorage.getItem(NOTIFICATION_HISTORY_KEY) || "[]"); return Array.isArray(value) ? value : []; } catch (_) { return []; } };
+  const write = (items) => localStorage.setItem(NOTIFICATION_HISTORY_KEY, JSON.stringify(items.slice(0, 30)));
+  const paint = () => {
+    const items = read();
+    const unread = items.filter((item) => !item.acknowledged).length;
+    badge.textContent = String(unread);
+    badge.hidden = !unread;
+    list.innerHTML = items.length ? items.map((item) => `<article data-notification-id="${overviewEscape(item.id)}" class="${item.acknowledged ? "is-acknowledged" : ""}"><span>${BeastCore.icon(item.icon || "bell", { size:20 })}</span><div><strong>${overviewEscape(item.title)}</strong><small>${overviewEscape(item.detail || "")}</small><time>${new Date(item.at).toLocaleString()}</time></div>${item.acknowledged ? "" : `<button type="button" data-acknowledge>OK</button>`}</article>`).join("") : `<p>Ingen hændelser endnu.</p>`;
+  };
+  button.addEventListener("click", () => { drawer.hidden = !drawer.hidden; button.setAttribute("aria-expanded", String(!drawer.hidden)); paint(); });
+  drawer.querySelector("[data-close-notifications]")?.addEventListener("click", () => { drawer.hidden = true; button.setAttribute("aria-expanded", "false"); });
+  list.addEventListener("click", (event) => {
+    const article = event.target.closest("[data-notification-id]");
+    if (!article || !event.target.closest("[data-acknowledge]")) return;
+    const items = read(); const item = items.find((entry) => entry.id === article.dataset.notificationId);
+    if (item) { item.acknowledged = true; write(items); paint(); }
+  });
+  document.addEventListener("beast:notifications-changed", (event) => {
+    const history = read();
+    (event.detail?.items || []).forEach((item) => {
+      const id = `${item.type}:${item.occurrenceKey}`;
+      if (!history.some((entry) => entry.id === id)) history.unshift({ ...item, id, at:new Date().toISOString(), acknowledged:false });
+    });
+    write(history); paint();
+  });
+  paint();
+}
 
 const MOUNTED_SECTION_ZONES = {
   weather: "beastWeatherZone",
@@ -1016,6 +1051,12 @@ function renderAppShell(root) {
     <canvas class="beast-weather-fx" id="beastWeatherFx" aria-hidden="true"></canvas>
     <div class="beast-app">
       <span class="beast-status-dot-fixed" id="beastStatusDot" data-state="connecting" title="Forbinder…"></span>
+      <aside class="beast-offline-status" id="beastOfflineStatus" aria-live="polite" hidden>
+        <span>${BeastCore.icon("settings", { size: 18 })}</span>
+        <div><strong>Home Assistant er midlertidigt utilgængelig</strong><small id="beastOfflineDetail">Viser senest kendte data.</small></div>
+      </aside>
+      <button type="button" class="beast-notification-button" id="beastNotificationButton" aria-label="Notifikationer" aria-expanded="false">${BeastCore.icon("bell", { size:20 })}<b id="beastNotificationBadge" hidden>0</b></button>
+      <aside class="beast-notification-center" id="beastNotificationCenter" hidden><header><div><strong>Notifikationer</strong><small>Seneste 30 lokale hændelser</small></div><button type="button" data-close-notifications aria-label="Luk">${BeastCore.icon("close", { size:20 })}</button></header><div id="beastNotificationList"></div></aside>
       <div class="beast-body">
         <nav class="beast-rail" id="beastRail"><div class="beast-rail-pages">${railButtonsHtml}</div><div class="beast-rail-tools">${brandHtml}${adminRailHtml}</div></nav>
         <main class="beast-content" id="beastContent">${sectionsHtml}</main>
@@ -1027,6 +1068,10 @@ function renderAppShell(root) {
   document.documentElement.dataset.density = featureEnabled("localFavorites") ? BeastLocalSettings.get("density", "comfortable") : "comfortable";
 
   const statusDot = document.getElementById("beastStatusDot");
+  const offlineStatus = document.getElementById("beastOfflineStatus");
+  const offlineDetail = document.getElementById("beastOfflineDetail");
+  const LAST_LIVE_KEY = "beast_last_ha_live_at_v1";
+  let offlineTimerId = 0;
   const STATUS_LABELS = {
     connecting: "Forbinder…",
     connected: "Live",
@@ -1036,6 +1081,22 @@ function renderAppShell(root) {
   BeastHaSocket.onStatusChange((state) => {
     statusDot.dataset.state = state === "connected" ? "connected" : (state === "auth-failed" ? "error" : "connecting");
     statusDot.title = STATUS_LABELS[state] || state;
+    window.clearTimeout(offlineTimerId);
+    if (state === "connected") {
+      try { localStorage.setItem(LAST_LIVE_KEY, String(Date.now())); } catch (_) {}
+      offlineStatus.hidden = true;
+      document.documentElement.classList.remove("beast-ha-offline");
+    } else if (state !== "auth-failed") {
+      offlineTimerId = window.setTimeout(() => {
+        let lastLiveAt = 0;
+        try { lastLiveAt = Number(localStorage.getItem(LAST_LIVE_KEY) || 0); } catch (_) {}
+        offlineDetail.textContent = lastLiveAt
+          ? `Viser senest kendte data fra ${new Date(lastLiveAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}.`
+          : "Viser gemte data, mens forbindelsen genoprettes.";
+        offlineStatus.hidden = false;
+        document.documentElement.classList.add("beast-ha-offline");
+      }, 5000);
+    }
     if (state === "auth-failed") {
       BeastAuth.logout();
       renderLoginScreen(root, "Din session er udløbet. Log ind igen.");
@@ -1043,6 +1104,7 @@ function renderAppShell(root) {
   });
 
   setupNavigation();
+  setupNotificationCenter();
   setupQuickScenarios();
   setupDataQuality();
   BeastCore.mountPanels();

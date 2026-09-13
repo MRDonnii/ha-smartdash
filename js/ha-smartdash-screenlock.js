@@ -71,6 +71,7 @@ const BeastScreenLock = (() => {
       autoLockEnabled: localStorage.getItem(LEGACY_AUTOLOCK_KEY) === "1",
       alarmScreenOffEnabled: false,
       alarmEntity: null,
+      alarmEntities: [],
       alarmUnlockMode: "pin"
     });
     localStorage.removeItem(LEGACY_PIN_HASH_KEY);
@@ -401,21 +402,21 @@ const BeastScreenLock = (() => {
     alarmSubscribed = true;
     migrateLegacyPinIfNeeded();
     const security = window.BeastConfig?.get("panels.security") || {};
+    const configuredAlarms = window.BeastConfig?.get("screenLock.alarmEntities");
     const selectedAlarm = window.BeastConfig?.get("screenLock.alarmEntity") || security.primaryAlarm;
-    const alarmIds = selectedAlarm ? [selectedAlarm] : (Array.isArray(security.alarmPanels) ? security.alarmPanels.filter(Boolean).slice(0, 1) : []);
+    const alarmIds = Array.from(new Set((Array.isArray(configuredAlarms) && configuredAlarms.length
+      ? configuredAlarms
+      : selectedAlarm ? [selectedAlarm] : security.alarmPanels || []).filter(Boolean)));
+    const reconcileAlarmState = () => {
+      const states = alarmIds.map((id) => BeastHaSocket.getState(id)?.state).filter(Boolean);
+      if (states.some(isFullyArmed)) lockForArmedAlarm();
+      else if (states.length && states.every((state) => state === "disarmed")) unlockAfterAlarmDisarm();
+    };
     BeastHaSocket.onStatusChange((status) => {
       if (status !== "connected") return;
-      const currentState = alarmIds.map((id) => BeastHaSocket.getState(id)?.state).find(Boolean);
-      if (isFullyArmed(currentState)) lockForArmedAlarm();
-      else if (currentState === "disarmed") unlockAfterAlarmDisarm();
+      reconcileAlarmState();
     });
-    alarmIds.forEach((alarmId) => BeastHaSocket.subscribeEntity(alarmId, (entityId, newState, oldState) => {
-      if (!newState) return;
-      const wasFullyArmed = oldState && isFullyArmed(oldState.state);
-      const fullyArmed = isFullyArmed(newState.state);
-      if (!wasFullyArmed && fullyArmed) lockForArmedAlarm();
-      if (wasFullyArmed && newState.state === "disarmed") unlockAfterAlarmDisarm();
-    }));
+    alarmIds.forEach((alarmId) => BeastHaSocket.subscribeEntity(alarmId, reconcileAlarmState));
   }
 
   return {

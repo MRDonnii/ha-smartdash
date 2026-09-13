@@ -1,5 +1,16 @@
 [
   {
+    "version": "20260913-12",
+    "tag": "v0.8.44",
+    "date": "2026-09-13",
+    "changes": [
+      { "da": "Dashboardet viser nu en rolig offline-status med tidspunktet for senest kendte HA-data, mens de eksisterende kort og værdier bliver stående.", "en": "The dashboard now shows a calm offline status with the timestamp of the latest known HA data while existing cards and values remain visible." },
+      { "da": "Hver kiosk har nu strømprofilerne Ydelse, Balanceret og Lavt forbrug; lav profil begrænser samtidige forsidekameraer til to og fjerner animationer uden at ændre gemte kameravalg.", "en": "Each kiosk now has Performance, Balanced and Low power profiles; Low limits simultaneous overview cameras to two and removes animations without changing saved camera choices." },
+      { "da": "Skærmlåsen kan følge flere alarm-entiteter med any-armed-logik og frigives først automatisk, når alle valgte alarmer er frakoblet.", "en": "The screen lock can follow multiple alarm entities using any-armed logic and is only released automatically after every selected alarm is disarmed." },
+      { "da": "Et nyt notifikationscenter gemmer de seneste 30 lokale hændelser, deduplikerer dem og lader brugeren kvittere uden at ændre den bagvedliggende alarm.", "en": "A new notification center stores the latest 30 local events, deduplicates them and lets the user acknowledge them without changing the underlying alarm." }
+    ]
+  },
+  {
     "version": "20260913-11",
     "tag": "v0.8.43",
     "date": "2026-09-13",
