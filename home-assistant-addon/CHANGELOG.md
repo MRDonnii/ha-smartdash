@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.8.38
+
+- Every overview camera tile can now select any camera available in Smartdash,
+  rather than being limited to a predefined subset for that group.
+- Removed the per-group live allowlist from the overview editor while retaining
+  Automatic mode, fixed choices, group visibility and stable live streams.
+
 ## 0.8.37
 
 - Saving an unchanged overview camera configuration now preserves the existing
