@@ -632,7 +632,11 @@
   }
 
   function callService(domain, service, data) {
-    return BeastAuth.haFetch(`/api/services/${domain}/${service}`, {
+    const isValidToken = (value) => typeof value === "string" && /^[a-z0-9_]+$/.test(value);
+    if (!isValidToken(domain) || !isValidToken(service)) {
+      return Promise.reject(new Error("Invalid service domain or name"));
+    }
+    return BeastAuth.haFetch(`/api/services/${encodeURIComponent(domain)}/${encodeURIComponent(service)}`, {
       method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(data)
     });
   }
