@@ -180,6 +180,11 @@
     };
   }
 
+  function preloadOverviewSnapshots(cameras) {
+    const paths = new Set((cameras || []).map((camera) => overviewCameraVariant(camera)?.entityPicture).filter(Boolean));
+    return Promise.all([...paths].map((path) => BeastAuth.preloadAuthedImage?.(path))).catch(() => []);
+  }
+
   class BeastHaCameraStream extends HTMLElement {
     connectedCallback() {
       if (this._mounted) return;
@@ -946,6 +951,7 @@
     qualityLabel,
     sharedCameraMarkup,
     overviewCameraMarkup,
+    preloadOverviewSnapshots,
     wireSharedCameras,
     hasGo2rtc,
     isSmartDetectionEntity,

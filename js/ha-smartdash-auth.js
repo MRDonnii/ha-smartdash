@@ -342,12 +342,40 @@ const BeastAuth = (() => {
     return response.blob();
   }
 
+  const imageBlobCache = new Map();
+  const IMAGE_BLOB_CACHE_MS = 15000;
+
+  async function cachedImageObjectUrl(path) {
+    const now = Date.now();
+    const cached = imageBlobCache.get(path);
+    if (cached && cached.expiresAt > now) return cached.promise;
+    const entry = {
+      expiresAt: now + IMAGE_BLOB_CACHE_MS,
+      promise: haFetchBlob(path).then((blob) => URL.createObjectURL(blob))
+    };
+    imageBlobCache.set(path, entry);
+    if (cached) entry.promise.then((url) => cached.promise.then((oldUrl) => {
+      if (oldUrl && oldUrl !== url) URL.revokeObjectURL(oldUrl);
+    }).catch(() => {})).catch(() => {});
+    entry.promise.catch(() => { if (imageBlobCache.get(path) === entry) imageBlobCache.delete(path); });
+    if (imageBlobCache.size > 48) {
+      [...imageBlobCache.entries()]
+        .filter(([, value]) => value.expiresAt <= now)
+        .slice(0, imageBlobCache.size - 48)
+        .forEach(([key]) => imageBlobCache.delete(key));
+    }
+    return entry.promise;
+  }
+
+  function preloadAuthedImage(path) {
+    if (!path) return Promise.resolve(false);
+    return cachedImageObjectUrl(path).then(() => true).catch(() => false);
+  }
+
   async function setAuthedImageSrc(imgEl, path) {
     if (!path) { imgEl.removeAttribute("src"); return false; }
     try {
-      const blob = await haFetchBlob(path);
-      const objectUrl = URL.createObjectURL(blob);
-      if (imgEl.dataset.objectUrl) URL.revokeObjectURL(imgEl.dataset.objectUrl);
+      const objectUrl = await cachedImageObjectUrl(path);
       imgEl.dataset.objectUrl = objectUrl;
       imgEl.src = objectUrl;
       return true;
@@ -378,6 +406,7 @@ const BeastAuth = (() => {
     refreshAccessToken,
     haFetch,
     haFetchBlob,
+    preloadAuthedImage,
     setAuthedImageSrc,
     getDiagnostics: loadDiagnostics,
     clearDiagnostics,

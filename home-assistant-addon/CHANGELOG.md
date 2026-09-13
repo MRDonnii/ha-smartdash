@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.8.49
+
+- Preloaded authenticated camera posters for instant motion-driven switches
+  without keeping hidden live streams open.
+- Reconciled desktop overview camera tiles individually, so changing one view
+  no longer restarts the unchanged WebRTC players.
+
 ## 0.8.48
 
 - Made the notification popup nearly opaque with high-contrast text and a

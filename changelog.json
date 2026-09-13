@@ -1,5 +1,14 @@
 [
   {
+    "version": "20260913-17",
+    "tag": "v0.8.49",
+    "date": "2026-09-13",
+    "changes": [{
+      "da": "Kameraskift efter bevægelse bruger nu forindlæste, autentificerede stillbilleder, mens kun det ændrede livefelt genstartes. Skjulte kameraer holder ikke videostrømme åbne.",
+      "en": "Motion-driven camera switching now uses preloaded authenticated stills while only the changed live view reconnects. Hidden cameras do not keep video streams open."
+    }]
+  },
+  {
     "version": "20260913-16",
     "tag": "v0.8.48",
     "date": "2026-09-13",
