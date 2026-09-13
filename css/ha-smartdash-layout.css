@@ -122,6 +122,44 @@ body::after {
   box-shadow: 0 0 8px var(--danger);
 }
 
+.beast-offline-status {
+  position: fixed;
+  z-index: 920;
+  top: 14px;
+  left: 50%;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  max-width: min(520px, calc(100vw - 88px));
+  padding: 10px 14px;
+  transform: translateX(-50%);
+  border: 1px solid color-mix(in srgb, var(--warning, #ffb020) 42%, transparent);
+  border-radius: 14px;
+  background: color-mix(in srgb, var(--surface-solid, #11151c) 94%, transparent);
+  color: var(--ink, #f4f7fb);
+  box-shadow: 0 12px 30px rgba(0,0,0,.28);
+  backdrop-filter: blur(16px);
+}
+.beast-offline-status[hidden] { display: none; }
+.beast-offline-status > span { color: var(--warning, #ffb020); }
+.beast-offline-status strong,.beast-offline-status small { display:block; }
+.beast-offline-status small { margin-top:2px; color:var(--ink-muted, #9ca8b8); }
+.beast-notification-button { position:fixed; z-index:925; top:12px; right:42px; width:36px; height:36px; display:grid; place-items:center; border:1px solid var(--border, rgba(255,255,255,.12)); border-radius:50%; background:var(--surface-solid, #11151c); color:var(--ink, #fff); cursor:pointer; }
+.beast-notification-button b { position:absolute; top:-4px; right:-4px; min-width:17px; height:17px; display:grid; place-items:center; padding:0 4px; border-radius:9px; background:var(--danger, #ff426d); color:#fff; font-size:10px; }
+.beast-notification-button b[hidden],.beast-notification-center[hidden] { display:none; }
+.beast-notification-center { position:fixed; z-index:940; top:58px; right:14px; width:min(390px,calc(100vw - 28px)); max-height:min(620px,calc(100vh - 76px)); overflow:auto; padding:14px; border:1px solid var(--border,rgba(255,255,255,.12)); border-radius:18px; background:var(--surface-solid,#11151c); box-shadow:0 24px 70px rgba(0,0,0,.48); }
+.beast-notification-center header { display:flex; justify-content:space-between; align-items:center; gap:12px; padding:2px 2px 12px; }
+.beast-notification-center header strong,.beast-notification-center header small { display:block; }
+.beast-notification-center header small { color:var(--ink-muted,#9ca8b8); }
+.beast-notification-center header button { border:0; background:transparent; color:var(--ink,#fff); cursor:pointer; }
+#beastNotificationList { display:grid; gap:8px; }
+#beastNotificationList > p { color:var(--ink-muted,#9ca8b8); text-align:center; }
+#beastNotificationList article { display:grid; grid-template-columns:34px 1fr auto; gap:9px; align-items:center; padding:11px; border:1px solid var(--border,rgba(255,255,255,.1)); border-radius:13px; background:var(--surface-2,rgba(255,255,255,.04)); }
+#beastNotificationList article.is-acknowledged { opacity:.58; }
+#beastNotificationList article strong,#beastNotificationList article small,#beastNotificationList article time { display:block; }
+#beastNotificationList article small,#beastNotificationList article time { color:var(--ink-muted,#9ca8b8); font-size:11px; }
+#beastNotificationList article button { min-width:38px; min-height:32px; border:1px solid var(--accent-border,var(--border)); border-radius:9px; background:var(--accent-soft,rgba(41,182,246,.12)); color:var(--accent,#29b6f6); font-weight:800; cursor:pointer; }
+
 /* Control-center shell: slim header, a persistent vertical icon rail for navigation
    (like a native settings/home app), and a full-bleed content pane that shows exactly
    one section at a time. Nothing scrolls at the app level — depth lives behind rail
