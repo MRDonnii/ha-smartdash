@@ -1,5 +1,16 @@
 [
   {
+    "version": "20260913-9",
+    "tag": "v0.8.41",
+    "date": "2026-09-13",
+    "changes": [
+      {
+        "da": "Forsidens standardkameraløsning bruger nu automatisk kameraets smart-, lyd- og bevægelsesdetektioner fra Home Assistant. Automatisk viser det senest aktive tilladte kamera og går tilbage til stjernen efter hændelsen; 1–3 vinduer, faste valg og den kompakte opsætningsmenu er bevaret. Kamera-siden er ikke ændret.",
+        "en": "The default overview camera experience now uses each camera's Home Assistant smart, audio and motion detections. Automatic mode shows the most recently active allowed camera and returns to the starred fallback after the event; one to three views, fixed choices and the compact setup menu remain available. The Cameras page is unchanged."
+      }
+    ]
+  },
+  {
     "version": "20260913-8",
     "tag": "v0.8.40",
     "date": "2026-09-13",

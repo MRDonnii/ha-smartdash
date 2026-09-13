@@ -51,6 +51,7 @@ if (!cameras.includes('window.BeastPower?.getState?.() !== "idle"') || !cameras.
 if (!overview.includes("groups.flatMap((group) => group.cameras)") || !overview.includes("cameras: everyCamera") || overview.includes("data-camera-allowed")) throw new Error("Every overview camera group must use the complete camera catalog without a per-group allowlist.");
 if (!overview.includes("data-camera-auto") || !overview.includes("data-camera-fallback") || !overview.includes("autoKeys.includes(automaticKey)")) throw new Error("Overview camera groups must expose automatic membership and fallback selection.");
 if (!overview.includes("beast-ov-camera-star") || overview.includes("<select data-camera-fallback")) throw new Error("Camera fallback must use the compact per-row favourite star.");
+if (!overview.includes('sendCommand("config/entity_registry/list")') || !overview.includes("overviewDetectionTimestamp") || !overview.includes("defaultOverviewCameraGroups")) throw new Error("Overview cameras must use detection-driven automatic views by default.");
 for (const html of [index, beast]) {
   if (html.indexOf("ha-smartdash-power.js") > html.indexOf("ha-smartdash-cameras.js")) throw new Error("Power bridge must load before camera components.");
 }
