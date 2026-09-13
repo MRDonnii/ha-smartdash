@@ -622,7 +622,11 @@
 
   function refreshStripSnapshots() {
     if (!containerEl || !BeastCore.isPanelVisible(containerEl)) return;
-    containerEl.querySelectorAll(".beast-camera-snapshot").forEach((img) => {
+    // Refresh only real snapshot images from the Cameras panel. A live
+    // player must never enter this path even if a theme or an older custom
+    // layout accidentally reuses the snapshot class on its iframe: changing
+    // an iframe's src here tears down WebRTC and creates an 8-second loop.
+    containerEl.querySelectorAll("img.beast-camera-snapshot").forEach((img) => {
       const tile = img.closest(".beast-camera-tile");
       const streamName = tile?.dataset.streamName || go2rtcVariantsForCamera(tile?.dataset.slug)[0]?.streamName;
       if (streamName) { swapSnapshot(img, snapshotUrl(streamName)); return; }
