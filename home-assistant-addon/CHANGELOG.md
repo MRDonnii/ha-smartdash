@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.8.33
+
+- Overview camera tiles now use the medium-resolution Home Assistant WebRTC
+  feed behind an immediate snapshot, while the Cameras page remains on its
+  independently selected high-resolution stream.
+- Inactive overview feeds disconnect cleanly and unsupported HA WebRTC camera
+  platforms fall back to the existing go2rtc player.
+
 ## 0.8.32
 
 - Administration's login screen now automatically searches the local
