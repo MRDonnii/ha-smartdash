@@ -28,6 +28,7 @@
   let ALARM_IDS = [];
   let WASTE_SENSORS = [];
   const OVERVIEW_CAMERA_KEY = "beast_overview_cameras_v1";
+  const OVERVIEW_CAMERA_MODE_KEY = "beast_overview_camera_modes_v1";
   const OVERVIEW_LAYOUT_KEY = "beast_overview_layout_v1";
   const OVERVIEW_AUTO_FOCUS_KEY = "beast_overview_auto_focus_v1";
   let ROBOT_IDS = [];
@@ -42,6 +43,58 @@
   const NOTIFICATION_SNOOZE_KEY = "beast_notification_snooze_v1";
   const OVERVIEW_CAMERA_LIMIT = 3;
   let UTILITY_VIEWS = {};
+  const overviewCameraSelectorUnsubscribers = new Map();
+
+  function overviewCameraGroups() {
+    const configured = BeastConfig.get("overviewCameraGroups");
+    if (!Array.isArray(configured)) return [];
+    return configured.slice(0, OVERVIEW_CAMERA_LIMIT).map((group, index) => ({
+      id: String(group?.id || group?.selectorEntity || group?.selector_entity || `group-${index}`),
+      name: String(group?.name || group?.title || `Kamera ${index + 1}`),
+      selectorEntity: String(group?.selectorEntity || group?.selector_entity || ""),
+      cameras: (Array.isArray(group?.cameras) ? group.cameras : []).map((camera, cameraIndex) => ({
+        key: String(camera?.key || camera?.id || `camera-${cameraIndex}`),
+        name: String(camera?.name || camera?.label || camera?.key || `Kamera ${cameraIndex + 1}`),
+        entityId: String(camera?.entityId || camera?.entity || camera?.camera || "")
+      })).filter((camera) => camera.entityId)
+    })).filter((group) => group.cameras.length);
+  }
+
+  function overviewCameraModes() {
+    try {
+      const value = JSON.parse(localStorage.getItem(OVERVIEW_CAMERA_MODE_KEY) || "{}");
+      return value && typeof value === "object" && !Array.isArray(value) ? value : {};
+    } catch (_) { return {}; }
+  }
+
+  function setOverviewCameraMode(groupId, key) {
+    const modes = overviewCameraModes();
+    if (key) modes[groupId] = key;
+    else delete modes[groupId];
+    localStorage.setItem(OVERVIEW_CAMERA_MODE_KEY, JSON.stringify(modes));
+  }
+
+  function ensureOverviewCameraSelectorSubscriptions(groups) {
+    const wanted = new Set(groups.map((group) => group.selectorEntity).filter(Boolean));
+    overviewCameraSelectorUnsubscribers.forEach((unsubscribe, entityId) => {
+      if (wanted.has(entityId)) return;
+      unsubscribe();
+      overviewCameraSelectorUnsubscribers.delete(entityId);
+    });
+    wanted.forEach((entityId) => {
+      if (overviewCameraSelectorUnsubscribers.has(entityId)) return;
+      overviewCameraSelectorUnsubscribers.set(entityId, BeastHaSocket.subscribeEntity(entityId, renderCameras));
+    });
+  }
+
+  function resolveOverviewCameraGroup(group, modes) {
+    const automaticKey = String(BeastHaSocket.getState(group.selectorEntity)?.state || "");
+    const fixedKey = String(modes[group.id] || "");
+    const requestedKey = fixedKey || automaticKey;
+    const choice = group.cameras.find((camera) => camera.key === requestedKey) || group.cameras[0];
+    const camera = window.BeastCameras.resolveCamera(choice.entityId);
+    return camera ? { group, choice, camera, fixedKey, automaticKey } : null;
+  }
 
   function applyConfig() {
     const weather = BeastConfig.get("panels.weather") || {};
@@ -1569,6 +1622,8 @@
     if (!area || !window.BeastCameras) return;
     const host = area;
     let allCameras = window.BeastCameras.getAllCameras("overview");
+    const configuredGroups = overviewCameraGroups();
+    ensureOverviewCameraSelectorSubscriptions(configuredGroups);
     const doorbellId = BeastConfig.get("appEntities.doorbellCamera");
     const doorbellCamera = doorbellId ? window.BeastCameras.resolveCamera(doorbellId) : null;
     if (doorbellCamera && !allCameras.some((camera) => camera.slug === doorbellCamera.slug)) allCameras = [doorbellCamera, ...allCameras];
@@ -1577,6 +1632,7 @@
       return;
     }
     const cameraBySlug = new Map(allCameras.map((camera) => [camera.slug, camera]));
+    const groupSelections = configuredGroups.map((group) => resolveOverviewCameraGroup(group, overviewCameraModes())).filter(Boolean);
     const centralSelection = BeastConfig.get("overviewCameraEntities");
     const hasCentralSelection = Array.isArray(centralSelection) && centralSelection.length > 0;
     let selectedSlugs = (Array.isArray(centralSelection) ? centralSelection : [])
@@ -1603,8 +1659,10 @@
       // it becomes an explicit central selection the first time it is saved.
       selectedSlugs = selectedSlugs.slice(0, OVERVIEW_CAMERA_LIMIT);
     }
-    let cameras = selectedSlugs.map((slug) => cameraBySlug.get(slug)).filter(Boolean);
-    if (autoFocusEnabled() && motionFocusSlug && cameraBySlug.has(motionFocusSlug)) {
+    let cameras = groupSelections.length
+      ? groupSelections.map((selection) => selection.camera)
+      : selectedSlugs.map((slug) => cameraBySlug.get(slug)).filter(Boolean);
+    if (!groupSelections.length && autoFocusEnabled() && motionFocusSlug && cameraBySlug.has(motionFocusSlug)) {
       cameras = [cameraBySlug.get(motionFocusSlug), ...cameras.filter((camera) => camera.slug !== motionFocusSlug)].slice(0, OVERVIEW_CAMERA_LIMIT);
     }
     const isMobile = isMobileOverviewViewport();
@@ -1618,7 +1676,8 @@
     const cameraRenderSignature = JSON.stringify({
       mobile: isMobile,
       featured: isMobile ? mobileFeaturedCameraSlug : null,
-      cameras: cameras.map((camera) => `${camera.slug}:${camera.resolvedStreamName || camera.streamName || ""}`)
+      cameras: cameras.map((camera) => `${camera.slug}:${camera.resolvedStreamName || camera.streamName || ""}`),
+      groups: groupSelections.map((selection) => `${selection.group.id}:${selection.fixedKey || "auto"}:${selection.automaticKey}`)
     });
     if (cameraRenderSignature === lastCameraRenderSignature) return;
     lastCameraRenderSignature = cameraRenderSignature;
@@ -1681,8 +1740,43 @@
       const cameraMenu = document.getElementById("beastOvCameraMenu");
       if (cameraMenu) cameraMenu.hidden = true;
       document.getElementById("beastOvCameraMenuToggle")?.setAttribute("aria-expanded", "false");
-      openCameraPicker(allCameras, selectedSlugs);
+      if (configuredGroups.length) openCameraGroupPicker(configuredGroups);
+      else openCameraPicker(allCameras, selectedSlugs);
     };
+  }
+
+  function openCameraGroupPicker(groups) {
+    document.getElementById("beastOvCameraPickerModal")?.remove();
+    const modes = overviewCameraModes();
+    const overlay = document.createElement("div");
+    overlay.id = "beastOvCameraPickerModal";
+    overlay.className = "beast-modal-overlay";
+    overlay.innerHTML = `
+      <div class="beast-modal beast-ov-camera-picker-modal" role="dialog" aria-modal="true" aria-label="Vælg kameraer til forsiden">
+        <div class="beast-modal-header"><div><h3>Vælg kameraer</h3><p class="beast-ov-camera-picker-help">Automatisk følger bevægelsesvalget fra Home Assistant. Et fast valg bliver stående på denne skærm.</p></div><button type="button" class="beast-modal-close" data-close aria-label="Luk">${BeastCore.icon("close", { size: 22 })}</button></div>
+        <div class="beast-modal-body beast-ov-camera-group-editor">
+          ${groups.map((group) => {
+            const active = modes[group.id] || "";
+            return `<fieldset data-overview-camera-group="${escapeHtml(group.id)}"><legend>${escapeHtml(group.name)}</legend>
+              <label><input type="radio" name="camera-${escapeHtml(group.id)}" value="" ${active ? "" : "checked"}><span><b>Automatisk</b><small>Følg ${escapeHtml(group.name)} fra Home Assistant</small></span></label>
+              ${group.cameras.map((camera) => `<label><input type="radio" name="camera-${escapeHtml(group.id)}" value="${escapeHtml(camera.key)}" ${active === camera.key ? "checked" : ""}><span><b>${escapeHtml(camera.name)}</b><small>Fast kameravalg</small></span></label>`).join("")}
+            </fieldset>`;
+          }).join("")}
+          <div class="beast-ov-camera-picker-actions"><button type="button" class="beast-btn beast-ov-camera-picker-done" data-save-camera-groups>Gem kameravalg</button></div>
+        </div>
+      </div>`;
+    const close = () => overlay.remove();
+    overlay.addEventListener("click", (event) => { if (event.target === overlay || event.target.closest("[data-close]")) close(); });
+    overlay.querySelector("[data-save-camera-groups]")?.addEventListener("click", () => {
+      groups.forEach((group) => {
+        const selected = overlay.querySelector(`[data-overview-camera-group="${CSS.escape(group.id)}"] input:checked`);
+        setOverviewCameraMode(group.id, selected?.value || "");
+      });
+      lastCameraRenderSignature = null;
+      renderCameras();
+      close();
+    });
+    document.body.appendChild(overlay);
   }
 
   function openCameraPicker(cameras, initialSlugs) {
