@@ -3,7 +3,7 @@
   let state = "active";
 
   function profile() {
-    const value = window.BeastLocalSettings?.get?.("powerProfile", "balanced");
+    const value = typeof BeastLocalSettings !== "undefined" ? BeastLocalSettings.get("powerProfile", "balanced") : "balanced";
     return ["performance", "balanced", "low"].includes(value) ? value : "balanced";
   }
 

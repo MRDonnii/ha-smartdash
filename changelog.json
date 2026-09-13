@@ -1,5 +1,13 @@
 [
   {
+    "version": "20260913-13",
+    "tag": "v0.8.45",
+    "date": "2026-09-13",
+    "changes": [
+      { "da": "Strømprofil og multi-alarm initialiseres nu fra Smartdash' faktiske globale konfiguration, så valgene træder i kraft straks efter gemning eller indlæsning.", "en": "Power profile and multi-alarm initialization now use Smartdash's actual global configuration, so selections take effect immediately after saving or loading." }
+    ]
+  },
+  {
     "version": "20260913-12",
     "tag": "v0.8.44",
     "date": "2026-09-13",
