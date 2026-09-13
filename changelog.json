@@ -1,5 +1,14 @@
 [
   {
+    "version": "20260913-18",
+    "tag": "v0.8.50",
+    "date": "2026-09-13",
+    "changes": [{
+      "da": "Kameraoptimeringen er genudgivet med et nyt release-id, så standalone-opdateringer med sikkerhed modtager de forindlæste billeder og stabile kamerafelter uden at ændre lokale data.",
+      "en": "The camera optimization has been reissued with a new release ID so standalone updates reliably receive warmed posters and stable camera tiles without changing local data."
+    }]
+  },
+  {
     "version": "20260913-17",
     "tag": "v0.8.49",
     "date": "2026-09-13",
