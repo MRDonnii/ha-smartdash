@@ -1,5 +1,11 @@
 [
   {
+    "version": "20260913-8",
+    "tag": "v0.8.40",
+    "date": "2026-09-13",
+    "changes": [{"da":"Kameraeditoren følger nu HA Home Camera Card: hver kamerarække har et kompakt Auto-valg og en lille stjerne til favorit/fallback. Den store separate auto-sektion og fallback-dropdown er fjernet.","en":"The camera editor now follows HA Home Camera Card: each camera row has a compact Auto toggle and a small star for favourite/fallback. The large separate automatic section and fallback dropdown have been removed."}]
+  },
+  {
     "version": "20260913-7",
     "tag": "v0.8.39",
     "date": "2026-09-13",

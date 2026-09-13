@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.8.40
+
+- Simplified each overview camera row to a fixed-camera choice, compact Auto
+  toggle and a small star for favourite/fallback, matching HA Home Camera Card.
+
 ## 0.8.39
 
 - Each overview camera tile now has its own automatic-rotation camera list and

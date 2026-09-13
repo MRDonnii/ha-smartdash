@@ -875,7 +875,7 @@
 }
 .beast-ov-camera-group-editor label:has(input:checked) { border-color:var(--accent-a); background:var(--accent-soft); }
 .beast-ov-camera-group-editor .beast-ov-camera-group-visibility { grid-column:1 / -1; background:rgba(255,255,255,.035); }
-.beast-ov-camera-group-camera { min-width:0; display:grid; grid-template-columns:minmax(0,1fr) auto; gap:6px; }
+.beast-ov-camera-group-camera { min-width:0; display:grid; grid-template-columns:minmax(0,1fr) auto 42px; gap:6px; }
 .beast-ov-camera-group-camera > label:first-child { min-width:0; }
 .beast-ov-camera-group-editor .beast-ov-camera-group-allowed { min-height:54px; padding:7px 9px; }
 .beast-ov-camera-group-editor .beast-ov-camera-group-allowed span { color:var(--ink-muted); font-size:11px; white-space:nowrap; }
@@ -883,16 +883,12 @@
 .beast-ov-camera-group-editor label span { min-width:0; display:grid; gap:2px; }
 .beast-ov-camera-group-editor label b { color:var(--ink); font-size:var(--text-sm); }
 .beast-ov-camera-group-editor label small { color:var(--ink-muted); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-.beast-ov-camera-auto-settings { grid-column:1 / -1; display:grid; gap:8px; padding:10px; border:1px solid var(--border); border-radius:11px; }
-.beast-ov-camera-auto-settings > strong { color:var(--ink); font-size:var(--text-sm); }
-.beast-ov-camera-auto-grid { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:6px; }
-.beast-ov-camera-auto-grid label { min-height:40px; padding:6px 8px; font-size:12px; }
-.beast-ov-camera-group-editor .beast-ov-camera-fallback { display:grid; grid-template-columns:minmax(0,1fr) minmax(160px,.8fr); }
-.beast-ov-camera-fallback select { width:100%; }
+.beast-ov-camera-group-editor .beast-ov-camera-auto-toggle { min-height:54px; padding:7px 9px; }
+.beast-ov-camera-auto-toggle span { color:var(--ink-muted); font-size:11px; font-weight:800; }
+.beast-ov-camera-star { width:42px; min-height:54px; padding:0; border:1px solid var(--border); border-radius:11px; background:var(--surface-solid); color:var(--ink-muted); font-size:23px; cursor:pointer; }
+.beast-ov-camera-star.is-active { border-color:color-mix(in srgb,#f5b942 55%,var(--border)); color:#f5b942; background:color-mix(in srgb,#f5b942 10%,var(--surface-solid)); }
 @media (max-width:620px) {
   .beast-ov-camera-group-editor fieldset { grid-template-columns:minmax(0,1fr); }
-  .beast-ov-camera-auto-grid { grid-template-columns:repeat(2,minmax(0,1fr)); }
-  .beast-ov-camera-group-editor .beast-ov-camera-fallback { grid-template-columns:minmax(0,1fr); }
   .beast-ov-camera-picker-actions { align-items:stretch; flex-direction:column; }
   .beast-ov-camera-picker-save-state { text-align:left; }
   .beast-ov-camera-picker-done { width:100%; }
