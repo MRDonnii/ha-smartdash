@@ -104,6 +104,10 @@ const BeastConfig = (() => {
     // Centrally stored, ordered camera entities for the overview. An empty
     // array means "use the camera panel selection", not "restore defaults".
     overviewCameraEntities: [],
+    // Optional HA Home Camera Card-style groups for the overview. Each group
+    // follows selectorEntity while set to automatic, and exposes its cameras
+    // as fixed per-tile choices.
+    overviewCameraGroups: [],
     overviewVentilation: { enabled: false, title: "Ventilation", animation: true, showAfterheat: false, entities: {} },
     pageLayouts: {
       robots: { cards: [] },

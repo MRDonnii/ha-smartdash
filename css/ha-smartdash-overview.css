@@ -848,7 +848,38 @@
 .beast-ov-camera-picker-actions { min-width:0; display:flex; align-items:center; justify-content:flex-end; gap:12px; }
 .beast-ov-camera-picker-save-state { min-width:0; flex:1; color:var(--danger); font-size:var(--text-xs); font-weight:750; text-align:right; }
 .beast-ov-camera-picker-done.is-busy { opacity:.7; cursor:wait; }
+.beast-ov-camera-group-editor { display:grid; gap:14px; }
+.beast-ov-camera-group-editor fieldset {
+  min-width:0;
+  display:grid;
+  grid-template-columns:repeat(2,minmax(0,1fr));
+  gap:8px;
+  margin:0;
+  padding:12px;
+  border:1px solid var(--border);
+  border-radius:var(--radius-md);
+  background:var(--surface-2);
+}
+.beast-ov-camera-group-editor legend { padding:0 7px; color:var(--ink); font-weight:800; }
+.beast-ov-camera-group-editor label {
+  min-width:0;
+  min-height:54px;
+  display:flex;
+  align-items:center;
+  gap:10px;
+  padding:8px 10px;
+  border:1px solid var(--border);
+  border-radius:11px;
+  background:var(--surface-solid);
+  cursor:pointer;
+}
+.beast-ov-camera-group-editor label:has(input:checked) { border-color:var(--accent-a); background:var(--accent-soft); }
+.beast-ov-camera-group-editor input { accent-color:var(--accent-a); }
+.beast-ov-camera-group-editor label span { min-width:0; display:grid; gap:2px; }
+.beast-ov-camera-group-editor label b { color:var(--ink); font-size:var(--text-sm); }
+.beast-ov-camera-group-editor label small { color:var(--ink-muted); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
 @media (max-width:620px) {
+  .beast-ov-camera-group-editor fieldset { grid-template-columns:minmax(0,1fr); }
   .beast-ov-camera-picker-actions { align-items:stretch; flex-direction:column; }
   .beast-ov-camera-picker-save-state { text-align:left; }
   .beast-ov-camera-picker-done { width:100%; }

@@ -1,5 +1,16 @@
 [
   {
+    "version": "20260913-2",
+    "tag": "v0.8.34",
+    "date": "2026-09-13",
+    "changes": [
+      {
+        "da": "Forsidens kameraeditor kan nu genbruge grupperne fra HA Home Camera Card. Under Rediger -> Vælg kameraer kan hver gruppe følge Home Assistants automatiske selector eller låses til et fast kamera. Betjeningen ligger ikke over videobillederne, og åbning af editoren genstarter ikke aktive streams.",
+        "en": "The overview camera editor can now reuse HA Home Camera Card groups. Under Edit -> Choose cameras, each group can follow its Home Assistant selector automatically or stay on a fixed camera. Controls do not cover the video tiles, and opening the editor does not restart active streams."
+      }
+    ]
+  },
+  {
     "version": "20260913-1",
     "tag": "v0.8.33",
     "date": "2026-09-13",
