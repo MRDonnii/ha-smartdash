@@ -883,8 +883,16 @@
 .beast-ov-camera-group-editor label span { min-width:0; display:grid; gap:2px; }
 .beast-ov-camera-group-editor label b { color:var(--ink); font-size:var(--text-sm); }
 .beast-ov-camera-group-editor label small { color:var(--ink-muted); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.beast-ov-camera-auto-settings { grid-column:1 / -1; display:grid; gap:8px; padding:10px; border:1px solid var(--border); border-radius:11px; }
+.beast-ov-camera-auto-settings > strong { color:var(--ink); font-size:var(--text-sm); }
+.beast-ov-camera-auto-grid { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:6px; }
+.beast-ov-camera-auto-grid label { min-height:40px; padding:6px 8px; font-size:12px; }
+.beast-ov-camera-group-editor .beast-ov-camera-fallback { display:grid; grid-template-columns:minmax(0,1fr) minmax(160px,.8fr); }
+.beast-ov-camera-fallback select { width:100%; }
 @media (max-width:620px) {
   .beast-ov-camera-group-editor fieldset { grid-template-columns:minmax(0,1fr); }
+  .beast-ov-camera-auto-grid { grid-template-columns:repeat(2,minmax(0,1fr)); }
+  .beast-ov-camera-group-editor .beast-ov-camera-fallback { grid-template-columns:minmax(0,1fr); }
   .beast-ov-camera-picker-actions { align-items:stretch; flex-direction:column; }
   .beast-ov-camera-picker-save-state { text-align:left; }
   .beast-ov-camera-picker-done { width:100%; }

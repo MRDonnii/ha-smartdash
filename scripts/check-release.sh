@@ -49,6 +49,7 @@ if (!addonChangelog.includes(`## ${semanticVersion}`)) throw new Error("Home Ass
 if (!power.includes('event.data?.type !== EVENT_TYPE') || !power.includes('beast:powerstatechange')) throw new Error("Power bridge must validate and publish power state changes.");
 if (!cameras.includes('window.BeastPower?.getState?.() !== "idle"') || !cameras.includes('this._remoteStream?.getTracks().forEach((track) => track.stop())')) throw new Error("Camera lifecycle must stop media while Smartdash is idle.");
 if (!overview.includes("groups.flatMap((group) => group.cameras)") || !overview.includes("cameras: everyCamera") || overview.includes("data-camera-allowed")) throw new Error("Every overview camera group must use the complete camera catalog without a per-group allowlist.");
+if (!overview.includes("data-camera-auto") || !overview.includes("data-camera-fallback") || !overview.includes("autoKeys.includes(automaticKey)")) throw new Error("Overview camera groups must expose automatic membership and fallback selection.");
 for (const html of [index, beast]) {
   if (html.indexOf("ha-smartdash-power.js") > html.indexOf("ha-smartdash-cameras.js")) throw new Error("Power bridge must load before camera components.");
 }
