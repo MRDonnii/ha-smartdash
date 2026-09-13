@@ -28,25 +28,39 @@ function setupNotificationCenter() {
   const read = () => { try { const value = JSON.parse(localStorage.getItem(NOTIFICATION_HISTORY_KEY) || "[]"); return Array.isArray(value) ? value : []; } catch (_) { return []; } };
   const write = (items) => localStorage.setItem(NOTIFICATION_HISTORY_KEY, JSON.stringify(items.slice(0, 30)));
   const paint = () => {
-    const items = read();
-    const unread = items.filter((item) => !item.acknowledged).length;
+    const items = read().filter((item) => !item.dismissed);
+    const unread = items.filter((item) => !item.acknowledged && !(item.snoozedUntil > Date.now())).length;
     badge.textContent = String(unread);
     badge.hidden = !unread;
-    list.innerHTML = items.length ? items.map((item) => `<article data-notification-id="${overviewEscape(item.id)}" class="${item.acknowledged ? "is-acknowledged" : ""}"><span>${BeastCore.icon(item.icon || "bell", { size:20 })}</span><div><strong>${overviewEscape(item.title)}</strong><small>${overviewEscape(item.detail || "")}</small><time>${new Date(item.at).toLocaleString()}</time></div>${item.acknowledged ? "" : `<button type="button" data-acknowledge>OK</button>`}</article>`).join("") : `<p>Ingen hændelser endnu.</p>`;
+    list.innerHTML = items.length ? items.map((item) => `<article data-notification-id="${overviewEscape(item.id)}" class="${item.acknowledged ? "is-acknowledged" : ""}"><span>${BeastCore.icon(item.icon || "bell", { size:20 })}</span><div class="beast-notification-copy"><div><em>${overviewEscape(item.category || "Smartdash")}</em><time>${new Date(item.at).toLocaleString()}</time></div><strong>${overviewEscape(item.title)}</strong><small>${overviewEscape(item.detail || "")}</small>${item.snoozedUntil > Date.now() ? `<i>Udsat til ${new Date(item.snoozedUntil).toLocaleTimeString([], { hour:"2-digit", minute:"2-digit" })}</i>` : ""}<nav><button type="button" data-open-notification>Åbn</button><button type="button" data-snooze-notification>30 min</button>${item.acknowledged ? "" : `<button type="button" data-acknowledge>OK</button>`}<button type="button" data-dismiss-notification>Fjern</button></nav></div></article>`).join("") : `<p>Ingen hændelser endnu.</p>`;
   };
   button.addEventListener("click", () => { drawer.hidden = !drawer.hidden; button.setAttribute("aria-expanded", String(!drawer.hidden)); paint(); });
   drawer.querySelector("[data-close-notifications]")?.addEventListener("click", () => { drawer.hidden = true; button.setAttribute("aria-expanded", "false"); });
   list.addEventListener("click", (event) => {
     const article = event.target.closest("[data-notification-id]");
-    if (!article || !event.target.closest("[data-acknowledge]")) return;
+    if (!article) return;
     const items = read(); const item = items.find((entry) => entry.id === article.dataset.notificationId);
-    if (item) { item.acknowledged = true; write(items); paint(); }
+    if (!item) return;
+    if (event.target.closest("[data-open-notification]")) {
+      document.dispatchEvent(new CustomEvent("beast:navigate", { detail:{ section:item.section || "overview" } }));
+      drawer.hidden = true; button.setAttribute("aria-expanded", "false");
+    } else if (event.target.closest("[data-snooze-notification]")) {
+      item.snoozedUntil = Date.now() + 30 * 60 * 1000; item.acknowledged = true;
+      window.BeastOverview?.snoozeNotification?.(item.type, 30, item.occurrenceKey);
+      write(items); paint();
+    } else if (event.target.closest("[data-dismiss-notification]")) {
+      item.dismissed = true; item.acknowledged = true; write(items); paint();
+    } else if (event.target.closest("[data-acknowledge]")) {
+      item.acknowledged = true; write(items); paint();
+    }
   });
   document.addEventListener("beast:notifications-changed", (event) => {
     const history = read();
     (event.detail?.items || []).forEach((item) => {
       const id = `${item.type}:${item.occurrenceKey}`;
-      if (!history.some((entry) => entry.id === id)) history.unshift({ ...item, id, at:new Date().toISOString(), acknowledged:false });
+      const existing = history.find((entry) => entry.id === id);
+      if (existing) Object.assign(existing, item, { id });
+      else history.unshift({ ...item, id, at:new Date().toISOString(), acknowledged:false });
     });
     write(history); paint();
   });

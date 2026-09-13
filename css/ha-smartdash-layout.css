@@ -154,11 +154,15 @@ body::after {
 .beast-notification-center header button { border:0; background:transparent; color:var(--ink,#fff); cursor:pointer; }
 #beastNotificationList { display:grid; gap:8px; }
 #beastNotificationList > p { color:var(--ink-muted,#9ca8b8); text-align:center; }
-#beastNotificationList article { display:grid; grid-template-columns:34px 1fr auto; gap:9px; align-items:center; padding:11px; border:1px solid var(--border,rgba(255,255,255,.1)); border-radius:13px; background:var(--surface-2,rgba(255,255,255,.04)); }
+#beastNotificationList article { display:grid; grid-template-columns:34px minmax(0,1fr); gap:9px; align-items:start; padding:11px; border:1px solid var(--border,rgba(255,255,255,.1)); border-radius:13px; background:var(--surface-2,rgba(255,255,255,.04)); }
 #beastNotificationList article.is-acknowledged { opacity:.58; }
-#beastNotificationList article strong,#beastNotificationList article small,#beastNotificationList article time { display:block; }
+#beastNotificationList article strong,#beastNotificationList article small,#beastNotificationList article time,#beastNotificationList article i { display:block; }
 #beastNotificationList article small,#beastNotificationList article time { color:var(--ink-muted,#9ca8b8); font-size:11px; }
-#beastNotificationList article button { min-width:38px; min-height:32px; border:1px solid var(--accent-border,var(--border)); border-radius:9px; background:var(--accent-soft,rgba(41,182,246,.12)); color:var(--accent,#29b6f6); font-weight:800; cursor:pointer; }
+#beastNotificationList .beast-notification-copy > div { display:flex; justify-content:space-between; gap:8px; margin-bottom:3px; }
+#beastNotificationList article em { color:var(--accent,#29b6f6); font-size:10px; font-style:normal; font-weight:850; text-transform:uppercase; letter-spacing:.05em; }
+#beastNotificationList article i { margin-top:4px; color:var(--warning,#ffb020); font-size:10px; font-style:normal; }
+#beastNotificationList article nav { display:flex; flex-wrap:wrap; gap:5px; margin-top:9px; }
+#beastNotificationList article button { min-height:30px; padding:0 9px; border:1px solid var(--accent-border,var(--border)); border-radius:9px; background:var(--accent-soft,rgba(41,182,246,.12)); color:var(--accent,#29b6f6); font-weight:800; cursor:pointer; }
 
 /* Control-center shell: slim header, a persistent vertical icon rail for navigation
    (like a native settings/home app), and a full-bleed content pane that shows exactly
