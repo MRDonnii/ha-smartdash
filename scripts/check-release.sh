@@ -23,12 +23,14 @@ const changelog = JSON.parse(read("changelog.json"));
 const latest = changelog[0];
 const addonConfig = read("home-assistant-addon/config.yaml");
 const addonChangelog = read("home-assistant-addon/CHANGELOG.md");
+const power = read("js/ha-smartdash-power.js");
+const cameras = read("js/ha-smartdash-cameras.js");
 if (!latest || !/^v\d+\.\d+\.\d+$/.test(latest.tag || "")) throw new Error("Latest changelog tag must use vMAJOR.MINOR.PATCH.");
 if (!/^\d{8}-\d+$/.test(latest.version || "")) throw new Error("Latest changelog version must use YYYYMMDD-N.");
 for (const html of [index, beast]) {
   if (meta(html, "beast-release-tag") !== latest.tag) throw new Error("HTML release tag does not match the latest changelog tag.");
   if (meta(html, "beast-build") !== latest.version) throw new Error("HTML build ID does not match the latest changelog version.");
-  const releaseAssets = ["ha-smartdash-misc.css", "ha-smartdash-overview.css", "ha-smartdash-card-editor.js", "ha-smartdash-overview.js"];
+  const releaseAssets = ["ha-smartdash-misc.css", "ha-smartdash-overview.css", "ha-smartdash-card-editor.js", "ha-smartdash-overview.js", "ha-smartdash-power.js", "ha-smartdash-cameras.js"];
   for (const asset of releaseAssets) {
     const escaped = asset.replaceAll(".", "\\.");
     const cacheId = html.match(new RegExp(`${escaped}\\?v=([^\"']+)`))?.[1];
@@ -43,6 +45,11 @@ if (!new RegExp(`^version:\\s*["']?${semanticVersion.replaceAll(".", "\\.")}["']
   throw new Error("Home Assistant App version must match the latest release tag without the leading v.");
 }
 if (!addonChangelog.includes(`## ${semanticVersion}`)) throw new Error("Home Assistant App changelog must include the latest release version.");
+if (!power.includes('event.data?.type !== EVENT_TYPE') || !power.includes('beast:powerstatechange')) throw new Error("Power bridge must validate and publish power state changes.");
+if (!cameras.includes('window.BeastPower?.getState?.() !== "idle"') || !cameras.includes('this._remoteStream?.getTracks().forEach((track) => track.stop())')) throw new Error("Camera lifecycle must stop media while Smartdash is idle.");
+for (const html of [index, beast]) {
+  if (html.indexOf("ha-smartdash-power.js") > html.indexOf("ha-smartdash-cameras.js")) throw new Error("Power bridge must load before camera components.");
+}
 console.log(`Release metadata OK: ${latest.tag} (${latest.version})`);
 NODE
 else

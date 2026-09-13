@@ -3675,3 +3675,10 @@
 .beast-energy-utility-edit { flex-shrink: 0; width: 34px; height: 34px; display: grid; place-items: center; border: 1px solid var(--border); border-radius: 999px; background: var(--surface-2); color: var(--ink-muted); cursor: pointer; touch-action: manipulation; }
 .beast-energy-utility-edit:hover { color: var(--ink); }
 .beast-energy-utility-edit.is-active { border-color: var(--accent-border); background: var(--accent-soft); color: var(--accent); }
+html.beast-power-idle *,
+html.beast-power-idle *::before,
+html.beast-power-idle *::after {
+  animation-play-state: paused !important;
+  transition-duration: 0s !important;
+  transition-delay: 0s !important;
+}

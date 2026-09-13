@@ -1,5 +1,16 @@
 [
   {
+    "version": "20260913-4",
+    "tag": "v0.8.36",
+    "date": "2026-09-13",
+    "changes": [
+      {
+        "da": "Smartdash kan nu modtage et let idle/active-signal fra Kiosk Warden. Når skærmen slukkes, sættes animationer på pause og aktive WebRTC-kameraforbindelser lukkes uden at stoppe Chrome; ved opvågning forbindes kun de fortsat synlige kameraer igen uden at genopbygge siden.",
+        "en": "Smartdash can now receive a lightweight idle/active signal from Kiosk Warden. When the screen turns off, animations pause and active WebRTC camera sessions close without stopping Chrome; on wake, only cameras that are still visible reconnect without rebuilding the page."
+      }
+    ]
+  },
+  {
     "version": "20260913-3",
     "tag": "v0.8.35",
     "date": "2026-09-13",

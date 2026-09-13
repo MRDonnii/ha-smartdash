@@ -193,8 +193,10 @@
       this._video.addEventListener("loadeddata", () => this.classList.add("is-ready"));
       this._onSectionChange = () => window.setTimeout(() => this._syncVisibility(), 0);
       this._onVisibilityChange = () => this._syncVisibility();
+      this._onPowerStateChange = () => this._syncVisibility();
       document.addEventListener("beast:sectionchange", this._onSectionChange);
       document.addEventListener("visibilitychange", this._onVisibilityChange);
+      document.addEventListener("beast:powerstatechange", this._onPowerStateChange);
       this._unsubscribeStatus = BeastHaSocket.onStatusChange((status) => {
         if (status === "connected") this._syncVisibility(true);
       });
@@ -204,6 +206,7 @@
     disconnectedCallback() {
       document.removeEventListener("beast:sectionchange", this._onSectionChange);
       document.removeEventListener("visibilitychange", this._onVisibilityChange);
+      document.removeEventListener("beast:powerstatechange", this._onPowerStateChange);
       this._unsubscribeStatus?.();
       this._stop();
       this._mounted = false;
@@ -211,7 +214,9 @@
 
     _isVisible() {
       const section = this.closest(".beast-section");
-      return !document.hidden && (!section || section.classList.contains("is-active"));
+      return !document.hidden
+        && window.BeastPower?.getState?.() !== "idle"
+        && (!section || section.classList.contains("is-active"));
     }
 
     _syncVisibility(reconnect = false) {
@@ -330,6 +335,16 @@
       this._localCandidates = [];
       try { this._pc?.close(); } catch (_) {}
       this._pc = null;
+      if (this._fallback) {
+        this._fallback = false;
+        this.innerHTML = `<img class="beast-ha-camera-poster" alt=""><video class="beast-ha-camera-video" autoplay muted playsinline disablepictureinpicture aria-hidden="true"></video>`;
+        this._poster = this.querySelector("img");
+        this._video = this.querySelector("video");
+        const picture = this.dataset.cameraPicture;
+        if (picture) BeastAuth.setAuthedImageSrc(this._poster, picture);
+        this._video.addEventListener("playing", () => this.classList.add("is-ready"));
+        this._video.addEventListener("loadeddata", () => this.classList.add("is-ready"));
+      }
     }
 
     _fallbackToGo2rtcAfterStop() {

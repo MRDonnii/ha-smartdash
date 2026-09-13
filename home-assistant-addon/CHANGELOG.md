@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.8.36
+
+- Added a lightweight Kiosk Warden power-state bridge. In idle mode Smartdash
+  pauses CSS motion and closes active camera WebRTC sessions; active mode
+  reconnects only the camera components that are still visible.
+- Power-state changes update existing elements without rebuilding the dashboard,
+  preserving navigation, dialogs and editor state across screen sleep/wake.
+
 ## 0.8.35
 
 - Each Home Camera Card-style overview group can now be shown or hidden from
