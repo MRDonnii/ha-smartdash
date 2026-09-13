@@ -1,5 +1,16 @@
 [
   {
+    "version": "20260913-10",
+    "tag": "v0.8.42",
+    "date": "2026-09-13",
+    "changes": [
+      {
+        "da": "Forsidens WebRTC-kameraer er nu helt adskilt fra kamera-sidens 8-sekunders snapshot-opdatering og den ydre iframe-watchdog. Hver afspiller beholder sit seneste gode snapshot under opkobling eller korte udfald og håndterer selv reconnect uden at blinke eller genstarte iframe-elementet.",
+        "en": "Overview WebRTC cameras are now fully isolated from the Cameras page's eight-second snapshot refresh and the outer iframe watchdog. Each player retains its last good snapshot while connecting or across brief outages and handles reconnects internally without flashing or rebuilding the iframe element."
+      }
+    ]
+  },
+  {
     "version": "20260913-9",
     "tag": "v0.8.41",
     "date": "2026-09-13",

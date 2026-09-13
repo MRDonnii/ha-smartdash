@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.8.42
+
+- Kept overview WebRTC players isolated from the eight-second snapshot refresh
+  and the outer iframe-reload watchdog. Each player now remains responsible for
+  showing its last good poster frame and reconnecting without visible flashing.
+
 ## 0.8.41
 
 - Made detection-driven camera views the default overview camera experience.

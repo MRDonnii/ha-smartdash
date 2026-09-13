@@ -700,7 +700,13 @@ function reloadCameraFrame(frame, reason) {
 // and against a source that reconnects often, it fires repeatedly.
 function visibleCameraFrames() {
   return Array.from(document.querySelectorAll('iframe[src*="camera-player.html"]'))
-    .filter((frame) => frame.closest(".beast-section.is-active") && !frame.closest("#beastOvBanners"));
+    .filter((frame) => frame.closest(".beast-section.is-active")
+      && !frame.closest("#beastOvBanners")
+      // Overview players already retain their last good poster and recover
+      // WebRTC inside camera-player.js. Reloading their iframe from this
+      // outer watchdog discards both and causes the visible white/black
+      // flash that the poster layer is specifically meant to prevent.
+      && !frame.closest("#beastOvCameras"));
 }
 
 function runCameraHealthCheck() {

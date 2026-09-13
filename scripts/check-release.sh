@@ -26,12 +26,13 @@ const addonChangelog = read("home-assistant-addon/CHANGELOG.md");
 const power = read("js/ha-smartdash-power.js");
 const cameras = read("js/ha-smartdash-cameras.js");
 const overview = read("js/ha-smartdash-overview.js");
+const app = read("js/ha-smartdash-app.js");
 if (!latest || !/^v\d+\.\d+\.\d+$/.test(latest.tag || "")) throw new Error("Latest changelog tag must use vMAJOR.MINOR.PATCH.");
 if (!/^\d{8}-\d+$/.test(latest.version || "")) throw new Error("Latest changelog version must use YYYYMMDD-N.");
 for (const html of [index, beast]) {
   if (meta(html, "beast-release-tag") !== latest.tag) throw new Error("HTML release tag does not match the latest changelog tag.");
   if (meta(html, "beast-build") !== latest.version) throw new Error("HTML build ID does not match the latest changelog version.");
-  const releaseAssets = ["ha-smartdash-misc.css", "ha-smartdash-overview.css", "ha-smartdash-card-editor.js", "ha-smartdash-overview.js", "ha-smartdash-power.js", "ha-smartdash-cameras.js"];
+  const releaseAssets = ["ha-smartdash-misc.css", "ha-smartdash-overview.css", "ha-smartdash-card-editor.js", "ha-smartdash-overview.js", "ha-smartdash-power.js", "ha-smartdash-cameras.js", "ha-smartdash-app.js"];
   for (const asset of releaseAssets) {
     const escaped = asset.replaceAll(".", "\\.");
     const cacheId = html.match(new RegExp(`${escaped}\\?v=([^\"']+)`))?.[1];
@@ -52,6 +53,8 @@ if (!overview.includes("groups.flatMap((group) => group.cameras)") || !overview.
 if (!overview.includes("data-camera-auto") || !overview.includes("data-camera-fallback") || !overview.includes("autoKeys.includes(automaticKey)")) throw new Error("Overview camera groups must expose automatic membership and fallback selection.");
 if (!overview.includes("beast-ov-camera-star") || overview.includes("<select data-camera-fallback")) throw new Error("Camera fallback must use the compact per-row favourite star.");
 if (!overview.includes('sendCommand("config/entity_registry/list")') || !overview.includes("overviewDetectionTimestamp") || !overview.includes("defaultOverviewCameraGroups")) throw new Error("Overview cameras must use detection-driven automatic views by default.");
+if (!cameras.includes('querySelectorAll("img.beast-camera-snapshot")')) throw new Error("Periodic snapshot refresh must target image elements only.");
+if (!app.includes('!frame.closest("#beastOvCameras")')) throw new Error("Overview camera players must recover internally without outer iframe reloads.");
 for (const html of [index, beast]) {
   if (html.indexOf("ha-smartdash-power.js") > html.indexOf("ha-smartdash-cameras.js")) throw new Error("Power bridge must load before camera components.");
 }
