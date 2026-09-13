@@ -1,5 +1,14 @@
 [
   {
+    "version": "20260913-11",
+    "tag": "v0.8.43",
+    "date": "2026-09-13",
+    "changes": [{
+      "da": "Administration har nu et samlet Health Center med en manuel, ikke-destruktiv test af Home Assistant, MQTT, go2rtc, kameraer og Kiosk Warden. Resultaterne viser tilstand, svartid, antal entities/streams, heartbeat og seneste lokale tekniske hændelser.",
+      "en": "Administration now includes a combined Health Center with a manual, non-destructive check of Home Assistant, MQTT, go2rtc, cameras and Kiosk Warden. Results show state, response time, entity/stream counts, heartbeat and recent local technical events."
+    }]
+  },
+  {
     "version": "20260913-10",
     "tag": "v0.8.42",
     "date": "2026-09-13",

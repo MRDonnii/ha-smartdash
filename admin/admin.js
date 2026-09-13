@@ -202,6 +202,8 @@
   let overviewVisualPreviewTimerId = null;
   let mqttCheckRunning = false;
   let pendingKioskAction = null;
+  let healthProbeRunning = false;
+  let healthSnapshot = null;
   let registryUiHydrated = false;
   let hasUnsavedPanelChanges = false;
   const entityCandidateCache = new Map();
@@ -1473,6 +1475,67 @@
     `;
   }
 
+  function healthCard(item) {
+    const tone = ["ok", "warning", "error"].includes(item.state) ? item.state : "warning";
+    return `<article class="admin-health-card" data-state="${tone}"><span>${BeastCore.icon(item.icon, { size: 25 })}</span><div><small>${escapeHtml(item.label)}</small><strong>${escapeHtml(item.value)}</strong><p>${escapeHtml(item.detail)}</p></div><em>${tone === "ok" ? "OK" : tone === "warning" ? t("Bemærk", "Attention") : t("Fejl", "Error")}</em></article>`;
+  }
+
+  function paintHealth() {
+    const host = document.getElementById("adminHealthResults");
+    const checked = document.getElementById("adminHealthCheckedAt");
+    const button = document.getElementById("adminHealthRefresh");
+    if (button) { button.disabled = healthProbeRunning; button.textContent = healthProbeRunning ? t("Tester…", "Testing…") : t("Test igen", "Test again"); }
+    if (!host) return;
+    host.innerHTML = healthSnapshot ? healthSnapshot.items.map(healthCard).join("") : `<p class="admin-health-loading">${t("Tester forbindelser og tjenester…", "Testing connections and services…")}</p>`;
+    if (checked) checked.textContent = healthSnapshot ? `${t("Senest testet", "Last checked")}: ${new Date(healthSnapshot.at).toLocaleString()}` : "";
+  }
+
+  async function runHealthCheck() {
+    if (healthProbeRunning) return;
+    healthProbeRunning = true; healthSnapshot = null; paintHealth();
+    const items = [];
+    const timed = (promise, ms) => Promise.race([promise, new Promise((_, reject) => window.setTimeout(() => reject(new Error("timeout")), ms))]);
+    const started = performance.now();
+    try {
+      if (currentConnState !== "connected") throw new Error(CONN_STATUS_LABELS[currentConnState] || currentConnState);
+      await timed(BeastHaSocket.sendCommand("get_config"), 5000);
+      items.push({ state:"ok", icon:"check", label:"Home Assistant", value:t("Forbundet", "Connected"), detail:`${BeastHaSocket.getAllStates().size} entities · ${Math.round(performance.now() - started)} ms` });
+    } catch (error) { items.push({ state:"error", icon:"close", label:"Home Assistant", value:t("Ikke forbundet", "Disconnected"), detail:error.message }); }
+    try {
+      await timed(checkMqttConnection(), 5000);
+      if (currentMqttState !== "connected") throw new Error(t("MQTT-test fejlede", "MQTT test failed"));
+      items.push({ state:"ok", icon:"check", label:"MQTT", value:t("Forbundet", "Connected"), detail:`${getMqttConfig().kioskName} · ${getMqttConfig().kioskPrefix}` });
+    } catch (error) { items.push({ state:"warning", icon:"settings", label:"MQTT", value:t("Ikke bekræftet", "Not confirmed"), detail:error.message }); }
+    const base = String(BeastConfig.get("panels.cameras.go2rtcBaseUrl") || "").replace(/\/+$/, "");
+    let streamCount = 0;
+    if (!base) items.push({ state:"warning", icon:"camera", label:"go2rtc", value:t("Ikke konfigureret", "Not configured"), detail:t("HA-kameraer kan stadig anvendes", "HA cameras can still be used") });
+    else try {
+      const response = await timed(fetch(`${base}/api/streams`, { cache:"no-store" }), 5000);
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+      streamCount = Object.keys(await response.json()).length;
+      items.push({ state:"ok", icon:"camera", label:"go2rtc", value:t("Tilgængelig", "Available"), detail:`${streamCount} ${t("streams fundet", "streams found")}` });
+    } catch (error) { items.push({ state:"error", icon:"camera", label:"go2rtc", value:t("Kan ikke nås", "Unreachable"), detail:error.message }); }
+    try {
+      if (base) await timed(window.BeastCameras.ensureStreamDiscovery(base), 6000);
+      const cameras = window.BeastCameras.getAllCameras("overview");
+      const unavailable = cameras.filter((camera) => ["unknown", "unavailable"].includes(BeastHaSocket.getState(camera.entityId)?.state)).length;
+      const live = cameras.filter((camera) => camera.streamName || camera.haStreamUrl).length;
+      items.push({ state:unavailable ? "warning" : cameras.length ? "ok" : "warning", icon:"camera", label:t("Kameraer", "Cameras"), value:`${cameras.length - unavailable}/${cameras.length} ${t("tilgængelige", "available")}`, detail:`${live} ${t("med livekilde", "with live source")}` });
+    } catch (error) { items.push({ state:"warning", icon:"camera", label:t("Kameraer", "Cameras"), value:t("Kunne ikke testes", "Could not test"), detail:error.message }); }
+    const ids = getKioskIds();
+    const states = Object.values(ids).filter(Boolean).map((id) => BeastHaSocket.getState(id)).filter(Boolean);
+    const heartbeat = BeastHaSocket.getState(ids.heartbeat);
+    const heartbeatAt = heartbeat ? new Date(heartbeat.last_updated || heartbeat.last_changed || 0).getTime() : 0;
+    const age = heartbeatAt ? Math.round((Date.now() - heartbeatAt) / 1000) : null;
+    const available = states.some((state) => !["unknown", "unavailable"].includes(state.state));
+    items.push({ state:available && (age === null || age < 180) ? "ok" : "warning", icon:"settings", label:"Kiosk Warden", value:available ? t("Tilgængelig", "Available") : t("Ikke fundet", "Not found"), detail:age === null ? `${states.length} entities` : `Heartbeat: ${age} s · ${states.length} entities` });
+    healthSnapshot = { at:new Date().toISOString(), items }; healthProbeRunning = false; paintHealth();
+  }
+
+  function renderHealthView() {
+    return `<section class="admin-view${activeView === "health" ? " is-active" : ""}" data-admin-view="health"><div class="admin-settings-intro admin-health-intro"><span>${BeastCore.icon("check", { size:27 })}</span><div><h2>Health Center</h2><p>${t("Samlet, ikke-destruktiv kontrol af forbindelserne som dashboardet afhænger af.", "A combined, non-destructive check of the connections the dashboard depends on.")}</p></div></div><div class="admin-card"><div class="admin-card-head"><div><h2>${t("Forbindelser og tjenester", "Connections and services")}</h2><p id="adminHealthCheckedAt"></p></div><button type="button" class="beast-btn beast-btn-primary" id="adminHealthRefresh">${t("Test igen", "Test again")}</button></div><div class="admin-health-grid" id="adminHealthResults"></div></div><div class="admin-card admin-health-log"><div class="admin-card-head"><div><h2>${t("Seneste tekniske hændelser", "Recent technical events")}</h2><p>${t("Lokale loglinjer uden loginoplysninger eller tokens.", "Local log lines without credentials or tokens.")}</p></div></div><pre>${escapeHtml(BeastCore.getDebugLog().slice(-30).join("\n") || t("Ingen hændelser registreret.", "No events recorded."))}</pre></div></section>`;
+  }
+
   const WEATHER_CONDITION_LABELS = {
     sunny: ["Solrigt", "Sunny"], partlycloudy: ["Delvist skyet", "Partly cloudy"], cloudy: ["Skyet", "Cloudy"],
     rainy: ["Regn", "Rainy"], pouring: ["Kraftig regn", "Pouring"], fog: ["Tåget", "Foggy"],
@@ -1756,6 +1819,7 @@
     if (activeView === "advarsler") return renderAdvarslerView();
     if (activeView === "backup") return renderBackupView();
     if (activeView === "updates") return renderUpdatesView();
+    if (activeView === "health") return renderHealthView();
     const panel = PANELS.find((item) => item.id === activeView);
     return panel ? renderPanel(panel) : renderOverview();
   }
@@ -1763,11 +1827,12 @@
   function adminViewTitle() {
     const panel = PANELS.find((item) => item.id === activeView);
     if (panel) return panel.title;
-    return ({ overview:"Overblik", pages:"Sider og navigation", devices:"Enheder og datakilder", setup:"Forbindelser & kiosk", theme:"Tema og design", settings:"Denne enhed", "security-settings":"Sikkerhed", screensaver:t("Pauseskærm", "Screensaver"), advarsler:t("Advarsler", "Alerts"), backup:"Backup & gendannelse", updates:"Opdatering" })[activeView] || "Administration";
+    return ({ overview:"Overblik", pages:"Sider og navigation", devices:"Enheder og datakilder", setup:"Forbindelser & kiosk", theme:"Tema og design", settings:"Denne enhed", "security-settings":"Sikkerhed", screensaver:t("Pauseskærm", "Screensaver"), advarsler:t("Advarsler", "Alerts"), health:"Health Center", backup:"Backup & gendannelse", updates:"Opdatering" })[activeView] || "Administration";
   }
 
   function adminViewDescription() {
     if (PANELS.some((panel) => panel.id === activeView) || activeView === "devices") return "Forbind Home Assistant-data til dashboardets funktioner. Layout redigeres på selve dashboard-siden.";
+    if (activeView === "health") return t("Kontrollér Home Assistant, MQTT, go2rtc, kameraer og Kiosk Warden samlet.", "Check Home Assistant, MQTT, go2rtc, cameras and Kiosk Warden together.");
     return ({ pages:"Opret og organiser dashboardets sider ét samlet sted.", setup:"Serverforbindelse, kioskfunktioner og hændelser.", theme:"Farve, stil og lystilstand for hele dashboardet.", settings:"Maskinspecifik adfærd for netop denne kiosk eller browser.", updates:"Se hvad der er nyt, og gendan en tidligere version om nødvendigt.", "security-settings":"Lokal adgang, pinkode og beskyttelse af adminpanelet.", screensaver:t("Styrer denne skærm/browser — hver kiosk kan have sin egen tidsplan.", "Controls this screen/browser only — each kiosk can have its own schedule."), advarsler:t("Alt om post-banneret samlet ét sted — slå til/fra og vælg entities.", "Everything about the post banner in one place — turn it on/off and pick entities.") })[activeView] || "Konfigurationen gemmes centralt på serveren.";
   }
 
@@ -1794,6 +1859,7 @@
             <p class="admin-nav-section">Sikkerhed</p>
             <button class="${activeView === "security-settings" ? "is-active" : ""}" type="button" data-view="security-settings">Sikkerhed</button>
             <p class="admin-nav-section">Vedligeholdelse</p>
+            <button class="${activeView === "health" ? "is-active" : ""}" type="button" data-view="health">Health Center</button>
             <button class="${activeView === "backup" ? "is-active" : ""}" type="button" data-view="backup">Backup & gendannelse</button>
             <button class="${activeView === "updates" ? "is-active" : ""}" type="button" data-view="updates">Opdatering</button>
           </nav>
@@ -1882,6 +1948,7 @@
     });
     if (activeView === "backup") loadBackupSettings();
     if (activeView === "updates") loadUpdatesSettings();
+    if (activeView === "health") { paintHealth(); runHealthCheck(); }
     if (screensaverPreviewTimerId) { window.clearInterval(screensaverPreviewTimerId); screensaverPreviewTimerId = null; }
     if (activeView === "screensaver") {
       document.querySelectorAll("[data-ambient-preview-picture]").forEach((img) => {
@@ -1896,6 +1963,7 @@
     document.querySelector("[data-reload-backups]")?.addEventListener("click", loadBackupSettings);
     document.querySelector("[data-reload-versions]")?.addEventListener("click", () => loadUpdatesSettings(true));
     document.querySelector("[data-check-updates]")?.addEventListener("click", () => loadUpdatesSettings(true));
+    document.getElementById("adminHealthRefresh")?.addEventListener("click", runHealthCheck);
     document.querySelectorAll("[data-update-channel]").forEach((button) => {
       button.addEventListener("click", async () => {
         const channel = button.dataset.updateChannel === "beta" ? "beta" : "stable";

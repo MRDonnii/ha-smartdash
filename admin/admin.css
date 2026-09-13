@@ -69,6 +69,18 @@ button { cursor: pointer; }
 .admin-security-hero > span { display: grid; place-items: center; flex: 0 0 54px; width: 54px; height: 54px; border-radius: 16px; color: var(--accent-b); background: color-mix(in srgb, var(--accent-b) 14%, transparent); }
 .admin-settings-group { position: relative; overflow: hidden; }
 .admin-settings-group + .admin-settings-group { margin-top: 18px; }
+.admin-health-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:12px; margin-top:18px; }
+.admin-health-card { min-width:0; display:grid; grid-template-columns:48px minmax(0,1fr) auto; align-items:center; gap:13px; padding:17px; border:1px solid var(--border); border-radius:15px; background:var(--surface-solid); }
+.admin-health-card > span { width:48px; height:48px; display:grid; place-items:center; border-radius:14px; color:var(--success); background:color-mix(in srgb,var(--success) 13%,transparent); }
+.admin-health-card small,.admin-health-card strong,.admin-health-card p { display:block; }
+.admin-health-card small { color:var(--ink-muted); font-size:11px; font-weight:800; text-transform:uppercase; letter-spacing:.06em; }
+.admin-health-card strong { margin-top:3px; font-size:18px; }
+.admin-health-card p { margin:4px 0 0; color:var(--ink-muted); font-size:12px; overflow-wrap:anywhere; }
+.admin-health-card em { padding:5px 9px; border-radius:999px; color:var(--success); background:color-mix(in srgb,var(--success) 12%,transparent); font-size:10px; font-style:normal; font-weight:850; }
+.admin-health-card[data-state="warning"] > span,.admin-health-card[data-state="warning"] em { color:var(--warning); background:var(--warning-soft); }
+.admin-health-card[data-state="error"] > span,.admin-health-card[data-state="error"] em { color:var(--danger); background:color-mix(in srgb,var(--danger) 13%,transparent); }
+.admin-health-loading { grid-column:1/-1; padding:34px; color:var(--ink-muted); text-align:center; }
+.admin-health-log pre { max-height:260px; margin:16px 0 0; padding:15px; overflow:auto; border-radius:12px; background:var(--bg); color:var(--ink-muted); font:11px/1.5 ui-monospace,monospace; white-space:pre-wrap; overflow-wrap:anywhere; }
 .admin-settings-theme .beast-theme-settings { padding: 0; border: 0; background: transparent; box-shadow: none; }
 .admin-security-recovery { display: flex; align-items: center; justify-content: space-between; gap: 20px; margin-top: 18px; padding: 17px 18px; border: 1px solid var(--border); border-radius: 14px; background: var(--surface-solid); }
 .admin-security-recovery p { margin: 4px 0 0; color: var(--ink-muted); font-size: 13px; }
@@ -508,6 +520,7 @@ button { cursor: pointer; }
   .admin-old-versions-row button { width: 100%; }
   .admin-security-recovery, .admin-security-toggle { align-items: flex-start; flex-direction: column; }
   .admin-security-alarm-rule { grid-template-columns: 1fr; }
+  .admin-health-grid { grid-template-columns:1fr; }
   .admin-view[data-admin-view="security-settings"] .beast-stat-grid { grid-template-columns: 1fr; }
   .beast-modal-overlay { padding: 8px; }
   .beast-modal { width:100%; max-width:none; max-height: calc(100dvh - 16px); }

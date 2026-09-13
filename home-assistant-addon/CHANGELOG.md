@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.8.43
+
+- Added a Health Center in Administration with on-demand checks for Home
+  Assistant, MQTT, go2rtc, cameras and Kiosk Warden, plus recent local events.
+
 ## 0.8.42
 
 - Kept overview WebRTC players isolated from the eight-second snapshot refresh
