@@ -1,5 +1,16 @@
 [
   {
+    "version": "20260913-7",
+    "tag": "v0.8.39",
+    "date": "2026-09-13",
+    "changes": [
+      {
+        "da": "Hvert kamerafelt har nu sin egen liste over kameraer til automatisk skift samt et fallback/favoritkamera. Alle kameraer er fortsat tilgængelige som faste valg, og HA-selectorens valg bruges kun, når kameraet er med i feltets automatiske liste.",
+        "en": "Each camera tile now has its own automatic-rotation camera list and fallback/favourite camera. Every camera remains available as a fixed choice, and the HA selector is followed only when its camera belongs to that tile's automatic list."
+      }
+    ]
+  },
+  {
     "version": "20260913-6",
     "tag": "v0.8.38",
     "date": "2026-09-13",
