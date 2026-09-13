@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.8.45
+
+- Fixed power-profile and multi-alarm initialization against the real global
+  Smartdash configuration objects.
+
 ## 0.8.44
 
 - Added calm offline/last-known-data status, per-device power profiles,

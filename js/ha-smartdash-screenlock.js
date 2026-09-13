@@ -401,9 +401,9 @@ const BeastScreenLock = (() => {
     if (alarmSubscribed || !window.BeastHaSocket) return;
     alarmSubscribed = true;
     migrateLegacyPinIfNeeded();
-    const security = window.BeastConfig?.get("panels.security") || {};
-    const configuredAlarms = window.BeastConfig?.get("screenLock.alarmEntities");
-    const selectedAlarm = window.BeastConfig?.get("screenLock.alarmEntity") || security.primaryAlarm;
+    const security = BeastConfig.get("panels.security") || {};
+    const configuredAlarms = BeastConfig.get("screenLock.alarmEntities");
+    const selectedAlarm = BeastConfig.get("screenLock.alarmEntity") || security.primaryAlarm;
     const alarmIds = Array.from(new Set((Array.isArray(configuredAlarms) && configuredAlarms.length
       ? configuredAlarms
       : selectedAlarm ? [selectedAlarm] : security.alarmPanels || []).filter(Boolean)));
