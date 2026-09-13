@@ -25,6 +25,7 @@ const addonConfig = read("home-assistant-addon/config.yaml");
 const addonChangelog = read("home-assistant-addon/CHANGELOG.md");
 const power = read("js/ha-smartdash-power.js");
 const cameras = read("js/ha-smartdash-cameras.js");
+const overview = read("js/ha-smartdash-overview.js");
 if (!latest || !/^v\d+\.\d+\.\d+$/.test(latest.tag || "")) throw new Error("Latest changelog tag must use vMAJOR.MINOR.PATCH.");
 if (!/^\d{8}-\d+$/.test(latest.version || "")) throw new Error("Latest changelog version must use YYYYMMDD-N.");
 for (const html of [index, beast]) {
@@ -47,6 +48,7 @@ if (!new RegExp(`^version:\\s*["']?${semanticVersion.replaceAll(".", "\\.")}["']
 if (!addonChangelog.includes(`## ${semanticVersion}`)) throw new Error("Home Assistant App changelog must include the latest release version.");
 if (!power.includes('event.data?.type !== EVENT_TYPE') || !power.includes('beast:powerstatechange')) throw new Error("Power bridge must validate and publish power state changes.");
 if (!cameras.includes('window.BeastPower?.getState?.() !== "idle"') || !cameras.includes('this._remoteStream?.getTracks().forEach((track) => track.stop())')) throw new Error("Camera lifecycle must stop media while Smartdash is idle.");
+if (!overview.includes("groups.flatMap((group) => group.cameras)") || !overview.includes("cameras: everyCamera") || overview.includes("data-camera-allowed")) throw new Error("Every overview camera group must use the complete camera catalog without a per-group allowlist.");
 for (const html of [index, beast]) {
   if (html.indexOf("ha-smartdash-power.js") > html.indexOf("ha-smartdash-cameras.js")) throw new Error("Power bridge must load before camera components.");
 }

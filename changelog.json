@@ -1,5 +1,16 @@
 [
   {
+    "version": "20260913-6",
+    "tag": "v0.8.38",
+    "date": "2026-09-13",
+    "changes": [
+      {
+        "da": "Hvert kamerafelt på forsiden kan nu vælge mellem alle kameraer, der er tilgængelige i Smartdash, i stedet for kun feltets tidligere faste udvalg. Automatisk tilstand, faste valg, synlige grupper og stabile live-streams er bevaret.",
+        "en": "Each overview camera tile can now choose from every camera available in Smartdash instead of only its previous predefined subset. Automatic mode, fixed choices, visible groups and stable live streams are preserved."
+      }
+    ]
+  },
+  {
     "version": "20260913-5",
     "tag": "v0.8.37",
     "date": "2026-09-13",
