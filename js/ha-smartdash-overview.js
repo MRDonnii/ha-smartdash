@@ -1834,7 +1834,7 @@
         nextAllowed[group.id] = allowed;
       }
       groups.forEach((group) => {
-        const selected = overlay.querySelector(`[data-overview-camera-group="${CSS.escape(group.id)}"] input:checked`);
+        const selected = overlay.querySelector(`[data-overview-camera-group="${CSS.escape(group.id)}"] input[type="radio"]:checked`);
         setOverviewCameraMode(group.id, selected?.value || "");
       });
       setOverviewCameraAllowed(nextAllowed);
