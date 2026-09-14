@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.8.54
+
+- The Cameras tab Edit button now opens one complete settings popup directly,
+  without entering the shared bottom-bar layout editor.
+
 ## 0.8.53
 
 - Added a safe support diagnostics export with health checks, runtime errors,

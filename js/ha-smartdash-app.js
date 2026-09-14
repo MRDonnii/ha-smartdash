@@ -1400,6 +1400,10 @@ function mountPageActionMenus() {
       ? document.querySelector(".beast-section.is-active[data-section]")
       : trigger.closest(".beast-section[data-section]");
     if (!section) return;
+    if (section.dataset.section === "cameras") {
+      window.BeastNativePageEditor?.open?.("cameras");
+      return;
+    }
     const pageTrigger = trigger.id === "beastRailPageEdit"
       ? (section.dataset.section === "overview" ? section.querySelector("#beastOvEdit") : section.querySelector(".beast-page-edit-trigger"))
       : trigger;
