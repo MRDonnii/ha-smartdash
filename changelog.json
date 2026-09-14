@@ -1,5 +1,16 @@
 [
   {
+    "version": "20260914-5",
+    "tag": "v0.8.53",
+    "date": "2026-09-14",
+    "changes": [
+      {
+        "da": "Health Center kan nu hente én sikker diagnostikfil med forbindelsestest, runtime-fejl, teknisk log, browserdata og renset konfiguration, som kan sendes til support uden tokens og kodeord.",
+        "en": "Health Center can now download one safe diagnostics file containing connection checks, runtime errors, technical logs, browser details and sanitized configuration for support without tokens or passwords."
+      }
+    ]
+  },
+  {
     "version": "20260914-4",
     "tag": "v0.8.52",
     "date": "2026-09-14",

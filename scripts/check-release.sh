@@ -30,6 +30,7 @@ const overview = read("js/ha-smartdash-overview.js");
 const app = read("js/ha-smartdash-app.js");
 const admin = read("admin/admin.js");
 const adminHtml = read("admin/index.html");
+const core = read("js/ha-smartdash-core.js");
 if (!latest || !/^v\d+\.\d+\.\d+$/.test(latest.tag || "")) throw new Error("Latest changelog tag must use vMAJOR.MINOR.PATCH.");
 if (!/^\d{8}-\d+$/.test(latest.version || "")) throw new Error("Latest changelog version must use YYYYMMDD-N.");
 for (const html of [index, beast]) {
@@ -62,7 +63,10 @@ if (!cameras.includes('function stripCameraMarkup(camera)') || !cameras.includes
 if (!app.includes('!frame.closest("#beastOvCameras")')) throw new Error("Overview camera players must recover internally without outer iframe reloads.");
 if (!auth.includes("preloadAuthedImage") || !cameras.includes("preloadOverviewSnapshots") || !overview.includes("current.replaceWith(tile)")) throw new Error("Overview camera switching must use warmed posters and per-tile reconciliation.");
 if (!admin.includes('data-admin-view="health"') || !admin.includes('runHealthCheck') || !admin.includes('BeastHaSocket.sendCommand("get_config")')) throw new Error("Admin must include the Health Center checks.");
+if (!admin.includes('ha-smartdash-diagnostics') || !admin.includes('redactDiagnostics') || !admin.includes('adminHealthExport') || !core.includes('getRuntimeErrors')) throw new Error("Health Center must export safe support diagnostics with runtime errors.");
+if (!admin.includes('"[REDACTED]"') || !admin.includes('authentication:BeastAuth.getDiagnostics()')) throw new Error("Diagnostics export must redact secrets before including authentication diagnostics.");
 for (const asset of ["admin.css", "admin.js", "ha-smartdash-cameras.js"]) if (!adminHtml.includes(`${asset}?v=${latest.version}`)) throw new Error(`Admin cache ID must match for ${asset}.`);
+if (meta(adminHtml, "beast-release-tag") !== latest.tag || meta(adminHtml, "beast-build") !== latest.version) throw new Error("Admin release metadata must match the latest release.");
 for (const html of [index, beast]) {
   if (html.indexOf("ha-smartdash-power.js") > html.indexOf("ha-smartdash-cameras.js")) throw new Error("Power bridge must load before camera components.");
 }

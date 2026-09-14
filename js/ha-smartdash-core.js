@@ -17,6 +17,16 @@ const BeastCore = (() => {
   const panels = [];
   const debugLog = [];
   const DEBUG_LOG_MAX = 200;
+  const runtimeErrors = [];
+  const RUNTIME_ERROR_MAX = 50;
+
+  function rememberRuntimeError(kind, message, source = "", line = 0, column = 0) {
+    runtimeErrors.push({ at:new Date().toISOString(), kind, message:String(message || "Ukendt fejl"), source:String(source || "").split("?")[0], line:Number(line) || 0, column:Number(column) || 0 });
+    if (runtimeErrors.length > RUNTIME_ERROR_MAX) runtimeErrors.shift();
+  }
+
+  window.addEventListener("error", (event) => rememberRuntimeError("error", event.message || event.error?.message, event.filename, event.lineno, event.colno));
+  window.addEventListener("unhandledrejection", (event) => rememberRuntimeError("unhandledrejection", event.reason?.message || event.reason));
 
   function registerPanel(name, zoneId, initFn) {
     panels.push({ name, zoneId, initFn });
@@ -663,6 +673,7 @@ const BeastCore = (() => {
     mountPanels,
     log,
     getDebugLog: () => debugLog.slice(),
+    getRuntimeErrors: () => runtimeErrors.slice(),
     formatClock,
     formatDate,
     el,

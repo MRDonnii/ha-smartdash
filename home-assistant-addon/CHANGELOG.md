@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.8.53
+
+- Added a safe support diagnostics export with health checks, runtime errors,
+  browser details, logs and automatically redacted configuration.
+
 ## 0.8.52
 
 - Added per-screen edit-mode controls for live or snapshot camera-picker

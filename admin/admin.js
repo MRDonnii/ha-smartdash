@@ -1426,6 +1426,66 @@
     window.setTimeout(() => URL.revokeObjectURL(link.href), 1000);
   }
 
+  function redactDiagnostics(value, key = "") {
+    if (/token|password|passwd|secret|authorization|cookie|credential|api.?key|pin/i.test(key)) return "[REDACTED]";
+    if (Array.isArray(value)) return value.map((item) => redactDiagnostics(item));
+    if (value && typeof value === "object") return Object.fromEntries(Object.entries(value).map(([childKey, childValue]) => [childKey, redactDiagnostics(childValue, childKey)]));
+    if (typeof value !== "string") return value;
+    return value
+      .replace(/(Bearer|Basic)\s+[A-Za-z0-9._~+/=-]+/gi, "$1 [REDACTED]")
+      .replace(/([?&](?:access_)?(?:token|password|secret|key)=)[^&#\s]+/gi, "$1[REDACTED]")
+      .replace(/(https?:\/\/)[^/@\s]+:[^/@\s]+@/gi, "$1[REDACTED]@");
+  }
+
+  function entityStateSummary() {
+    const summary = {};
+    BeastHaSocket.getAllStates().forEach((state, entityId) => {
+      const domain = String(entityId).split(".")[0] || "unknown";
+      if (!summary[domain]) summary[domain] = { total:0, unavailable:0 };
+      summary[domain].total += 1;
+      if (["unknown", "unavailable"].includes(state?.state)) summary[domain].unavailable += 1;
+    });
+    return summary;
+  }
+
+  async function exportDiagnostics() {
+    const button = document.getElementById("adminHealthExport");
+    if (button) { button.disabled = true; button.textContent = t("Samler diagnostik…", "Collecting diagnostics…"); }
+    try {
+      if (healthProbeRunning) await new Promise((resolve) => {
+        const started = Date.now();
+        const wait = () => (!healthProbeRunning || Date.now() - started > 8000) ? resolve() : window.setTimeout(wait, 100);
+        wait();
+      });
+      await runHealthCheck();
+      const build = document.querySelector('meta[name="beast-build"]')?.content || "unknown";
+      const tag = document.querySelector('meta[name="beast-release-tag"]')?.content || "unknown";
+      const payload = redactDiagnostics({
+        type:"ha-smartdash-diagnostics",
+        schemaVersion:1,
+        exportedAt:new Date().toISOString(),
+        release:{ tag, build },
+        page:{ path:window.location.pathname, protocol:window.location.protocol, language:window.HASmartdashI18n?.locale || navigator.language },
+        browser:{ userAgent:navigator.userAgent, platform:navigator.platform, online:navigator.onLine, viewport:{ width:window.innerWidth, height:window.innerHeight, pixelRatio:window.devicePixelRatio }, screen:{ width:window.screen?.width, height:window.screen?.height }, visibility:document.visibilityState },
+        connection:{ homeAssistant:currentConnState, mqtt:currentMqttState, entities:entityStateSummary() },
+        health:healthSnapshot,
+        runtimeErrors:BeastCore.getRuntimeErrors?.() || [],
+        debugLog:BeastCore.getDebugLog().slice(-200),
+        authentication:BeastAuth.getDiagnostics(),
+        configuration:BeastConfig.getAll(),
+        localSettings:BeastLocalSettings.getAll()
+      });
+      const stamp = new Date().toISOString().replace(/[-:]/g, "").replace(/\.\d{3}Z$/, "Z");
+      downloadJson(`ha-smartdash-diagnostics-${stamp}.json`, payload);
+      showToast(t("Sikker diagnostikfil er hentet", "Safe diagnostics file downloaded"), "success");
+    } catch (error) {
+      BeastCore.log(`Diagnostikeksport fejlede: ${error.message}`);
+      showToast(t("Kunne ikke lave diagnostikfil", "Could not create diagnostics file"), "error");
+    } finally {
+      if (button) { button.disabled = false; button.textContent = t("Hent diagnostikfil", "Download diagnostics file"); }
+    }
+  }
+
   function portableProfile() {
     return { type: "ha-smartdash-profile", schemaVersion: 3, exportedAt: new Date().toISOString(), data: BeastConfig.getAll() };
   }
@@ -1535,7 +1595,7 @@
   }
 
   function renderHealthView() {
-    return `<section class="admin-view${activeView === "health" ? " is-active" : ""}" data-admin-view="health"><div class="admin-settings-intro admin-health-intro"><span>${BeastCore.icon("check", { size:27 })}</span><div><h2>Health Center</h2><p>${t("Samlet, ikke-destruktiv kontrol af forbindelserne som dashboardet afhænger af.", "A combined, non-destructive check of the connections the dashboard depends on.")}</p></div></div><div class="admin-card"><div class="admin-card-head"><div><h2>${t("Forbindelser og tjenester", "Connections and services")}</h2><p id="adminHealthCheckedAt"></p></div><button type="button" class="beast-btn beast-btn-primary" id="adminHealthRefresh">${t("Test igen", "Test again")}</button></div><div class="admin-health-grid" id="adminHealthResults"></div></div><div class="admin-card admin-health-log"><div class="admin-card-head"><div><h2>${t("Seneste tekniske hændelser", "Recent technical events")}</h2><p>${t("Lokale loglinjer uden loginoplysninger eller tokens.", "Local log lines without credentials or tokens.")}</p></div></div><pre>${escapeHtml(BeastCore.getDebugLog().slice(-30).join("\n") || t("Ingen hændelser registreret.", "No events recorded."))}</pre></div></section>`;
+    return `<section class="admin-view${activeView === "health" ? " is-active" : ""}" data-admin-view="health"><div class="admin-settings-intro admin-health-intro"><span>${BeastCore.icon("check", { size:27 })}</span><div><h2>Health Center</h2><p>${t("Samlet, ikke-destruktiv kontrol af forbindelserne som dashboardet afhænger af.", "A combined, non-destructive check of the connections the dashboard depends on.")}</p></div></div><div class="admin-card"><div class="admin-card-head"><div><h2>${t("Forbindelser og tjenester", "Connections and services")}</h2><p id="adminHealthCheckedAt"></p></div><button type="button" class="beast-btn beast-btn-primary" id="adminHealthRefresh">${t("Test igen", "Test again")}</button></div><div class="admin-health-grid" id="adminHealthResults"></div></div><div class="admin-card admin-health-log"><div class="admin-card-head"><div><h2>${t("Diagnostik til support", "Diagnostics for support")}</h2><p>${t("Kør testene og hent én sikker fil, som kan sendes til support. Tokens og kodeord fjernes automatisk.", "Run the checks and download one safe file to send to support. Tokens and passwords are removed automatically.")}</p></div><button type="button" class="beast-btn beast-btn-primary" id="adminHealthExport">${t("Hent diagnostikfil", "Download diagnostics file")}</button></div><pre>${escapeHtml(BeastCore.getDebugLog().slice(-30).join("\n") || t("Ingen hændelser registreret.", "No events recorded."))}</pre></div></section>`;
   }
 
   const WEATHER_CONDITION_LABELS = {
@@ -1970,6 +2030,7 @@
     document.querySelector("[data-reload-versions]")?.addEventListener("click", () => loadUpdatesSettings(true));
     document.querySelector("[data-check-updates]")?.addEventListener("click", () => loadUpdatesSettings(true));
     document.getElementById("adminHealthRefresh")?.addEventListener("click", runHealthCheck);
+    document.getElementById("adminHealthExport")?.addEventListener("click", exportDiagnostics);
     document.querySelectorAll("[data-update-channel]").forEach((button) => {
       button.addEventListener("click", async () => {
         const channel = button.dataset.updateChannel === "beta" ? "beta" : "stable";
