@@ -1,55 +1,79 @@
 [
   {
+    "version": "20260914-3",
+    "tag": "v0.8.51",
+    "date": "2026-09-14",
+    "changes": [
+      {
+        "da": "Oversigtens energikort får nu samme prisfarvegradient og pulsanimation over 6 kr/kWh som elpriskortet, og kiosk-skærme gendanner automatisk desktop-layoutet efter en skærm-tænding i stedet for at blive hængende i mobil-layout.",
+        "en": "The overview energy card now uses the same price colour gradient and above-6 kr/kWh pulse animation as the electricity price card, and kiosk screens automatically restore the desktop layout after a screen power-cycle instead of staying stuck in the mobile layout."
+      }
+    ]
+  },
+  {
     "version": "20260913-18",
     "tag": "v0.8.50",
     "date": "2026-09-13",
-    "changes": [{
-      "da": "Kameraoptimeringen er genudgivet med et nyt release-id, så standalone-opdateringer med sikkerhed modtager de forindlæste billeder og stabile kamerafelter uden at ændre lokale data.",
-      "en": "The camera optimization has been reissued with a new release ID so standalone updates reliably receive warmed posters and stable camera tiles without changing local data."
-    }]
+    "changes": [
+      {
+        "da": "Kameraoptimeringen er genudgivet med et nyt release-id, så standalone-opdateringer med sikkerhed modtager de forindlæste billeder og stabile kamerafelter uden at ændre lokale data.",
+        "en": "The camera optimization has been reissued with a new release ID so standalone updates reliably receive warmed posters and stable camera tiles without changing local data."
+      }
+    ]
   },
   {
     "version": "20260913-17",
     "tag": "v0.8.49",
     "date": "2026-09-13",
-    "changes": [{
-      "da": "Kameraskift efter bevægelse bruger nu forindlæste, autentificerede stillbilleder, mens kun det ændrede livefelt genstartes. Skjulte kameraer holder ikke videostrømme åbne.",
-      "en": "Motion-driven camera switching now uses preloaded authenticated stills while only the changed live view reconnects. Hidden cameras do not keep video streams open."
-    }]
+    "changes": [
+      {
+        "da": "Kameraskift efter bevægelse bruger nu forindlæste, autentificerede stillbilleder, mens kun det ændrede livefelt genstartes. Skjulte kameraer holder ikke videostrømme åbne.",
+        "en": "Motion-driven camera switching now uses preloaded authenticated stills while only the changed live view reconnects. Hidden cameras do not keep video streams open."
+      }
+    ]
   },
   {
     "version": "20260913-16",
     "tag": "v0.8.48",
     "date": "2026-09-13",
-    "changes": [{
-      "da": "Notifikations-popup'en har nu en 96 % tæt mørk flade, tydelig lys tekst og en let 12 px blur, så indholdet forbliver læsbart i både lyse og mørke temaer.",
-      "en": "The notification popup now uses a 96% opaque dark surface, clear light text and a subtle 12px blur so its content remains readable in both light and dark themes."
-    }]
+    "changes": [
+      {
+        "da": "Notifikations-popup'en har nu en 96 % tæt mørk flade, tydelig lys tekst og en let 12 px blur, så indholdet forbliver læsbart i både lyse og mørke temaer.",
+        "en": "The notification popup now uses a 96% opaque dark surface, clear light text and a subtle 12px blur so its content remains readable in both light and dark themes."
+      }
+    ]
   },
   {
     "version": "20260913-15",
     "tag": "v0.8.47",
     "date": "2026-09-13",
-    "changes": [{
-      "da": "Notifikationscenteret viser nu kategori og tidspunkt samt handlingerne Åbn, udsæt 30 minutter, kvittér og fjern. Åbn navigerer til den relevante Smartdash-side, og snooze genbruger bannerets eksisterende skjulningslogik.",
-      "en": "The notification center now shows category and timestamp plus Open, snooze for 30 minutes, acknowledge and dismiss actions. Open navigates to the relevant Smartdash page, while snooze reuses the banner's existing suppression logic."
-    }]
+    "changes": [
+      {
+        "da": "Notifikationscenteret viser nu kategori og tidspunkt samt handlingerne Åbn, udsæt 30 minutter, kvittér og fjern. Åbn navigerer til den relevante Smartdash-side, og snooze genbruger bannerets eksisterende skjulningslogik.",
+        "en": "The notification center now shows category and timestamp plus Open, snooze for 30 minutes, acknowledge and dismiss actions. Open navigates to the relevant Smartdash page, while snooze reuses the banner's existing suppression logic."
+      }
+    ]
   },
   {
     "version": "20260913-14",
     "tag": "v0.8.46",
     "date": "2026-09-13",
-    "changes": [{
-      "da": "Health Centers gentest bevarer nu tastatur- og touchfokus, mens resultaterne opdateres målrettet uden at genopbygge Admin-skallen.",
-      "en": "Health Center retests now preserve keyboard and touch focus while results update in place without rebuilding the Admin shell."
-    }]
+    "changes": [
+      {
+        "da": "Health Centers gentest bevarer nu tastatur- og touchfokus, mens resultaterne opdateres målrettet uden at genopbygge Admin-skallen.",
+        "en": "Health Center retests now preserve keyboard and touch focus while results update in place without rebuilding the Admin shell."
+      }
+    ]
   },
   {
     "version": "20260913-13",
     "tag": "v0.8.45",
     "date": "2026-09-13",
     "changes": [
-      { "da": "Strømprofil og multi-alarm initialiseres nu fra Smartdash' faktiske globale konfiguration, så valgene træder i kraft straks efter gemning eller indlæsning.", "en": "Power profile and multi-alarm initialization now use Smartdash's actual global configuration, so selections take effect immediately after saving or loading." }
+      {
+        "da": "Strømprofil og multi-alarm initialiseres nu fra Smartdash' faktiske globale konfiguration, så valgene træder i kraft straks efter gemning eller indlæsning.",
+        "en": "Power profile and multi-alarm initialization now use Smartdash's actual global configuration, so selections take effect immediately after saving or loading."
+      }
     ]
   },
   {
@@ -57,20 +81,34 @@
     "tag": "v0.8.44",
     "date": "2026-09-13",
     "changes": [
-      { "da": "Dashboardet viser nu en rolig offline-status med tidspunktet for senest kendte HA-data, mens de eksisterende kort og værdier bliver stående.", "en": "The dashboard now shows a calm offline status with the timestamp of the latest known HA data while existing cards and values remain visible." },
-      { "da": "Hver kiosk har nu strømprofilerne Ydelse, Balanceret og Lavt forbrug; lav profil begrænser samtidige forsidekameraer til to og fjerner animationer uden at ændre gemte kameravalg.", "en": "Each kiosk now has Performance, Balanced and Low power profiles; Low limits simultaneous overview cameras to two and removes animations without changing saved camera choices." },
-      { "da": "Skærmlåsen kan følge flere alarm-entiteter med any-armed-logik og frigives først automatisk, når alle valgte alarmer er frakoblet.", "en": "The screen lock can follow multiple alarm entities using any-armed logic and is only released automatically after every selected alarm is disarmed." },
-      { "da": "Et nyt notifikationscenter gemmer de seneste 30 lokale hændelser, deduplikerer dem og lader brugeren kvittere uden at ændre den bagvedliggende alarm.", "en": "A new notification center stores the latest 30 local events, deduplicates them and lets the user acknowledge them without changing the underlying alarm." }
+      {
+        "da": "Dashboardet viser nu en rolig offline-status med tidspunktet for senest kendte HA-data, mens de eksisterende kort og værdier bliver stående.",
+        "en": "The dashboard now shows a calm offline status with the timestamp of the latest known HA data while existing cards and values remain visible."
+      },
+      {
+        "da": "Hver kiosk har nu strømprofilerne Ydelse, Balanceret og Lavt forbrug; lav profil begrænser samtidige forsidekameraer til to og fjerner animationer uden at ændre gemte kameravalg.",
+        "en": "Each kiosk now has Performance, Balanced and Low power profiles; Low limits simultaneous overview cameras to two and removes animations without changing saved camera choices."
+      },
+      {
+        "da": "Skærmlåsen kan følge flere alarm-entiteter med any-armed-logik og frigives først automatisk, når alle valgte alarmer er frakoblet.",
+        "en": "The screen lock can follow multiple alarm entities using any-armed logic and is only released automatically after every selected alarm is disarmed."
+      },
+      {
+        "da": "Et nyt notifikationscenter gemmer de seneste 30 lokale hændelser, deduplikerer dem og lader brugeren kvittere uden at ændre den bagvedliggende alarm.",
+        "en": "A new notification center stores the latest 30 local events, deduplicates them and lets the user acknowledge them without changing the underlying alarm."
+      }
     ]
   },
   {
     "version": "20260913-11",
     "tag": "v0.8.43",
     "date": "2026-09-13",
-    "changes": [{
-      "da": "Administration har nu et samlet Health Center med en manuel, ikke-destruktiv test af Home Assistant, MQTT, go2rtc, kameraer og Kiosk Warden. Resultaterne viser tilstand, svartid, antal entities/streams, heartbeat og seneste lokale tekniske hændelser.",
-      "en": "Administration now includes a combined Health Center with a manual, non-destructive check of Home Assistant, MQTT, go2rtc, cameras and Kiosk Warden. Results show state, response time, entity/stream counts, heartbeat and recent local technical events."
-    }]
+    "changes": [
+      {
+        "da": "Administration har nu et samlet Health Center med en manuel, ikke-destruktiv test af Home Assistant, MQTT, go2rtc, kameraer og Kiosk Warden. Resultaterne viser tilstand, svartid, antal entities/streams, heartbeat og seneste lokale tekniske hændelser.",
+        "en": "Administration now includes a combined Health Center with a manual, non-destructive check of Home Assistant, MQTT, go2rtc, cameras and Kiosk Warden. Results show state, response time, entity/stream counts, heartbeat and recent local technical events."
+      }
+    ]
   },
   {
     "version": "20260913-10",
@@ -98,7 +136,12 @@
     "version": "20260913-8",
     "tag": "v0.8.40",
     "date": "2026-09-13",
-    "changes": [{"da":"Kameraeditoren følger nu HA Home Camera Card: hver kamerarække har et kompakt Auto-valg og en lille stjerne til favorit/fallback. Den store separate auto-sektion og fallback-dropdown er fjernet.","en":"The camera editor now follows HA Home Camera Card: each camera row has a compact Auto toggle and a small star for favourite/fallback. The large separate automatic section and fallback dropdown have been removed."}]
+    "changes": [
+      {
+        "da": "Kameraeditoren følger nu HA Home Camera Card: hver kamerarække har et kompakt Auto-valg og en lille stjerne til favorit/fallback. Den store separate auto-sektion og fallback-dropdown er fjernet.",
+        "en": "The camera editor now follows HA Home Camera Card: each camera row has a compact Auto toggle and a small star for favourite/fallback. The large separate automatic section and fallback dropdown have been removed."
+      }
+    ]
   },
   {
     "version": "20260913-7",

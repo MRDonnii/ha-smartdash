@@ -2320,6 +2320,32 @@
     return { label: "Dyr", cls: "is-expensive" };
   }
 
+  // 5-stop price gradient ported from the HA electricity price card
+  // (green -> yellow -> orange -> red -> dark red), blended in oklab.
+  function priceColor(price) {
+    if (!Number.isFinite(price)) return "var(--ink-faint)";
+    const stops = [
+      [1, "var(--success)"],
+      [2, "var(--warning)"],
+      [4, "var(--warning-strong, var(--warning))"],
+      [5, "var(--danger)"],
+      [6, "var(--danger-strong, var(--danger))"],
+    ];
+    const value = Math.max(stops[0][0], Math.min(stops[stops.length - 1][0], price));
+    let a = stops[0];
+    let b = stops[stops.length - 1];
+    for (let i = 0; i < stops.length - 1; i += 1) {
+      if (value >= stops[i][0] && value <= stops[i + 1][0]) { a = stops[i]; b = stops[i + 1]; break; }
+    }
+    const pct = Math.round(((value - a[0]) / Math.max(0.0001, b[0] - a[0])) * 1000) / 10;
+    return `color-mix(in oklab, ${a[1]} ${100 - pct}%, ${b[1]} ${pct}%)`;
+  }
+
+  // Above 6 kr/kWh the bars pulse, like the HA card's priceDangerPulse.
+  function pricePulse(price) {
+    return Number.isFinite(price) && price > 6 ? Math.min(1, (price - 6) / 6) : 0;
+  }
+
   function energyAdvice(priceSeries, currentPrice, power) {
     if (!priceSeries.length || !Number.isFinite(currentPrice)) return { icon: "bolt", title: "Afventer prisdata", detail: "Anbefalingen opdateres automatisk" };
     let best = null;
@@ -2527,6 +2553,7 @@
     const utilityValue = utilityState && Number.isFinite(Number(utilityState.state)) ? Number(utilityState.state) : null;
     const price = priceState && Number.isFinite(Number(priceState.state)) ? Number(priceState.state) : null;
     const level = price !== null ? priceLevel(price) : { label: "–", cls: "" };
+    const pricePulseNow = price !== null ? pricePulse(price) : 0;
     const displayValue = utilityValue === null ? "–" : utilityView === "electric"
       ? (utilityValue >= 1000 ? `${(utilityValue / 1000).toFixed(2)} kW` : `${Math.round(utilityValue)} W`)
       : utilityView === "heat" ? `${utilityValue.toFixed(2)} kW` : `${utilityValue.toFixed(3)} m³`;
@@ -2557,7 +2584,7 @@
         <div class="beast-ov-chart-axis">${utilityAxisLabels().map((label) => `<span>${label}</span>`).join("")}</div>
         <div class="beast-ov-price-head">
           <div>
-            <span class="beast-ov-energy-price ${level.cls}">${price !== null ? price.toFixed(2) : "–"} kr/kWh · ${level.label}</span>
+            <span class="beast-ov-energy-price ${level.cls}${pricePulseNow > 0 ? " price-alert" : ""}" style="--price-color:${price !== null ? priceColor(price) : "var(--ink-muted)"};--price-pulse-duration:${(3.2 - pricePulseNow * 2).toFixed(2)}s;--price-pulse-brightness:${(1.08 + pricePulseNow * 0.82).toFixed(2)};--price-pulse-glow:${(3 + pricePulseNow * 15).toFixed(1)}px">${price !== null ? price.toFixed(2) : "–"} kr/kWh · ${level.label}</span>
             <small>${minPrice !== null ? `Lav ${minPrice.toFixed(2)} · Høj ${highPrice.toFixed(2)}` : "Ingen priser tilgængelige"}</small>
           </div>
           <div class="beast-ov-price-toggle">
@@ -2571,7 +2598,8 @@
             const active = overviewPriceView === "today" && index === new Date().getHours();
             const isMin = item.value === minPrice;
             const isMax = item.value === highPrice;
-            return `<span class="${active ? "is-current " : ""}${isMin ? "is-min " : ""}${isMax ? "is-max" : ""}" style="height:${Math.max(7, (item.value / maxPrice) * 100)}%;--delay:${index * 18}ms;--price-hue:${Math.max(0, 150 - ((item.value - (minPrice || 0)) / Math.max(0.01, highPrice - (minPrice || 0))) * 150)}" title="${item.label}:00 · ${item.value.toFixed(2)} kr/kWh"></span>`;
+            const pulse = pricePulse(item.value);
+            return `<span class="${active ? "is-current " : ""}${isMin ? "is-min " : ""}${isMax ? "is-max " : ""}${pulse > 0 ? "price-alert" : ""}" style="height:${Math.max(7, (item.value / maxPrice) * 100)}%;--delay:${index * 18}ms;--price-color:${priceColor(item.value)};--price-pulse-duration:${(3.2 - pulse * 2).toFixed(2)}s;--price-pulse-scale:${(0.96 - pulse * 0.24).toFixed(2)};--price-pulse-opacity:${(0.88 - pulse * 0.3).toFixed(2)};--price-pulse-brightness:${(1.08 + pulse * 0.82).toFixed(2)};--price-pulse-glow:${(3 + pulse * 15).toFixed(1)}px" title="${item.label}:00 · ${item.value.toFixed(2)} kr/kWh"></span>`;
           }).join("") : `<i>Ingen prisdata for valgt dag</i>`}
         </div>
         <div class="beast-ov-chart-axis"><span>00</span><span>06</span><span>12</span><span>18</span><span>23</span></div>

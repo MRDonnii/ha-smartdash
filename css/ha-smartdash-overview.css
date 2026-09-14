@@ -1132,13 +1132,22 @@
   font-weight: 700;
   padding: 6px 14px;
   border-radius: var(--radius-full);
-  color: var(--ink-muted);
-  background: rgba(255, 255, 255, 0.06);
+  color: var(--price-color, var(--ink-muted));
+  background: color-mix(in srgb, var(--price-color, rgba(255, 255, 255, 0.06)) 16%, transparent);
 }
 
-.beast-ov-energy-price.is-cheap { color: var(--success); background: var(--success-soft); }
-.beast-ov-energy-price.is-normal { color: var(--warning); background: var(--warning-soft); }
-.beast-ov-energy-price.is-expensive { color: var(--danger); background: var(--danger-soft); }
+.beast-ov-energy-price.price-alert {
+  animation: beast-price-badge-pulse var(--price-pulse-duration, 3.2s) ease-in-out infinite;
+}
+
+@keyframes beast-price-badge-pulse {
+  0%, 100% { filter: brightness(1); box-shadow: 0 0 2px color-mix(in srgb, var(--price-color, var(--danger)) 40%, transparent); }
+  50% { filter: brightness(var(--price-pulse-brightness, 1.08)); box-shadow: 0 0 var(--price-pulse-glow, 3px) color-mix(in srgb, var(--price-color, var(--danger)) 55%, transparent); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .beast-ov-energy-price.price-alert { animation: none; }
+}
 
 .beast-ov-energy-mini-chart {
   width: 90%;
@@ -1717,8 +1726,23 @@
   flex: 1;
   min-width: 2px;
   border-radius: 8px 8px 3px 3px;
-  background: linear-gradient(180deg, hsl(var(--price-hue) 88% 62%), hsl(var(--price-hue) 76% 43%));
-  box-shadow: 0 7px 14px hsla(var(--price-hue) 80% 50% / .16);
+  background: linear-gradient(180deg, color-mix(in oklab, var(--price-color, var(--ink-faint)) 86%, white 14%), color-mix(in oklab, var(--price-color, var(--ink-faint)) 74%, black 26%));
+  box-shadow: 0 7px 14px color-mix(in srgb, var(--price-color, var(--ink-faint)) 22%, transparent);
+  transform-origin: center bottom;
+  transition: background-color .9s ease, filter .15s, transform .15s;
+}
+
+.beast-ov-price-chart span.price-alert {
+  animation: beast-price-pulse var(--price-pulse-duration, 3.2s) ease-in-out infinite;
+}
+
+@keyframes beast-price-pulse {
+  0%, 100% { transform: scaleY(1); opacity: .9; filter: brightness(1) drop-shadow(0 0 2px var(--price-color, var(--ink-faint))); }
+  50% { transform: scaleY(var(--price-pulse-scale, .96)); opacity: var(--price-pulse-opacity, .88); filter: brightness(var(--price-pulse-brightness, 1.08)) drop-shadow(0 0 var(--price-pulse-glow, 3px) var(--price-color, var(--ink-faint))); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .beast-ov-price-chart span.price-alert { animation: none; }
 }
 
 .beast-ov-price-chart span.is-min { box-shadow: 0 8px 18px rgba(40,214,122,.24); }

@@ -913,14 +913,22 @@ function overviewEscape(value) { const el = document.createElement("span"); el.t
 // 600px is comfortably below any tablet's narrowest dimension and above
 // realistic phone portrait widths.
 function isMobileOverviewViewport() {
-  const widths = [window.innerWidth, document.documentElement?.clientWidth]
+  const widths = [window.innerWidth, document.documentElement?.clientWidth, document.querySelector(".beast-app")?.clientWidth]
     .map(Number).filter((value) => Number.isFinite(value) && value > 0);
   const measured = Math.max(0, ...widths);
   // Same guard as BeastNativePageEditor.viewportWidth(): a kiosk refresh can
   // briefly report a near-zero viewport, which must not be mistaken for a
   // phone on a large display.
   if (measured < 480 && Number(window.screen?.availWidth) >= 1180) return false;
-  return (measured || Number(window.screen?.availWidth) || 1920) <= 600;
+  // A large physical screen never gets the mobile overview. During a kiosk
+  // screen power-cycle Chromium can briefly report a shrunken viewport while
+  // the page is loading; without this floor the mobile template is chosen
+  // and then never revisited (nothing re-runs renderOverviewSection() when
+  // the viewport later returns to full size), leaving the wall display in
+  // the stacked phone layout until the next manual reload.
+  const screenFloor = Number(window.screen?.availWidth) || 0;
+  if (screenFloor >= 1180) return false;
+  return (measured || screenFloor || 1920) <= 600;
 }
 // Shared by the initial mount (renderOverviewSection) and the live
 // front-page editor (ha-smartdash-overview.js's edit mode) so both render
@@ -1122,6 +1130,29 @@ function renderAppShell(root) {
   setupQuickScenarios();
   setupDataQuality();
   BeastCore.mountPanels();
+  // Kiosk screen power-cycles can make the first layout decision run while
+  // Chromium briefly reports a shrunken viewport. If the overview ended up
+  // in the mobile template on a large physical screen, rebuild it once the
+  // viewport has settled -- the same one-shot settled-measurement pattern
+  // the native page editor uses (refreshAfterStartup).
+  if (Number(window.screen?.availWidth) >= 1180) {
+    window.setTimeout(() => {
+      const zone = document.getElementById("beastOverviewZone");
+      if (zone?.classList.contains("beast-overview-mobile") && !isMobileOverviewViewport()) {
+        BeastCore.log("Oversigt: skærmopløsning vendte tilbage efter opstart -- gendanner desktop-layout.");
+        const active = document.querySelector(".beast-section.is-active")?.dataset.section;
+        const content = document.getElementById("beastContent");
+        if (content) {
+          const section = content.querySelector("[data-section=\"overview\"]");
+          if (section) {
+            section.innerHTML = renderSectionMarkup({ id: "overview" });
+            BeastCore.mountPanels();
+            window.BeastPageEditor?.mountAll();
+          }
+        }
+      }
+    }, 1200);
+  }
   // Attach the shared entity-card editor after page panels have rendered.
   // A short delay also lets panels that start in a loading state finish their
   // first markup pass before the editor adds its persistent host.
