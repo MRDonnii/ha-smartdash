@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.8.51
+
+- Ported the electricity price card's colour gradient and high-price pulse
+  animation to the overview energy card.
+- Kiosk displays now recover the desktop overview automatically after a
+  screen power-cycle instead of remaining in the mobile layout.
+
 ## 0.8.50
 
 - Reissued the camera-switch optimization under a fresh release identity so
