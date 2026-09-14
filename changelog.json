@@ -1,5 +1,16 @@
 [
   {
+    "version": "20260914-4",
+    "tag": "v0.8.52",
+    "date": "2026-09-14",
+    "changes": [
+      {
+        "da": "Kameravælgerens små billeder kan nu sættes til enten livevisning eller snapshots i redigering, og snapshot-intervallet kan vælges separat for hver skærmprofil.",
+        "en": "The camera picker's small previews can now use either live video or snapshots in edit mode, with a configurable snapshot interval for each screen profile."
+      }
+    ]
+  },
+  {
     "version": "20260914-3",
     "tag": "v0.8.51",
     "date": "2026-09-14",
