@@ -60,6 +60,7 @@ if (!overview.includes('sendCommand("config/entity_registry/list")') || !overvie
 if (!cameras.includes('querySelectorAll("img.beast-camera-snapshot")')) throw new Error("Periodic snapshot refresh must target image elements only.");
 if (!cameras.includes('key:"displayMode"') || !cameras.includes('value:"live"') || !cameras.includes('key:"snapshotInterval"')) throw new Error("Camera picker must expose live/snapshot mode and snapshot interval controls.");
 if (!cameras.includes('function stripCameraMarkup(camera)') || !cameras.includes('class="beast-camera-tile-live"')) throw new Error("Camera picker live mode must render dedicated live media without reusing snapshot refresh targets.");
+if (!cameras.includes('directSettings:true') || !app.includes('section.dataset.section === "cameras"') || !app.includes('BeastNativePageEditor?.open?.("cameras")')) throw new Error("The Cameras rail Edit button must open its complete settings popup directly.");
 if (!app.includes('!frame.closest("#beastOvCameras")')) throw new Error("Overview camera players must recover internally without outer iframe reloads.");
 if (!auth.includes("preloadAuthedImage") || !cameras.includes("preloadOverviewSnapshots") || !overview.includes("current.replaceWith(tile)")) throw new Error("Overview camera switching must use warmed posters and per-tile reconciliation.");
 if (!admin.includes('data-admin-view="health"') || !admin.includes('runHealthCheck') || !admin.includes('BeastHaSocket.sendCommand("get_config")')) throw new Error("Admin must include the Health Center checks.");

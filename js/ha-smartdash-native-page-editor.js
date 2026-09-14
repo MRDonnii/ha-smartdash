@@ -264,13 +264,17 @@ window.BeastNativePageEditor = (() => {
             card.options[input.dataset.nativeOption] = input.type === "checkbox" ? input.checked : (input.type === "number" ? Number(input.value) : input.value);
           });
         });
-        if (!state.editing) BeastConfig.set(storagePath(state.section), list);
+        if (!state.editing) {
+          BeastConfig.set(storagePath(state.section), list);
+          state.onSave?.(copy(list));
+        }
         overlay.remove(); apply(list);
       });
     }
 
     function enter() {
       if (state.editing || !root() || !host()) return;
+      if (state.directSettings === true) { settings(); return; }
       state.editing = true; state.draft = copy(cards()); window.beastCardEditorActive = true;
       root().classList.add("is-native-page-editing"); apply(state.draft);
       state.draft.forEach((card) => { const element = elementFor(card); if (element && card.enabled !== false) wireCard(element, card); });

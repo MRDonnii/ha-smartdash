@@ -1,5 +1,16 @@
 [
   {
+    "version": "20260914-6",
+    "tag": "v0.8.54",
+    "date": "2026-09-14",
+    "changes": [
+      {
+        "da": "Rediger-knappen åbner nu kamera-viewets samlede indstillingspopup direkte med layout, visning, antal, live/snapshot, snapshotinterval og rækkefølge; den tidligere redigeringsbjælke i bunden bruges ikke længere på kamerafanen.",
+        "en": "The Edit button now opens the camera view's complete settings popup directly with layout, display, count, live/snapshot, snapshot interval and ordering; the previous bottom edit bar is no longer used on the Cameras tab."
+      }
+    ]
+  },
+  {
     "version": "20260914-5",
     "tag": "v0.8.53",
     "date": "2026-09-14",
