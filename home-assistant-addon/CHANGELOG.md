@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.8.52
+
+- Added per-screen edit-mode controls for live or snapshot camera-picker
+  previews and the snapshot refresh interval.
+
 ## 0.8.51
 
 - Ported the electricity price card's colour gradient and high-price pulse

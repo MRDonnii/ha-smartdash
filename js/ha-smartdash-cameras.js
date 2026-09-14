@@ -3,11 +3,25 @@
   let configuredCameraIds = null;
   let go2rtcStreamGroups = new Map();
   let go2rtcDiscoveryPromise = null;
-  const SNAPSHOT_REFRESH_MS = 8000;
+  const DEFAULT_SNAPSHOT_REFRESH_SECONDS = 8;
 
   let containerEl = null;
   let refreshTimerId = null;
   let featuredSlug = null;
+
+  function stripDisplayMode() {
+    return BeastNativePageEditor.option("cameras", "grid", "displayMode", "snapshot") === "live" ? "live" : "snapshot";
+  }
+
+  function stripSnapshotRefreshMs() {
+    const seconds = Number(BeastNativePageEditor.option("cameras", "grid", "snapshotInterval", DEFAULT_SNAPSHOT_REFRESH_SECONDS));
+    return Math.min(300, Math.max(2, Number.isFinite(seconds) ? seconds : DEFAULT_SNAPSHOT_REFRESH_SECONDS)) * 1000;
+  }
+
+  function restartSnapshotTimer() {
+    window.clearInterval(refreshTimerId);
+    refreshTimerId = window.setInterval(refreshStripSnapshots, stripSnapshotRefreshMs());
+  }
 
   function cameraIdentity(entityId) {
     const raw = entityId.replace(/^camera\./, "");
@@ -653,6 +667,28 @@
     }
   }
 
+  function stripCameraMarkup(camera) {
+    if (stripDisplayMode() !== "live") {
+      return `<img class="beast-camera-snapshot" ${GO2RTC_BASE_URL && camera.streamName ? `src="${snapshotUrl(camera.resolvedStreamName || camera.streamName)}"` : ""} alt="" loading="lazy">`;
+    }
+    const streamName = GO2RTC_BASE_URL ? (camera.resolvedStreamName || camera.streamName) : null;
+    if (streamName) {
+      return `<iframe class="beast-camera-tile-live" src="./camera-player.html?v=19&base=${encodeURIComponent(GO2RTC_BASE_URL)}&transport=webrtc&src=${encodeURIComponent(streamName)}" title="${escapeHtml(camera.label)} livekamera" frameborder="0" allow="autoplay" tabindex="-1"></iframe>`;
+    }
+    if (camera.haStreamUrl) return `<img class="beast-camera-tile-live beast-camera-tile-ha-stream" src="${escapeHtml(camera.haStreamUrl)}" data-camera-fallback-picture="${escapeHtml(camera.entityPicture || "")}" alt="${escapeHtml(camera.label)} livekamera">`;
+    return `<img class="beast-camera-snapshot" data-camera-picture="${escapeHtml(camera.entityPicture || "")}" alt="${escapeHtml(camera.label)}">`;
+  }
+
+  function wireStripLiveFallback(tile) {
+    const img = tile.querySelector(".beast-camera-tile-ha-stream[data-camera-fallback-picture]");
+    img?.addEventListener("error", () => {
+      const picture = img.dataset.cameraFallbackPicture;
+      img.classList.remove("beast-camera-tile-live", "beast-camera-tile-ha-stream");
+      img.classList.add("beast-camera-snapshot");
+      if (picture) BeastAuth.setAuthedImageSrc(img, picture);
+    }, { once:true });
+  }
+
   function updateMotionBadges() {
     const cameraBySlug = new Map(discoverCameras().map((camera) => [camera.slug, camera]));
     containerEl?.querySelectorAll(".beast-camera-tile").forEach((tile) => {
@@ -875,16 +911,19 @@
       tile.dataset.entityId = camera.entityId;
       tile.dataset.streamName = GO2RTC_BASE_URL ? (camera.resolvedStreamName || camera.streamName || "") : "";
       tile.innerHTML = `
-        <img class="beast-camera-snapshot" ${GO2RTC_BASE_URL && camera.streamName ? `src="${snapshotUrl(camera.resolvedStreamName || camera.streamName)}"` : ""} alt="" loading="lazy">
+        ${stripCameraMarkup(camera)}
         ${camera.motion ? `<span class="beast-camera-motion-badge">${BeastCore.icon("bolt", { size: 10 })}</span>` : ""}
         <span class="beast-camera-label">${escapeHtml(camera.label)}</span>
       `;
-      if ((!GO2RTC_BASE_URL || !camera.streamName) && camera.entityPicture) BeastAuth.setAuthedImageSrc(tile.querySelector("img"), camera.entityPicture);
+      const snapshot = tile.querySelector("img.beast-camera-snapshot");
+      if (snapshot && !snapshot.getAttribute("src") && camera.entityPicture) BeastAuth.setAuthedImageSrc(snapshot, camera.entityPicture);
+      wireStripLiveFallback(tile);
       tile.addEventListener("click", () => {
         selectFeaturedCamera(camera);
       });
       strip.appendChild(tile);
     });
+    restartSnapshotTimer();
   }
 
   function wireCameraLayout() {
@@ -894,7 +933,7 @@
     containerEl.querySelector(".beast-camera-strip")?.classList.toggle("is-layout-hidden", hidden.has("grid"));
     BeastNativePageEditor.mount({ section:"cameras", label:"Kameraer", root:()=>containerEl, host:()=>containerEl, trigger:"#beastCamerasLayoutEdit", onSave:()=>render(), onSettingsAction:(action)=>{ if(action === "cameraOrder") openCameraOrder(); }, fitCards:(cards)=>cards.map((card)=>card.id === "featured" ? {...card,desktop:{...card.desktop,h:10}} : card.id === "grid" ? {...card,desktop:{...card.desktop,h:2}} : card), cards:()=>[
       { id:"featured", label:"Stort livekamera", selector:".beast-camera-featured", enabled:!hidden.has("featured"), desktop:{x:1,y:1,w:12,h:10}, options:{fit:"cover"}, controls:[{key:"fit",label:"Billedtilpasning",type:"select",default:"cover",choices:[{value:"cover",label:"Fyld kortet"},{value:"contain",label:"Vis hele billedet"}]}] },
-      { id:"grid", label:"Kameravælger", selector:".beast-camera-strip", enabled:!hidden.has("grid"), desktop:{x:1,y:11,w:12,h:2}, options:{items:8}, controls:[{key:"items",label:"Antal kameraer",min:1,max:16,step:1,default:8},{key:"cameraOrder",label:"Kamerarækkefølge",type:"action",icon:"grip"}] }
+      { id:"grid", label:"Kameravælger", selector:".beast-camera-strip", enabled:!hidden.has("grid"), desktop:{x:1,y:11,w:12,h:2}, options:{items:8,displayMode:"snapshot",snapshotInterval:8}, controls:[{key:"items",label:"Antal kameraer",min:1,max:16,step:1,default:8},{key:"displayMode",label:"Små kamerabilleder",type:"select",default:"snapshot",choices:[{value:"snapshot",label:"Snapshots"},{value:"live",label:"Live"}]},{key:"snapshotInterval",label:"Nyt snapshot hvert (sekunder)",min:2,max:300,step:1,default:8},{key:"cameraOrder",label:"Kamerarækkefølge",type:"action",icon:"grip"}] }
     ] });
   }
 
@@ -925,8 +964,7 @@
       if (isSmartDetectionEntity(entityId)) updateMotionBadges();
     });
 
-    window.clearInterval(refreshTimerId);
-    refreshTimerId = window.setInterval(refreshStripSnapshots, SNAPSHOT_REFRESH_MS);
+    restartSnapshotTimer();
     document.addEventListener("beast:sectionchange", (event) => {
       if (event.detail?.section === "cameras") refreshStripSnapshots();
     });

@@ -173,6 +173,18 @@ beast-ha-camera-stream.is-ready .beast-ha-camera-poster { opacity:0; }
   display: block;
 }
 
+.beast-camera-tile-live {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+  border: 0;
+  background: #000;
+  object-fit: cover;
+  pointer-events: none;
+}
+
 .beast-camera-label {
   position: absolute;
   left: 0;
