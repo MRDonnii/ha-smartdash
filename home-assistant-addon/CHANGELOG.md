@@ -1,3 +1,7 @@
+## 0.8.59
+
+- HCH5 animationer har stabil hastighed ved nye temperaturer og RPM; dyre bevægelige slørings- og blend-effekter er forenklet. Gridmålene er uændrede.
+
 # Changelog
 
 ## 0.8.58
