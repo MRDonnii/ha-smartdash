@@ -14,7 +14,11 @@ window.BeastVentilation = (() => {
     co2: ['CO₂', 'CO₂'], power: ['Effekt', 'Power'], heat_recovery: ['Varmegenvinding', 'Heat recovery'], humidity: ['Luftfugtighed', 'Humidity'],
     bypass: ['Bypass', 'Bypass'], mode: ['Driftstilstand', 'Operation mode'],
     level: ['Ventilatortrin', 'Fan level'], filter_days: ['Filter, dage tilbage', 'Filter days remaining'],
-    air_quality: ['Luftkvalitet', 'Air quality'], heat_transfer: ['Varmeoverførsel', 'Heat transfer'], alarm: ['Alarm', 'Alarm']
+    air_quality: ['Luftkvalitet', 'Air quality'], heat_transfer: ['Varmeoverførsel', 'Heat transfer'], alarm: ['Alarm', 'Alarm'],
+    active_master: ['Aktiv master', 'Active master'], rs485_healthy: ['RS485 sund', 'RS485 healthy'],
+    mode_control: ['HCH5 driftstilstand', 'HCH5 mode'], level_control: ['Manuelt trin', 'Manual level'], auto_normal: ['Auto normaltrin', 'Auto normal level'], effective_level: ['Effektivt trin', 'Effective level'],
+    bypass_control: ['Bypassstyring', 'Bypass control'], bypass_raw: ['Bypass statuskode', 'Bypass status code'], bypass_request: ['Bypass ønske', 'Bypass request'], bypass_travel_direction: ['Bypass retning', 'Bypass direction'], bypass_travel_seconds: ['Bypass rejsetid', 'Bypass travel time'], bypass_travel_total: ['Bypass forventet rejsetid', 'Bypass expected travel time'],
+    boost_15: ['Boost 15 min', 'Boost 15 min'], boost_30: ['Boost 30 min', 'Boost 30 min'], boost_remaining: ['Boost tilbage', 'Boost remaining'], fireplace_remaining: ['Pejs tilbage', 'Fireplace remaining'], afterheat_before: ['Før eftervarme', 'Before afterheat'], afterheat_lockout: ['Sommerstop', 'Summer lockout']
   };
   // Entity-id suffixes the Home Assistant Dantherm integration itself
   // assigns (e.g. "..._outdoor_air_temperature", "..._bypass_active"),
@@ -413,7 +417,7 @@ window.BeastVentilation = (() => {
     const safe = esc;
     const overlay = document.createElement('div');
     overlay.className = 'beast-modal-overlay';
-    const entityIds = Array.from(BeastHaSocket.getAllStates().keys()).filter(id => /^(sensor|binary_sensor|select|cover|fan)\./.test(id));
+    const entityIds = Array.from(BeastHaSocket.getAllStates().keys()).filter(id => /^(sensor|binary_sensor|select|cover|fan|button|number|switch)\./.test(id));
     const datalist = entityIds.map(id => `<option value="${safe(id)}">${safe(BeastHaSocket.getState(id)?.attributes?.friendly_name || id)}</option>`).join('');
     const entityFields = Object.entries(fields).map(([key, label]) => `<label class="beast-page-editor-field">${safe(t(...label))}${key === 'alarm' ? `<small>${safe(t('Kan være flere entities adskilt af komma','Can be several entities separated by commas'))}</small>` : ''}<input type="search" list="hrv-entities-datalist" data-hrv-entity="${key}" value="${safe(card.entities?.[key] || '')}" placeholder="${key === 'mode' || key === 'level' ? 'select.' : 'sensor.'}"></label>`).join('');
     const detected = detectDanthermDevices();
