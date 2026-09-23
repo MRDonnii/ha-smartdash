@@ -1,3 +1,7 @@
+## 0.8.60
+
+- HCH5-tegningens ekstra bypass-infoboks ved Raspberry Pi er fjernet; hovedstatus og betjening er bevaret.
+
 ## 0.8.59
 
 - HCH5 animationernes hastighed følger ventilatortrin 1–6 og forbliver glidende ved nye temperaturer og RPM; dyre bevægelige slørings- og blend-effekter er forenklet. Gridmålene er uændrede.

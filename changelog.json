@@ -1,5 +1,16 @@
 [
   {
+    "version": "20260923-6",
+    "tag": "v0.8.60",
+    "date": "2026-09-23",
+    "changes": [
+      {
+        "da": "Den overflødige bypass-infoboks ved siden af Raspberry Pi er fjernet fra HCH5-tegningen. Bypass-status i hovedkortet og knapperne er bevaret.",
+        "en": "Removed the redundant bypass info box beside Raspberry Pi from the HCH5 diagram. Main bypass status and controls remain."
+      }
+    ]
+  },
+  {
     "version": "20260923-5",
     "tag": "v0.8.59",
     "date": "2026-09-23",
