@@ -395,7 +395,7 @@ button { font: inherit; color: inherit; }
 .hch-smartdash-body { flex: 1; min-height: 0; display: flex; flex-direction: column; }
 .hch-smartdash-art { flex: 1; min-width: 0; min-height: 0; display: flex; align-items: center; justify-content: center; overflow: hidden; }
 .hch-smartdash-art .hch5-visual { width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; margin: 0; padding: 0; perspective: none; }
-.hch-smartdash-art .hch5-visual > svg { width: 100%; height: 100%; max-width: 100%; max-height: 100%; min-height: 0; flex: 1 1 auto; transform: none; }
+.hch-smartdash-art .hch5-visual > svg { width: 100%; height: 100%; max-width: 100%; max-height: 100%; min-height: 0; flex: 1 1 auto; transform: scale(.9,1.15); transform-origin: center; }
 .hch-smartdash-art :is(.unit-readback-row,.hch-mobile-flow) { display: none; }
 .hch-smartdash-controls { flex: none; min-width: 0; display: grid; grid-template-columns: 1fr 1.1fr .9fr; gap: 10px 12px; padding-top: 10px; border-top: 1px solid color-mix(in srgb, var(--ink,#eef4fa) 15%, transparent); }
 .hch-smartdash-readings { display: none; }
@@ -426,7 +426,7 @@ button { font: inherit; color: inherit; }
 :host([mobile]) .hch-smartdash-body { gap: 5px; }
 :host([mobile]) .hch-smartdash-art { flex: none; }
 :host([mobile]) .hch-smartdash-art .hch5-visual { height: auto; display: block; }
-:host([mobile]) .hch-smartdash-art .hch5-visual > svg { height: auto; max-height: none; }
+:host([mobile]) .hch-smartdash-art .hch5-visual > svg { height: auto; max-height: none; transform: none; }
 :host([mobile]) .hch-smartdash-controls { grid-template-columns: 1fr 1fr; gap: 9px 7px; padding-top: 9px; }
 :host([mobile]) .hch-smartdash-readings { grid-column: 1 / -1; display: grid; grid-template-columns: repeat(4,minmax(0,1fr)); gap: 3px; }
 :host([mobile]) .hch-smartdash-readings span { min-width: 0; display: flex; flex-direction: column; overflow: hidden; padding: 5px; border-radius: 7px; background: color-mix(in srgb,var(--ink,#fff) 5%,transparent); color: var(--ink-muted,#a8b8c5); font-size: 9px; white-space: nowrap; }

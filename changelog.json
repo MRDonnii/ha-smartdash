@@ -1,12 +1,23 @@
 [
   {
+    "version": "20260923-4",
+    "tag": "v0.8.58",
+    "date": "2026-09-23",
+    "changes": [
+      {
+        "da": "Den animerede HCH5-tegning er gjort smallere og højere inde i kortet. Forsidens oprindelige gridmål 4 × 0,75 er gendannet og de øvrige kort flyttes ikke.",
+        "en": "The animated HCH5 drawing is narrower and taller inside its card. The overview grid keeps its original 4 × 0.75 size so the other cards are not displaced."
+      }
+    ]
+  },
+  {
     "version": "20260923-3",
     "tag": "v0.8.57",
     "date": "2026-09-23",
     "changes": [
       {
-        "da": "HCH5-kortet på forsiden har større, tydeligere knapper og pejsefunktion med Fra, 15 og 30 minutter. Kun dette kort er gjort lidt smallere og højere på desktop.",
-        "en": "The front-page HCH5 card now has larger, clearer controls and fireplace mode with Off, 15 and 30 minutes. Only this card is slightly narrower and taller on desktop."
+        "da": "HCH5-kortet på forsiden har større, tydeligere knapper og pejsefunktion med Fra, 15 og 30 minutter. Det eksisterende korts gridstørrelse bevares.",
+        "en": "The front-page HCH5 card now has larger, clearer controls and fireplace mode with Off, 15 and 30 minutes. The existing card grid size is preserved."
       }
     ]
   },

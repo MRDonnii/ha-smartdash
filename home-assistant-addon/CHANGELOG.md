@@ -1,8 +1,12 @@
 # Changelog
 
+## 0.8.58
+
+- The animated HCH5 unit is narrower and taller inside its original overview grid slot.
+
 ## 0.8.57
 
-- The HCH5 overview card has clearer controls, fireplace mode, and a more balanced desktop size.
+- The HCH5 overview card has clearer controls and fireplace mode within its existing grid size.
 
 ## 0.8.56
 
