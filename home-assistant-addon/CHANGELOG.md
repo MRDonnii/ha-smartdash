@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.8.56
+
+- The animated HCH5 unit now expands to use the front-page card's available space.
+
 ## 0.8.55
 
 - The Smartdash front page now shows the animated HCH5 unit with compact HA controls and a scroll-free mobile layout.
