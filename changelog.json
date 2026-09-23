@@ -1,5 +1,16 @@
 [
   {
+    "version": "20260923-1",
+    "tag": "v0.8.55",
+    "date": "2026-09-23",
+    "changes": [
+      {
+        "da": "Forsidens ventilationskort viser nu den animerede HCH5-unit i samme kortplads. Mobilkortet skalerer uden intern scroll og har temperaturer samt hurtig styring af drift, trin, bypass og boost.",
+        "en": "The front-page ventilation card now shows the animated HCH5 unit in the same slot. The mobile card scales without internal scrolling and includes temperatures plus quick controls for mode, level, bypass and boost."
+      }
+    ]
+  },
+  {
     "version": "20260914-6",
     "tag": "v0.8.54",
     "date": "2026-09-14",

@@ -3098,7 +3098,7 @@
       bannerResizeTimerId = window.setTimeout(renderBanners, 150);
     });
     [CAR_BATTERY_ID, CAR_RANGE_ID, CAR_CHARGING_ID, POOL_TEMPERATURE_ID].filter(Boolean).forEach((id) => BeastHaSocket.subscribeEntity(id, renderClock));
-    ["sensor", "select", "cover", "fan", "binary_sensor"].forEach(domain => BeastHaSocket.subscribeDomain(domain, id => {
+    ["sensor", "select", "cover", "fan", "binary_sensor", "number", "button", "switch"].forEach(domain => BeastHaSocket.subscribeDomain(domain, id => {
       const ventilationCard = (BeastConfig.get("overviewCards") || []).find((card) => card.type === "ventilation");
       if (ventilationCard && Object.values(ventilationCard.entities || {}).includes(id)) renderVentilation();
     }));
