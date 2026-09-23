@@ -1,6 +1,6 @@
 ## 0.8.59
 
-- HCH5 animationer har stabil hastighed ved nye temperaturer og RPM; dyre bevægelige slørings- og blend-effekter er forenklet. Gridmålene er uændrede.
+- HCH5 animationernes hastighed følger ventilatortrin 1–6 og forbliver glidende ved nye temperaturer og RPM; dyre bevægelige slørings- og blend-effekter er forenklet. Gridmålene er uændrede.
 
 # Changelog
 
