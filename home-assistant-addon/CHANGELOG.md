@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.8.57
+
+- The HCH5 overview card has clearer controls, fireplace mode, and a more balanced desktop size.
+
 ## 0.8.56
 
 - The animated HCH5 unit now expands to use the front-page card's available space.

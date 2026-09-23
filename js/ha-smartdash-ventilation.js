@@ -18,7 +18,7 @@ window.BeastVentilation = (() => {
     active_master: ['Aktiv master', 'Active master'], rs485_healthy: ['RS485 sund', 'RS485 healthy'],
     mode_control: ['HCH5 driftstilstand', 'HCH5 mode'], level_control: ['Manuelt trin', 'Manual level'], auto_normal: ['Auto normaltrin', 'Auto normal level'], effective_level: ['Effektivt trin', 'Effective level'],
     bypass_control: ['Bypassstyring', 'Bypass control'], bypass_raw: ['Bypass statuskode', 'Bypass status code'], bypass_request: ['Bypass ønske', 'Bypass request'], bypass_travel_direction: ['Bypass retning', 'Bypass direction'], bypass_travel_seconds: ['Bypass rejsetid', 'Bypass travel time'], bypass_travel_total: ['Bypass forventet rejsetid', 'Bypass expected travel time'],
-    boost_15: ['Boost 15 min', 'Boost 15 min'], boost_30: ['Boost 30 min', 'Boost 30 min'], boost_remaining: ['Boost tilbage', 'Boost remaining'], fireplace_remaining: ['Pejs tilbage', 'Fireplace remaining'], afterheat_before: ['Før eftervarme', 'Before afterheat'], afterheat_lockout: ['Sommerstop', 'Summer lockout']
+    boost_15: ['Boost 15 min', 'Boost 15 min'], boost_30: ['Boost 30 min', 'Boost 30 min'], boost_stop: ['Stop boost', 'Stop boost'], boost_remaining: ['Boost tilbage', 'Boost remaining'], fireplace_control: ['Pejsefunktion', 'Fireplace mode'], fireplace_remaining: ['Pejs tilbage', 'Fireplace remaining'], afterheat_before: ['Før eftervarme', 'Before afterheat'], afterheat_lockout: ['Sommerstop', 'Summer lockout']
   };
   // Entity-id suffixes the Home Assistant Dantherm integration itself
   // assigns (e.g. "..._outdoor_air_temperature", "..._bypass_active"),
