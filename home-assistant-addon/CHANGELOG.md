@@ -1,3 +1,7 @@
+## 0.8.62
+
+- HCH5-tegningen viser et "Styring nu"-felt under T4 med det, der aktuelt styrer anlægget: kilde, trin og årsag. Vælg entiteterne Styring: kilde og Styring: årsag i ventilationskortets editor. De upålidelige målepunkter T2 før varmefladen, HRC2 T5 og den lille T2AH-pin er fjernet. (Claude AI)
+
 ## 0.8.61
 
 - HCH5-tegningen kan vise en vandbåren varmeflade, hvor kobberslangen og frem- og returrørene farves efter vandtemperaturen, og vandet kun løber, mens eftervarmen er aktiv. Vælges under Varmeflade i ventilationskortets editor. HAC1-styringen sidder nu for sig selv på RS485-bussen. (Claude AI)
