@@ -1,3 +1,7 @@
+## 0.8.63
+
+- HCH5-kortets trinknapper viser nu det trin, anlægget faktisk kører på. I Auto og Smart Auto markerer en stiplet ramme normaltrinnet, som et klik ændrer. (Claude AI)
+
 ## 0.8.62
 
 - HCH5-tegningen viser et "Styring nu"-felt under T4 med det, der aktuelt styrer anlægget: kilde, trin og årsag. Vælg entiteterne Styring: kilde og Styring: årsag i ventilationskortets editor. De upålidelige målepunkter T2 før varmefladen, HRC2 T5 og den lille T2AH-pin er fjernet. (Claude AI)
