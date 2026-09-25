@@ -19,9 +19,10 @@
     }
     element.toggleAttribute('mobile', !!host.closest('.beast-ov-m-card'));
     const entities = card.entities || {};
-    const signature = JSON.stringify(entities);
+    const afterheatCoil = card.afterheatCoil === 'water' ? 'water' : 'electric';
+    const signature = JSON.stringify([entities, afterheatCoil]);
     if (element._smartdashConfig !== signature) {
-      element.setConfig({ variant: 'smartdash', entities });
+      element.setConfig({ variant: 'smartdash', entities, afterheat_coil: afterheatCoil });
       element._smartdashConfig = signature;
     }
     const states = {};

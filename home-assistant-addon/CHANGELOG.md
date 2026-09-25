@@ -1,3 +1,7 @@
+## 0.8.61
+
+- HCH5-tegningen kan vise en vandbåren varmeflade, hvor kobberslangen og frem- og returrørene farves efter vandtemperaturen, og vandet kun løber, mens eftervarmen er aktiv. Vælges under Varmeflade i ventilationskortets editor. HAC1-styringen sidder nu for sig selv på RS485-bussen. (Claude AI)
+
 ## 0.8.60
 
 - HCH5-tegningens ekstra bypass-infoboks ved Raspberry Pi er fjernet; hovedstatus og betjening er bevaret.
