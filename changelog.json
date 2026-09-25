@@ -1,5 +1,16 @@
 [
   {
+    "version": "20260925-2",
+    "tag": "v0.8.62",
+    "date": "2026-09-25",
+    "changes": [
+      {
+        "da": "HCH5-tegningen viser et \"Styring nu\"-felt under T4 med det, der aktuelt styrer anlægget: kilde, trin og årsag på almindeligt dansk. Vælg entiteterne Styring: kilde og Styring: årsag i ventilationskortets editor. De upålidelige målepunkter T2 før varmefladen, HRC2 T5 og den lille T2AH-pin er fjernet. (Claude AI)",
+        "en": "The HCH5 drawing shows a \"Styring nu\" panel below T4 with what currently controls the unit: source, level and reason. Pick the Control source and Control reason entities in the ventilation card editor. The unreliable T2-before-coil, HRC2 T5 and small T2AH pins are removed. (Claude AI)"
+      }
+    ]
+  },
+  {
     "version": "20260925-1",
     "tag": "v0.8.61",
     "date": "2026-09-25",
