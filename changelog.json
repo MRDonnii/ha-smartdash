@@ -1,5 +1,16 @@
 [
   {
+    "version": "20260925-1",
+    "tag": "v0.8.61",
+    "date": "2026-09-25",
+    "changes": [
+      {
+        "da": "HCH5-tegningen kan vise en vandbåren varmeflade: kobberslangen og frem- og returrørene farves efter vandtemperaturen, og vandet løber kun, mens eftervarmen er aktiv. Vælges under Varmeflade i ventilationskortets editor. HAC1-styringen sidder nu for sig selv på RS485-bussen. (Claude AI)",
+        "en": "The HCH5 drawing can show a water heating coil: the copper coil and its flow and return pipes are tinted by the water temperature, and the water only moves while the afterheat is active. Chosen under Heating coil in the ventilation card editor. The HAC1 controller now sits on its own on the RS485 bus. (Claude AI)"
+      }
+    ]
+  },
+  {
     "version": "20260923-6",
     "tag": "v0.8.60",
     "date": "2026-09-23",

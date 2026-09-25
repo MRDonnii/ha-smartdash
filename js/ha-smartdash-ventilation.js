@@ -443,6 +443,7 @@ window.BeastVentilation = (() => {
       <div class="beast-modal-body">
         <label class="beast-page-editor-field">${safe(t('Kortets navn','Card title'))}<input data-hrv-title value="${safe(card.title || t('Ventilation','Ventilation'))}" maxlength="80"></label>
         <label class="beast-page-editor-check"><input type="checkbox" data-hrv-coil ${card.showAfterheat === true ? 'checked' : ''}> ${safe(t('Vis varmeflade','Show heating coil'))}</label>
+        <label class="beast-page-editor-field">${safe(t('Varmeflade','Heating coil'))}<select data-hrv-coil-type><option value="electric" ${card.afterheatCoil !== 'water' ? 'selected' : ''}>${safe(t('Elvarmeflade','Electric heating coil'))}</option><option value="water" ${card.afterheatCoil === 'water' ? 'selected' : ''}>${safe(t('Vandbåren varmeflade','Water heating coil'))}</option></select></label>
         <label class="beast-page-editor-check"><input type="checkbox" data-hrv-animation ${card.animation !== false ? 'checked' : ''}> ${safe(t('Animeret luftstrøm','Animated airflow'))}</label>
         ${detectMarkup}
         ${entityFields}
@@ -487,6 +488,7 @@ window.BeastVentilation = (() => {
         title: overlay.querySelector('[data-hrv-title]').value.trim() || t('Ventilation','Ventilation'),
         animation: overlay.querySelector('[data-hrv-animation]').checked,
         showAfterheat: overlay.querySelector('[data-hrv-coil]').checked,
+        afterheatCoil: overlay.querySelector('[data-hrv-coil-type]').value === 'water' ? 'water' : 'electric',
         entities
       });
       overlay.remove();
