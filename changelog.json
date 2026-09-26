@@ -1,5 +1,16 @@
 [
   {
+    "version": "20260926-1",
+    "tag": "v0.8.64",
+    "date": "2026-09-26",
+    "changes": [
+      {
+        "da": "HCH5-tegningen farver luften efter temperatur: den koldeste luft er blå og den varmeste rød, og farverne glider gennem veksleren og varmefladen, så den varme side af veksleren altid er rødere end den kolde. I vandvarmefladen strømmer vandet fra rødt fremløb til blå retur, mens eftervarmen er aktiv. Veksleren vises massiv; tryk på den for at se luften indeni i et minut. Tryk på genvindingsværdien viser dens historik. (Claude AI)",
+        "en": "The HCH5 drawing colours the air by temperature: the coldest air is blue and the warmest red, fading through the exchanger and the afterheat coil so the warm side of the exchanger is always redder than the cold side. In the water coil the water flows from the red flow pipe to the blue return while the afterheat is active. The exchanger is drawn solid; tap it to see the air inside for a minute. Tapping the recovery value shows its history. (Claude AI)"
+      }
+    ]
+  },
+  {
     "version": "20260925-3",
     "tag": "v0.8.63",
     "date": "2026-09-25",

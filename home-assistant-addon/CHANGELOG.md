@@ -1,3 +1,7 @@
+## 0.8.64
+
+- HCH5-tegningen farver luften efter temperatur: den koldeste luft er blå og den varmeste rød, og farverne glider gennem veksleren og varmefladen, så den varme side af veksleren altid er rødere end den kolde. I vandvarmefladen strømmer vandet fra rødt fremløb til blå retur, mens eftervarmen er aktiv. Veksleren vises massiv; tryk på den for at se luften indeni i et minut. Tryk på genvindingsværdien viser dens historik. (Claude AI)
+
 ## 0.8.63
 
 - HCH5-kortets trinknapper viser nu det trin, anlægget faktisk kører på. I Auto og Smart Auto markerer en stiplet ramme normaltrinnet, som et klik ændrer. (Claude AI)
