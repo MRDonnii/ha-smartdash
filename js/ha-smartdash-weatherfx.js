@@ -91,9 +91,38 @@ const BeastWeatherFx = (() => {
   let flashIntensity = 0;
   let nextFlashAt = 0;
   let unsubscribeWeather = null;
+  // Performance (kept identical in look): each cloud is blurred once into its
+  // own small sprite instead of blurring every puff on every frame, the
+  // condition's tint wash is cached instead of filled anew each frame, calm
+  // conditions draw at 30 fps with their motion scaled to time, and the loop
+  // stops completely wherever the overlay isn't shown.
+  let tintLayer = null;
+  let tintKey = "";
+  let spritePalette = null;
+  let rafId = 0;
+  let lastFrameAt = 0;
+  let step = 1;
+  let currentSection = "overview";
+  const suppressedBy = new Set();
 
   function enabled() {
     return BeastConfig.get("features.weatherOverlay") === true;
+  }
+
+  // Which places show the overlay: dashboard pages by section id, plus
+  // "ambient" for the screensaver. Default is the Overview and the
+  // screensaver, which is where it was visible before the setting existed.
+  const DEFAULT_PAGES = ["overview", "ambient"];
+  function shownOn() {
+    const pages = BeastConfig.get("features.weatherOverlayPages");
+    return Array.isArray(pages) ? pages : DEFAULT_PAGES;
+  }
+
+  function allowedHere() {
+    const ambient = document.body.classList.contains("beast-is-ambient");
+    // A view covering the dashboard pauses it there; the screensaver is its own.
+    if (suppressedBy.size && !ambient) return false;
+    return shownOn().includes(ambient ? "ambient" : currentSection);
   }
 
   function resize() {
@@ -101,6 +130,7 @@ const BeastWeatherFx = (() => {
     height = window.innerHeight;
     if (canvas) { canvas.width = width; canvas.height = height; }
     if (ambientCanvas) { ambientCanvas.width = width; ambientCanvas.height = height; }
+    tintKey = "";
   }
 
   // Dashboard and screensaver are never visible at once, so rather than
@@ -179,23 +209,19 @@ const BeastWeatherFx = (() => {
 
   function drawParticle(p) {
     if (p.kind === "star") {
-      p.phase += p.speed;
+      p.phase += p.speed * step;
       ctx.globalAlpha = 0.35 + Math.sin(p.phase) * 0.25;
       ctx.fillStyle = palette().star;
       ctx.beginPath(); ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2); ctx.fill();
       return;
     }
     if (p.kind === "cloud") {
-      ctx.globalAlpha = p.opacity;
-      ctx.fillStyle = palette().cloud;
-      ctx.filter = "blur(14px)";
-      p.puffs.forEach((puff) => {
-        ctx.beginPath();
-        ctx.arc(p.x + puff.dx, p.y + puff.dy, puff.r, 0, Math.PI * 2);
-        ctx.fill();
-      });
-      ctx.filter = "none";
-      p.x += p.speed;
+      // The same puffs, blurred and composited exactly as before, but once
+      // into the cloud's own sprite; every frame then only moves the sprite.
+      if (!p.sprite || p.spritePalette !== spritePalette) cloudSprite(p);
+      ctx.globalAlpha = 1;
+      ctx.drawImage(p.sprite, p.x - p.ox, p.y - p.oy);
+      p.x += p.speed * step;
       if (p.x - p.w > width) p.x = -p.w;
       return;
     }
@@ -206,7 +232,7 @@ const BeastWeatherFx = (() => {
       grad.addColorStop(0, `rgba(${fog},0)`); grad.addColorStop(0.5, `rgba(${fog},1)`); grad.addColorStop(1, `rgba(${fog},0)`);
       ctx.fillStyle = grad;
       ctx.fillRect(p.x - p.w / 2, p.y, p.w, p.h);
-      p.x += p.speed;
+      p.x += p.speed * step;
       if (p.speed > 0 && p.x - p.w / 2 > width) p.x = -p.w / 2;
       if (p.speed < 0 && p.x + p.w / 2 < 0) p.x = width + p.w / 2;
       return;
@@ -215,7 +241,7 @@ const BeastWeatherFx = (() => {
       ctx.globalAlpha = p.opacity;
       ctx.strokeStyle = palette().wind; ctx.lineWidth = 1;
       ctx.beginPath(); ctx.moveTo(p.x, p.y); ctx.lineTo(p.x + p.len, p.y - 2); ctx.stroke();
-      p.x += p.speed;
+      p.x += p.speed * step;
       if (p.x > width) { p.x = -p.len; p.y = Math.random() * height; }
       return;
     }
@@ -223,7 +249,7 @@ const BeastWeatherFx = (() => {
       ctx.globalAlpha = p.opacity;
       ctx.strokeStyle = palette().rain; ctx.lineWidth = 1.2;
       ctx.beginPath(); ctx.moveTo(p.x, p.y); ctx.lineTo(p.x - p.drift * 2, p.y + p.len); ctx.stroke();
-      p.y += p.speed; p.x -= p.drift;
+      p.y += p.speed * step; p.x -= p.drift * step;
       if (p.y > height) {
         impacts.push({ kind: "rainSplash", x: p.x, y: height - 2, age: 0, life: 18 + Math.random() * 12 });
         if (impacts.length > 90) impacts.shift();
@@ -236,7 +262,7 @@ const BeastWeatherFx = (() => {
       ctx.globalAlpha = p.opacity;
       ctx.fillStyle = palette().hail;
       ctx.beginPath(); ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2); ctx.fill();
-      p.y += p.speed;
+      p.y += p.speed * step;
       if (p.y > height) { p.y = -p.r; p.x = Math.random() * width; }
       return;
     }
@@ -244,7 +270,7 @@ const BeastWeatherFx = (() => {
       ctx.globalAlpha = p.opacity;
       ctx.fillStyle = palette().snow;
       ctx.beginPath(); ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2); ctx.fill();
-      p.sway += 0.02; p.y += p.speed; p.x += p.drift + Math.sin(p.sway) * 0.4;
+      p.sway += 0.02 * step; p.y += p.speed * step; p.x += (p.drift + Math.sin(p.sway) * 0.4) * step;
       if (p.y > height) {
         impacts.push({ kind: "settledSnow", x: p.x, y: height - 1 - Math.random() * 9, r: p.r * (0.7 + Math.random() * 0.6), opacity: p.opacity * 0.8, age: 0, life: 900 + Math.random() * 900 });
         if (impacts.filter((item) => item.kind === "settledSnow").length > 120) impacts.splice(impacts.findIndex((item) => item.kind === "settledSnow"), 1);
@@ -253,6 +279,36 @@ const BeastWeatherFx = (() => {
       if (p.x < -10) p.x = width + 10;
       if (p.x > width + 10) p.x = -10;
     }
+  }
+
+  function cloudSprite(p) {
+    const blur = 14; const pad = blur * 3;
+    const minX = Math.min(...p.puffs.map((f) => f.dx - f.r)) - pad; const maxX = Math.max(...p.puffs.map((f) => f.dx + f.r)) + pad;
+    const minY = Math.min(...p.puffs.map((f) => f.dy - f.r)) - pad; const maxY = Math.max(...p.puffs.map((f) => f.dy + f.r)) + pad;
+    const sprite = p.sprite || document.createElement("canvas");
+    sprite.width = Math.ceil(maxX - minX); sprite.height = Math.ceil(maxY - minY);
+    const c = sprite.getContext("2d");
+    c.clearRect(0, 0, sprite.width, sprite.height);
+    c.globalAlpha = p.opacity; c.fillStyle = spritePalette.cloud; c.filter = `blur(${blur}px)`;
+    p.puffs.forEach((puff) => { c.beginPath(); c.arc(puff.dx - minX, puff.dy - minY, puff.r, 0, Math.PI * 2); c.fill(); });
+    c.filter = "none";
+    p.sprite = sprite; p.spritePalette = spritePalette; p.ox = -minX; p.oy = -minY;
+  }
+
+  // The tint wash only changes with the condition, the theme and the size,
+  // so it is drawn once into its own layer and copied in each frame.
+  function drawTint() {
+    const make = TINTS[activeConfig.tint]; if (!make) return;
+    const key = `${activeConfig.tint}|${document.documentElement.dataset.colorMode}|${width}x${height}`;
+    if (key !== tintKey) {
+      tintLayer = tintLayer || document.createElement("canvas");
+      tintLayer.width = Math.max(1, width); tintLayer.height = Math.max(1, height);
+      const main = ctx; ctx = tintLayer.getContext("2d");
+      ctx.clearRect(0, 0, width, height);
+      const grad = make(width, height); if (grad) { ctx.globalAlpha = 1; ctx.fillStyle = grad; ctx.fillRect(0, 0, width, height); }
+      ctx = main; tintKey = key;
+    }
+    ctx.globalAlpha = 1; ctx.drawImage(tintLayer, 0, 0);
   }
 
   function drawGroundEffects() {
@@ -273,7 +329,7 @@ const BeastWeatherFx = (() => {
       ctx.globalAlpha = 1; ctx.fillStyle = bank; ctx.fillRect(0, height - 18, width, 18);
     }
     impacts = impacts.filter((impact) => {
-      impact.age += 1;
+      impact.age += step;
       const remaining = Math.max(0, 1 - impact.age / impact.life);
       if (impact.kind === "rainSplash") {
         ctx.globalAlpha = remaining * 0.35;
@@ -300,29 +356,64 @@ const BeastWeatherFx = (() => {
       ctx.globalAlpha = flashIntensity;
       ctx.fillStyle = `rgba(${palette().flash},1)`;
       ctx.fillRect(0, 0, width, height);
-      flashIntensity -= 0.06;
+      flashIntensity -= 0.06 * step;
     }
   }
 
   let liveTarget = null;
 
-  function tick() {
-    window.requestAnimationFrame(tick);
+  // Calm conditions (stars, sun, clouds, fog) move slowly enough to draw at
+  // 30 fps; falling rain, hail, snow and wind keep the full frame rate.
+  function frameInterval() {
+    const fast = particles.some((p) => p.kind === "rain" || p.kind === "hail" || p.kind === "snow" || p.kind === "wind") || flashIntensity > 0;
+    return fast ? 0 : 1000 / 30;
+  }
+
+  function schedule() {
+    if (!rafId && activeConfig && allowedHere() && !document.hidden) rafId = window.requestAnimationFrame(tick);
+  }
+
+  // Applies where the overlay may show: starts the loop, or stops it and
+  // leaves the canvases empty.
+  function refreshActivity() {
+    const on = Boolean(activeConfig) && allowedHere();
+    const target = activeCanvas();
+    canvas?.classList.toggle("is-active", on && target === canvas);
+    ambientCanvas?.classList.toggle("is-active", on && target === ambientCanvas);
+    if (on) { schedule(); return; }
+    if (rafId) { window.cancelAnimationFrame(rafId); rafId = 0; }
+    [canvas, ambientCanvas].forEach((c) => c?.getContext("2d")?.clearRect(0, 0, width, height));
+    lastFrameAt = 0;
+  }
+
+  function tick(now) {
+    rafId = 0;
+    if (!activeConfig || !allowedHere()) { refreshActivity(); return; }
+    rafId = window.requestAnimationFrame(tick);
+    if (document.hidden) return;
+    const interval = frameInterval();
+    if (lastFrameAt && now - lastFrameAt < interval - 2) return;
+    // Motion is per 60 fps frame; a longer gap moves things on just as far.
+    step = lastFrameAt ? Math.min(4, Math.max(0.25, (now - lastFrameAt) / (1000 / 60))) : 1;
+    lastFrameAt = now;
     const target = activeCanvas();
     if (target !== liveTarget) {
       liveTarget = target;
       ctx = target ? target.getContext("2d") : null;
+      canvas?.classList.toggle("is-active", target === canvas);
+      ambientCanvas?.classList.toggle("is-active", target === ambientCanvas);
     }
-    canvas?.classList.toggle("is-active", Boolean(activeConfig) && target === canvas);
-    ambientCanvas?.classList.toggle("is-active", Boolean(activeConfig) && target === ambientCanvas);
-    if (document.hidden || !ctx || !activeConfig || !target) return;
+    if (!ctx || !target) return;
+    const pal = palette(); if (pal !== spritePalette) spritePalette = pal;
     ctx.clearRect(0, 0, width, height);
-    const tint = TINTS[activeConfig.tint];
-    if (tint) { const grad = tint(width, height); if (grad) { ctx.globalAlpha = 1; ctx.fillStyle = grad; ctx.fillRect(0, 0, width, height); } }
+    drawTint();
     particles.forEach(drawParticle);
     drawGroundEffects();
     maybeFlash(Date.now());
     ctx.globalAlpha = 1;
+    // Nothing moves (a clear sky is only its tint): one frame is enough
+    // until the condition, theme, size or page changes.
+    if (!particles.length && !impacts.length && !activeConfig.flash && flashIntensity <= 0 && rafId) { window.cancelAnimationFrame(rafId); rafId = 0; }
   }
 
 
@@ -330,13 +421,15 @@ const BeastWeatherFx = (() => {
     // The rain style is part of the identity of what's currently rendered:
     // changing it in Administration has to rebuild the particles even though
     // the weather condition itself hasn't changed.
-    if (condition === currentCondition) return;
+    if (condition === currentCondition) { refreshActivity(); return; }
     currentCondition = condition;
     activeConfig = CONDITION_EFFECTS[condition] || null;
     canvas?.classList.toggle("is-active", Boolean(activeConfig));
     flashIntensity = 0; nextFlashAt = 0;
     impacts = [];
     particles = activeConfig ? activeConfig.layers.flatMap((name) => LAYER_BUILDERS[name]?.() || []) : [];
+    tintKey = "";
+    refreshActivity();
   }
 
   // Debug-only preview hook: ?weatherfx=<condition> in the URL forces that
@@ -391,12 +484,28 @@ const BeastWeatherFx = (() => {
     if ((reducedMotion || !weatherEntityId) && !forcedCondition()) return;
     ctx = canvas.getContext("2d");
     resize();
-    window.addEventListener("resize", resize, { passive: true });
+    window.addEventListener("resize", () => { resize(); refreshActivity(); }, { passive: true });
+    // A theme switch recolours the particles and the tint.
+    new MutationObserver(() => { tintKey = ""; refreshActivity(); }).observe(document.documentElement, { attributes: true, attributeFilter: ["data-color-mode"] });
+    currentSection = document.querySelector(".beast-section.is-active[data-section]")?.dataset.section || "overview";
+    document.addEventListener("beast:sectionchange", (event) => { currentSection = event.detail?.section || "overview"; refreshActivity(); });
+    // The screensaver toggles a class on <body>; follow it so the overlay
+    // moves to (or leaves) the screensaver's own canvas.
+    new MutationObserver(() => refreshActivity()).observe(document.body, { attributes: true, attributeFilter: ["class"] });
+    document.addEventListener("visibilitychange", () => { lastFrameAt = 0; refreshActivity(); });
+    // Anything that covers the page completely (a full-screen view) can pause
+    // the overlay: dispatch beast:weatherfx-suppress with { source, on }.
+    document.addEventListener("beast:weatherfx-suppress", (event) => setSuppressed(event.detail?.source || "external", Boolean(event.detail?.on)));
     evaluate();
     document.addEventListener("beast:config-changed", handleConfigChange);
     BeastHaSocket.onStatusChange((status) => { if (status === "connected") evaluate(); });
-    tick();
+    refreshActivity();
   }
 
-  return { mount };
+  function setSuppressed(source, on) {
+    if (on) suppressedBy.add(source); else suppressedBy.delete(source);
+    refreshActivity();
+  }
+
+  return { mount, setSuppressed };
 })();

@@ -1,3 +1,7 @@
+## 0.8.65
+
+- Vejr-overlayet bruger langt færre kræfter med samme udseende: hver sky sløres én gang i stedet for i hvert billede, farvetonen tegnes én gang, rolige vejrtyper tegnes med 30 billeder i sekundet, og et klart vejr uden bevægelse tegnes kun, når noget ændrer sig. Under Admin → Tema og design kan man vælge, hvilke sider overlayet vises på (som standard forsiden og pauseskærmen); andre steder kører det slet ikke. Fuldskærmsvisninger kan sætte det på pause med hændelsen beast:weatherfx-suppress. (Claude AI)
+
 ## 0.8.64
 
 - HCH5-tegningen farver luften efter temperatur: den koldeste luft er blå og den varmeste rød, og farverne glider gennem veksleren og varmefladen, så den varme side af veksleren altid er rødere end den kolde. I vandvarmefladen strømmer vandet fra rødt fremløb til blå retur, mens eftervarmen er aktiv. Veksleren vises massiv; tryk på den for at se luften indeni i et minut. Tryk på genvindingsværdien viser dens historik. (Claude AI)

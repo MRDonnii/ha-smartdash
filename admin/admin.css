@@ -531,3 +531,6 @@ button { cursor: pointer; }
   .admin-security-alarm-rule > div { grid-column: 1 / -1; }
   .admin-view[data-admin-view="security-settings"] .beast-stat-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
+
+.admin-hint { color: var(--ink-muted); font-size: 12px; }
+.admin-weather-pages { margin: 4px 0 2px; }

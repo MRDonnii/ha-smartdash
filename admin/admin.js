@@ -727,6 +727,11 @@
     const weatherOverlayOn = BeastConfig.get("features.weatherOverlay") === true;
     const weatherOverride = String(BeastConfig.get("features.weatherOverlayConditionOverride") || "").trim();
     const weatherOverlayMode = weatherOverlayOn ? (weatherOverride || "auto") : "off";
+    // Where the overlay shows (it only runs there); the Overview and the
+    // screensaver unless chosen otherwise.
+    const savedWeatherPages = BeastConfig.get("features.weatherOverlayPages");
+    const weatherPages = new Set(Array.isArray(savedWeatherPages) ? savedWeatherPages : ["overview", "ambient"]);
+    const weatherPageOptions = [["overview", t("Forside", "Front page")], ...PAGES, ["ambient", t("Pauseskærm", "Screensaver")]];
     const weatherModes = [
       ["off", t("Fra", "Off")], ["auto", t("Automatisk efter aktuelt vejr", "Automatic from current weather")],
       ["sunny", t("Preview · sol", "Preview · sun")], ["cloudy", t("Preview · skyer", "Preview · clouds")],
@@ -752,6 +757,7 @@
         <div class="admin-card admin-settings-group"><div class="admin-card-head"><div><h2>${t("Vejr-overlay", "Weather overlay")}</h2><p>${t("Følger automatisk den valgte Home Assistant-vejrentity. Regn giver stænk og våd bund, mens sne lægger sig diskret. Preview-valgene gør det muligt at afprøve effekterne uden at ændre vejret i Home Assistant.", "Automatically follows the selected Home Assistant weather entity. Rain creates splashes and a wet edge, while snow settles subtly. Preview choices let you test effects without changing Home Assistant weather.")}</p></div></div>
           <div class="beast-mqtt-config"><label><span>${t("Tilstand", "Mode")}</span><select id="adminThemeWeatherOverlay">${weatherModes.map(([value,label]) => `<option value="${value}" ${weatherOverlayMode === value ? "selected" : ""}>${label}</option>`).join("")}</select></label>
           </div>
+          <div class="admin-field"><span>${t("Vis på", "Show on")}</span><div class="admin-favorite-list admin-weather-pages">${weatherPageOptions.map(([id, label]) => `<label><input type="checkbox" data-weather-page="${id}"${weatherPages.has(id) ? " checked" : ""}><span>${escapeHtml(label)}</span></label>`).join("")}</div><small class="admin-hint">${t("Effekten kører kun på de valgte steder og bruger ingen kræfter andre steder.", "The effect only runs where selected and uses no resources elsewhere.")}</small></div>
           <div class="admin-actions"><button type="button" class="beast-btn beast-btn-primary" id="adminThemeWeatherOverlaySave">${t("Gem vejr-overlay", "Save weather overlay")}</button><span class="admin-save-state" data-save-state="themeWeatherOverlay"></span></div>
         </div>
         <div class="admin-card admin-settings-group"><div class="admin-card-head"><div><h2>${t("Graffarver", "Graph colours")}</h2><p>${t("Gælder alle forbrugsgrafer, både linje og søjler. \"Efter forbrug\" deler grafens eget interval i fire trin, så en travl time skiller sig ud -- trinnene er relative til grafens egne tal, ikke faste kW-grænser.", "Applies to every usage graph, line and bars alike. \"By usage\" splits the graph's own range into four steps so a busy hour stands out -- the steps are relative to that graph's own numbers, not fixed kW limits.")}</p></div></div>
@@ -2421,7 +2427,8 @@
       return BeastConfig.set("features", {
         ...BeastConfig.get("features"),
         weatherOverlay: mode !== "off",
-        weatherOverlayConditionOverride: ["off", "auto"].includes(mode) ? null : mode
+        weatherOverlayConditionOverride: ["off", "auto"].includes(mode) ? null : mode,
+        weatherOverlayPages: Array.from(document.querySelectorAll("[data-weather-page]")).filter((input) => input.checked).map((input) => input.dataset.weatherPage)
       });
     }));
     document.querySelectorAll("[data-save-panel]").forEach((button) => button.addEventListener("click", async () => {

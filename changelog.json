@@ -1,5 +1,16 @@
 [
   {
+    "version": "20261005-1",
+    "tag": "v0.8.65",
+    "date": "2026-10-05",
+    "changes": [
+      {
+        "da": "Vejr-overlayet bruger langt færre kræfter med samme udseende: hver sky sløres én gang i stedet for i hvert billede, farvetonen tegnes én gang, rolige vejrtyper tegnes med 30 billeder i sekundet, og et klart vejr uden bevægelse tegnes kun, når noget ændrer sig. Under Admin → Tema og design kan man vælge, hvilke sider overlayet vises på (som standard forsiden og pauseskærmen); andre steder kører det slet ikke. Fuldskærmsvisninger kan sætte det på pause med hændelsen beast:weatherfx-suppress. (Claude AI)",
+        "en": "The weather overlay uses far less power with the same look: each cloud is blurred once instead of on every frame, the tint is drawn once, calm conditions draw at 30 frames per second, and a clear sky without motion only redraws when something changes. Admin → Theme and design lets you choose which pages show the overlay (by default the front page and the screensaver); elsewhere it does not run at all. Full-screen views can pause it with the beast:weatherfx-suppress event. (Claude AI)"
+      }
+    ]
+  },
+  {
     "version": "20260926-1",
     "tag": "v0.8.64",
     "date": "2026-09-26",

@@ -13,7 +13,8 @@
     "adminPreview": false,
     "configAudit": false,
     "weatherOverlay": false,
-    "weatherOverlayConditionOverride": null
+    "weatherOverlayConditionOverride": null,
+    "weatherOverlayPages": ["overview", "ambient"]
   },
   "overviewSlots": {
     "main": {
