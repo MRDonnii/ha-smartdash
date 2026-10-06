@@ -123,15 +123,22 @@ const BeastCore = (() => {
     let timerId = null;
     let dirty = false;
     let running = false;
+    // Each request pushes the render back by delayMs. A steady stream of
+    // updates (a busy installation sends 100+ state changes a second) could
+    // push it back for as long as the stream lasted, leaving the panel stale;
+    // after maxWaitMs it renders anyway.
+    const maxWaitMs = Math.max(1500, delayMs * 4);
+    let pendingSince = 0;
 
     const flush = () => {
-      if (!dirty || running || !isPanelVisible(container)) return;
+      if (!dirty || running || !isPanelVisible(container)) { pendingSince = 0; return; }
       if (isUserInteracting()) {
         window.clearTimeout(timerId);
         timerId = window.setTimeout(flush, 220);
         return;
       }
       dirty = false;
+      pendingSince = 0;
       running = true;
       try {
         callback();
@@ -143,8 +150,10 @@ const BeastCore = (() => {
     const request = () => {
       dirty = true;
       if (!isPanelVisible(container)) return;
+      const now = Date.now();
+      if (!pendingSince) pendingSince = now;
       window.clearTimeout(timerId);
-      timerId = window.setTimeout(flush, delayMs);
+      timerId = window.setTimeout(flush, now - pendingSince >= maxWaitMs ? 0 : delayMs);
     };
 
     document.addEventListener("beast:sectionchange", (event) => {

@@ -1,5 +1,32 @@
 [
   {
+    "version": "20261006-2",
+    "tag": "v0.8.67",
+    "date": "2026-10-06",
+    "changes": [
+      {
+        "da": "Dashboardet bruger langt færre kræfter: den bløde baggrundsglød står stille (den bevæger sig kun med strømprofilen Ydelse), så grafikkortet ikke skal tegne baggrunden og alle de matte kort om i hvert billede. Målt på en kiosk faldt GPU-forbruget på Rum-siden fra over 80 % til få procent. (Claude AI)",
+        "en": "The dashboard uses far less power: the soft background glow stands still (it only drifts on the Performance power profile), so the GPU no longer redraws the background and every frosted card on every frame. Measured on a kiosk, GPU use on the Rooms page fell from over 80% to a few percent. (Claude AI)"
+      },
+      {
+        "da": "En kiosk med slukket skærm tegner nu slet intet og stopper alle kameraafspillere, også pauseskærmens; ændringer fra Home Assistant samles og vises, når skærmen tændes igen. (Claude AI)",
+        "en": "A kiosk with its screen off now draws nothing at all and stops every camera player, the screensaver's too; changes from Home Assistant are kept and shown when the screen wakes. (Claude AI)"
+      },
+      {
+        "da": "Pauseskærmens kameraer lukkes helt ned, når pauseskærmen lukker (før kunne de streame videre usynligt), og de små kamerafelter bruger kameraets lette stream. (Claude AI)",
+        "en": "The screensaver's cameras shut down completely when the screensaver closes (they could keep streaming unseen), and its small camera tiles use the camera's light stream. (Claude AI)"
+      },
+      {
+        "da": "Rettet: på en travl installation med mange hurtigt skiftende sensorer kunne Rum-siden og andre sider vente meget længe med at opdatere. Nu opdateres de senest efter få sekunder, og Rum-siden reagerer kun på de sensorer, den viser. (Claude AI)",
+        "en": "Fixed: on a busy installation with many fast-changing sensors the Rooms page and other pages could wait a long time to update. They now update within a few seconds, and the Rooms page only reacts to the sensors it shows. (Claude AI)"
+      },
+      {
+        "da": "Hurtigere håndtering af tilstande fra Home Assistant: listen over alle tilstande kopieres ikke længere ved hver opdatering, og kameraernes smart-detektion findes én gang i stedet for at gennemsøge alle tilstande for hvert kamera. (Claude AI)",
+        "en": "Faster handling of Home Assistant states: the list of all states is no longer copied on every update, and the cameras' smart detections are found once instead of searching every state for each camera. (Claude AI)"
+      }
+    ]
+  },
+  {
     "version": "20261006-1",
     "tag": "v0.8.66",
     "date": "2026-10-06",

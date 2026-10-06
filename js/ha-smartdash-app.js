@@ -356,6 +356,12 @@ function hideAmbientMode() {
   const overlay = document.getElementById("beastAmbientMode");
   const wasShowing = Boolean(overlay?.classList.contains("is-visible"));
   overlay?.classList.remove("is-visible");
+  // The camera row's players keep streaming while merely hidden; the row is rebuilt every time the screensaver opens,
+  // so it is torn down here (blank first, so the players stop at once).
+  overlay?.querySelectorAll(".beast-ambient-camera-row").forEach((row) => {
+    row.querySelectorAll("iframe").forEach((frame) => { frame.src = "about:blank"; });
+    row.remove();
+  });
   document.body.classList.remove("beast-is-ambient");
   if (wasShowing) document.dispatchEvent(new CustomEvent("beast:ambientchange", { detail: { on: false } }));
   // Waking from the screensaver should land back on Overview, not
@@ -426,7 +432,10 @@ function ambientCameraMarkup(config) {
     const camera = window.BeastCameras?.resolveCamera?.(id);
     if (!camera) return "";
     if (window.BeastCameras?.hasGo2rtc?.() && camera.streamName) {
-      const src = `./camera-player.html?v=19&base=${encodeURIComponent(BeastConfig.get("panels.cameras.go2rtcBaseUrl") || "")}&transport=webrtc&src=${encodeURIComponent(camera.resolvedStreamName || camera.streamName)}`;
+      // The tiles are small: the camera's low-resolution (sub) stream when it has one, instead of the main stream
+      // (often 4K, which kept a kiosk's CPU busy just decoding three of them).
+      const tileStream = camera.qualityOptions?.find((option) => option.quality === "low" && option.streamName)?.streamName || camera.resolvedStreamName || camera.streamName;
+      const src = `./camera-player.html?v=19&base=${encodeURIComponent(BeastConfig.get("panels.cameras.go2rtcBaseUrl") || "")}&transport=webrtc&src=${encodeURIComponent(tileStream)}`;
       return `<div class="beast-ambient-camera-tile"><iframe class="beast-ambient-camera-tile-frame" src="${src}" allow="autoplay"></iframe></div>`;
     }
     if (camera.haStreamUrl) {
@@ -1371,9 +1380,11 @@ function setupNavigation() {
 }
 
 function syncCameraPlayers() {
+  // With the screen off (power idle) no player streams, wherever it is.
+  const idle = window.BeastPower?.getState?.() === "idle";
   document.querySelectorAll('iframe[src*="camera-player.html"]').forEach((frame) => {
     const section = frame.closest(".beast-section");
-    const active = !section || section.classList.contains("is-active");
+    const active = !idle && (!section || section.classList.contains("is-active"));
     try {
       frame.contentWindow?.postMessage({ type: active ? "camera-player-resume" : "camera-player-pause" }, window.location.origin);
     } catch (error) {
@@ -1439,6 +1450,7 @@ function mountPageActionMenus() {
 window.addEventListener("online", () => window.setTimeout(reconnectVisibleCameraPlayers, 500));
 window.addEventListener("pageshow", () => window.setTimeout(syncCameraPlayers, 500));
 document.addEventListener("beast:sectionchange", () => window.setTimeout(syncCameraPlayers, 150));
+document.addEventListener("beast:powerstatechange", () => window.setTimeout(syncCameraPlayers, 0));
 
 document.addEventListener("DOMContentLoaded", async () => {
   const root = document.getElementById("beastRoot");

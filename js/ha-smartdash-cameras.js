@@ -120,13 +120,31 @@
     return String(value || "").replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
   }
 
+  // The smart-detection sensors, found in one pass over all states and kept
+  // until the set of entities changes (or a minute has passed), instead of
+  // testing every state against a pattern for every camera on every render.
+  let detectionIds = null;
+  let detectionIdsSize = -1;
+  let detectionIdsAt = 0;
+  function smartDetectionIds() {
+    const states = BeastHaSocket.getAllStates();
+    if (!detectionIds || detectionIdsSize !== states.size || Date.now() - detectionIdsAt > 60000) {
+      detectionIds = [];
+      detectionIdsSize = states.size;
+      detectionIdsAt = Date.now();
+      states.forEach((_, entityId) => { if (isSmartDetectionEntity(entityId)) detectionIds.push(entityId); });
+    }
+    return detectionIds;
+  }
+
   function smartDetectionForCamera(slug) {
     const pattern = new RegExp(`^binary_sensor\\.${escapeRegExp(slug)}_(person|vehicle|animal|pet|dog|cat)(?:_detected)?$`, "i");
     const labels = { person: "Person", vehicle: "Bil", animal: "Dyr", pet: "Dyr", dog: "Dyr", cat: "Dyr" };
     const detections = [];
-    BeastHaSocket.getAllStates().forEach((state, entityId) => {
+    smartDetectionIds().forEach((entityId) => {
+      const state = BeastHaSocket.getState(entityId);
       const match = entityId.match(pattern);
-      if (!match || state.state !== "on") return;
+      if (!state || !match || state.state !== "on") return;
       detections.push({
         type: match[1].toLowerCase(),
         label: labels[match[1].toLowerCase()] || "Hændelse",

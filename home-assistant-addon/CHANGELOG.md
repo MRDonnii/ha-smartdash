@@ -1,3 +1,11 @@
+## 0.8.67
+
+- Dashboardet bruger langt færre kræfter: den bløde baggrundsglød står stille (den bevæger sig kun med strømprofilen Ydelse), så grafikkortet ikke skal tegne baggrunden og alle de matte kort om i hvert billede. Målt på en kiosk faldt GPU-forbruget på Rum-siden fra over 80 % til få procent. (Claude AI)
+- En kiosk med slukket skærm tegner nu slet intet og stopper alle kameraafspillere, også pauseskærmens; ændringer fra Home Assistant samles og vises, når skærmen tændes igen. (Claude AI)
+- Pauseskærmens kameraer lukkes helt ned, når pauseskærmen lukker (før kunne de streame videre usynligt), og de små kamerafelter bruger kameraets lette stream. (Claude AI)
+- Rettet: på en travl installation med mange hurtigt skiftende sensorer kunne Rum-siden og andre sider vente meget længe med at opdatere. Nu opdateres de senest efter få sekunder, og Rum-siden reagerer kun på de sensorer, den viser. (Claude AI)
+- Hurtigere håndtering af tilstande fra Home Assistant: listen over alle tilstande kopieres ikke længere ved hver opdatering, og kameraernes smart-detektion findes én gang i stedet for at gennemsøge alle tilstande for hvert kamera. (Claude AI)
+
 ## 0.8.66
 
 - Pauseskærmen bruger omtrent det halve: forsidens live-kameraer stopper og dens animationer og den bevægelige baggrund står stille bag den, så pauseskærmens slør ikke skal tegnes om i hvert billede. Pauseskærmens eget ur, vejr-animation og kameraer kører som før. (Claude AI)

@@ -72,6 +72,13 @@ body::after {
   body::after { animation: none; }
 }
 
+/* The glow only drifts on the "Performance" power profile. Moving, blurred
+   full-screen layers make the GPU redraw them and every frosted card above
+   them on every frame (measured on a kiosk: Rooms page GPU 81% -> 3% with the
+   glow standing still); a still glow looks the same at a glance. */
+html:not([data-power-profile="performance"]) body::before,
+html:not([data-power-profile="performance"]) body::after { animation: none; }
+
 .beast-icon {
   flex-shrink: 0;
   display: inline-block;

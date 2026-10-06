@@ -3692,6 +3692,14 @@ html.beast-power-idle *::after {
   transition-duration: 0s !important;
   transition-delay: 0s !important;
 }
+/* With the screen off (the kiosk set the page idle) nothing is drawn at all.
+   State updates still reach the dashboard, but they no longer cost style,
+   layout, paint and GPU work behind a dark screen (measured on a busy
+   installation: GPU 54% -> 1%); the first frame after waking draws it all. */
+html.beast-power-idle #beastRoot,
+html.beast-power-idle #beastAmbientMode {
+  content-visibility: hidden;
+}
 html[data-power-profile="low"] *,
 html[data-power-profile="low"] *::before,
 html[data-power-profile="low"] *::after {

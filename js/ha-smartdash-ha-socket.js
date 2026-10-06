@@ -85,8 +85,24 @@ const BeastHaSocket = (() => {
     return stateByEntity.get(entityId) || null;
   }
 
+  // A read-only view of the live cache, not a copy. It used to return
+  // new Map(stateByEntity) on every call; with a busy installation (100+
+  // state changes a second) and callers on every render, those copies were
+  // the largest single cost of the dashboard's own JavaScript. Every caller
+  // only reads (get, forEach, keys, values, entries, size, iteration).
+  const statesView = Object.freeze({
+    get size() { return stateByEntity.size; },
+    get: (entityId) => stateByEntity.get(entityId),
+    has: (entityId) => stateByEntity.has(entityId),
+    forEach: (callback, thisArg) => stateByEntity.forEach((state, entityId) => callback.call(thisArg, state, entityId, statesView)),
+    keys: () => stateByEntity.keys(),
+    values: () => stateByEntity.values(),
+    entries: () => stateByEntity.entries(),
+    [Symbol.iterator]: () => stateByEntity.entries()
+  });
+
   function getAllStates() {
-    return new Map(stateByEntity);
+    return statesView;
   }
 
   function nextId() {

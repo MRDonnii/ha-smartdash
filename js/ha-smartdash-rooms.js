@@ -606,8 +606,33 @@
       });
     });
 
+    // Sensors only count when the room cards can show them (temperature and
+    // humidity, or configured for a room): a busy installation streams
+    // diagnostic sensors (radar gate energies, counters) many times a second,
+    // and each of them used to queue a full render of every room.
+    let configuredFor = null;
+    let configuredSet = new Set();
+    const configuredSensors = () => {
+      if (configuredFor?.[0] !== ROOM_CLIMATE_SENSORS || configuredFor?.[1] !== ROOM_POPUP_ENTITIES) {
+        configuredFor = [ROOM_CLIMATE_SENSORS, ROOM_POPUP_ENTITIES];
+        configuredSet = new Set([...Object.values(ROOM_CLIMATE_SENSORS).flat(), ...Object.values(ROOM_POPUP_ENTITIES).flat()]);
+      }
+      return configuredSet;
+    };
+    const roomRelevant = (entityId, newState, oldState) => {
+      if (!entityId.startsWith("sensor.")) return true;
+      // An unavailable reading loses its attributes; the old state still has them.
+      const attributes = { ...(oldState?.attributes || {}), ...(newState?.attributes || {}) };
+      const unit = String(attributes.unit_of_measurement || "").toLowerCase();
+      if (["temperature", "humidity"].includes(attributes.device_class) || ["°c", "°f"].includes(unit)) return true;
+      if (unit === "%" && /fugt|humid/i.test(`${entityId} ${attributes.friendly_name || ""}`)) return true;
+      const area = BeastRegistry.getArea(BeastRegistry.getEntityArea(entityId));
+      return area?.temperature_entity_id === entityId || area?.humidity_entity_id === entityId || configuredSensors().has(entityId);
+    };
     ROOM_RELEVANT_DOMAINS.forEach((domain) => {
-      BeastHaSocket.subscribeDomain(domain, debouncedRender);
+      BeastHaSocket.subscribeDomain(domain, (entityId, newState, oldState) => {
+        if (roomRelevant(entityId, newState, oldState)) debouncedRender();
+      });
     });
     document.addEventListener("beast:registry-updated", debouncedRender);
   }
