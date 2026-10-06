@@ -1,6 +1,12 @@
 (function () {
   const EVENT_TYPE = "kiosk-warden-power";
+  // The state survives a reload of the same tab: a kiosk whose screen is off
+  // (idle) and whose page is refreshed in the background stays idle instead
+  // of starting every stream and animation again behind the dark screen. The
+  // kiosk wakes it as before by setting "active".
+  const STORE_KEY = "beast-power-state";
   let state = "active";
+  function storedState() { try { return sessionStorage.getItem(STORE_KEY); } catch (_) { return null; } }
 
   function profile() {
     const value = typeof BeastLocalSettings !== "undefined" ? BeastLocalSettings.get("powerProfile", "balanced") : "balanced";
@@ -16,6 +22,7 @@
   function setState(nextState) {
     if (nextState !== "active" && nextState !== "idle") return false;
     state = nextState;
+    try { sessionStorage.setItem(STORE_KEY, state); } catch (_) { /* private mode */ }
     const idle = state === "idle";
     document.documentElement.classList.toggle("beast-power-idle", idle);
     document.documentElement.dataset.powerState = state;
@@ -39,5 +46,5 @@
     if (["*", "powerProfile"].includes(event.detail?.path)) applyProfile();
   });
   applyProfile();
-  setState("active");
+  setState(storedState() === "idle" ? "idle" : "active");
 })();

@@ -3675,6 +3675,16 @@
 .beast-energy-utility-edit { flex-shrink: 0; width: 34px; height: 34px; display: grid; place-items: center; border: 1px solid var(--border); border-radius: 999px; background: var(--surface-2); color: var(--ink-muted); cursor: pointer; touch-action: manipulation; }
 .beast-energy-utility-edit:hover { color: var(--ink); }
 .beast-energy-utility-edit.is-active { border-color: var(--accent-border); background: var(--accent-soft); color: var(--accent); }
+/* Behind the screensaver nothing on the dashboard is seen: its animations
+   (and the moving background glow) pause, so the screensaver's backdrop blur
+   has nothing to redraw. The screensaver's own clock and weather keep going. */
+body.beast-is-ambient::before,
+body.beast-is-ambient::after,
+body.beast-is-ambient .beast-app *,
+body.beast-is-ambient .beast-app *::before,
+body.beast-is-ambient .beast-app *::after {
+  animation-play-state: paused !important;
+}
 html.beast-power-idle *,
 html.beast-power-idle *::before,
 html.beast-power-idle *::after {

@@ -199,6 +199,16 @@
     return Promise.all([...paths].map((path) => BeastAuth.preloadAuthedImage?.(path))).catch(() => []);
   }
 
+  // A view laid over the dashboard (a full-screen page of an add-on) can say
+  // so with beast:dashboard-cover { source, on }: while anything covers it,
+  // the dashboard's live streams stop, since nobody sees them. Registered
+  // before any stream element, so the set is current when they re-check.
+  const dashboardCoveredBy = new Set();
+  document.addEventListener("beast:dashboard-cover", (event) => {
+    const source = event.detail?.source || "external";
+    if (event.detail?.on) dashboardCoveredBy.add(source); else dashboardCoveredBy.delete(source);
+  });
+
   class BeastHaCameraStream extends HTMLElement {
     connectedCallback() {
       if (this._mounted) return;
@@ -216,6 +226,8 @@
       document.addEventListener("beast:sectionchange", this._onSectionChange);
       document.addEventListener("visibilitychange", this._onVisibilityChange);
       document.addEventListener("beast:powerstatechange", this._onPowerStateChange);
+      document.addEventListener("beast:ambientchange", this._onPowerStateChange);
+      document.addEventListener("beast:dashboard-cover", this._onPowerStateChange);
       this._unsubscribeStatus = BeastHaSocket.onStatusChange((status) => {
         if (status === "connected") this._syncVisibility(true);
       });
@@ -226,6 +238,8 @@
       document.removeEventListener("beast:sectionchange", this._onSectionChange);
       document.removeEventListener("visibilitychange", this._onVisibilityChange);
       document.removeEventListener("beast:powerstatechange", this._onPowerStateChange);
+      document.removeEventListener("beast:ambientchange", this._onPowerStateChange);
+      document.removeEventListener("beast:dashboard-cover", this._onPowerStateChange);
       this._unsubscribeStatus?.();
       this._stop();
       this._mounted = false;
@@ -233,8 +247,14 @@
 
     _isVisible() {
       const section = this.closest(".beast-section");
+      // The screensaver covers the dashboard completely: its streams stop
+      // behind it (cameras on the screensaver itself keep playing).
+      const coveredByScreensaver = document.body.classList.contains("beast-is-ambient") && !this.closest("#beastAmbientMode");
+      const coveredByView = dashboardCoveredBy.size > 0 && Boolean(this.closest(".beast-content"));
       return !document.hidden
+        && !coveredByView
         && window.BeastPower?.getState?.() !== "idle"
+        && !coveredByScreensaver
         && (!section || section.classList.contains("is-active"));
     }
 

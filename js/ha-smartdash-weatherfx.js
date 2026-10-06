@@ -119,6 +119,8 @@ const BeastWeatherFx = (() => {
   }
 
   function allowedHere() {
+    // An idle kiosk (screen off) shows nothing, so nothing is drawn.
+    if (window.BeastPower?.getState?.() === "idle") return false;
     const ambient = document.body.classList.contains("beast-is-ambient");
     // A view covering the dashboard pauses it there; the screensaver is its own.
     if (suppressedBy.size && !ambient) return false;
@@ -493,9 +495,12 @@ const BeastWeatherFx = (() => {
     // moves to (or leaves) the screensaver's own canvas.
     new MutationObserver(() => refreshActivity()).observe(document.body, { attributes: true, attributeFilter: ["class"] });
     document.addEventListener("visibilitychange", () => { lastFrameAt = 0; refreshActivity(); });
+    document.addEventListener("beast:powerstatechange", () => { lastFrameAt = 0; refreshActivity(); });
     // Anything that covers the page completely (a full-screen view) can pause
     // the overlay: dispatch beast:weatherfx-suppress with { source, on }.
     document.addEventListener("beast:weatherfx-suppress", (event) => setSuppressed(event.detail?.source || "external", Boolean(event.detail?.on)));
+    // The general "a view covers the dashboard" event pauses it too.
+    document.addEventListener("beast:dashboard-cover", (event) => setSuppressed(`cover:${event.detail?.source || "external"}`, Boolean(event.detail?.on)));
     evaluate();
     document.addEventListener("beast:config-changed", handleConfigChange);
     BeastHaSocket.onStatusChange((status) => { if (status === "connected") evaluate(); });

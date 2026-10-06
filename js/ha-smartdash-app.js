@@ -357,6 +357,7 @@ function hideAmbientMode() {
   const wasShowing = Boolean(overlay?.classList.contains("is-visible"));
   overlay?.classList.remove("is-visible");
   document.body.classList.remove("beast-is-ambient");
+  if (wasShowing) document.dispatchEvent(new CustomEvent("beast:ambientchange", { detail: { on: false } }));
   // Waking from the screensaver should land back on Overview, not
   // whatever section happened to be open before the kiosk went idle --
   // setupNavigation()'s own 3-minute auto-return timer is meant to handle
@@ -543,6 +544,7 @@ function showAmbientMode(force = false) {
   wireAmbientBrightness(overlay);
   overlay.classList.add("is-visible");
   document.body.classList.add("beast-is-ambient");
+  document.dispatchEvent(new CustomEvent("beast:ambientchange", { detail: { on: true } }));
   window.clearTimeout(screenOffTimerId);
   const offAfterMs = Math.max(1, Number(config.offAfterMinutes) || 5) * 60 * 1000;
   screenOffTimerId = window.setTimeout(() => {

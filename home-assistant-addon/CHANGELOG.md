@@ -1,3 +1,9 @@
+## 0.8.66
+
+- Pauseskærmen bruger omtrent det halve: forsidens live-kameraer stopper og dens animationer og den bevægelige baggrund står stille bag den, så pauseskærmens slør ikke skal tegnes om i hvert billede. Pauseskærmens eget ur, vejr-animation og kameraer kører som før. (Claude AI)
+- En kiosk med slukket skærm (strømspare) stopper nu også vejr-overlayet, og strømsparetilstanden overlever en genindlæsning af siden, så en baggrundsopdatering ikke starter kameraer og animationer igen bag den mørke skærm. (Claude AI)
+- Nyt: en visning lagt over dashboardet kan sende hændelsen beast:dashboard-cover; så stopper dashboardets live-kameraer og vejr-overlayet, mens den dækker. (Claude AI)
+
 ## 0.8.65
 
 - Vejr-overlayet bruger langt færre kræfter med samme udseende: hver sky sløres én gang i stedet for i hvert billede, farvetonen tegnes én gang, rolige vejrtyper tegnes med 30 billeder i sekundet, og et klart vejr uden bevægelse tegnes kun, når noget ændrer sig. Under Admin → Tema og design kan man vælge, hvilke sider overlayet vises på (som standard forsiden og pauseskærmen); andre steder kører det slet ikke. Fuldskærmsvisninger kan sætte det på pause med hændelsen beast:weatherfx-suppress. (Claude AI)

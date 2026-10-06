@@ -1,5 +1,24 @@
 [
   {
+    "version": "20261006-1",
+    "tag": "v0.8.66",
+    "date": "2026-10-06",
+    "changes": [
+      {
+        "da": "Pauseskærmen bruger omtrent det halve: forsidens live-kameraer stopper og dens animationer og den bevægelige baggrund står stille bag den, så pauseskærmens slør ikke skal tegnes om i hvert billede. Pauseskærmens eget ur, vejr-animation og kameraer kører som før. (Claude AI)",
+        "en": "The screensaver uses about half the power: the dashboard's live cameras stop and its animations and moving background stand still behind it, so the screensaver's blur no longer redraws every frame. The screensaver's own clock, weather animation and cameras run as before. (Claude AI)"
+      },
+      {
+        "da": "En kiosk med slukket skærm (strømspare) stopper nu også vejr-overlayet, og strømsparetilstanden overlever en genindlæsning af siden, så en baggrundsopdatering ikke starter kameraer og animationer igen bag den mørke skærm. (Claude AI)",
+        "en": "A kiosk with its screen off (idle) now also stops the weather overlay, and the idle state survives a page reload, so a background refresh no longer restarts cameras and animations behind the dark screen. (Claude AI)"
+      },
+      {
+        "da": "Nyt: en visning lagt over dashboardet kan sende hændelsen beast:dashboard-cover; så stopper dashboardets live-kameraer og vejr-overlayet, mens den dækker. (Claude AI)",
+        "en": "New: a view laid over the dashboard can send the beast:dashboard-cover event; the dashboard's live cameras and weather overlay then stop while it covers it. (Claude AI)"
+      }
+    ]
+  },
+  {
     "version": "20261005-1",
     "tag": "v0.8.65",
     "date": "2026-10-05",
