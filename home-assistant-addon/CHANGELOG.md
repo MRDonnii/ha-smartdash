@@ -1,3 +1,7 @@
+## 0.8.68
+
+- HCH5-kortet er opdateret til den nyeste udgave fra Smart Home Cards (v0.4.77): blandt andet temperatur-farvet luft, vand der løber, Bål ved Pejsefunktion, Frikøling med Køl nederst, og indstillingen controls: false, der viser den kompakte tegning uden styringsrækker. (Claude AI)
+
 ## 0.8.67
 
 - Dashboardet bruger langt færre kræfter: den bløde baggrundsglød står stille (den bevæger sig kun med strømprofilen Ydelse), så grafikkortet ikke skal tegne baggrunden og alle de matte kort om i hvert billede. Målt på en kiosk faldt GPU-forbruget på Rum-siden fra over 80 % til få procent. (Claude AI)

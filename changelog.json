@@ -1,5 +1,16 @@
 [
   {
+    "version": "20261006-3",
+    "tag": "v0.8.68",
+    "date": "2026-10-06",
+    "changes": [
+      {
+        "da": "HCH5-kortet er opdateret til den nyeste udgave fra Smart Home Cards (v0.4.77): blandt andet temperatur-farvet luft, vand der løber, Bål ved Pejsefunktion, Frikøling med Køl nederst, og indstillingen controls: false, der viser den kompakte tegning uden styringsrækker. (Claude AI)",
+        "en": "The HCH5 card is updated to the newest version from Smart Home Cards (v0.4.77): among other things air coloured by temperature, flowing water, Bonfire next to Fireplace mode, Free cooling with Cool at the bottom, and the controls: false option that shows the compact drawing without control rows. (Claude AI)"
+      }
+    ]
+  },
+  {
     "version": "20261006-2",
     "tag": "v0.8.67",
     "date": "2026-10-06",
