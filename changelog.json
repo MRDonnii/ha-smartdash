@@ -1,5 +1,16 @@
 [
   {
+    "version": "20261007-1",
+    "tag": "v0.8.69",
+    "date": "2026-10-07",
+    "changes": [
+      {
+        "da": "Postkassens billede vises igen i postbanneret på forsiden og i dets popup med alle tre kameraer. Billedfeltet kan nu være en URL, en kamera- eller billed-entitet eller et tekstfelt, der peger på en, også i formen \"camera.x|version\", som postkasse-automationen skriver; billedet hentes gennem Home Assistant med dashboardets eget login og hentes igen ved et nyt snapshot eller en ny levering. (Claude AI)",
+        "en": "The mailbox picture shows again in the post banner on the front page and in its popup with all three cameras. The picture field can now be a URL, a camera or image entity, or a text helper pointing to one, also in the \"camera.x|version\" form the mailbox automation writes; the picture is fetched through Home Assistant with the dashboard's own login and fetched again for a new snapshot or a new delivery. (Claude AI)"
+      }
+    ]
+  },
+  {
     "version": "20261006-3",
     "tag": "v0.8.68",
     "date": "2026-10-06",

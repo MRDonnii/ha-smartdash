@@ -1,3 +1,7 @@
+## 0.8.69
+
+- Postkassens billede vises igen i postbanneret på forsiden og i dets popup med alle tre kameraer. Billedfeltet kan nu være en URL, en kamera- eller billed-entitet eller et tekstfelt, der peger på en, også i formen "camera.x|version", som postkasse-automationen skriver; billedet hentes gennem Home Assistant med dashboardets eget login og hentes igen ved et nyt snapshot eller en ny levering. (Claude AI)
+
 ## 0.8.68
 
 - HCH5-kortet er opdateret til den nyeste udgave fra Smart Home Cards (v0.4.77): blandt andet temperatur-farvet luft, vand der løber, Bål ved Pejsefunktion, Frikøling med Køl nederst, og indstillingen controls: false, der viser den kompakte tegning uden styringsrækker. (Claude AI)

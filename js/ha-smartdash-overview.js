@@ -690,11 +690,42 @@
     return minutes >= start && minutes < end;
   }
 
+  // A mailbox picture can be a URL, a camera/image entity, or a text helper holding one -- also in the
+  // "camera.x|version" form automations write when they take a new snapshot. An entity's picture is not a URL the
+  // browser can load (it lives on Home Assistant, behind its login), so it is fetched like the printer's pictures and
+  // shown from a cached blob, fetched again for a new version or a new delivery. A plain URL is used as it is.
+  const mailImageCache = {}; // role -> { key, url, pending, triedAt }
+  const MAIL_IMAGE_RETRY_MS = 30000;
+
+  function mailImageFrom(sourceId, role) {
+    if (!sourceId) return null;
+    const ownEntity = /^(camera|image)\./.test(sourceId);
+    const value = ownEntity ? sourceId : validText(BeastHaSocket.getState(sourceId)?.state);
+    if (!value) return null;
+    const [ref, version = ""] = value.split("|");
+    if (!/^(camera|image)\.[a-z0-9_]+$/.test(ref.trim())) return value;
+    const entity = BeastHaSocket.getState(ref.trim());
+    const path = entity?.attributes?.entity_picture;
+    const cache = mailImageCache[role] || (mailImageCache[role] = { key: "", url: null, pending: false, triedAt: 0 });
+    // A new snapshot shows as a new version, an image entity's own update, or (for helpers without a version) a new
+    // delivery turning the mail sensor on again.
+    const key = [ref, version, ownEntity ? entity?.last_changed : "", BeastHaSocket.getState(MAIL_PRESENT_ID)?.last_changed].join("|");
+    if (path && cache.key !== key && !cache.pending && Date.now() - cache.triedAt > (cache.failedKey === key ? MAIL_IMAGE_RETRY_MS : 0)) {
+      cache.pending = true; cache.triedAt = Date.now();
+      BeastAuth.haFetchBlob(path).then((blob) => {
+        if (cache.url) URL.revokeObjectURL(cache.url);
+        cache.url = URL.createObjectURL(blob); cache.key = key; cache.failedKey = "";
+        renderBanners();
+      }).catch(() => { cache.failedKey = key; }).finally(() => { cache.pending = false; });
+    }
+    return cache.url;
+  }
+
   function mailImages() {
     return {
-      indkorsel: validText(BeastHaSocket.getState(MAIL_IMAGE_ID)?.state),
-      carport: validText(BeastHaSocket.getState(MAIL_IMAGE_CARPORT_ID)?.state),
-      forhaven: validText(BeastHaSocket.getState(MAIL_IMAGE_FORHAVEN_ID)?.state)
+      indkorsel: mailImageFrom(MAIL_IMAGE_ID, "indkorsel"),
+      carport: mailImageFrom(MAIL_IMAGE_CARPORT_ID, "carport"),
+      forhaven: mailImageFrom(MAIL_IMAGE_FORHAVEN_ID, "forhaven")
     };
   }
 
