@@ -1,3 +1,7 @@
+## 0.8.70
+
+- Vejrsiden kan vise et radarbillede fra en billed-entitet (fx en national radar med lyn) i stedet for webkortene for nedbør og lyn, vejrvarsler øverst i "Aktuelt vejr" og et nyt kort "Målinger" med faner for målt nu, nedbør og lyn, risiko, i dag og vand og hav. Alt vælges under Administration → Vejr; uden valg er siden uændret. (Claude AI)
+
 ## 0.8.69
 
 - Postkassens billede vises igen i postbanneret på forsiden og i dets popup med alle tre kameraer. Billedfeltet kan nu være en URL, en kamera- eller billed-entitet eller et tekstfelt, der peger på en, også i formen "camera.x|version", som postkasse-automationen skriver; billedet hentes gennem Home Assistant med dashboardets eget login og hentes igen ved et nyt snapshot eller en ny levering. (Claude AI)

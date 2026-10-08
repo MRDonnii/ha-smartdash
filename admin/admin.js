@@ -57,8 +57,15 @@
   const OVERVIEW_SLOTS = [["compactTop","Venstre øverst"],["wideTop","Midte øverst"],["main","Stor plads"],["compactBottom","Venstre nederst"],["wideBottom","Midte nederst"]];
 
   const PANELS = [
-    { id: "weather", title: "Vejr", description: "Vejrudsigt og aktuelle vejrdata.", fields: [
-      { key: "entity", label: "Vejr-entity", type: "single", domain: "weather" }
+    { id: "weather", title: "Vejr", description: t("Vejrudsigt og aktuelle vejrdata. Radarbillede, varsler og målinger er valgfrie.", "Forecast and current weather. Radar image, warnings and measurements are optional."), fields: [
+      { key: "entity", label: "Vejr-entity", type: "single", domain: "weather" },
+      { key: "radarImage", label: t("Radarbillede (image-entity, erstatter web-radar og lyn)", "Radar image (image entity, replaces the web radar and lightning maps)"), type: "single", domain: "image", hints: ["radar"] },
+      { key: "warnings", label: t("Vejrvarsler (sensor med en liste af varsler)", "Weather warnings (sensor with a list of warnings)"), type: "single", domain: "sensor", hints: ["varsel", "warning", "alert"] },
+      { key: "detailNow", label: t("Målinger: målt nu", "Measurements: measured now"), type: "multi", domain: "sensor" },
+      { key: "detailPrecip", label: t("Målinger: nedbør og lyn", "Measurements: precipitation and lightning"), type: "multi", domain: "sensor" },
+      { key: "detailRisk", label: t("Målinger: risiko", "Measurements: risk"), type: "multi", domain: "sensor" },
+      { key: "detailToday", label: t("Målinger: i dag", "Measurements: today"), type: "multi", domain: "sensor" },
+      { key: "detailWater", label: t("Målinger: vand og hav", "Measurements: water and sea"), type: "multi", domain: "sensor" }
     ]},
     { id: "waste", title: t("Kalender & affald", "Calendar & waste"), description: t("Kalendere og affaldssensorer. Om de vises på forsiden styres under Forside.", "Calendars and waste sensors. Front-page visibility is controlled under Overview."), fields: [
       { key: "calendars", label: t("Kalendere (bruges også af forsidens \"Næste aftaler\" -- tomt viser alle kalendere)", "Calendars (also used by the overview's \"Next events\" -- empty shows every calendar)"), type: "multi", domain: "calendar" },

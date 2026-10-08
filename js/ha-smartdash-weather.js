@@ -1,11 +1,30 @@
 (function () {
   function weatherEntityId() { return BeastConfig.get("panels.weather.entity"); }
-  const RADAR_LAYERS = [
+  // Optional: an image entity (e.g. a national radar with lightning) shown
+  // instead of the web precipitation and lightning maps.
+  function radarImageId() { return BeastConfig.get("panels.weather.radarImage") || null; }
+  // Optional: a sensor whose `varsler`/`warnings` attribute lists warnings.
+  function warningsId() { return BeastConfig.get("panels.weather.warnings") || null; }
+  const WEB_LAYERS = [
     { id: "precipitation", label: "Nedbør", icon: "cloud-rain", source: "Windy.com", overlay: "radar" },
     { id: "satellite", label: "Sky", icon: "cloud", source: "Windy.com", overlay: "satellite" },
     { id: "wind", label: "Vind", icon: "wind", source: "Windy.com", overlay: "wind" },
     { id: "lightning", label: "Lyn", icon: "bolt", source: "Blitzortung.org", overlay: null }
   ];
+  function radarLayers() {
+    if (!radarImageId()) return WEB_LAYERS;
+    const name = BeastHaSocket.getState(radarImageId())?.attributes?.friendly_name || "Radarbillede";
+    return [{ id: "precipitation", label: "Nedbør og lyn", icon: "cloud-rain", source: name, image: true }, ...WEB_LAYERS.filter((l) => l.id === "satellite" || l.id === "wind")];
+  }
+  // Extra measurement groups, each a multi-select of sensors in Administration.
+  const DETAIL_GROUPS = [
+    ["detailNow", "Målt nu", "thermometer"], ["detailPrecip", "Nedbør og lyn", "cloud-rain"],
+    ["detailRisk", "Risiko", "shield"], ["detailToday", "I dag", "calendar"], ["detailWater", "Vand og hav", "droplet"]
+  ];
+  function detailGroups() {
+    return DETAIL_GROUPS.map(([key, label, icon]) => ({ key, label, icon, ids: (BeastConfig.get(`panels.weather.${key}`) || []).filter(Boolean) })).filter((g) => g.ids.length);
+  }
+  let detailTab = null;
 
   let rootEl = null;
   let hourly = [];
@@ -35,12 +54,36 @@
     return payload?.service_response?.[weatherId]?.forecast || payload?.[weatherId]?.forecast || [];
   }
 
+  function esc(value) {
+    return String(value ?? "").replace(/[&<>"]/g, (ch) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[ch]);
+  }
+
+  function when(iso) {
+    const d = new Date(iso);
+    if (Number.isNaN(d.getTime())) return "";
+    const locale = window.HASmartdashI18n?.locale || "da-DK";
+    return `${d.toLocaleDateString(locale, { weekday: "short" })} ${d.toLocaleTimeString(locale, { hour: "2-digit", minute: "2-digit" })}`;
+  }
+
+  function warningsMarkup() {
+    const state = warningsId() ? BeastHaSocket.getState(warningsId()) : null;
+    if (!state || state.state === "unavailable") return "";
+    const list = state.attributes?.varsler || state.attributes?.warnings || [];
+    if (!list.length) return `<div class="beast-weather-warn-none">${BeastCore.icon("shield", { size: 15 })}<span>Ingen aktive vejrvarsler</span></div>`;
+    return `<div class="beast-weather-warnings">${list.map((w) => {
+      const level = Math.min(4, Math.max(2, Number(w.niveau ?? w.level) || 2));
+      const span = [w.start || w.onset, w.slut || w.expires].map(when).filter(Boolean).join(" – ");
+      return `<div class="beast-weather-warning is-level-${level}">${BeastCore.icon("bell", { size: 20 })}<div><strong>${esc(w.overskrift || w.headline || w.type || w.event || "Varsel")}</strong><small>${esc(span)}</small>${w.beskrivelse || w.description ? `<p>${esc(w.beskrivelse || w.description)}</p>` : ""}</div></div>`;
+    }).join("")}</div>`;
+  }
+
   function currentMarkup() {
     const state = BeastHaSocket.getState(weatherEntityId());
     const a = state?.attributes || {};
     const current = BeastCore.weatherMeta(state?.state);
     return `
       <section class="beast-weather-current">
+        ${warningsMarkup()}
         <div class="beast-weather-current-main">
           <span class="beast-weather-current-icon">${BeastCore.animatedWeatherIcon(current.mood, 78)}</span>
           <div><small>Lige nu</small><strong>${number(a.temperature, "°", 1)}</strong><span>${current.label}</span></div>
@@ -80,13 +123,72 @@
     </div></section>`;
   }
 
+  function detailValue(state) {
+    if (!state || ["unknown", "unavailable"].includes(state.state)) return "–";
+    const a = state.attributes || {};
+    if (a.device_class === "timestamp") return when(state.state) || state.state;
+    const number = Number(state.state);
+    const unit = a.unit_of_measurement ? ` ${a.unit_of_measurement}` : "";
+    if (!Number.isFinite(number)) return `${state.state}${unit}`;
+    const digits = Math.abs(number) >= 100 ? 0 : 1;
+    return `${number.toLocaleString(window.HASmartdashI18n?.locale || "da-DK", { maximumFractionDigits: digits })}${unit}`;
+  }
+
+  function detailNote(state) {
+    const a = state?.attributes || {};
+    if (a.station) return `${a.station}${Number.isFinite(Number(a.afstand_km)) ? ` · ${Math.round(Number(a.afstand_km))} km` : ""}`;
+    if (a["i_går"] !== undefined && a["i_går"] !== null) return `I går ${Number(a["i_går"]).toLocaleString(window.HASmartdashI18n?.locale || "da-DK", { maximumFractionDigits: 1 })}${a.unit_of_measurement ? ` ${a.unit_of_measurement}` : ""}`;
+    if (a["næste_6_timer"] !== undefined && a["næste_6_timer"] !== null) return `Næste 6 t: ${a["næste_6_timer"]} %`;
+    if (a.niveau_cm !== undefined) return `${Math.round(Number(a.niveau_cm))} cm`;
+    return "";
+  }
+
+  function detailName(id) {
+    const name = BeastHaSocket.getState(id)?.attributes?.friendly_name || id;
+    // Sensors of a weather integration usually repeat its device name.
+    const device = BeastHaSocket.getState(weatherEntityId())?.attributes?.friendly_name;
+    return device && name.startsWith(`${device} `) ? name.slice(device.length + 1) : name;
+  }
+
+  function detailsMarkup() {
+    const groups = detailGroups();
+    if (!groups.length) return "";
+    const active = groups.find((g) => g.key === detailTab) || groups[0];
+    detailTab = active.key;
+    return `<section class="beast-weather-details">
+      <header><div><strong>Målinger</strong><small>${esc(active.label)}</small></div></header>
+      <div class="beast-weather-detail-tabs">${groups.map((g) => `<button type="button" class="beast-radar-layer-btn${g.key === active.key ? " is-active" : ""}" data-detail-tab="${g.key}">${BeastCore.icon(g.icon, { size: 14 })}<span>${esc(g.label)}</span></button>`).join("")}</div>
+      <div class="beast-weather-detail-rows">${active.ids.map((id) => {
+        const state = BeastHaSocket.getState(id);
+        const value = detailValue(state);
+        const note = detailNote(state);
+        return `<div class="beast-weather-detail-row${value === "–" ? " is-off" : ""}" data-entity-id="${esc(id)}"><span>${esc(detailName(id))}${note ? `<small>${esc(note)}</small>` : ""}</span><strong>${esc(value)}</strong></div>`;
+      }).join("")}</div>
+    </section>`;
+  }
+
+  function wireDetails() {
+    rootEl.querySelectorAll("[data-detail-tab]").forEach((btn) => btn.addEventListener("click", () => {
+      detailTab = btn.dataset.detailTab;
+      renderDetails();
+    }));
+  }
+
+  function renderDetails() {
+    const section = rootEl?.querySelector(".beast-weather-details");
+    if (!section) return;
+    section.outerHTML = detailsMarkup();
+    wireDetails();
+    wireWeatherLayout();
+  }
+
   function radarMarkup() {
     return `<section class="beast-weather-radar">
       <header>
-        <div><strong>Radar</strong><small id="beastRadarSource">Windy.com</small></div>
+        <div><strong>Radar</strong><small id="beastRadarSource">${esc((radarLayers().find((l) => l.id === radarLayer) || radarLayers()[0]).source)}</small></div>
       </header>
       <div class="beast-radar-layer-tabs">
-        ${RADAR_LAYERS.map((l) => `<button type="button" class="beast-radar-layer-btn${l.id === radarLayer ? " is-active" : ""}" data-layer="${l.id}">${BeastCore.icon(l.icon, { size: 15 })}<span>${l.label}</span></button>`).join("")}
+        ${radarLayers().map((l) => `<button type="button" class="beast-radar-layer-btn${l.id === radarLayer ? " is-active" : ""}" data-layer="${l.id}">${BeastCore.icon(l.icon, { size: 15 })}<span>${l.label}</span></button>`).join("")}
       </div>
       <div class="beast-radar-map" id="beastRadarMap"></div>
     </section>`;
@@ -100,7 +202,8 @@
   function render() {
     if (!rootEl) return;
     if (!rootEl.querySelector(".beast-weather-dashboard")) {
-      rootEl.innerHTML = `<button type="button" class="beast-page-edit-trigger" id="beastWeatherLayoutEdit" aria-label="Rediger vejrlayout">⋮</button><div class="beast-weather-dashboard"><div class="beast-weather-left">${currentMarkup()}${hourlyMarkup()}</div>${radarMarkup()}${dailyMarkup()}</div>`;
+      rootEl.innerHTML = `<button type="button" class="beast-page-edit-trigger" id="beastWeatherLayoutEdit" aria-label="Rediger vejrlayout">⋮</button><div class="beast-weather-dashboard${detailGroups().length ? " has-details" : ""}"><div class="beast-weather-left">${currentMarkup()}${hourlyMarkup()}</div>${radarMarkup()}${detailsMarkup()}${dailyMarkup()}</div>`;
+      wireDetails();
       rootEl.querySelectorAll("[data-layer]").forEach((btn) => {
         btn.addEventListener("click", () => {
           if (btn.dataset.layer === radarLayer) return;
@@ -116,6 +219,7 @@
     rootEl.querySelector(".beast-weather-current").outerHTML = currentMarkup();
     rootEl.querySelector(".beast-weather-hourly").outerHTML = hourlyMarkup();
     rootEl.querySelector(".beast-weather-week").outerHTML = dailyMarkup();
+    renderDetails();
     wireWeatherLayout();
   }
 
@@ -128,7 +232,10 @@
     if (button) BeastNativePageEditor.mount({ section:"weather", label:"Vejr", root:()=>rootEl, host:()=>rootEl.querySelector(".beast-weather-dashboard"), trigger:"#beastWeatherLayoutEdit", onSave:()=>render(), cards:()=>[
       { id:"summary", label:"Aktuelt vejr og timeudsigt", selector:".beast-weather-left", enabled:!hidden.has("current") || !hidden.has("hourly"), desktop:{x:1,y:1,w:5,h:9}, options:{hours:12}, controls:[{key:"hours",label:"Timer i udsigten",min:3,max:24,step:1,default:12}] },
       { id:"radar", label:"Vejrradar", selector:".beast-weather-radar", titleSelector:"header strong", enabled:!hidden.has("radar"), desktop:{x:6,y:1,w:7,h:9} },
-      { id:"week", label:"Ugeudsigt", selector:".beast-weather-week", titleSelector:"header strong", enabled:!hidden.has("week"), desktop:{x:1,y:10,w:12,h:3}, options:{days:7}, controls:[{key:"days",label:"Dage i udsigten",min:1,max:10,step:1,default:7}] }
+      { id:"week", label:"Ugeudsigt", selector:".beast-weather-week", titleSelector:"header strong", enabled:!hidden.has("week"), desktop:{x:1,y:10,w:12,h:3}, options:{days:7}, controls:[{key:"days",label:"Dage i udsigten",min:1,max:10,step:1,default:7}] },
+      // Only offered when measurement groups are configured, so layouts of
+      // installations without them stay exactly as they were.
+      ...(detailGroups().length ? [{ id:"details", label:"Målinger", selector:".beast-weather-details", titleSelector:"header strong", enabled:!hidden.has("details"), desktop:{x:1,y:13,w:12,h:4} }] : [])
     ] });
   }
 
@@ -146,7 +253,7 @@
       btn.classList.toggle("is-active", btn.dataset.layer === radarLayer);
     });
     const source = document.getElementById("beastRadarSource");
-    if (source) source.textContent = RADAR_LAYERS.find((l) => l.id === radarLayer)?.source || "";
+    if (source) source.textContent = radarLayers().find((l) => l.id === radarLayer)?.source || "";
   }
 
   function windyEmbedUrl(overlay) {
@@ -194,7 +301,20 @@
   function drawRadar() {
     const map = document.getElementById("beastRadarMap");
     if (!map) return;
-    const layer = RADAR_LAYERS.find((l) => l.id === radarLayer);
+    const layer = radarLayers().find((l) => l.id === radarLayer) || radarLayers()[0];
+    if (layer.image) {
+      const picture = BeastHaSocket.getState(radarImageId())?.attributes?.entity_picture;
+      let img = map.querySelector("img.beast-radar-image");
+      if (!img) {
+        map.innerHTML = `<img class="beast-radar-image" alt="Radarkort">`;
+        img = map.querySelector("img");
+      }
+      if (picture && img.dataset.picture !== picture) {
+        img.dataset.picture = picture;
+        BeastAuth.setAuthedImageSrc(img, picture);
+      }
+      return;
+    }
     const src = location ? (layer.overlay ? windyEmbedUrl(layer.overlay) : blitzortungEmbedUrl()) : null;
     if (!src) {
       map.innerHTML = `<div class="beast-radar-empty">${BeastCore.icon("cloud-rain", { size: 30 })}<strong>Henter kortdata…</strong><span>Venter på husets placering fra Home Assistant.</span></div>`;
@@ -237,6 +357,11 @@
     // once the socket confirms the snapshot is actually in.
     BeastHaSocket.onStatusChange((status) => { if (status === "connected") render(); });
     BeastHaSocket.subscribeEntity(weatherEntityId(), BeastCore.stableUpdater(rootEl, render, 800));
+    if (warningsId()) BeastHaSocket.subscribeEntity(warningsId(), BeastCore.stableUpdater(rootEl, render, 800));
+    // The radar image only swaps its picture; the iframe layers are untouched.
+    if (radarImageId()) BeastHaSocket.subscribeEntity(radarImageId(), () => drawRadar());
+    const detailUpdate = BeastCore.stableUpdater(rootEl, renderDetails, 1500);
+    detailGroups().forEach((g) => g.ids.forEach((id) => BeastHaSocket.subscribeEntity(id, detailUpdate)));
   }
 
   BeastCore.registerPanel("weather", "beastWeatherZone", init);

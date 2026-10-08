@@ -1,5 +1,16 @@
 [
   {
+    "version": "20261008-1",
+    "tag": "v0.8.70",
+    "date": "2026-10-08",
+    "changes": [
+      {
+        "da": "Vejrsiden kan vise et radarbillede fra en billed-entitet (fx en national radar med lyn) i stedet for webkortene for nedbør og lyn, vejrvarsler øverst i \"Aktuelt vejr\" og et nyt kort \"Målinger\" med faner for målt nu, nedbør og lyn, risiko, i dag og vand og hav. Alt vælges under Administration → Vejr; uden valg er siden uændret. (Claude AI)",
+        "en": "The weather page can show a radar picture from an image entity (for example a national radar with lightning) instead of the web precipitation and lightning maps, weather warnings at the top of \"Current weather\" and a new \"Measurements\" card with tabs for measured now, precipitation and lightning, risk, today, and water and sea. Everything is chosen under Administration → Weather; without a choice the page is unchanged."
+      }
+    ]
+  },
+  {
     "version": "20261007-1",
     "tag": "v0.8.69",
     "date": "2026-10-07",
