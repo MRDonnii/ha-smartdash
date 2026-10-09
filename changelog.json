@@ -1,5 +1,16 @@
 [
   {
+    "version": "20261010-2",
+    "tag": "v0.8.74",
+    "date": "2026-10-10",
+    "changes": [
+      {
+        "da": "Varmesiden bruger den nyeste udgave af fjernvarme-husets kort (0.3.3, samme som i Home Assistant), så Smartdash og Home Assistant ser ens ud. (Claude AI)",
+        "en": "The heating page uses the newest district heating house card (0.3.3, the same as in Home Assistant), so Smartdash and Home Assistant look the same."
+      }
+    ]
+  },
+  {
     "version": "20261010-1",
     "tag": "v0.8.73",
     "date": "2026-10-10",

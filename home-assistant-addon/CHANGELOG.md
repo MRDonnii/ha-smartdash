@@ -1,3 +1,7 @@
+## 0.8.74
+
+- Varmesiden bruger den nyeste udgave af fjernvarme-husets kort (0.3.3, samme som i Home Assistant), så Smartdash og Home Assistant ser ens ud. (Claude AI)
+
 ## 0.8.73
 
 - Bilsiden viser låsens tilstand (Låst / Ulåst) i stedet for en knap: bilens egne styringer (lås, klima osv.) hører til i Home Assistants egen bilside. Ladeplanerne kan stadig vælges med et ekstra tryk. (Claude AI)
