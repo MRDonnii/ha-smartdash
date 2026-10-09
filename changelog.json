@@ -1,5 +1,16 @@
 [
   {
+    "version": "20261010-3",
+    "tag": "v0.8.75",
+    "date": "2026-10-10",
+    "changes": [
+      {
+        "da": "Bilsidens dæktryk vises i bar (omregnet fra sensorens egen enhed) ligesom på Home Assistants Tesla-side, og bilens navn bruger enhedens eget navn, når det er ændret. (Claude AI)",
+        "en": "The car page shows tyre pressure in bar (converted from the sensor's own unit), as on Home Assistant's Tesla page, and the car's name uses the device's own name when it was renamed."
+      }
+    ]
+  },
+  {
     "version": "20261010-2",
     "tag": "v0.8.74",
     "date": "2026-10-10",

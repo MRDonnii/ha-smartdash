@@ -1,3 +1,7 @@
+## 0.8.75
+
+- Bilsidens dæktryk vises i bar (omregnet fra sensorens egen enhed) ligesom på Home Assistants Tesla-side, og bilens navn bruger enhedens eget navn, når det er ændret. (Claude AI)
+
 ## 0.8.74
 
 - Varmesiden bruger den nyeste udgave af fjernvarme-husets kort (0.3.3, samme som i Home Assistant), så Smartdash og Home Assistant ser ens ud. (Claude AI)

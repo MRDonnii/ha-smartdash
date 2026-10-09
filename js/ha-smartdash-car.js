@@ -5,7 +5,7 @@
   function applyConfig() {
     const config = BeastConfig.get("panels.car") || {};
     const configuredDevice = config.sourceDevice ? BeastRegistry.getDevice(config.sourceDevice) : null;
-    VEHICLE_LABEL = configuredDevice?.name || configuredDevice?.name_by_user || "Elbil";
+    VEHICLE_LABEL = configuredDevice?.name_by_user || configuredDevice?.name || "Elbil";
     IDS = {
       battery: config.battery, range: config.range, shiftState: config.shiftState, chargerPower: config.chargerPower,
       chargingFinish: config.chargingFinishAt, charging: config.charging, pluggedIn: config.pluggedIn,
@@ -135,13 +135,24 @@
     return s && Number.isFinite(Number(s.state)) ? Number(s.state).toFixed(decimals) : "–";
   }
 
+  // Tyre pressure in bar, as on Home Assistant's own Tesla card, converted from the unit the sensor reports
+  // (Tesla integrations report psi).
+  const PRESSURE_TO_BAR = { bar: 1, psi: 0.0689476, kpa: 0.01, pa: 0.00001, hpa: 0.001, mbar: 0.001 };
+
+  function pressureBar(id) {
+    const s = stateOf(id);
+    const value = Number(s?.state);
+    const factor = PRESSURE_TO_BAR[String(s?.attributes?.unit_of_measurement || "psi").toLowerCase()];
+    return s && Number.isFinite(value) && factor ? value * factor : NaN;
+  }
+
   function buildTpms() {
     const wheels = [
       { id: IDS.tpmsFl, label: "For venstre", position: "fl" },
       { id: IDS.tpmsFr, label: "For højre", position: "fr" },
       { id: IDS.tpmsRl, label: "Bag venstre", position: "rl" },
       { id: IDS.tpmsRr, label: "Bag højre", position: "rr" }
-    ].map((wheel) => ({ ...wheel, pressure: Number(stateOf(wheel.id)?.state) }));
+    ].map((wheel) => ({ ...wheel, pressure: pressureBar(wheel.id) }));
     const valid = wheels.filter((wheel) => Number.isFinite(wheel.pressure));
     const highest = valid.length ? Math.max(...valid.map((wheel) => wheel.pressure)) : null;
     return `
@@ -151,7 +162,7 @@
             <span>Dæktryk</span>
             <strong>${VEHICLE_LABEL}</strong>
           </div>
-          <small>Live · PSI</small>
+          <small>Live · bar</small>
         </div>
         <div class="beast-tesla-stage">
           <div class="beast-tesla-car">
@@ -160,11 +171,11 @@
             <span class="beast-tesla-mark">T</span>
           </div>
           ${wheels.map((wheel) => {
-            const low = highest !== null && Number.isFinite(wheel.pressure) && highest - wheel.pressure >= 2.5;
+            const low = highest !== null && Number.isFinite(wheel.pressure) && highest - wheel.pressure >= 0.17;
             return `
               <div class="beast-tesla-wheel beast-tesla-wheel--${wheel.position}${low ? " is-low" : ""}">
                 <i></i>
-                <span><small>${wheel.label}</small><strong>${Number.isFinite(wheel.pressure) ? wheel.pressure.toFixed(1) : "–"} <em>PSI</em></strong></span>
+                <span><small>${wheel.label}</small><strong>${Number.isFinite(wheel.pressure) ? wheel.pressure.toFixed(1) : "–"} <em>bar</em></strong></span>
               </div>
             `;
           }).join("")}
