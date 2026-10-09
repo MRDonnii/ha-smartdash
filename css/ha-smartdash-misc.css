@@ -3718,3 +3718,6 @@ html[data-power-profile="low"] *::after {
 .beast-car-smart-actions .beast-security-action-btn { min-height: 44px; }
 .beast-car-smart-actions .is-active { background: color-mix(in srgb, var(--accent, #3b82f6) 26%, transparent); border-color: color-mix(in srgb, var(--accent, #3b82f6) 65%, transparent); }
 .beast-car-smart-actions .is-armed { outline: 2px solid var(--warning, #f59e0b); outline-offset: 2px; }
+.beast-car-smart-actions .is-default::after { content: "★"; margin-left: 6px; color: var(--warning, #f59e0b); font-size: .85em; }
+.beast-car-smart-default { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 6px; font-size: var(--text-sm, .85rem); color: var(--text-muted, #94a3b8); }
+.beast-car-smart-default strong { color: var(--text, #e2e8f0); font-weight: 600; }

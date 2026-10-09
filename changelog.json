@@ -1,5 +1,16 @@
 [
   {
+    "version": "20261009-2",
+    "tag": "v0.8.72",
+    "date": "2026-10-09",
+    "changes": [
+      {
+        "da": "Bilsiden viser standardplanen fra EV Ledger (den plan der kører, når kablet sættes i): den første knap er standardplanen (fx Fast tid) markeret med en stjerne, og en linje viser standardplanen og hvilken midlertidig plan der kører, før den går tilbage. (Claude AI)",
+        "en": "The car page shows EV Ledger's default plan (the plan that runs when the cable goes in): the first button is the default plan (for example Fixed time) marked with a star, and a line shows the default plan and which temporary plan runs before it returns."
+      }
+    ]
+  },
+  {
     "version": "20261009-1",
     "tag": "v0.8.71",
     "date": "2026-10-09",

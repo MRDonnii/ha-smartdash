@@ -315,6 +315,7 @@
   // Car page: smart charging (Claude AI, 2026-10-09).
   Object.assign(en, {
     "Smart opladning": "Smart charging", "Lad nu": "Charge now", "Tryk igen": "Tap again",
+    "Fast tid": "Fixed time", "Prisloft": "Price cap", "Standardplan": "Default plan", "tilbage hertil efter": "back to it after",
     "Ingen planlagt opladning": "No charging planned", "Kun plan": "Plan only", "Manuel": "Manual",
     "Anden bil i laderen": "Another car at the charger", "Ukendt": "Unknown", "Lader": "Charging",
     "Stoppet af bil/app": "Stopped by the car or app", "Laderen svarer ikke": "Charger not responding",

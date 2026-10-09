@@ -1,3 +1,7 @@
+## 0.8.72
+
+- Bilsiden viser standardplanen fra EV Ledger (den plan der kører, når kablet sættes i): den første knap er standardplanen (fx Fast tid) markeret med en stjerne, og en linje viser standardplanen og hvilken midlertidig plan der kører, før den går tilbage. (Claude AI)
+
 ## 0.8.71
 
 - Bilsiden kan vise og styre smart opladning: vælg en ladeplan-entitet (fx EV Ledgers "Ladeplan") under Administration → Bil, så viser siden status, næste ladeperiode og pris og knapperne Billigst, Lad nu og Pause. Et skift kræver et ekstra tryk at bekræfte, så man ikke starter opladning ved en fejl. Oversigten viser bilens eget navn. (Claude AI)

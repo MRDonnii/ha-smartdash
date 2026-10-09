@@ -21,7 +21,12 @@
   // key, with the English entity ID suffixes as the fallback when the registry has no keys.
   const SMART_ROLES = { charge_status: "sensor._charge_status", next_charge_start: "sensor._next_charge_start",
     next_charge_end: "sensor._next_charge_end", planned_cost: "sensor._planned_charge_cost" };
-  const SMART_MODES = [["smart", "Billigst"], ["now", "Lad nu"], ["off", "Pause"]];
+  const SMART_LABELS = { smart: "Billigst", fixed: "Fast tid", price_cap: "Prisloft", now: "Lad nu", off: "Pause", manual: "Manuel" };
+  // The buttons: the default plan (what runs when the cable goes in, and what other plans return to), Charge now and Pause.
+  function smartModes(defaultMode) {
+    const base = SMART_LABELS[defaultMode] ? defaultMode : "smart";
+    return base === "now" ? ["now", "smart", "off"] : base === "off" ? ["smart", "now", "off"] : [base, "now", "off"];
+  }
   const SMART_STATUS = {
     plan_only: "Kun plan", manual: "Manuel", disconnected: "Ikke tilsluttet", other_car: "Anden bil i laderen",
     unknown: "Ukendt", charging: "Lader", stopped_externally: "Stoppet af bil/app", not_responding: "Laderen svarer ikke",
@@ -67,14 +72,21 @@
     const cost = Number(stateOf(ids.planned_cost)?.state);
     const unit = stateOf(ids.planned_cost)?.attributes?.unit_of_measurement || "kr";
     const plan = start && end ? `${start}–${end}${Number.isFinite(cost) ? ` · ${cost.toFixed(2).replace(".", ",")} ${escapeHtml(unit)}` : ""}` : "Ingen planlagt opladning";
-    const buttons = SMART_MODES.map(([key, label]) => {
+    const defaultMode = stateOf(ids.mode)?.attributes?.default_mode;
+    const buttons = smartModes(defaultMode).map((key) => {
       const armed = smartArmed === key;
-      return `<button type="button" class="beast-security-action-btn${mode === key ? " is-active" : ""}${armed ? " is-armed" : ""}" data-car-mode="${key}" aria-pressed="${mode === key}">${armed ? "Tryk igen" : label}</button>`;
+      const isDefault = key === defaultMode;
+      return `<button type="button" class="beast-security-action-btn${mode === key ? " is-active" : ""}${armed ? " is-armed" : ""}${isDefault ? " is-default" : ""}" data-car-mode="${key}" aria-pressed="${mode === key}"${isDefault ? ' title="Standardplan"' : ""}>${armed ? "Tryk igen" : SMART_LABELS[key]}</button>`;
     }).join("");
+    const temporary = SMART_LABELS[defaultMode] && mode && mode !== defaultMode && mode !== "manual";
+    const defaultLine = SMART_LABELS[defaultMode]
+      ? `<div class="beast-car-smart-default"><span>Standardplan</span><strong>${SMART_LABELS[defaultMode]}</strong>${temporary ? `<span>tilbage hertil efter</span><strong>${SMART_LABELS[mode] || escapeHtml(mode)}</strong>` : ""}</div>`
+      : "";
     return `
       <div class="beast-car-smart">
         <div class="beast-car-smart-head"><span>Smart opladning</span><strong>${escapeHtml(SMART_STATUS[statusKey] || statusKey || "–")}</strong></div>
         <div class="beast-car-smart-plan">${plan}</div>
+        ${defaultLine}
         <div class="beast-car-smart-actions">${buttons}</div>
       </div>
     `;
