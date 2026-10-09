@@ -1,5 +1,16 @@
 [
   {
+    "version": "20261009-1",
+    "tag": "v0.8.71",
+    "date": "2026-10-09",
+    "changes": [
+      {
+        "da": "Bilsiden kan vise og styre smart opladning: vælg en ladeplan-entitet (fx EV Ledgers \"Ladeplan\") under Administration → Bil, så viser siden status, næste ladeperiode og pris og knapperne Billigst, Lad nu og Pause. Et skift kræver et ekstra tryk at bekræfte, så man ikke starter opladning ved en fejl. Oversigten viser bilens eget navn. (Claude AI)",
+        "en": "The car page can show and control smart charging: choose a charge plan entity (for example EV Ledger's \"Charge mode\") under Administration → Car, and the page shows the status, the next charging period and its price, and the buttons Cheapest, Charge now and Pause. A change needs a second tap to confirm, so charging is never started by mistake. The overview shows the car's own name."
+      }
+    ]
+  },
+  {
     "version": "20261008-1",
     "tag": "v0.8.70",
     "date": "2026-10-08",

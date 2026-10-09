@@ -19,6 +19,9 @@
   let MAIL_IMAGE_FORHAVEN_ID = null;
   let CAR_BATTERY_ID = null;
   let CAR_RANGE_ID = null;
+  let CAR_DEVICE_ID = null;
+  // The car's own name from its device (looked up when drawn: the registry may load after the config).
+  const carLabel = () => { const device = CAR_DEVICE_ID ? BeastRegistry.getDevice(CAR_DEVICE_ID) : null; return device?.name_by_user || device?.name || "Elbil"; };
   let CAR_CHARGING_ID = null;
   let POOL_TEMPERATURE_ID = null;
   let LOCKS = [];
@@ -286,6 +289,7 @@
     MAIL_IMAGE_CARPORT_ID = app.mailImageCarport;
     MAIL_IMAGE_FORHAVEN_ID = app.mailImageForhaven;
     CAR_BATTERY_ID = car.battery; CAR_RANGE_ID = car.range; CAR_CHARGING_ID = car.charging;
+    CAR_DEVICE_ID = car.sourceDevice || null;
     POOL_TEMPERATURE_ID = pool.waterTemp;
     LOCK_IDS = Array.isArray(security.locks) ? security.locks.filter(Boolean) : [];
     DOOR_IDS = Array.isArray(security.openingSensors) ? security.openingSensors.filter(Boolean) : [];
@@ -2221,7 +2225,7 @@
       return { meta: periodMeta, body: `
         <div class="beast-ov-focus-grid">
           <button type="button" data-smart-nav="waste"><span>${BeastCore.icon("calendar", { size: 19 })}</span><div><small>Næste aftale</small><strong>${appointments[0] ? escapeHtml(appointments[0].label) : "Dagen er fri"}</strong><em>${appointments[0] ? escapeHtml(formatCompactDate(appointments[0].date)) : "Ingen kommende aftaler"}</em></div></button>
-          <button type="button" data-smart-nav="car"><span>${BeastCore.icon("car", { size: 19 })}</span><div><small>Transport</small><strong>Energitte ${Number.isFinite(battery) ? Math.round(battery) + "%" : "–"}</strong><em>${Number.isFinite(range) ? Math.round(range) + " km rækkevidde" : "Klar til afgang"}</em></div></button>
+          <button type="button" data-smart-nav="car"><span>${BeastCore.icon("car", { size: 19 })}</span><div><small>Transport</small><strong>${escapeHtml(carLabel())} ${Number.isFinite(battery) ? Math.round(battery) + "%" : "–"}</strong><em>${Number.isFinite(range) ? Math.round(range) + " km rækkevidde" : "Klar til afgang"}</em></div></button>
           ${appointments[1] ? `<button type="button" data-smart-nav="waste"><span>${BeastCore.icon("calendar", { size: 19 })}</span><div><small>Derefter</small><strong>${escapeHtml(appointments[1].label)}</strong><em>${escapeHtml(formatCompactDate(appointments[1].date))}</em></div></button>` : `<button type="button" data-smart-nav="energy"><span>${BeastCore.icon("bolt", { size: 19 })}</span><div><small>Strøm lige nu</small><strong>${escapeHtml(BeastHaSocket.getState(PRICE_ENTITY_ID)?.state || "–")} kr/kWh</strong><em>Se dagens bedste timer</em></div></button>`}
         </div>` };
     }

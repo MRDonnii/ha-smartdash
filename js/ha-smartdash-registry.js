@@ -41,6 +41,7 @@ const BeastRegistry = (() => {
         originalName: entity.original_name,
         name: entity.name,
         platform: entity.platform,
+        translationKey: entity.translation_key || null,
         deviceId: entity.device_id || null,
         configEntryId: entity.config_entry_id || null,
         areaId: areaId || null

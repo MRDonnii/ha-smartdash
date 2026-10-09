@@ -12,8 +12,96 @@
       doors: config.doorsOpen, windows: config.windowsOpen, locationTracker: config.locationTracker,
       lock: config.lock, odometer: config.odometer, insideTemp: config.insideTemp, outsideTemp: config.outsideTemp,
       chargingFinishAt: config.chargingFinishAt, energyAdded: config.energyAdded, tpmsFl: config.tpmsFl,
-      tpmsFr: config.tpmsFr, tpmsRl: config.tpmsRl, tpmsRr: config.tpmsRr
+      tpmsFr: config.tpmsFr, tpmsRl: config.tpmsRl, tpmsRr: config.tpmsRr,
+      chargeMode: config.chargeMode
     };
+  }
+
+  // Smart charging (e.g. EV Ledger's charge plans): the plan select's siblings on the same device, found by translation
+  // key, with the English entity ID suffixes as the fallback when the registry has no keys.
+  const SMART_ROLES = { charge_status: "sensor._charge_status", next_charge_start: "sensor._next_charge_start",
+    next_charge_end: "sensor._next_charge_end", planned_cost: "sensor._planned_charge_cost" };
+  const SMART_MODES = [["smart", "Billigst"], ["now", "Lad nu"], ["off", "Pause"]];
+  const SMART_STATUS = {
+    plan_only: "Kun plan", manual: "Manuel", disconnected: "Ikke tilsluttet", other_car: "Anden bil i laderen",
+    unknown: "Ukendt", charging: "Lader", stopped_externally: "Stoppet af bil/app", not_responding: "Laderen svarer ikke",
+    paused: "På pause", starting: "Starter", done: "Mål nået", waiting: "Venter på billig strøm",
+    awaiting_confirmation: "Venter på bekræftelse"
+  };
+  let smartArmed = null;
+  let smartArmTimer = null;
+  const subscribed = new Set();
+
+  function smartIds() {
+    const mode = IDS.chargeMode;
+    if (!mode) return null;
+    const ids = { mode };
+    const meta = BeastRegistry.getEntityMeta?.(mode);
+    if (meta?.deviceId) {
+      BeastRegistry.getDeviceEntityIds(meta.deviceId).forEach((id) => {
+        const other = BeastRegistry.getEntityMeta(id);
+        if (other?.platform === meta.platform && SMART_ROLES[other.translationKey]) ids[other.translationKey] = id;
+      });
+    }
+    const object = mode.split(".")[1] || "";
+    const prefix = object.endsWith("_charge_mode") ? object.slice(0, -"_charge_mode".length) : object;
+    Object.entries(SMART_ROLES).forEach(([role, pattern]) => {
+      if (ids[role]) return;
+      const [domain, end] = pattern.split("._");
+      ids[role] = `${domain}.${prefix}_${end}`;
+    });
+    return ids;
+  }
+
+  function clock(value) {
+    const date = new Date(value);
+    return Number.isNaN(date.getTime()) ? null : date.toLocaleTimeString(window.HASmartdashI18n?.locale || "da-DK", { hour: "2-digit", minute: "2-digit" });
+  }
+
+  function buildSmartCharge(ids) {
+    if (!ids || !stateOf(ids.mode)) return "";
+    const mode = stateOf(ids.mode)?.state;
+    const statusKey = stateOf(ids.charge_status)?.state;
+    const start = clock(stateOf(ids.next_charge_start)?.state);
+    const end = clock(stateOf(ids.next_charge_end)?.state);
+    const cost = Number(stateOf(ids.planned_cost)?.state);
+    const unit = stateOf(ids.planned_cost)?.attributes?.unit_of_measurement || "kr";
+    const plan = start && end ? `${start}–${end}${Number.isFinite(cost) ? ` · ${cost.toFixed(2).replace(".", ",")} ${escapeHtml(unit)}` : ""}` : "Ingen planlagt opladning";
+    const buttons = SMART_MODES.map(([key, label]) => {
+      const armed = smartArmed === key;
+      return `<button type="button" class="beast-security-action-btn${mode === key ? " is-active" : ""}${armed ? " is-armed" : ""}" data-car-mode="${key}" aria-pressed="${mode === key}">${armed ? "Tryk igen" : label}</button>`;
+    }).join("");
+    return `
+      <div class="beast-car-smart">
+        <div class="beast-car-smart-head"><span>Smart opladning</span><strong>${escapeHtml(SMART_STATUS[statusKey] || statusKey || "–")}</strong></div>
+        <div class="beast-car-smart-plan">${plan}</div>
+        <div class="beast-car-smart-actions">${buttons}</div>
+      </div>
+    `;
+  }
+
+  // Changing the plan can start or stop charging, so it takes a second tap within 4 seconds.
+  function chooseMode(mode, ids) {
+    if (!ids || stateOf(ids.mode)?.state === mode) return;
+    if (smartArmed !== mode) {
+      smartArmed = mode;
+      window.clearTimeout(smartArmTimer);
+      smartArmTimer = window.setTimeout(() => { smartArmed = null; render(); }, 4000);
+      render();
+      return;
+    }
+    smartArmed = null;
+    window.clearTimeout(smartArmTimer);
+    callService("select", "select_option", ids.mode, { option: mode }).then(() => window.setTimeout(render, 400));
+    render();
+  }
+
+  function subscribeSmart(ids, callback) {
+    Object.values(ids || {}).forEach((id) => {
+      if (!id || subscribed.has(id)) return;
+      subscribed.add(id);
+      BeastHaSocket.subscribeEntity(id, callback);
+    });
   }
 
   let containerEl = null;
@@ -91,6 +179,7 @@
     const shiftLabel = { P: "Parkeret", D: "Kører", R: "Bakker", N: "Frigear" }[shift] || shift;
     const chargerPower = num(IDS.chargerPower, 1);
     const finishState = stateOf(IDS.chargingFinishAt);
+    const smart = smartIds();
     const finishLabel = finishState && finishState.state && !Number.isNaN(Date.parse(finishState.state))
       ? new Date(finishState.state).toLocaleTimeString(window.HASmartdashI18n?.locale || "da-DK", { hour: "2-digit", minute: "2-digit" }) : null;
 
@@ -136,10 +225,14 @@
           id: "beastCarDoorTile",
           extra: `<div class="beast-stat-tile-actions"><button type="button" class="beast-security-action-btn" id="beastCarLockBtn">${locked ? "Lås op" : "Lås"}</button></div>`
         })}
+        ${buildSmartCharge(smart)}
         ${buildTpms()}
       </div>
     `;
     wireCarLayout();
+    containerEl.querySelectorAll("[data-car-mode]").forEach((button) => {
+      button.addEventListener("click", () => chooseMode(button.dataset.carMode, smart));
+    });
 
     document.getElementById("beastCarLockBtn")?.addEventListener("click", () => {
       callService("lock", locked ? "unlock" : "lock", IDS.lock).then(() => window.setTimeout(render, 400));
@@ -185,7 +278,10 @@
 
     BeastHaSocket.onStatusChange((status) => { if (status === "connected") render(); });
     const debouncedRender = BeastCore.stableUpdater(containerEl, render, 300);
-    Object.values(IDS).forEach((id) => BeastHaSocket.subscribeEntity(id, debouncedRender));
+    Object.values(IDS).forEach((id) => { if (id) { subscribed.add(id); BeastHaSocket.subscribeEntity(id, debouncedRender); } });
+    subscribeSmart(smartIds(), debouncedRender);
+    // The registry may load after the panel: subscribe to the plan's siblings again once it has.
+    Promise.resolve(BeastRegistry.ensureLoaded?.()).then(() => { subscribeSmart(smartIds(), debouncedRender); render(); }).catch(() => {});
   }
 
   BeastCore.registerPanel("car", "beastCarZone", init);

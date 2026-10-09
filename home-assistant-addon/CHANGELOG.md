@@ -1,3 +1,7 @@
+## 0.8.71
+
+- Bilsiden kan vise og styre smart opladning: vælg en ladeplan-entitet (fx EV Ledgers "Ladeplan") under Administration → Bil, så viser siden status, næste ladeperiode og pris og knapperne Billigst, Lad nu og Pause. Et skift kræver et ekstra tryk at bekræfte, så man ikke starter opladning ved en fejl. Oversigten viser bilens eget navn. (Claude AI)
+
 ## 0.8.70
 
 - Vejrsiden kan vise et radarbillede fra en billed-entitet (fx en national radar med lyn) i stedet for webkortene for nedbør og lyn, vejrvarsler øverst i "Aktuelt vejr" og et nyt kort "Målinger" med faner for målt nu, nedbør og lyn, risiko, i dag og vand og hav. Alt vælges under Administration → Vejr; uden valg er siden uændret. (Claude AI)

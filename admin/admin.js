@@ -105,8 +105,8 @@
       { key: "districtPlacement", label: "Placering af fjernvarme", type: "select", choices: [["sidebar", "Højre side"], ["pumps", "Ved varmepumper"]] },
       { key: "ventilationSensors", label: "Dantherm-sensorer", type: "multi", domain: "sensor", hints: ["dantherm", "hch5"], filterHints: true }
     ]},
-    { id: "car", title: "Bil", description: "Energitte: batteri, opladning, lås, lokation, temperatur og dæktryk.", fields: [
-      { key: "sourceDevice", label: "Bil / integration", type: "device", sourceDomains: ["sensor", "binary_sensor", "device_tracker", "lock"], deviceHints: ["tesla", "car", "bil", "energitte"] },
+    { id: "car", title: "Bil", description: "Elbil: batteri, opladning, smart opladning, lås, lokation, temperatur og dæktryk.", fields: [
+      { key: "sourceDevice", label: "Bil / integration", type: "device", sourceDomains: ["sensor", "binary_sensor", "device_tracker", "lock"], deviceHints: ["tesla", "car", "bil"] },
       { key: "battery", label: "Batteri", type: "single", domain: "sensor", relatedTo: ["battery"] }, { key: "range", label: "Rækkevidde", type: "single", domain: "sensor", relatedTo: ["battery"] },
       { key: "shiftState", label: "Gear-/kørestatus", type: "single", domain: "sensor" },
       { key: "charging", label: "Oplader", type: "single", domain: "binary_sensor" }, { key: "pluggedIn", label: "Ladekabel tilsluttet", type: "single", domain: "binary_sensor" },
@@ -116,6 +116,7 @@
       { key: "outsideTemp", label: "Temperatur ude", type: "single", domain: "sensor" }, { key: "chargerPower", label: "Ladeeffekt", type: "single", domain: "sensor" },
       { key: "chargingFinishAt", label: "Forventet færdigopladning", type: "single", domain: "sensor" },
       { key: "energyAdded", label: "Tilført energi", type: "single", domain: "sensor" },
+      { key: "chargeMode", label: "Ladeplan (smart opladning, fx EV Ledger)", type: "single", domain: "select", hints: ["charge_mode", "ladeplan"] },
       { key: "tpmsFl", label: "Dæktryk · for venstre", type: "single", domain: "sensor" }, { key: "tpmsFr", label: "Dæktryk · for højre", type: "single", domain: "sensor" },
       { key: "tpmsRl", label: "Dæktryk · bag venstre", type: "single", domain: "sensor" }, { key: "tpmsRr", label: "Dæktryk · bag højre", type: "single", domain: "sensor" }
     ]},

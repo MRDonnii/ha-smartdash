@@ -312,6 +312,17 @@
   };
   Object.assign(en, dashboardEn);
   Object.assign(en, adminEn);
+  // Car page: smart charging (Claude AI, 2026-10-09).
+  Object.assign(en, {
+    "Smart opladning": "Smart charging", "Lad nu": "Charge now", "Tryk igen": "Tap again",
+    "Ingen planlagt opladning": "No charging planned", "Kun plan": "Plan only", "Manuel": "Manual",
+    "Anden bil i laderen": "Another car at the charger", "Ukendt": "Unknown", "Lader": "Charging",
+    "Stoppet af bil/app": "Stopped by the car or app", "Laderen svarer ikke": "Charger not responding",
+    "På pause": "Paused", "Starter": "Starting", "Mål nået": "Target reached",
+    "Venter på billig strøm": "Waiting for cheap power", "Venter på bekræftelse": "Waiting for confirmation",
+    "Ladeplan (smart opladning, fx EV Ledger)": "Charge plan (smart charging, e.g. EV Ledger)",
+    "Elbil: batteri, opladning, smart opladning, lås, lokation, temperatur og dæktryk.": "Electric car: battery, charging, smart charging, lock, location, temperature and tyre pressure."
+  });
 
   function currentLanguage() {
     const stored = typeof BeastLocalSettings !== "undefined" ? BeastLocalSettings.get("language", "en") : "en";
