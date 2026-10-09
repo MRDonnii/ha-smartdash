@@ -233,9 +233,9 @@
           icon: locked ? "lock" : "unlock",
           label: "Døre & ruder",
           value: doorsOpen ? "Åbne" : "Lukkede",
-          meta: windowsOpen ? "Ruder åbne" : "Ruder lukket",
-          id: "beastCarDoorTile",
-          extra: `<div class="beast-stat-tile-actions"><button type="button" class="beast-security-action-btn" id="beastCarLockBtn">${locked ? "Lås op" : "Lås"}</button></div>`
+          // The lock is shown, not operated: the car's own controls belong in Home Assistant's own car page.
+          meta: [locked ? "Låst" : "Ulåst", windowsOpen ? "Ruder åbne" : "Ruder lukket"].join(" · "),
+          id: "beastCarDoorTile"
         })}
         ${buildSmartCharge(smart)}
         ${buildTpms()}
@@ -246,9 +246,6 @@
       button.addEventListener("click", () => chooseMode(button.dataset.carMode, smart));
     });
 
-    document.getElementById("beastCarLockBtn")?.addEventListener("click", () => {
-      callService("lock", locked ? "unlock" : "lock", IDS.lock).then(() => window.setTimeout(render, 400));
-    });
   }
 
   function wireCarLayout() {

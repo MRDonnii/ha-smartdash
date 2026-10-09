@@ -1,3 +1,7 @@
+## 0.8.73
+
+- Bilsiden viser låsens tilstand (Låst / Ulåst) i stedet for en knap: bilens egne styringer (lås, klima osv.) hører til i Home Assistants egen bilside. Ladeplanerne kan stadig vælges med et ekstra tryk. (Claude AI)
+
 ## 0.8.72
 
 - Bilsiden viser standardplanen fra EV Ledger (den plan der kører, når kablet sættes i): den første knap er standardplanen (fx Fast tid) markeret med en stjerne, og en linje viser standardplanen og hvilken midlertidig plan der kører, før den går tilbage. (Claude AI)

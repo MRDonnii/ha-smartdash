@@ -1,5 +1,16 @@
 [
   {
+    "version": "20261010-1",
+    "tag": "v0.8.73",
+    "date": "2026-10-10",
+    "changes": [
+      {
+        "da": "Bilsiden viser låsens tilstand (Låst / Ulåst) i stedet for en knap: bilens egne styringer (lås, klima osv.) hører til i Home Assistants egen bilside. Ladeplanerne kan stadig vælges med et ekstra tryk. (Claude AI)",
+        "en": "The car page shows the lock state (Locked / Unlocked) instead of a button: the car's own controls (lock, climate and so on) belong on Home Assistant's own car page. The charge plans can still be chosen with a second tap."
+      }
+    ]
+  },
+  {
     "version": "20261009-2",
     "tag": "v0.8.72",
     "date": "2026-10-09",
