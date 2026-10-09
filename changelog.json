@@ -1,5 +1,16 @@
 [
   {
+    "version": "20261010-4",
+    "tag": "v0.8.76",
+    "date": "2026-10-10",
+    "changes": [
+      {
+        "da": "Bilsidens dæktrykpanel viser bilens navn (fx EnerGitte) i stedet for \"Elbil\", også når enhedslisten hentes efter siden. (Claude AI)",
+        "en": "The car page's tyre panel shows the car's name (e.g. EnerGitte) instead of \"Elbil\", also when the device list loads after the page."
+      }
+    ]
+  },
+  {
     "version": "20261010-3",
     "tag": "v0.8.75",
     "date": "2026-10-10",

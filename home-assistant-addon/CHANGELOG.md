@@ -1,3 +1,7 @@
+## 0.8.76
+
+- Bilsidens dæktrykpanel viser bilens navn (fx EnerGitte) i stedet for "Elbil", også når enhedslisten hentes efter siden. (Claude AI)
+
 ## 0.8.75
 
 - Bilsidens dæktryk vises i bar (omregnet fra sensorens egen enhed) ligesom på Home Assistants Tesla-side, og bilens navn bruger enhedens eget navn, når det er ændret. (Claude AI)

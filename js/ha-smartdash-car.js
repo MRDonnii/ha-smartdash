@@ -1,11 +1,15 @@
 (function () {
   let IDS = {};
-  let VEHICLE_LABEL = "Elbil";
+  let DEVICE_ID = null;
+  // Looked up when drawn: the device registry may still be loading when the config is applied.
+  const vehicleLabel = () => {
+    const device = DEVICE_ID ? BeastRegistry.getDevice(DEVICE_ID) : null;
+    return device?.name_by_user || device?.name || "Elbil";
+  };
 
   function applyConfig() {
     const config = BeastConfig.get("panels.car") || {};
-    const configuredDevice = config.sourceDevice ? BeastRegistry.getDevice(config.sourceDevice) : null;
-    VEHICLE_LABEL = configuredDevice?.name_by_user || configuredDevice?.name || "Elbil";
+    DEVICE_ID = config.sourceDevice || null;
     IDS = {
       battery: config.battery, range: config.range, shiftState: config.shiftState, chargerPower: config.chargerPower,
       chargingFinish: config.chargingFinishAt, charging: config.charging, pluggedIn: config.pluggedIn,
@@ -160,7 +164,7 @@
         <div class="beast-tesla-tpms-head">
           <div>
             <span>Dæktryk</span>
-            <strong>${VEHICLE_LABEL}</strong>
+            <strong>${vehicleLabel()}</strong>
           </div>
           <small>Live · bar</small>
         </div>
