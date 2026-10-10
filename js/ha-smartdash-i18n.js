@@ -245,7 +245,7 @@
     "Sikkerhedsoverblik": "Security overview", "Energioverblik": "Energy overview", "Rumkort": "Room card",
     "Varmepumpe": "Heat pump", "Fjernvarme": "District heating", "Døre og vinduer": "Doors and windows",
     "Samlet sikkerhedsstatus": "Overall security status", "Alarmsystemer": "Alarm systems", "Indgange og låse": "Entrances and locks",
-    "Elpris time for time": "Hourly electricity price", "Forbrug 24 timer": "24-hour usage", "Energiassistent": "Energy assistant",
+    "Elpris time for time": "Hourly electricity price", "Elpris kvarter for kvarter": "Electricity price by quarter", "Forbrug 24 timer": "24-hour usage", "Energiassistent": "Energy assistant",
     "Enhedsforbrug": "Device usage", "Temperaturhistorik": "Temperature history", "Poolstatus og styring": "Pool status and controls",
     "Poolkamera": "Pool camera", "Dæktryk": "Tire pressure", "Bilstatus": "Car status", "Timeudsigt": "Hourly forecast",
     "Radar eller vejrbillede": "Radar or weather image", "Kalenderoversigt": "Calendar overview",

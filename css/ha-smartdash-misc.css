@@ -957,6 +957,10 @@
   box-shadow: 0 0 14px rgba(255,211,110,.42), 0 10px 22px rgba(240,112,28,.28);
 }
 .beast-energy-hour.is-min i { box-shadow: 0 0 18px rgba(47,224,168,.42); }
+/* Quarter prices: 96 thin bars. */
+.beast-energy-hour-chart.is-dense { gap: 1px; }
+.beast-energy-hour-chart.is-dense .beast-energy-hour i { border-radius: 3px 3px 1px 1px; min-height: 4px; box-shadow: none; }
+.beast-energy-hour-chart.is-dense .beast-energy-hour small { overflow: visible; white-space: nowrap; }
 .beast-energy-hour.is-max i { box-shadow: 0 0 18px rgba(255,93,122,.42); }
 
 .beast-sparkline {

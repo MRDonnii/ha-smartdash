@@ -157,6 +157,7 @@
       { key: "priceSensor", label: "Elpris nu", type: "single", domain: "sensor", deviceClasses: ["monetary"], hints: ["price", "pris"] },
       { key: "priceForecastSensor", label: "Prisprognose (valgfri)", type: "single", domain: "sensor", hints: ["forecast", "prognose", "pris"] },
       { key: "tomorrowAvailableSensor", label: "I morgen tilgængelig (valgfri)", type: "single", domain: "binary_sensor", hints: ["tomorrow", "morgen"] },
+      { key: "priceResolution", label: "Prisopløsning – kvarter/time (valgfri, fx EV Ledgers)", type: "single", domain: "select", hints: ["price_resolution", "prisopløsning", "resolution"] },
       { key: "totalEnergySensor", label: "Energi i dag", type: "single", domain: "sensor", deviceClasses: ["energy"] },
       { key: "totalCostSensor", label: "Pris i dag", type: "single", domain: "sensor", deviceClasses: ["monetary"] },
       { key: "nowMeasuredSensor", label: "\"Nu\" · målt total (valgfri)", type: "single", domain: "sensor", hints: ["malt", "total", "measured"] },

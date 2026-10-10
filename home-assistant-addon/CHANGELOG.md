@@ -1,3 +1,7 @@
+## 0.8.77
+
+- Energisiden viser elpriser i kvarterer eller hele timer: med "Prisopløsning" (Administration → Energi, fx EV Ledgers vælger) på kvarter vises en søjle pr. kvarter; ellers bliver kvarterpriser til timer med timens gennemsnit. "Nu", billigst/dyrest og "Bedste 3 timer" følger med. (Claude AI)
+
 ## 0.8.76
 
 - Bilsidens dæktrykpanel viser bilens navn (fx EnerGitte) i stedet for "Elbil", også når enhedslisten hentes efter siden. (Claude AI)

@@ -1,5 +1,16 @@
 [
   {
+    "version": "20261010-5",
+    "tag": "v0.8.77",
+    "date": "2026-10-10",
+    "changes": [
+      {
+        "da": "Energisiden viser elpriser i kvarterer eller hele timer: med \"Prisopløsning\" (Administration → Energi, fx EV Ledgers vælger) på kvarter vises en søjle pr. kvarter; ellers bliver kvarterpriser til timer med timens gennemsnit. \"Nu\", billigst/dyrest og \"Bedste 3 timer\" følger med. (Claude AI)",
+        "en": "The energy page shows electricity prices in quarters or whole hours: with \"Price resolution\" (Administration → Energy, e.g. EV Ledger's select) on quarter there is one bar per quarter; otherwise quarter prices become hours with the hour's mean. \"Now\", cheapest/dearest and \"Best 3 hours\" follow."
+      }
+    ]
+  },
+  {
     "version": "20261010-4",
     "tag": "v0.8.76",
     "date": "2026-10-10",
