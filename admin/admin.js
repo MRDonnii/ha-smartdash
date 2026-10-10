@@ -998,7 +998,7 @@
       wideBottom:  { w:5, h:1, tabletW:2, tabletH:2, portraitH:2 },
     };
     const cards = (BeastConfig.get("overviewCards") || []).length ? BeastConfig.get("overviewCards") : OVERVIEW_SLOTS.map(([key]) => { const size = legacySizes[key]; return { id:key, ...(legacy[key] || {type:"empty"}), desktop:{w:size.w,h:size.h}, tablet:{w:size.tabletW,h:size.tabletH}, portrait:{w:1,h:size.portraitH} }; }).filter((card) => card.type !== "empty");
-    const sizeOptions = (selected,max) => Array.from({length:max},(_,i)=>`<option value="${i+1}"${Number(selected)===i+1?" selected":""}>${i+1}</option>`).join("");
+    const sizeOptions = (selected,max) => { const safeMax = Math.max(0, Math.min(100, Number.parseInt(max,10) || 0)); const safeSelected = Number.parseInt(selected,10); return Array.from({length:safeMax},(_,i)=>`<option value="${escapeHtml(String(i+1))}"${safeSelected===i+1?" selected":""}>${escapeHtml(String(i+1))}</option>`).join(""); };
     const row = (card,index) => {
         const key = card.id || `card_${index}`;
         const entitySelectId = `admin_overview_card_${key}_entity`;
