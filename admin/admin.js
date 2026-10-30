@@ -1233,7 +1233,7 @@
       </div>
       <div class="admin-card"><div class="admin-card-head"><div><h2>Automatisk backup og SMB</h2><p>Gem lokalt eller på en SMB-share, som værten har monteret under <code>/config/backup-targets/&lt;navn&gt;</code>. Skrivbare shares dukker automatisk op under Placering; SMB-brugernavn og adgangskode gemmes aldrig i dashboardet.</p></div></div>
         <div class="admin-grid"><label class="admin-field"><span>Automatisk backup</span><select id="adminBackupEnabled"><option value="0">Fra</option><option value="1">Til</option></select></label><label class="admin-field"><span>Interval</span><select id="adminBackupFrequency"><option value="daily">Dagligt</option><option value="weekly">Ugentligt</option></select></label><label class="admin-field"><span>Placering</span><select id="adminBackupTarget"><option value="local">Lokal backupmappe</option></select></label></div>
-        <div class="admin-actions"><button class="admin-save" type="button" data-save-backup>Gem auto-backup</button><button type="button" data-run-backup>Lav backup nu</button><span class="admin-save-state" data-backup-state>Henter status…</span></div>
+        <div class="admin-actions"><button class="admin-save" type="button" data-save-backup>Gem auto-backup</button><button type="button" class="beast-btn" data-run-backup>Lav backup nu</button><span class="admin-save-state" data-backup-state>Henter status…</span></div>
       </div>
       <div class="admin-card"><div class="admin-card-head"><div><h2>Gemte backups</h2><p>Backups fra både den lokale mappe og monterede SMB-shares kan hentes direkte herfra.</p></div><button type="button" class="beast-btn" data-reload-backups>Opdatér liste</button></div><div class="admin-backup-list" id="adminBackupList"><p class="admin-empty">Henter backups…</p></div></div>
       <div class="admin-card admin-smb-help"><div class="admin-card-head"><div><h2>Sådan tilføjes en SMB-share</h2><p>Montér netværksdrevet på serveren eller som et Docker-bind mount. Eksempel: <code>//NAS/Smartdash</code> → <code>/config/backup-targets/nas</code>. Genåbn derefter denne fane.</p></div></div><p>Det holder netværkslogin uden for browseren og gør backup kompatibel med Unraid, Docker og almindelig Linux. Den fulde vejledning findes i <code>deploy/SMB-BACKUP.md</code>.</p></div>
@@ -1881,7 +1881,7 @@
         ${BeastCore.statTile({ icon:"shield", label:t("Automatisk lås", "Automatic lock"), value:autoLockOn ? t("Til ved fuld sikring", "On when fully armed") : t("Fra", "Off"), id:"adminAutoLockTile", extra:`<div class="beast-stat-tile-actions"><button type="button" class="beast-security-action-btn${autoLockOn ? " is-disarm" : ""}" id="adminAutoLockBtn" ${hasPin ? "" : "disabled"}>${autoLockOn ? t("Slå fra", "Turn off") : t("Slå til", "Turn on")}</button></div>` })}
         ${BeastCore.statTile({ icon:"moon", label:t("Skærm ved alarm", "Display after alarm"), value:alarmScreenOffOn ? t("Sluk efter lås", "Switch off after lock") : t("Forbliv tændt", "Stay on"), id:"adminAlarmScreenOffTile", extra:`<div class="beast-stat-tile-actions"><button type="button" class="beast-security-action-btn${alarmScreenOffOn ? " is-disarm" : ""}" id="adminAlarmScreenOffBtn" ${hasPin ? "" : "disabled"}>${alarmScreenOffOn ? t("Behold skærmen tændt", "Keep display on") : t("Sluk skærmen", "Switch display off")}</button></div>` })}
         ${BeastCore.statTile({ icon:"lock", label:t("Lås denne skærm", "Lock this screen"), value:hasPin ? t("Klar", "Ready") : t("Kræver pinkode", "PIN required"), id:"adminLockNowTile", extra:`<div class="beast-stat-tile-actions"><button type="button" class="beast-security-action-btn" id="adminLockNowBtn" ${hasPin ? "" : "disabled"}>${t("Lås nu", "Lock now")}</button></div>` })}
-      </div><div class="admin-security-alarm-rule"><label class="admin-field"><span>${t("Alarmer der låser kiosken", "Alarms that lock the kiosk")}</span>${alarmChoices}<small>${t("Hvis blot én valgt alarm er fuldt tilkoblet, låses kiosken. Den frigives først automatisk, når alle valgte alarmer er frakoblet.", "If any selected alarm is fully armed, the kiosk locks. It is only released automatically when all selected alarms are disarmed.")}</small></label><label class="admin-field"><span>${t("Når alle alarmer er frakoblet", "When all alarms are disarmed")}</span><select id="adminAlarmUnlockMode"><option value="pin"${alarmUnlockMode === "pin" ? " selected" : ""}>${t("Behold låsen · kræv PIN ved første brug", "Keep lock · require PIN on first use")}</option><option value="disarm"${alarmUnlockMode === "disarm" ? " selected" : ""}>${t("Fjern låsen · følg normal presence-styring", "Remove lock · resume presence control")}</option></select></label><div><strong>${t("Any armed", "Any armed")}</strong><small>${t("Dashboardet låses, og den valgte kioskskærm kan slukkes bagefter.", "The dashboard locks and the selected kiosk display can switch off afterwards.")}</small><button type="button" class="beast-security-action-btn" id="adminSaveAlarmLockRule">${t("Gem alarmregel", "Save alarm rule")}</button></div></div>${hasPin ? `<div class="admin-security-recovery"><div><strong>${t("Glemt din pinkode?", "Forgot your PIN?")}</strong><p>${t("Bekræft din identitet med et nyt Home Assistant-login, og opret derefter en ny kode.", "Confirm your identity with a new Home Assistant login, then set a new code.")}</p></div><button type="button" class="beast-security-action-btn" id="adminPinRecover">${t("Nulstil med HA-login", "Reset with HA login")}</button></div>` : ""}</div>
+      </div><div class="admin-security-alarm-rule"><div class="admin-field" role="group" aria-labelledby="adminLockAlarmLabel"><span id="adminLockAlarmLabel">${t("Alarmer der låser kiosken", "Alarms that lock the kiosk")}</span>${alarmChoices}<small>${t("Hvis blot én valgt alarm er fuldt tilkoblet, låses kiosken. Den frigives først automatisk, når alle valgte alarmer er frakoblet.", "If any selected alarm is fully armed, the kiosk locks. It is only released automatically when all selected alarms are disarmed.")}</small></div><label class="admin-field"><span>${t("Når alle alarmer er frakoblet", "When all alarms are disarmed")}</span><select id="adminAlarmUnlockMode"><option value="pin"${alarmUnlockMode === "pin" ? " selected" : ""}>${t("Behold låsen · kræv PIN ved første brug", "Keep lock · require PIN on first use")}</option><option value="disarm"${alarmUnlockMode === "disarm" ? " selected" : ""}>${t("Fjern låsen · følg normal presence-styring", "Remove lock · resume presence control")}</option></select></label><div><strong>${t("Any armed", "Any armed")}</strong><small>${t("Dashboardet låses, og den valgte kioskskærm kan slukkes bagefter.", "The dashboard locks and the selected kiosk display can switch off afterwards.")}</small><button type="button" class="beast-security-action-btn" id="adminSaveAlarmLockRule">${t("Gem alarmregel", "Save alarm rule")}</button></div></div>${hasPin ? `<div class="admin-security-recovery"><div><strong>${t("Glemt din pinkode?", "Forgot your PIN?")}</strong><p>${t("Bekræft din identitet med et nyt Home Assistant-login, og opret derefter en ny kode.", "Confirm your identity with a new Home Assistant login, then set a new code.")}</p></div><button type="button" class="beast-security-action-btn" id="adminPinRecover">${t("Nulstil med HA-login", "Reset with HA login")}</button></div>` : ""}</div>
       <div class="admin-card admin-settings-group"><div class="admin-card-head"><div><h2>${t("Adgang til administration", "Access to Administration")}</h2><p>${t("Bestem om genvejen vises i dashboardet. Adminpanelet er altid tilgængeligt på", "Choose whether the shortcut appears in the dashboard. The Admin panel is always available at")} <code>/admin/</code>.</p></div></div>
         <label class="admin-security-toggle"><span><strong>${t("Vis Administration-knappen", "Show the Administration button")}</strong><small>${t("Skjul genvejen på kiosker, hvor almindelige brugere ikke skal se den.", "Hide the shortcut on kiosks where regular users should not see it.")}</small></span><input type="checkbox" id="adminShowAdminButton"${showAdminButton ? " checked" : ""}></label>
         <div class="admin-security-warning"${showAdminButton ? " hidden" : ""} id="adminHiddenAccessNote">${t("Knappen er skjult. Åbn Admin manuelt ved at skrive", "The button is hidden. Open Admin manually by entering")} <strong>/admin/</strong> ${t("efter dashboardets adresse.", "after the dashboard address.")}</div>
@@ -1919,15 +1919,32 @@
     return ({ pages:"Opret og organiser dashboardets sider ét samlet sted.", setup:"Serverforbindelse, kioskfunktioner og hændelser.", theme:"Farve, stil og lystilstand for hele dashboardet.", settings:"Maskinspecifik adfærd for netop denne kiosk eller browser.", updates:"Se hvad der er nyt, og gendan en tidligere version om nødvendigt.", "security-settings":"Lokal adgang, pinkode og beskyttelse af adminpanelet.", screensaver:t("Styrer denne skærm/browser — hver kiosk kan have sin egen tidsplan.", "Controls this screen/browser only — each kiosk can have its own schedule."), advarsler:t("Alt om post-banneret samlet ét sted — slå til/fra og vælg entities.", "Everything about the post banner in one place — turn it on/off and pick entities.") })[activeView] || "Konfigurationen gemmes centralt på serveren.";
   }
 
+  // Not scrollIntoView(): that also scrolls the window, which would fight the
+  // window.scrollTo() renderShell() does right after.
+  function keepActiveNavVisible(nav, sidebar) {
+    const active = nav?.querySelector("button.is-active");
+    if (!active || !active.offsetParent) return;
+    [nav, sidebar].forEach((scroller) => {
+      if (!scroller || scroller.scrollHeight <= scroller.clientHeight + 1) return;
+      const box = scroller.getBoundingClientRect();
+      const item = active.getBoundingClientRect();
+      const reserved = scroller === sidebar ? (scroller.querySelector(".admin-sidebar-foot")?.offsetHeight || 0) : 0;
+      if (item.top < box.top || item.bottom > box.bottom - reserved) scroller.scrollTop += (item.top - box.top) - (box.height - reserved - item.height) / 2;
+    });
+  }
+
   function renderShell(options = {}) {
     const contentScrollTop = window.scrollY;
-    const sidebarScrollTop = document.querySelector(".admin-nav")?.scrollTop || 0;
+    const navScrollTop = document.querySelector(".admin-nav")?.scrollTop || 0;
+    const sidebarScrollTop = document.querySelector(".admin-sidebar")?.scrollTop || 0;
+    const menuOpen = !options.resetContent && Boolean(document.querySelector(".admin-shell.is-menu-open"));
     const dashboardLanguage = BeastLocalSettings.get("language", "en");
     root.innerHTML = `
-      <div class="admin-shell">
+      <div class="admin-shell${menuOpen ? " is-menu-open" : ""}">
         <aside class="admin-sidebar">
           <div class="admin-brand">${brandLogoMarkup("sidebar")}<strong>Administration</strong></div>
-          <nav class="admin-nav">
+          <button type="button" class="admin-menu-toggle" data-admin-menu-toggle aria-expanded="${menuOpen}" aria-controls="adminNav">${BeastCore.icon("grid", { size: 18 })}<span>Menu</span>${BeastCore.icon("chevron-down", { size: 16 })}</button>
+          <nav class="admin-nav" id="adminNav">
             <button class="${activeView === "overview" ? "is-active" : ""}" type="button" data-view="overview">Overblik</button>
             <p class="admin-nav-section">Dashboard</p>
             <button class="${activeView === "pages" ? "is-active" : ""}" type="button" data-view="pages">Sider og navigation</button>
@@ -1956,7 +1973,10 @@
     wireUi();
     window.requestAnimationFrame(() => {
       const nav = document.querySelector(".admin-nav");
-      if (nav) nav.scrollTop = sidebarScrollTop;
+      const sidebar = document.querySelector(".admin-sidebar");
+      if (nav) nav.scrollTop = navScrollTop;
+      if (sidebar) sidebar.scrollTop = sidebarScrollTop;
+      keepActiveNavVisible(nav, sidebar);
       window.scrollTo({ top: options.resetContent ? 0 : contentScrollTop, behavior: "instant" });
     });
   }
@@ -2022,6 +2042,20 @@
       hasUnsavedPanelChanges = false;
       renderShell({ resetContent: true });
     }));
+    // On the shell, not document: wireUi() runs on every render.
+    const shell = document.querySelector(".admin-shell");
+    const menuToggle = document.querySelector("[data-admin-menu-toggle]");
+    menuToggle?.addEventListener("click", () => {
+      const open = shell.classList.toggle("is-menu-open");
+      menuToggle.setAttribute("aria-expanded", String(open));
+      if (open) keepActiveNavVisible(document.querySelector(".admin-nav"), null);
+    });
+    shell?.addEventListener("keydown", (event) => {
+      if (event.key !== "Escape" || !shell.classList.contains("is-menu-open")) return;
+      shell.classList.remove("is-menu-open");
+      menuToggle?.setAttribute("aria-expanded", "false");
+      menuToggle?.focus();
+    });
     document.querySelector("[data-open-page-manager]")?.addEventListener("click", () => {
       if (typeof window.BeastPageManager?.open === "function") window.BeastPageManager.open();
       else showToast("Sideadministrationen kunne ikke indlæses. Genindlæs Admin og prøv igen.", "error");
