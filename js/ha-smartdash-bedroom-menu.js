@@ -1,7 +1,7 @@
-// Full-screen menu page of the bedroom section. On a device with the bedroom
-// page it stands in for the hidden rail: this device's other pages (each with
-// one live state line), the bedroom's own views, screen actions and the way
-// into Administration. It is a layer over the bedroom page, which stays
+// Full-screen menu page of the bedroom section. It stands in for the rail a
+// bedroom device never shows: the bedroom's own views, screen actions and the
+// way into Administration. Page tiles only appear if the rail lists other
+// pages, which a bedroom device never does. It is a layer over the bedroom page, which stays
 // mounted underneath so closing is instant and camera streams keep running.
 window.BeastBedroom.menu = (() => {
   const B = window.BeastBedroom;
@@ -31,7 +31,9 @@ window.BeastBedroom.menu = (() => {
   // ---------------------------------------------------------------------------
   // Pages: exactly what this device's rail shows, in rail order
   // ---------------------------------------------------------------------------
+  // A bedroom device shows nothing but this page, so it has no other pages.
   function pages() {
+    if (BeastLocalSettings.isBedroomDevice()) return [];
     return [...document.querySelectorAll("#beastRail .beast-rail-btn[data-section]")]
       .map((button) => ({ id: button.dataset.section, label: (button.querySelector("span")?.textContent || button.textContent || "").trim() }))
       .filter((page) => page.id && page.id !== "bedroom" && page.id !== "settings");
@@ -280,7 +282,9 @@ window.BeastBedroom.menu = (() => {
     const tiles = visible.map((page) => tileMarkup(page)).join("") + (all.length > MAX_TILES ? tileMarkup(null, { more: all.length - visible.length }) : "");
     const tileCount = Math.min(all.length, MAX_TILES);
     const bed = bedroomRows();
-    const admin = BeastConfig.get("showAdminButton") !== false;
+    // On a bedroom device the menu is the only way to Administration (behind
+    // the PIN gate), so it stays even when the rail's admin button is hidden.
+    const admin = BeastLocalSettings.isBedroomDevice() || BeastConfig.get("showAdminButton") !== false;
     const classes = ["bd-menu", bed.length ? "has-bed" : "", admin ? "has-settings" : "", tileCount ? "has-pages" : ""].filter(Boolean).join(" ");
     const screen = `<section class="bd-mpanel bd-mscreen" aria-label="${esc(t("Skærm"))}"><div class="bd-meyebrow">${esc(t("Skærm"))}</div>
         <button type="button" class="bd-saver" data-bd-menu="screensaver"><span class="bd-saver-pv"><b data-menu-preview>${esc(hm(now))}</b></span><span class="bd-saver-text"><span class="bd-saver-t1">${esc(t("Pauseskærm nu"))}</span><span class="bd-saver-t2">${esc(t("Dæmpet ur · tryk for at vække"))}</span></span></button>

@@ -17,26 +17,32 @@
     } catch (_) {}
   }
 
-  // Same shortcut for the bedroom page on this device: ?bedroom=1 / ?bedroom=0.
+  // Device type shortcut: ?bedroom=1 makes this a bedroom device, ?bedroom=0
+  // a normal kiosk. Also migrates the older bedroomView toggle (this file runs
+  // before ha-smartdash-local-settings.js, which does the same migration).
   const bedroomQuery = new URLSearchParams(location.search).get("bedroom");
-  if (bedroomQuery === "1" || bedroomQuery === "0") {
-    try {
-      const stored = JSON.parse(localStorage.getItem(SETTINGS_KEY) || "{}");
-      stored.bedroomView = bedroomQuery === "1";
-      localStorage.setItem(SETTINGS_KEY, JSON.stringify(stored));
+  try {
+    const stored = JSON.parse(localStorage.getItem(SETTINGS_KEY) || "{}");
+    let changed = false;
+    if ("bedroomView" in stored) {
+      if (!["kiosk", "bedroom"].includes(stored.deviceType)) stored.deviceType = stored.bedroomView === true ? "bedroom" : "kiosk";
+      delete stored.bedroomView;
+      changed = true;
+    }
+    if (bedroomQuery === "1" || bedroomQuery === "0") {
+      stored.deviceType = bedroomQuery === "1" ? "bedroom" : "kiosk";
+      changed = true;
       if (bedroomQuery === "1") sessionStorage.setItem("beast_active_section_v1", "bedroom");
       else if (sessionStorage.getItem("beast_active_section_v1") === "bedroom") sessionStorage.removeItem("beast_active_section_v1");
-    } catch (_) {}
-  }
+    }
+    if (changed) localStorage.setItem(SETTINGS_KEY, JSON.stringify(stored));
+  } catch (_) {}
 
-  // The bedroom page is this device's start page: paint it dark and without
-  // the rail from the first frame instead of flashing the normal shell.
+  // A bedroom device only ever shows the bedroom page: paint it dark and
+  // without the rail from the first frame instead of flashing the normal shell.
   function bedroomFirst() {
-    try {
-      if (JSON.parse(localStorage.getItem(SETTINGS_KEY) || "{}").bedroomView !== true) return false;
-      const remembered = sessionStorage.getItem("beast_active_section_v1");
-      return !remembered || remembered === "bedroom";
-    } catch (_) { return false; }
+    try { return JSON.parse(localStorage.getItem(SETTINGS_KEY) || "{}").deviceType === "bedroom"; }
+    catch (_) { return false; }
   }
   if (bedroomFirst()) root.classList.add("beast-chromeless");
 

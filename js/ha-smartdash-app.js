@@ -82,21 +82,20 @@ const MOUNTED_SECTION_ZONES = {
   printer: "beastPrinterZone"
 };
 
-// The bedroom page is opt-in per device (Admin -> Denne enhed, or
-// ?bedroom=1); it never appears in the central page list, so the wall kiosk
-// is unaffected.
+// Device type (Admin -> Denne enhed, or ?bedroom=1/0): a "bedroom" device
+// renders only the bedroom page, with no rail; a "kiosk" (the default) is the
+// normal dashboard and never has the bedroom page. The bedroom page never
+// appears in the central page list.
 const BEDROOM_RAIL_ITEM = { id: "bedroom", label: "Soveværelse", icon: "moon" };
-function bedroomViewEnabled() { return BeastLocalSettings.get("bedroomView", false) === true; }
-function withBedroomRailItem(items) {
-  if (!bedroomViewEnabled()) return items;
-  const next = items.filter((item) => item.id !== BEDROOM_RAIL_ITEM.id);
-  next.splice(next.findIndex((item) => item.id === "overview") + 1, 0, BEDROOM_RAIL_ITEM);
-  return next;
+function isBedroomDevice() { return BeastLocalSettings.isBedroomDevice(); }
+function deviceRailItems(items) {
+  if (isBedroomDevice()) return [BEDROOM_RAIL_ITEM];
+  return items.filter((item) => item.id !== BEDROOM_RAIL_ITEM.id);
 }
 // Where this device "lives": its start page, auto-return target and where
 // it wakes up. null on every device without its own home page.
 function deviceHomeSection() {
-  return bedroomViewEnabled() && document.querySelector('.beast-section[data-section="bedroom"]') ? "bedroom" : null;
+  return isBedroomDevice() && document.querySelector('.beast-section[data-section="bedroom"]') ? "bedroom" : null;
 }
 
 // Default matches the dashboard's original fixed behavior (always on,
@@ -149,7 +148,7 @@ function parseTimeToMinutes(value, fallbackMinutes) {
 function KIOSK_SCREEN_ENTITY_ID() {
   // The central screen light belongs to the wall kiosk; a bedside device
   // only ever switches a screen light chosen on the device itself.
-  if (bedroomViewEnabled()) return BeastLocalSettings.get("kioskScreenLight", null);
+  if (isBedroomDevice()) return BeastLocalSettings.get("kioskScreenLight", null);
   return BeastLocalSettings.get("kioskScreenLight", BeastConfig.get("appEntities.kioskScreenLight"));
 }
 function DOORBELL_BINARY_ID() { return BeastConfig.get("appEntities.doorbellBinarySensor"); }
@@ -1083,13 +1082,13 @@ function renderAppShell(root) {
 
   const pageRailItems = window.BeastPageManager?.buildRailItems(RAIL_ITEMS) || RAIL_ITEMS;
   const favoriteSections = featureEnabled("localFavorites") ? BeastLocalSettings.get("favoriteSections", []) : [];
-  const orderedRailItems = withBedroomRailItem(favoriteSections.length ? [...pageRailItems].sort((a, b) => {
+  const orderedRailItems = deviceRailItems(favoriteSections.length ? [...pageRailItems].sort((a, b) => {
     if (["overview", "settings"].includes(a.id) || ["overview", "settings"].includes(b.id)) return a.id === "overview" ? -1 : b.id === "overview" ? 1 : a.id === "settings" ? 1 : b.id === "settings" ? -1 : 0;
     const ai = favoriteSections.indexOf(a.id), bi = favoriteSections.indexOf(b.id);
     return (ai < 0 ? 999 : ai) - (bi < 0 ? 999 : bi);
   }) : pageRailItems);
   const hiddenSections = BeastLocalSettings.get("hiddenSections", []);
-  const visibleRailItems = orderedRailItems
+  const visibleRailItems = isBedroomDevice() ? orderedRailItems : orderedRailItems
     .filter((item) => ["overview", "settings"].includes(item.id) || !hiddenSections.includes(item.id))
     .filter((item) => item.id !== "settings" || BeastConfig.get("showAdminButton") !== false);
   const railButtonsHtml = visibleRailItems.filter((item) => item.id !== "settings").map((item) => `
@@ -1333,12 +1332,13 @@ function setupNavigation() {
   }
 
   function activate(sectionId) {
-    // An id this device doesn't render (a page hidden here, or the bedroom
-    // page on a device without it) would otherwise hide every section.
-    if (!sections.some((section) => section.dataset.section === sectionId)) sectionId = "overview";
+    // An id this device doesn't render (a page hidden here, the bedroom page
+    // on a kiosk, or any other page on a bedroom device) would otherwise hide
+    // every section.
+    if (!sections.some((section) => section.dataset.section === sectionId)) sectionId = deviceHomeSection() || "overview";
     activeSectionId = sectionId;
     try { sessionStorage.setItem(ACTIVE_SECTION_KEY, sectionId); } catch (_) {}
-    document.documentElement.classList.toggle("beast-chromeless", sectionId === "bedroom");
+    document.documentElement.classList.toggle("beast-chromeless", isBedroomDevice() || sectionId === "bedroom");
     railButtons.forEach((btn) => btn.classList.toggle("is-active", btn.dataset.section === sectionId));
     sections.forEach((section) => section.classList.toggle("is-active", section.dataset.section === sectionId));
     document.dispatchEvent(new CustomEvent("beast:sectionchange", { detail: { section: sectionId } }));
@@ -1407,7 +1407,7 @@ function setupNavigation() {
   // refresh should throw you back to.
   const configuredSection = featureEnabled("localFavorites") ? BeastLocalSettings.get("defaultSection", "overview") : "overview";
   const preferredSection = rememberedSection() || deviceHomeSection() || configuredSection;
-  activate(railButtons.some((button) => button.dataset.section === preferredSection) ? preferredSection : "overview");
+  activate(railButtons.some((button) => button.dataset.section === preferredSection) ? preferredSection : (deviceHomeSection() || "overview"));
 }
 
 function syncCameraPlayers() {

@@ -515,6 +515,10 @@ html.beast-chromeless .beast-offline-status { border-color: rgba(224, 99, 74, .4
 .bd-root .bd-chip:disabled { opacity: .4; }
 
 .bd-toggles { display: flex; gap: 6px; }
+/* Three or more toggles (switches, helpers and fans together) wrap into two
+   columns rather than squeezing every name down to an ellipsis. */
+.bd-toggles:is([data-n="3"], [data-n="4"], [data-n="5"], [data-n="6"]) { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.bd-toggles[data-n="3"] > .bd-tog:last-child, .bd-toggles[data-n="5"] > .bd-tog:last-child { grid-column: 1 / -1; }
 .bd-root .bd-tog {
   display: flex;
   align-items: center;

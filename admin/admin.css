@@ -475,6 +475,8 @@ button { cursor: pointer; }
 .admin-scope-banner { margin: -4px 0 20px; padding: 12px 14px; border: 1px solid color-mix(in srgb, var(--accent-b) 32%, var(--border)); border-radius: 11px; color: var(--accent-b); background: color-mix(in srgb, var(--accent-b) 9%, transparent); font-size: 13px; line-height: 1.5; }
 .admin-device-note { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px 16px; }
 .admin-device-note > span { flex: 1 1 260px; }
+.admin-device-types { margin: 4px 0 14px; padding: 0; list-style: none; display: grid; gap: 6px; color: var(--ink-muted); font-size: 13px; line-height: 1.45; }
+.admin-device-types b { color: var(--ink); font-weight: 600; }
 .admin-device-note > .beast-btn { flex: 0 0 auto; }
 .admin-show-all { display: flex; align-items: center; gap: 8px; color: var(--ink-muted); font-size: 11px; font-weight: 650; }
 .admin-show-all input { width: 16px; height: 16px; accent-color: var(--accent-b); }

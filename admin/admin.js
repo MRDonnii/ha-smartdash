@@ -173,13 +173,13 @@
     ]},
     // Optional: the page only exists on devices that turn it on under Denne
     // enhed, so it is not counted as missing setup until it is configured.
-    { id: "bedroom", title: "Soveværelse", optional: true, description: "Sengekantsside, der slås til pr. enhed under Denne enhed. Vælg kameraer, kalender, indeklima, søvn og CPAP, lys, scener, sikkerhed og Godnat.",
+    { id: "bedroom", title: "Soveværelse", optional: true, description: "Sengekantsside til enheder med enhedstypen Soveværelse under Denne enhed. Vælg kameraer, kalender, indeklima, søvn og CPAP, lys, scener, sikkerhed og Godnat.",
       sections: {
         header: ["Indeklima", "Vises øverst ved uret. Et felt uden valg vises ikke på siden."],
         cameras: ["Kameraer og kalender", "De to første kameraer vises live. Kalenderen viser i dag og de kommende dage."],
         controls: ["Lys, scener og komfort", "De fire første lys og de fem første scener og scripts vises på siden. Alle findes i menuen."],
-        security: ["Sikkerhed og godnat", "Lås op og frakobling kræver altid pinkode. Godnat kører scriptet, hvis det er valgt, ellers scenen."],
-        alerts: ["Kamera på pauseskærmen", "Når pauseskærmen er tændt, popper kameraet op ved aktivitet i alarmzonerne. Kun på enheder med soveværelset slået til."],
+        security: ["Sikkerhed og godnat", "Lås op og frakobling kræver altid pinkode. Godnat låser dørene og kører derefter de valgte trin."],
+        alerts: ["Kamera på pauseskærmen", "Når pauseskærmen er tændt, popper kameraet op ved aktivitet i alarmzonerne. Kun på enheder med enhedstypen Soveværelse."],
         sleep: ["Søvn og CPAP", "Fra ResMed myAir-integrationen (AirSense). Listerne viser kun CPAP-sensorer, og søvnkortet skjules, hvis intet er valgt."],
         names: ["Navne", "Rummets navn vises øverst på siden og fjernes fra navnene fra Home Assistant, så \"Soveværelse loft\" bliver til \"Loft\"."]
       },
@@ -198,13 +198,16 @@
         { key: "scripts", section: "controls", label: "Scripts", type: "multi", domain: "script", hints: ["sove", "bedroom", "nat", "night"] },
         { key: "activeSceneMinutes", section: "controls", label: "Senest aktiveret scene (minutter)", type: "number", min: 1, max: 1440, placeholder: "30", hint: "Så længe markeres den senest aktiverede scene. Standard er 30." },
         { key: "comfort", section: "controls", label: "Komfort (kontakter)", type: "multi", domain: "switch", hints: ["sove", "bedroom"], hint: "Til/fra-kontakter, fx en sovetilstand." },
+        { key: "comfortBooleans", section: "controls", label: "Komfort (hjælpere)", type: "multi", domain: "input_boolean", hints: ["sove", "bedroom"], hint: "Til/fra-hjælpere, fx om rummets ambient-lys må tænde om natten. Vises sammen med kontakterne." },
         { key: "fans", section: "controls", label: "Ventilatorer", type: "multi", domain: "fan", hints: ["sove", "bedroom"] },
         { key: "media", section: "controls", label: "Medieafspillere", type: "multi", domain: "media_player", hints: ["sove", "bedroom"], hint: "De to første vises med afspil og pause." },
         { key: "locks", section: "security", label: "Dørlåse", type: "multi", domain: "lock" },
         { key: "alarm", section: "security", label: "Alarmsystem", type: "single", domain: "alarm_control_panel" },
-        { key: "goodnightScript", section: "security", label: "Godnat-script", type: "single", domain: "script", hints: ["godnat", "goodnight", "good_night", "sengetid", "bedtime"] },
-        { key: "goodnightScene", section: "security", label: "Godnat-scene", type: "single", domain: "scene", hints: ["godnat", "goodnight", "good_night", "sengetid", "bedtime"] },
-        { key: "goodnightLabel", section: "security", label: "Undertekst på Godnat-knappen", type: "text", placeholder: "Låser døre" },
+        { key: "goodnightLocks", section: "security", label: "Godnat: låse der låses", type: "multi", domain: "lock", hint: "Tom liste betyder alle dørlåse ovenfor. Låse, der allerede er låst, springes over." },
+        { key: "goodnightLightsOff", section: "security", label: "Godnat: lys der slukkes (valgfri)", type: "multi", domain: "light", hints: ["sove", "bedroom", "loft"], hint: "Tom liste betyder, at Godnat ikke rører lyset. Vælg kun lys, som ikke tændes igen af en ambient- eller natautomation." },
+        { key: "goodnightScene", section: "security", label: "Godnat-scene (valgfri)", type: "single", domain: "scene", hints: ["godnat", "goodnight", "good_night", "sengetid", "bedtime", "nat"], hint: "Aktiveres til sidst, fx en natlampe." },
+        { key: "goodnightScript", section: "security", label: "Godnat-script (avanceret)", type: "single", domain: "script", hints: ["godnat", "goodnight", "good_night", "sengetid", "bedtime"], hint: "Køres efter låse og lys, før scenen." },
+        { key: "goodnightLabel", section: "security", label: "Undertekst på Godnat-knappen", type: "text", placeholder: "Låser 3 døre", hint: "Tom betyder, at teksten laves ud fra det, Godnat gør." },
         { key: "alertZoneLog", section: "alerts", label: "Zonelog fra UniFi Protect Alarm Manager", type: "single", domain: "input_text", hints: ["alarmzone", "alarm_zone", "protect", "zone"], hint: "Tekst med hændelser: zone|tid|hvad|navn, nyeste først og adskilt af semikolon." },
         { key: "alertSensors", section: "alerts", label: "Personsensorer", type: "multi", domain: "binary_sensor", deviceClasses: ["occupancy", "motion", "presence"], hints: ["person_detected", "person"], hint: "Kameraet på samme enhed popper op, når sensoren går fra fra til til." },
         { key: "alertCameras", section: "alerts", label: "Tilladte kameraer (valgfri)", type: "multi", domain: "camera", hint: "Tom liste betyder alle kameraer." },
@@ -918,10 +921,10 @@
   }
 
   function renderBedroomDeviceNote() {
-    const on = BeastLocalSettings.get("bedroomView", false) === true;
+    const on = BeastLocalSettings.isBedroomDevice();
     return `<div class="admin-scope-banner admin-device-note"><span>${on
-      ? t("Soveværelse er slået til på denne enhed. Andre skærme viser ikke siden, før den slås til dér.", "Bedroom is on for this device. Other screens don't show the page until it is turned on there.")
-      : t("Siden vises kun på enheder, hvor Soveværelse er slået til under Denne enhed. Den er slået fra her.", "The page only shows on devices where Bedroom is turned on under This device. It is off here.")}</span><button type="button" class="beast-btn" data-view="settings">${t("Åbn Denne enhed", "Open This device")}</button></div>`;
+      ? t("Denne enhed er en soveværelsesenhed og viser kun siden Soveværelse.", "This device is a bedroom device and only shows the Bedroom page.")
+      : t("Siden vises kun på enheder med enhedstypen Soveværelse (Denne enhed → Enhedstype). Denne enhed er en kiosk.", "The page only shows on devices with the device type Bedroom (This device → Device type). This device is a kiosk.")}</span><button type="button" class="beast-btn" data-view="settings">${t("Åbn Denne enhed", "Open This device")}</button></div>`;
   }
 
   function renderPanel(panel) {
@@ -977,13 +980,6 @@
     </section>`;
   }
 
-  // The bedroom page only exists where this device turned it on, so it is added
-  // to per-device page lists here and never to central ones (auto-return,
-  // weather overlay): a kiosk without it would be sent to a page it lacks.
-  function devicePages() {
-    return BeastLocalSettings.get("bedroomView", false) === true ? [...PAGES, ["bedroom", "Soveværelse"]] : PAGES;
-  }
-
   function renderOverview() {
     const hidden = BeastLocalSettings.get("hiddenSections", BeastConfig.get("hiddenSections") || []);
     const entityCount = BeastHaSocket.getAllStates().size;
@@ -994,7 +990,7 @@
         <div class="admin-summary">
           <div><strong>${entityCount}</strong><span>entities hentet fra Home Assistant</span></div>
           <div><strong>${configured}/${countedPanels.length}</strong><span>standardsider konfigureret</span></div>
-          <div><strong>${devicePages().length - hidden.length}</strong><span>sider synlige i dashboardet</span></div>
+          <div><strong>${PAGES.length - hidden.length}</strong><span>sider synlige i dashboardet</span></div>
         </div>
         <div class="admin-card admin-project-intro">
           <div class="admin-project-heading">
@@ -1301,7 +1297,7 @@
       return (ai < 0 ? 999 : ai) - (bi < 0 ? 999 : bi);
     });
     return `<div class="admin-local-favorites"><strong>Denne skærm</strong><div class="admin-grid">
-      <label class="admin-field"><span>Standardfane</span><select id="adminDefaultSection">${[["overview","Oversigt"],...devicePages()].map(([id,label]) => `<option value="${id}"${BeastLocalSettings.get("defaultSection","overview") === id ? " selected" : ""}>${escapeHtml(label)}</option>`).join("")}</select></label>
+      <label class="admin-field"><span>Standardfane</span><select id="adminDefaultSection">${[["overview","Oversigt"],...PAGES].map(([id,label]) => `<option value="${id}"${BeastLocalSettings.get("defaultSection","overview") === id ? " selected" : ""}>${escapeHtml(label)}</option>`).join("")}</select></label>
       <label class="admin-field"><span>Visningstæthed</span><select id="adminDensity"><option value="comfortable"${BeastLocalSettings.get("density","comfortable") === "comfortable" ? " selected" : ""}>Luftig</option><option value="compact"${BeastLocalSettings.get("density") === "compact" ? " selected" : ""}>Kompakt</option><option value="large"${BeastLocalSettings.get("density") === "large" ? " selected" : ""}>Store trykfelter</option></select></label>
     </div><div class="admin-favorite-list">${orderedPages.map(([id,label]) => `<label data-favorite-row="${id}"><input type="checkbox" data-favorite-section="${id}"${selectedSet.has(id) ? " checked" : ""}><span>${escapeHtml(label)}</span><button class="admin-icon-action" type="button" data-favorite-move="up" aria-label="Flyt ${escapeHtml(label)} op" title="Flyt op">${BeastCore.icon("chevron-up", { size: 16 })}</button><button class="admin-icon-action" type="button" data-favorite-move="down" aria-label="Flyt ${escapeHtml(label)} ned" title="Flyt ned">${BeastCore.icon("chevron-down", { size: 16 })}</button></label>`).join("")}</div><button type="button" class="admin-save" data-save-local-favorites>Gem denne skærm</button></div>`;
   }
@@ -1644,7 +1640,7 @@
     const floatingPlayerOn = isFloatingPlayerEnabled();
     const powerProfile = BeastLocalSettings.get("powerProfile", "balanced");
     const ipadMode = BeastLocalSettings.get("ipadMode", false) === true;
-    const bedroomView = BeastLocalSettings.get("bedroomView", false) === true;
+    const deviceType = BeastLocalSettings.deviceType();
     return `
       <section class="admin-view${activeView === "settings" ? " is-active" : ""}" data-admin-view="settings">
         <div class="admin-settings-intro"><div><h2>Denne enhed</h2><p>Maskinspecifik adfærd for netop denne kiosk eller browser. Visuelle valg (tema, farver, stil) findes under Tema og design. Kiosk-navigation og dørkamera findes under Forbindelser & kiosk.</p></div></div>
@@ -1655,7 +1651,7 @@
         <div class="admin-card admin-settings-group"><div class="admin-card-head"><div><h2>${t("Flydende musikafspiller", "Floating music player")}</h2><p>${t("Viser en lille afspiller-boks på forsiden mens der spilles musik. Gælder kun denne enhed/browser, ikke andre kiosker.", "Shows a small player box on the front page while music is playing. Applies only to this device/browser, not other kiosks.")}</p></div></div><div class="beast-stat-tile-actions"><button type="button" class="beast-security-action-btn${floatingPlayerOn ? " is-disarm" : ""}" id="adminSettingsFloatingPlayerBtn">${floatingPlayerOn ? t("Slå fra på denne enhed", "Turn off on this device") : t("Slå til på denne enhed", "Turn on on this device")}</button></div></div>
         <div class="admin-card admin-settings-group"><div class="admin-card-head"><div><h2>${t("Strømprofil", "Power profile")}</h2><p>${t("Gælder kun denne kiosk. Lav begrænser forsiden til to samtidige kameraer og fjerner animationer; dine gemte kameravalg ændres ikke.", "Applies only to this kiosk. Low limits the overview to two simultaneous cameras and removes animations; saved camera choices are unchanged.")}</p></div></div><label class="admin-field"><span>${t("Profil", "Profile")}</span><select id="adminPowerProfile"><option value="performance"${powerProfile === "performance" ? " selected" : ""}>${t("Ydelse", "Performance")}</option><option value="balanced"${powerProfile === "balanced" ? " selected" : ""}>${t("Balanceret", "Balanced")}</option><option value="low"${powerProfile === "low" ? " selected" : ""}>${t("Lavt forbrug", "Low power")}</option></select></label><div class="admin-actions"><button type="button" class="admin-save" id="adminSavePowerProfile">${t("Gem strømprofil", "Save power profile")}</button><span class="admin-save-state" data-save-state="powerProfile"></span></div></div>
         <div class="admin-card admin-settings-group"><div class="admin-card-head"><div><h2>${t("iPad-tilstand", "iPad mode")}</h2><p>${t("Gælder kun denne enhed. Gør dashboardet roligere på en iPad: ingen sløringseffekter, ingen zoom, og pauseskærmen med dæmpet ur starter altid efter inaktivitet (ikke kun om natten). Kameraerne er stadig live.", "Applies only to this device. Makes the dashboard lighter on an iPad: no blur effects, no zoom, and the dimmed clock screensaver always starts after inactivity (not only at night). Cameras stay live.")}</p></div></div><label class="admin-field"><span>${t("iPad-tilstand", "iPad mode")}</span><select id="adminIpadMode"><option value="0"${ipadMode ? "" : " selected"}>${t("Fra", "Off")}</option><option value="1"${ipadMode ? " selected" : ""}>${t("Til", "On")}</option></select></label><div class="admin-actions"><button type="button" class="admin-save" id="adminSaveIpadMode">${t("Gem iPad-tilstand", "Save iPad mode")}</button><span class="admin-save-state" data-save-state="ipadMode"></span></div></div>
-        <div class="admin-card admin-settings-group"><div class="admin-card-head"><div><h2>${t("Soveværelse på denne enhed", "Bedroom on this device")}</h2><p>${t("Gælder kun denne enhed. Tilføjer siden Soveværelse lige efter Oversigt og gør den til enhedens startside; andre skærme påvirkes ikke. Til en iPad ved sengen anbefales også iPad-tilstand.", "Applies only to this device. Adds the Bedroom page right after Overview and makes it this device's start page; other screens are unaffected. For an iPad by the bed, iPad mode is recommended as well.")}</p></div></div><label class="admin-field"><span>${t("Soveværelse", "Bedroom")}</span><select id="adminBedroomView"><option value="0"${bedroomView ? "" : " selected"}>${t("Fra", "Off")}</option><option value="1"${bedroomView ? " selected" : ""}>${t("Til", "On")}</option></select></label><div class="admin-actions"><button type="button" class="admin-save" id="adminSaveBedroomView">${t("Gem soveværelse", "Save bedroom")}</button><button type="button" class="beast-btn" data-view="bedroom">${t("Tilpas soveværelset", "Customise the bedroom")}</button><span class="admin-save-state" data-save-state="bedroomView"></span></div></div>
+        <div class="admin-card admin-settings-group"><div class="admin-card-head"><div><h2>${t("Enhedstype", "Device type")}</h2><p>${t("Gælder kun denne enhed. Kræver pinkode, hvis der er sat en.", "Applies only to this device. Requires the PIN if one is set.")}</p></div></div><label class="admin-field"><span>${t("Enhedstype", "Device type")}</span><select id="adminDeviceType"><option value="kiosk"${deviceType === "kiosk" ? " selected" : ""}>${t("Kiosk", "Kiosk")}</option><option value="bedroom"${deviceType === "bedroom" ? " selected" : ""}>${t("Soveværelse", "Bedroom")}</option></select></label><ul class="admin-device-types"><li><b>${t("Kiosk", "Kiosk")}</b> ${t("– det almindelige dashboard med alle sider og navigation. Soveværelset vises aldrig.", "– the normal dashboard with every page and the navigation. The bedroom is never shown.")}</li><li><b>${t("Soveværelse", "Bedroom")}</b> ${t("– viser kun siden Soveværelse, uden navigation. Til en iPad ved sengen; iPad-tilstand anbefales også.", "– shows only the Bedroom page, without navigation. For an iPad by the bed; iPad mode is recommended as well.")}</li></ul><div class="admin-actions"><button type="button" class="admin-save" id="adminSaveDeviceType">${t("Gem enhedstype", "Save device type")}</button><button type="button" class="beast-btn" data-view="bedroom">${t("Tilpas soveværelset", "Customise the bedroom")}</button><span class="admin-save-state" data-save-state="deviceType"></span></div></div>
         <div class="admin-card admin-settings-group"><div class="admin-card-head"><div><h2>Kioskintegration</h2><p>Avanceret MQTT-styring og enhedskommandoer. Kan ignoreres på almindelige tablets.</p></div></div>${renderMqttPanel()}</div>
         <div class="admin-card admin-settings-group admin-diagnostics"><div class="admin-card-head"><div><h2>Diagnostik og session</h2><p>Seneste lokale hændelser samt mulighed for at logge Home Assistant-sessionen ud.</p></div></div><details><summary>Vis teknisk log</summary><pre class="beast-debug-log" id="adminDebugLog"></pre></details><button type="button" class="beast-btn" id="adminLogout">Log ud</button></div>
       </section>
@@ -2617,7 +2613,22 @@
       renderShell();
     });
     document.getElementById("adminSaveIpadMode")?.addEventListener("click", (event) => save(event.currentTarget, "ipadMode", () => BeastLocalSettings.set("ipadMode", document.getElementById("adminIpadMode")?.value === "1")));
-    document.getElementById("adminSaveBedroomView")?.addEventListener("click", (event) => save(event.currentTarget, "bedroomView", () => BeastLocalSettings.set("bedroomView", document.getElementById("adminBedroomView")?.value === "1")));
+    document.getElementById("adminSaveDeviceType")?.addEventListener("click", async (event) => {
+      const button = event.currentTarget;
+      const next = document.getElementById("adminDeviceType")?.value === "bedroom" ? "bedroom" : "kiosk";
+      if (next === BeastLocalSettings.deviceType()) { save(button, "deviceType", () => ({ success: true })); return; }
+      // Switching type changes what the screen shows, so it needs the PIN
+      // even though Administration itself was already unlocked.
+      if (window.BeastScreenLock?.hasPin()) {
+        const verified = await new Promise((resolve) => window.BeastScreenLock.requestPinVerification(resolve));
+        if (!verified) {
+          const select = document.getElementById("adminDeviceType");
+          if (select) select.value = BeastLocalSettings.deviceType();
+          return;
+        }
+      }
+      save(button, "deviceType", () => BeastLocalSettings.set("deviceType", next));
+    });
     document.getElementById("adminSavePowerProfile")?.addEventListener("click", (event) => save(event.currentTarget, "powerProfile", () => BeastLocalSettings.set("powerProfile", document.getElementById("adminPowerProfile")?.value || "balanced")));
     document.getElementById("adminShowAdminButton")?.addEventListener("change", (event) => {
       if (!event.currentTarget.checked) {

@@ -1,5 +1,5 @@
 // Bedroom page ("Soveværelse"): an opt-in, fixed-dark bedside page for one
-// device (BeastLocalSettings.bedroomView). Every entity comes from
+// device (BeastLocalSettings deviceType "bedroom"). Every entity comes from
 // panels.bedroom; a card whose fields are unset is left out and the grid
 // closes up around it. The sleep/CPAP module and the full-screen menu live in
 // ha-smartdash-bedroom-sleep.js and ha-smartdash-bedroom-menu.js.
@@ -7,7 +7,6 @@ window.BeastBedroom = (() => {
   const ZONE_ID = "beastBedroomZone";
   const SECTION_ID = "bedroom";
   const DEFAULT_TITLE = "Soveværelse";
-  const DEFAULT_GOODNIGHT_LABEL = "Låser døre";
   // Warm hues only (no blue light at night): one per configured calendar, in order.
   const CALENDAR_COLORS = ["#E8A85A", "#D4795A", "#CDB38A", "#C98A8A", "#A8B07A", "#8C9A86"];
   const CALENDAR_REFRESH_MS = 5 * 60 * 1000;
@@ -249,8 +248,8 @@ window.BeastBedroom = (() => {
       sleep: Boolean(sleep?.configured()),
       cal: list(c.calendars).length > 0,
       sec: list(c.locks).length > 0 || Boolean(single(c.alarm)),
-      ctrl: [c.lights, c.scenes, c.scripts, c.comfort, c.fans, c.media].some((value) => list(value).length > 0),
-      night: Boolean(single(c.goodnightScript) || single(c.goodnightScene))
+      ctrl: [c.lights, c.scenes, c.scripts, c.comfort, c.comfortBooleans, c.fans, c.media].some((value) => list(value).length > 0),
+      night: goodnightPlan().any
     };
   }
 
@@ -1023,7 +1022,7 @@ window.BeastBedroom = (() => {
   function renderComfort() {
     const block = root?.querySelector('[data-bd-block="comfort"]');
     if (!block) return;
-    const ids = [...list(cfg().comfort), ...list(cfg().fans)];
+    const ids = [...list(cfg().comfort), ...list(cfg().comfortBooleans), ...list(cfg().fans)];
     block.hidden = !ids.length;
     if (!ids.length) return;
     const items = ids.map((id) => {
@@ -1369,18 +1368,35 @@ window.BeastBedroom = (() => {
   // ---------------------------------------------------------------------------
   // Godnat: a 3 s countdown that a second tap cancels, then the routine
   // ---------------------------------------------------------------------------
-  function goodnightTarget() {
+  // A built-in routine: lock the chosen doors (all bedroom locks unless a
+  // subset is chosen), optionally turn chosen lights off, then the optional
+  // script and scene. Lights are only turned off when chosen: ambient
+  // automations re-light rooms at night, so a default would just flicker.
+  function goodnightPlan() {
     const c = cfg();
+    const chosenLocks = list(c.goodnightLocks);
+    const locks = chosenLocks.length ? chosenLocks : list(c.locks);
+    const lightsOff = list(c.goodnightLightsOff);
     const script = single(c.goodnightScript);
-    if (script) return { id: script, domain: "script" };
     const scene = single(c.goodnightScene);
-    return scene ? { id: scene, domain: "scene" } : null;
+    return { locks, lightsOff, script, scene, any: Boolean(locks.length || lightsOff.length || script || scene) };
+  }
+
+  function goodnightSummary(plan) {
+    const parts = [];
+    if (plan.locks.length === 1) parts.push(t("Låser {name}", { name: displayName(plan.locks[0]) }));
+    else if (plan.locks.length) parts.push(t("Låser {n} døre", { n: plan.locks.length }));
+    if (plan.lightsOff.length === 1) parts.push(t("slukker {name}", { name: displayName(plan.lightsOff[0]) }));
+    else if (plan.lightsOff.length) parts.push(t("slukker {n} lys", { n: plan.lightsOff.length }));
+    if (plan.script) parts.push(displayName(plan.script));
+    if (plan.scene) parts.push(displayName(plan.scene));
+    return capitalize(parts.join(" · "));
   }
 
   function renderNight() {
     const button = root?.querySelector(".bd-night");
     if (!button) return;
-    const label = String(cfg().goodnightLabel || "").trim() || t(DEFAULT_GOODNIGHT_LABEL);
+    const label = String(cfg().goodnightLabel || "").trim() || goodnightSummary(goodnightPlan());
     const phase = goodnight.phase;
     let title = t("Godnat");
     let sub = label;
@@ -1409,18 +1425,34 @@ window.BeastBedroom = (() => {
     goodnight.timerId = window.setTimeout(tickGoodnight, 1000);
   }
 
-  function runGoodnight() {
-    const target = goodnightTarget();
-    if (!target) { setGoodnight("idle"); return; }
+  async function runGoodnight() {
+    const plan = goodnightPlan();
+    if (!plan.any) { setGoodnight("idle"); return; }
     setGoodnight("running");
-    callService(target.domain, "turn_on", target.id).then(() => {
-      setGoodnight("done", { doneAt: Date.now() });
-      goodnight.timerId = window.setTimeout(() => setGoodnight("idle"), 10000);
-    }).catch((error) => {
-      BeastCore.log(`Soveværelse: godnat fejlede (${error.message}).`);
+    let failed = false;
+    const attempt = (request, what) => request.catch((error) => {
+      failed = true;
+      BeastCore.log(`Soveværelse: godnat fejlede ved ${what} (${error.message}).`);
+    });
+    const toLock = plan.locks.filter((id) => !["locked", "locking"].includes(state(id)?.state));
+    toLock.forEach((id) => setPending(id, { lock: "lock" }, 20000));
+    if (toLock.length) { blockSignatures.delete("sec"); renderSecurity(); }
+    await Promise.all(toLock.map((id) => attempt(callService("lock", "lock", id).catch((error) => {
+      pending.delete(id);
+      blockSignatures.delete("sec");
+      renderSecurity();
+      throw error;
+    }), id)));
+    if (plan.lightsOff.length) await attempt(callService("light", "turn_off", plan.lightsOff), "lys");
+    if (plan.script) await attempt(callService("script", "turn_on", plan.script), plan.script);
+    if (plan.scene) await attempt(callService("scene", "turn_on", plan.scene), plan.scene);
+    if (failed) {
       setGoodnight("error");
       goodnight.timerId = window.setTimeout(() => setGoodnight("idle"), 6000);
-    });
+      return;
+    }
+    setGoodnight("done", { doneAt: Date.now() });
+    goodnight.timerId = window.setTimeout(() => setGoodnight("idle"), 10000);
   }
 
   function onGoodnightTap() {
@@ -1555,7 +1587,8 @@ window.BeastBedroom = (() => {
     const c = cfg();
     const ids = new Set([
       ...list(c.cameras).slice(0, 2), ...list(c.calendars), ...list(c.lights), ...list(c.scenes), ...list(c.scripts),
-      ...list(c.comfort), ...list(c.fans), ...list(c.media).slice(0, 2), ...list(c.locks),
+      ...list(c.comfort), ...list(c.comfortBooleans), ...list(c.fans), ...list(c.media).slice(0, 2), ...list(c.locks),
+      ...list(c.goodnightLocks), ...list(c.goodnightLightsOff),
       ...["temperature", "humidity", "co2", "airQuality", "pm25", "window", "motion", "alarm", "goodnightScript", "goodnightScene"].map((key) => single(c[key]))
     ].filter(Boolean));
     list(c.lights).forEach((id) => (state(id)?.attributes?.entity_id || []).forEach((member) => typeof member === "string" && ids.add(member)));

@@ -1,4 +1,4 @@
-// Screensaver camera alert for bedside devices (bedroomView): while the dimmed
+// Screensaver camera alert for bedside devices (deviceType "bedroom"): while the dimmed
 // clock screensaver shows, activity in the house's alarm zones pops up a live
 // camera on top of it. Signals and cameras come from panels.bedroom
 // (alertZoneLog, alertSensors, alertCameras, alertSeconds, alertWhen).
@@ -49,7 +49,7 @@ window.BeastBedroomAlerts = (() => {
     return typeof value === "string" && value.includes(".") ? [value] : [];
   }
   function state(id) { return id ? BeastHaSocket.getState(id) : null; }
-  function enabledHere() { return BeastLocalSettings.get("bedroomView", false) === true; }
+  function enabledHere() { return BeastLocalSettings.isBedroomDevice(); }
   function alertMs() {
     const seconds = Number(cfg().alertSeconds);
     return Math.max(5, Math.min(600, Number.isFinite(seconds) && seconds > 0 ? seconds : DEFAULT_SECONDS)) * 1000;

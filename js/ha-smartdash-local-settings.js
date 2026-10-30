@@ -7,14 +7,26 @@ const BeastLocalSettings = (() => {
     favoriteSections: [],
     powerProfile: "balanced",
     ipadMode: false,
-    bedroomView: false,
+    deviceType: "kiosk",
     bedroomDim: false,
     kioskScreenLight: null,
     language: "en",
     screensaver: { enabled: true, schedule: "custom", startTime: "23:00", endTime: "05:30", offAfterMinutes: 5 }
   };
+  // Device type: "kiosk" (the normal dashboard) or "bedroom" (only the
+  // bedside page). Older builds stored a bedroomView toggle; it is migrated
+  // once to deviceType so every reader only needs isBedroomDevice().
+  const DEVICE_TYPES = ["kiosk", "bedroom"];
+  function migrate(stored) {
+    if (!stored || typeof stored !== "object") return {};
+    if (!("bedroomView" in stored)) return stored;
+    if (!DEVICE_TYPES.includes(stored.deviceType)) stored.deviceType = stored.bedroomView === true ? "bedroom" : "kiosk";
+    delete stored.bedroomView;
+    try { localStorage.setItem(STORAGE_KEY, JSON.stringify(stored)); } catch (_) {}
+    return stored;
+  }
   function readRaw() {
-    try { return JSON.parse(localStorage.getItem(STORAGE_KEY) || "{}"); }
+    try { return migrate(JSON.parse(localStorage.getItem(STORAGE_KEY) || "{}")); }
     catch (_) { return {}; }
   }
   function read() {
@@ -40,6 +52,11 @@ const BeastLocalSettings = (() => {
   }
   function replaceAll(value) {
     if (!value || typeof value !== "object" || Array.isArray(value)) return { success: false };
+    value = { ...value };
+    if ("bedroomView" in value) {
+      if (!DEVICE_TYPES.includes(value.deviceType)) value.deviceType = value.bedroomView === true ? "bedroom" : "kiosk";
+      delete value.bedroomView;
+    }
     localStorage.setItem(STORAGE_KEY, JSON.stringify({ ...DEFAULTS, ...value, screensaver: { ...DEFAULTS.screensaver, ...(value.screensaver || {}) } }));
     document.dispatchEvent(new CustomEvent("beast:local-settings-changed", { detail: { path: "*", value } }));
     return { success: true };
@@ -48,5 +65,10 @@ const BeastLocalSettings = (() => {
     if (event.key !== STORAGE_KEY) return;
     document.dispatchEvent(new CustomEvent("beast:local-settings-changed", { detail: { path: "*", value: read(), remote: true } }));
   });
-  return { get, set, getAll: read, replaceAll };
+  function deviceType() {
+    const value = readRaw().deviceType;
+    return DEVICE_TYPES.includes(value) ? value : "kiosk";
+  }
+  function isBedroomDevice() { return deviceType() === "bedroom"; }
+  return { get, set, getAll: read, replaceAll, deviceType, isBedroomDevice };
 })();
