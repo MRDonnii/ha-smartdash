@@ -670,3 +670,4 @@ html.is-touch .admin-diagnostics summary, html.is-touch .admin-changelog-details
 /* Forside cards only drag from the handle on touch (admin.js), so the row should not promise more */
 html.is-touch .admin-overview-card-row { cursor: default; }
 html.is-touch .admin-overview-drag-handle { min-width: 44px; min-height: 44px; justify-content: center; align-items: center; }
+html.is-touch .admin-overview-row-head { align-items: center; }
