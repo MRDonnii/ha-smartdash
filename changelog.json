@@ -1,5 +1,24 @@
 [
   {
+    "version": "20261030-2",
+    "tag": "v0.8.79",
+    "date": "2026-10-30",
+    "changes": [
+      {
+        "da": "Ny valgfri soveværelsesside til en sengekants-iPad (Administration → Denne enhed → Soveværelse på denne enhed): to livekameraer, kalender, indeklima, lys med dæmper, scener, komfort, medier, låse og alarm (lås op og frakobling kræver altid pinkode), en Godnat-knap med nedtælling og et søvnkort til ResMed myAir/CPAP med score, brugstid, AHI, lækage og 14 nætters udvikling. Menuen skjules på siden, og en egen fuldskærmsmenu giver adgang til de andre sider. Slået fra som standard og kun for den enhed, den slås til på. (Claude AI)",
+        "en": "New optional bedroom page for a bedside iPad (Administration → This device → Bedroom on this device): two live cameras, calendar, room climate, dimmable lights, scenes, comfort toggles, media, locks and alarm (unlocking and disarming always require the PIN), a Goodnight button with a countdown and a sleep card for ResMed myAir/CPAP with score, usage, AHI, leak and a 14-night trend. The navigation is hidden on the page and a full-screen menu reaches the other pages. Off by default and only for the device it is switched on for."
+      },
+      {
+        "da": "Soveværelsessiden kan vise et livekamera oven på pauseskærmen, når der er aktivitet i alarmzonerne (zonelog fra UniFi Protect Alarm Manager eller personsensorer); vælges under Administration → Soveværelse. (Claude AI)",
+        "en": "The bedroom page can show a live camera over the screensaver when there is activity in the alarm zones (zone log from UniFi Protect Alarm Manager or person sensors); set up under Administration → Bedroom."
+      },
+      {
+        "da": "Administration er gjort brugbar på små iPads: menu-knap og vej tilbage til dashboardet i portræt, sidemenuen holder den aktive side synlig, felter og vælgere flyder ikke længere ud over kortene, større berøringsflader og ingen zoom i inputfelter. (Claude AI)",
+        "en": "Administration now works on small iPads: a menu button and a way back to the dashboard in portrait, the side menu keeps the active page visible, fields and pickers no longer overflow their cards, larger touch targets and no zoom on input fields."
+      }
+    ]
+  },
+  {
     "version": "20261030-1",
     "tag": "v0.8.78",
     "date": "2026-10-30",

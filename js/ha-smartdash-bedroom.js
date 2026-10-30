@@ -7,7 +7,7 @@ window.BeastBedroom = (() => {
   const ZONE_ID = "beastBedroomZone";
   const SECTION_ID = "bedroom";
   const DEFAULT_TITLE = "Soveværelse";
-  const DEFAULT_GOODNIGHT_LABEL = "Låse døre · alarm Nat · sluk lys";
+  const DEFAULT_GOODNIGHT_LABEL = "Låser døre";
   const CALENDAR_COLORS = ["#d6b98a", "#c79b7a", "#8fa08a", "#9aa6b8", "#b5a3c4", "#a8b58a"];
   const CALENDAR_REFRESH_MS = 5 * 60 * 1000;
   const CAMERA_VIEW_MAX_MS = 3 * 60 * 1000;

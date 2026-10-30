@@ -1,3 +1,9 @@
+## 0.8.79
+
+- Ny valgfri soveværelsesside til en sengekants-iPad (Administration → Denne enhed → Soveværelse på denne enhed): to livekameraer, kalender, indeklima, lys med dæmper, scener, komfort, medier, låse og alarm (lås op og frakobling kræver altid pinkode), en Godnat-knap med nedtælling og et søvnkort til ResMed myAir/CPAP med score, brugstid, AHI, lækage og 14 nætters udvikling. Menuen skjules på siden, og en egen fuldskærmsmenu giver adgang til de andre sider. Slået fra som standard og kun for den enhed, den slås til på. (Claude AI)
+- Soveværelsessiden kan vise et livekamera oven på pauseskærmen, når der er aktivitet i alarmzonerne (zonelog fra UniFi Protect Alarm Manager eller personsensorer); vælges under Administration → Soveværelse. (Claude AI)
+- Administration er gjort brugbar på små iPads: menu-knap og vej tilbage til dashboardet i portræt, sidemenuen holder den aktive side synlig, felter og vælgere flyder ikke længere ud over kortene, større berøringsflader og ingen zoom i inputfelter. (Claude AI)
+
 ## 0.8.78
 
 - Ny valgfri iPad-tilstand (Administration → Denne enhed): ingen sløringseffekter og ingen pinch-zoom, skærmen holdes tændt hvor browseren tillader det, og pauseskærmen med dæmpet ur starter altid efter inaktivitet, ikke kun om natten. Kameraerne er stadig live. Slået fra som standard og kun for den enhed, den slås til på. (Claude AI)
