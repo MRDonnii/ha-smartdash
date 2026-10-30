@@ -1,5 +1,16 @@
 [
   {
+    "version": "20261030-1",
+    "tag": "v0.8.78",
+    "date": "2026-10-30",
+    "changes": [
+      {
+        "da": "Ny valgfri iPad-tilstand (Administration → Denne enhed): ingen sløringseffekter og ingen pinch-zoom, skærmen holdes tændt hvor browseren tillader det, og pauseskærmen med dæmpet ur starter altid efter inaktivitet, ikke kun om natten. Kameraerne er stadig live. Slået fra som standard og kun for den enhed, den slås til på. (Claude AI)",
+        "en": "New optional iPad mode (Administration → This device): no blur effects and no pinch zoom, the screen is kept awake where the browser allows it, and the dimmed clock screensaver always starts after inactivity, not only at night. Cameras stay live. Off by default and only for the device it is switched on for."
+      }
+    ]
+  },
+  {
     "version": "20261010-5",
     "tag": "v0.8.77",
     "date": "2026-10-10",

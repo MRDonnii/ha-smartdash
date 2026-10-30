@@ -1,3 +1,7 @@
+## 0.8.78
+
+- Ny valgfri iPad-tilstand (Administration → Denne enhed): ingen sløringseffekter og ingen pinch-zoom, skærmen holdes tændt hvor browseren tillader det, og pauseskærmen med dæmpet ur starter altid efter inaktivitet, ikke kun om natten. Kameraerne er stadig live. Slået fra som standard og kun for den enhed, den slås til på. (Claude AI)
+
 ## 0.8.77
 
 - Energisiden viser elpriser i kvarterer eller hele timer: med "Prisopløsning" (Administration → Energi, fx EV Ledgers vælger) på kvarter vises en søjle pr. kvarter; ellers bliver kvarterpriser til timer med timens gennemsnit. "Nu", billigst/dyrest og "Bedste 3 timer" følger med. (Claude AI)
