@@ -389,6 +389,8 @@
     "Kraftig regn": "Heavy rain", "Tåget": "Foggy", "Blæsende": "Windy", "Torden": "Thunder", "Tordenbyger": "Thunderstorms", "Sne": "Snow",
     "Aktuelt vejr": "Current weather"
   });
+  // Screensaver camera alert on bedroom devices.
+  Object.assign(en, { "Person": "Person", "Dyr": "Animal", "+{n} zone": "+{n} zone", "+{n} zoner": "+{n} zones" });
 
   function currentLanguage() {
     const stored = typeof BeastLocalSettings !== "undefined" ? BeastLocalSettings.get("language", "en") : "en";

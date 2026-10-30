@@ -1,0 +1,235 @@
+/* Screensaver camera alert (bedroom devices): an Amber card laid over the
+   dimmed clock screensaver. Lives inside #beastAmbientMode, so it is only
+   ever on screen together with the screensaver. Fixed dark, no dashboard
+   theme variable, no filter / backdrop-filter. */
+.beast-bedroom-alert {
+  --bda-tx: #eadfcb;
+  --bda-tx-2: #a89c88;
+  --bda-tx-3: #857c6c;
+  --bda-amber: #f0a24a;
+  --bda-amber-hi: #ffc27a;
+  --bda-ember: #d9732c;
+  --bda-line: #1a202c;
+  --bda-on-line: #4a2c12;
+  position: absolute;
+  inset: 0;
+  z-index: 5;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  pointer-events: none;
+  color: var(--bda-tx);
+  color-scheme: dark;
+  font-family: "Inter", -apple-system, "SF Pro Text", "Helvetica Neue", Arial, sans-serif;
+  font-feature-settings: "tnum" 1, "cv11" 1, "ss01" 1;
+  -webkit-font-smoothing: antialiased;
+  -webkit-tap-highlight-color: transparent;
+  text-align: left;
+  /* Pushes the clock back without hiding it; taps here still wake the
+     screensaver as usual, only the card is interactive. */
+  background: radial-gradient(70% 60% at 50% 50%, rgba(3, 4, 7, .78), rgba(3, 4, 7, .5) 70%, rgba(3, 4, 7, .28));
+  animation: bda-fade .22s ease-out both;
+}
+.beast-bedroom-alert *,
+.beast-bedroom-alert *::before,
+.beast-bedroom-alert *::after { box-sizing: border-box; }
+
+.bda-card {
+  position: relative;
+  width: min(58vw, calc((100vh - 150px) * 16 / 9 + 24px));
+  min-width: 420px;
+  display: grid;
+  gap: 10px;
+  padding: 10px 12px 14px;
+  border: 1px solid var(--bda-on-line);
+  border-radius: 24px;
+  background:
+    radial-gradient(90% 70% at 0% 0%, rgba(217, 115, 44, .16), rgba(217, 115, 44, 0) 62%),
+    linear-gradient(180deg, #110f0d 0%, #0b0e15 100%);
+  box-shadow: inset 0 1px 0 rgba(255, 194, 122, .10), 0 0 0 6px rgba(240, 162, 74, .05);
+  pointer-events: auto;
+  animation: bda-rise .26s cubic-bezier(.2, .7, .2, 1) both;
+}
+
+.bda-head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 44px;
+  padding-left: 6px;
+}
+.bda-dot {
+  flex: none;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 40% 35%, #ffcf8f 0%, #ff7a3d 55%, #b5561c 100%);
+  box-shadow: 0 0 0 4px rgba(255, 122, 61, .16);
+}
+.bda-title {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  overflow: hidden;
+  white-space: nowrap;
+  font-size: 18px;
+  line-height: 1.2;
+  letter-spacing: -.01em;
+}
+.bda-what { flex: none; font-weight: 600; color: var(--bda-amber-hi); }
+.bda-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; font-weight: 500; color: var(--bda-tx); }
+.bda-name::before { content: "·"; margin-right: 8px; color: var(--bda-tx-3); font-weight: 400; }
+.bda-more {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  height: 24px;
+  padding: 0 10px;
+  border: 1px solid var(--bda-on-line);
+  border-radius: 12px;
+  background: linear-gradient(180deg, #24170c, #1a120a);
+  color: var(--bda-amber-hi);
+  font-size: 11.5px;
+  font-weight: 600;
+  letter-spacing: .02em;
+  white-space: nowrap;
+}
+.bda-more[hidden] { display: none; }
+.bda-time { flex: none; color: var(--bda-tx-2); font-size: 14px; font-weight: 500; letter-spacing: .02em; }
+.beast-bedroom-alert .bda-close {
+  -webkit-appearance: none;
+  appearance: none;
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  min-height: 44px;
+  margin: 0;
+  padding: 0;
+  border: 1px solid #242b39;
+  border-radius: 14px;
+  background: #111621;
+  color: var(--bda-tx-2);
+  font: inherit;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+.beast-bedroom-alert .bda-close:active { background: #171d2a; color: var(--bda-tx); }
+.bda-i { display: block; fill: none; stroke: currentColor; stroke-linecap: round; stroke-linejoin: round; }
+
+.bda-media {
+  position: relative;
+  aspect-ratio: 16 / 9;
+  overflow: hidden;
+  border: 1px solid #1e1c19;
+  border-radius: 16px;
+  background: #0b0b0a;
+  cursor: pointer;
+  touch-action: manipulation;
+  outline: none;
+}
+.bda-media:focus-visible { border-color: rgba(240, 162, 74, .5); }
+.bda-stream,
+.bda-stream beast-ha-camera-stream { position: absolute; inset: 0; display: block; background: #0b0b0a; }
+.bda-stream .beast-ha-camera-poster,
+.bda-stream .beast-ha-camera-video,
+.bda-stream iframe { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; object-fit: cover; background: #0b0b0a; }
+.bda-stream iframe { pointer-events: none; }
+.bda-scrim {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    linear-gradient(180deg, rgba(4, 5, 8, .62) 0%, rgba(4, 5, 8, 0) 26%),
+    linear-gradient(0deg, rgba(4, 5, 8, .55) 0%, rgba(4, 5, 8, 0) 30%),
+    radial-gradient(120% 90% at 50% 45%, rgba(0, 0, 0, 0) 60%, rgba(0, 0, 0, .4) 100%);
+}
+.bda-live {
+  position: absolute;
+  top: 12px;
+  left: 12px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 22px;
+  padding: 0 9px;
+  border: 1px solid rgba(240, 162, 74, .22);
+  border-radius: 11px;
+  background: rgba(10, 8, 6, .62);
+  color: var(--bda-amber-hi);
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+}
+.bda-live::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: #ff7a3d; box-shadow: 0 0 0 3px rgba(255, 122, 61, .18); }
+.bda-live[data-live="connecting"] { border-color: rgba(133, 124, 108, .3); color: var(--bda-tx-2); }
+.bda-live[data-live="connecting"]::before { background: var(--bda-tx-3); box-shadow: none; }
+.bda-cam {
+  position: absolute;
+  left: 14px;
+  bottom: 12px;
+  max-width: calc(100% - 80px);
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  color: rgba(234, 223, 203, .82);
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: .01em;
+}
+.bda-expand {
+  position: absolute;
+  right: 8px;
+  bottom: 8px;
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border: 1px solid rgba(255, 255, 255, .06);
+  border-radius: 14px;
+  background: rgba(8, 8, 10, .48);
+  color: rgba(234, 223, 203, .8);
+}
+
+/* Countdown: a hairline under the video that empties as the pop-up's time
+   runs out (stepped from JS once a second). */
+.bda-bar {
+  position: absolute;
+  left: 24px;
+  right: 24px;
+  bottom: 6px;
+  height: 2px;
+  overflow: hidden;
+  border-radius: 1px;
+  background: rgba(240, 162, 74, .12);
+}
+.bda-bar i {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, #9a4716, var(--bda-amber) 60%, var(--bda-amber-hi));
+  transform-origin: left center;
+  transition: transform 1s linear;
+}
+.bda-bar i.is-reset { transition: none; }
+
+@media (orientation: portrait) {
+  .bda-card { width: min(90vw, 720px); min-width: 0; }
+}
+@media (max-width: 560px) {
+  .beast-bedroom-alert { padding: 12px; }
+  .bda-card { width: 100%; }
+  .bda-title { font-size: 16px; }
+  .bda-time { display: none; }
+}
+
+@keyframes bda-fade { from { opacity: 0; } }
+@keyframes bda-rise { from { opacity: 0; transform: translateY(10px) scale(.985); } }
+@media (prefers-reduced-motion: reduce) {
+  .beast-bedroom-alert,
+  .bda-card { animation: none; }
+}
