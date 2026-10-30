@@ -1,5 +1,16 @@
 [
   {
+    "version": "20261031-1",
+    "tag": "v0.8.80",
+    "date": "2026-10-31",
+    "changes": [
+      {
+        "da": "Soveværelsessiden har fået et nyt, varmt ravfarvet design med kameraerne i fokus, og menusiden, PIN-tastaturet og søvnkortet følger med. På soveværelses-iPad'en er pauseskærmens ur større, og når et kamera popper op ved aktivitet i alarmzonerne, glider uret op i hjørnet, så kameraet kan fylde det meste af skærmen. (Claude AI)",
+        "en": "The bedroom page has a new warm amber design with the cameras in focus, and the menu page, PIN pad and sleep card follow it. On the bedroom iPad the screensaver clock is larger, and when a camera pops up on alarm-zone activity the clock glides into the corner so the camera can fill most of the screen."
+      }
+    ]
+  },
+  {
     "version": "20261030-2",
     "tag": "v0.8.79",
     "date": "2026-10-30",
