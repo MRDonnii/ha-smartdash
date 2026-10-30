@@ -17,6 +17,29 @@
     } catch (_) {}
   }
 
+  // Same shortcut for the bedroom page on this device: ?bedroom=1 / ?bedroom=0.
+  const bedroomQuery = new URLSearchParams(location.search).get("bedroom");
+  if (bedroomQuery === "1" || bedroomQuery === "0") {
+    try {
+      const stored = JSON.parse(localStorage.getItem(SETTINGS_KEY) || "{}");
+      stored.bedroomView = bedroomQuery === "1";
+      localStorage.setItem(SETTINGS_KEY, JSON.stringify(stored));
+      if (bedroomQuery === "1") sessionStorage.setItem("beast_active_section_v1", "bedroom");
+      else if (sessionStorage.getItem("beast_active_section_v1") === "bedroom") sessionStorage.removeItem("beast_active_section_v1");
+    } catch (_) {}
+  }
+
+  // The bedroom page is this device's start page: paint it dark and without
+  // the rail from the first frame instead of flashing the normal shell.
+  function bedroomFirst() {
+    try {
+      if (JSON.parse(localStorage.getItem(SETTINGS_KEY) || "{}").bedroomView !== true) return false;
+      const remembered = sessionStorage.getItem("beast_active_section_v1");
+      return !remembered || remembered === "bedroom";
+    } catch (_) { return false; }
+  }
+  if (bedroomFirst()) root.classList.add("beast-chromeless");
+
   function apply() { root.classList.toggle("beast-ipad", enabled()); }
   apply();
   document.addEventListener("beast:local-settings-changed", (event) => {

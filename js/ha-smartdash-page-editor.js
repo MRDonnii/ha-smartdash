@@ -3,7 +3,7 @@
 // configurable layer of entity cards below it. The same editor is used by
 // every page, so drag/resize/search/save behaviour stays consistent.
 window.BeastPageEditor = (() => {
-  const EXCLUDED = new Set(["overview", "robots", "printer", "security", "settings"]);
+  const EXCLUDED = new Set(["overview", "robots", "printer", "security", "settings", "bedroom"]);
   const editors = new Map();
   const LABELS = {
     rooms: "Rum", cameras: "Kameraer", security: "Sikkerhed", music: "Musik",

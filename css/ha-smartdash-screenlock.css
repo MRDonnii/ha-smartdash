@@ -157,3 +157,8 @@
 .beast-lock-forgot:hover, .beast-lock-forgot:focus-visible { background: var(--surface-hover); outline: 1px solid var(--border-strong); }
 .is-ambient .beast-lock-forgot { color: #64dcff; }
 .is-ambient .beast-lock-forgot:hover, .is-ambient .beast-lock-forgot:focus-visible { background: rgba(28, 32, 48, .78); outline-color: rgba(255, 255, 255, .16); }
+
+/* Variable-length code entry (alarm codes): an explicit OK key. */
+.beast-lock-submit { min-width: 160px; min-height: 48px; margin-top: var(--space-2); padding: 0 24px; border: 1px solid var(--border-strong); border-radius: 999px; background: var(--surface-2); color: var(--ink); font: 700 var(--text-md) var(--font-sans); cursor: pointer; }
+.beast-lock-submit:disabled { opacity: .4; cursor: default; }
+.is-ambient .beast-lock-submit { border-color: rgba(255, 255, 255, .16); background: #161923; color: #f5f6f8; }
