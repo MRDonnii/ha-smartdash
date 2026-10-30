@@ -568,6 +568,8 @@ button { cursor: pointer; }
   .admin-main { padding: 16px 16px 50px; }
   .admin-grid, .admin-page-grid, .admin-summary, .admin-branding-grid, .admin-feature-grid { grid-template-columns: 1fr; }
   .admin-topbar { align-items: flex-start; flex-direction: column; gap: 10px; margin-bottom: 16px; }
+  /* Repeats the intro/panel text right below it on almost every view */
+  .admin-topbar p { display: none; }
   .admin-entity-device-scope { grid-template-columns: 1fr; }
   .admin-entity-device-scope small { grid-column: auto; }
   .admin-project-heading,.admin-project-grid { grid-template-columns:1fr; }
