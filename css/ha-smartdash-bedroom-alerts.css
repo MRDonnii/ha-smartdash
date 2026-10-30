@@ -228,9 +228,67 @@
   .bda-time { display: none; }
 }
 
+/* Leaving: the card sinks back and fades while the clock returns. */
+.beast-bedroom-alert.is-leaving { animation: bda-fade-out .32s ease-in both; }
+.beast-bedroom-alert.is-leaving .bda-card { animation: bda-sink .32s ease-in both; }
+
+/* ---------- screensaver clock on bedroom devices ----------
+   html.beast-bedroom-device is only set on devices with the bedroom page
+   on, so other kiosks keep their screensaver exactly as it is. Larger,
+   thin, warm ivory; it moves only by transform (set from JS) and the rest
+   of the screensaver content only fades. */
+html.beast-bedroom-device .beast-ambient-mode { -webkit-backdrop-filter: none; backdrop-filter: none; }
+html.beast-bedroom-device .beast-ambient-time,
+html.beast-bedroom-device .beast-ambient-time.is-size-small,
+html.beast-bedroom-device .beast-ambient-time.is-size-large {
+  font-size: min(25vw, 34vh);
+  font-weight: 200;
+  line-height: .9;
+  letter-spacing: -.045em;
+  color: rgba(234, 223, 203, .5);
+}
+html.beast-bedroom-device .beast-ambient-time.is-size-small { font-size: min(20vw, 27vh); }
+html.beast-bedroom-device .beast-ambient-time.is-size-large { font-size: min(28vw, 38vh); }
+html.beast-bedroom-device .beast-ambient-date { color: rgba(234, 223, 203, .32); font-weight: 400; }
+html.beast-bedroom-device .beast-ambient-time,
+html.beast-bedroom-device .beast-ambient-date {
+  position: relative;
+  z-index: 6;
+  transform-origin: 0 0;
+  transition: transform .56s cubic-bezier(.22, .72, .18, 1), opacity .56s ease;
+}
+/* On the way back the clock waits a moment for the card to fade. */
+html.beast-bedroom-device .beast-ambient-mode:not(.has-bd-alert) .beast-ambient-time,
+html.beast-bedroom-device .beast-ambient-mode:not(.has-bd-alert) .beast-ambient-date { transition-delay: .14s; }
+html.beast-bedroom-device .beast-ambient-summary,
+html.beast-bedroom-device .beast-ambient-brightness,
+html.beast-bedroom-device .beast-ambient-bottom { transition: opacity .4s ease; }
+html.beast-bedroom-device .has-bd-alert .beast-ambient-summary,
+html.beast-bedroom-device .has-bd-alert .beast-ambient-brightness,
+html.beast-bedroom-device .has-bd-alert .beast-ambient-bottom { opacity: 0; pointer-events: none; }
+html.beast-bedroom-device .has-bd-alert .beast-ambient-time,
+html.beast-bedroom-device .has-bd-alert .beast-ambient-date { will-change: transform; }
+
+/* The pop-up takes the space under the corner clock: about three quarters
+   of the width in landscape, nearly all of it in portrait, 16:9. */
+html.beast-bedroom-device .beast-bedroom-alert { padding: 132px 24px 24px; }
+html.beast-bedroom-device .bda-card {
+  width: min(74vw, calc((100vh - 132px - 24px - 86px) * 16 / 9 + 24px));
+  min-width: 0;
+  animation: bda-rise .5s .12s cubic-bezier(.2, .7, .2, 1) both;
+}
+@media (orientation: portrait) {
+  html.beast-bedroom-device .bda-card { width: min(92vw, calc((100vh - 132px - 24px - 86px) * 16 / 9 + 24px)); }
+}
+
 @keyframes bda-fade { from { opacity: 0; } }
+@keyframes bda-fade-out { to { opacity: 0; } }
+@keyframes bda-sink { to { opacity: 0; transform: translateY(8px) scale(.985); } }
 @keyframes bda-rise { from { opacity: 0; transform: translateY(10px) scale(.985); } }
 @media (prefers-reduced-motion: reduce) {
   .beast-bedroom-alert,
-  .bda-card { animation: none; }
+  .bda-card,
+  html.beast-bedroom-device .bda-card { animation: none; }
+  html.beast-bedroom-device .beast-ambient-time,
+  html.beast-bedroom-device .beast-ambient-date { transition: none; }
 }

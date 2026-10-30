@@ -236,6 +236,64 @@ window.BeastBedroomAlerts = (() => {
     }
     renderHead();
     restartCountdown();
+    moveClock(overlay, true);
+  }
+
+  // ---------------------------------------------------------------------------
+  // The screensaver clock steps aside for the pop-up: it shrinks into the top
+  // left corner (date beneath it) and grows back when the pop-up closes. Only
+  // transform/opacity animate (see the alerts stylesheet); the positions are
+  // measured once from the clock's resting place, not every frame.
+  // ---------------------------------------------------------------------------
+  const CLOCK_EDGE = { x: 32, y: 26 };
+  const CLOCK_FONT_PX = 72;
+  const DATE_FONT_PX = 17;
+
+  function clockParts(overlay) {
+    return [overlay?.querySelector(".beast-ambient-time"), overlay?.querySelector(".beast-ambient-date")];
+  }
+
+  function moveClock(overlay, on, { remeasure = false } = {}) {
+    if (!overlay) return;
+    const [time, date] = clockParts(overlay);
+    const wasOn = overlay.classList.contains("has-bd-alert");
+    overlay.classList.toggle("has-bd-alert", on);
+    if (!on) {
+      [time, date].forEach((element) => { if (element) element.style.transform = ""; });
+      return;
+    }
+    if (!time || (wasOn && !remeasure && time.style.transform)) return;
+    // Measure the resting layout (no transform), then animate to the corner;
+    // a re-measure (rotation, resize) jumps straight to the new spot.
+    [time, date].forEach((element) => { if (element) { element.style.transition = "none"; element.style.transform = ""; } });
+    const box = overlay.getBoundingClientRect();
+    const timeRect = time.getBoundingClientRect();
+    const scale = Math.min(1, CLOCK_FONT_PX / (parseFloat(getComputedStyle(time).fontSize) || timeRect.height));
+    const edgeY = box.height > box.width ? CLOCK_EDGE.y + 2 : CLOCK_EDGE.y;
+    const targets = [[time, CLOCK_EDGE.x - (timeRect.left - box.left), edgeY - (timeRect.top - box.top), scale]];
+    if (date) {
+      const dateRect = date.getBoundingClientRect();
+      const dateScale = Math.min(1, DATE_FONT_PX / (parseFloat(getComputedStyle(date).fontSize) || dateRect.height));
+      targets.push([date, CLOCK_EDGE.x + 3 - (dateRect.left - box.left), edgeY + timeRect.height * scale + 10 - (dateRect.top - box.top), dateScale]);
+    }
+    void time.offsetWidth;
+    targets.forEach(([element, x, y, factor]) => {
+      if (!remeasure) element.style.transition = "";
+      element.style.transform = `translate3d(${x.toFixed(1)}px, ${y.toFixed(1)}px, 0) scale(${factor.toFixed(4)})`;
+    });
+    if (remeasure) {
+      void time.offsetWidth;
+      targets.forEach(([element]) => { element.style.transition = ""; });
+    }
+  }
+
+  let resizeTimerId = null;
+  function onResize() {
+    window.clearTimeout(resizeTimerId);
+    resizeTimerId = window.setTimeout(() => {
+      const overlay = ambientOverlay();
+      if (alert && overlay?.classList.contains("has-bd-alert")) moveClock(overlay, true, { remeasure: true });
+    }, 120);
   }
 
   function mount(overlay) {
@@ -338,13 +396,22 @@ window.BeastBedroomAlerts = (() => {
     alert.timerId = window.setTimeout(close, alert.deadline - Date.now());
   }
 
+  // The card fades out while the clock glides back to the middle; the
+  // stream is torn down at once (the card only lingers as a picture).
   function close() {
     if (!alert) return;
     window.clearTimeout(alert.timerId);
     window.clearInterval(alert.tickId);
     alert.observer?.disconnect();
-    alert.element?.remove();
+    const element = alert.element;
     alert = null;
+    moveClock(document.getElementById("beastAmbientMode"), false);
+    if (!element) return;
+    element.querySelector(".bda-stream")?.replaceChildren();
+    if (!element.isConnected || window.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches) { element.remove(); return; }
+    element.classList.add("is-leaving");
+    element.style.pointerEvents = "none";
+    window.setTimeout(() => element.remove(), 360);
   }
 
   function onCardClick(event) {
@@ -400,7 +467,14 @@ window.BeastBedroomAlerts = (() => {
   // ---------------------------------------------------------------------------
   // Wiring
   // ---------------------------------------------------------------------------
+  // Bedroom devices get their own (larger, Amber) screensaver clock; the
+  // class keeps those rules away from every other kiosk.
+  function markDevice() {
+    document.documentElement.classList.toggle("beast-bedroom-device", enabledHere());
+  }
+
   function sync() {
+    markDevice();
     const config = cfg();
     const zoneLog = list(config.alertZoneLog)[0] || null;
     const sensors = list(config.alertSensors);
@@ -440,6 +514,8 @@ window.BeastBedroomAlerts = (() => {
   document.addEventListener("keydown", (event) => { if (event.key === "Escape") closeView(); });
   document.addEventListener("visibilitychange", () => { if (document.hidden) closeView(); });
   window.addEventListener("message", onPlayerMessage);
+  window.addEventListener("resize", onResize);
+  markDevice();
 
   return { parseZoneLog, close, isShowing: () => Boolean(alert) };
 })();
