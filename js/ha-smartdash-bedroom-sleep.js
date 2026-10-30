@@ -549,7 +549,7 @@ window.BeastBedroom.sleep = (() => {
         const points = series(metric);
         const avg = points.filter((point) => point.value != null).length >= 3 ? average(points) : null;
         const latest = points[points.length - 1]?.value;
-        return `<section class="bd-sd-card${metric === "score" ? " is-score" : ""}"><header><b>${esc(t(METRICS[metric].label))}</b><span>${avg == null ? "" : `${esc(t("snit"))} ${esc(formatMetric(metric, metric === "score" || metric === "mask" ? Math.round(avg) : avg))}`}${latest == null ? "" : ` · ${esc(t("i nat"))} <b>${esc(formatMetric(metric, latest))}</b>`}</span></header><div class="bd-chart" data-sd-chart="${metric}"></div></section>`;
+        return `<section class="bd-sd-card${metric === "score" ? " is-score" : ""}"><header><b>${esc(t(METRICS[metric].label))}</b><span>${[avg == null ? "" : `${esc(t("snit"))} ${esc(formatMetric(metric, metric === "score" || metric === "mask" ? Math.round(avg) : avg))}`, latest == null ? "" : `${esc(t("i nat"))} <b>${esc(formatMetric(metric, latest))}</b>`].filter(Boolean).join(" · ")}</span></header><div class="bd-chart" data-sd-chart="${metric}"></div></section>`;
       }).join("")}</div>
       ${history.approximate.size ? `<p class="bd-quiet">${esc(t("Ældre nætter er hentet fra langtidsstatistik og kan være omtrentlige."))}</p>` : ""}
     </div>`;
