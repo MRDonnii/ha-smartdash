@@ -138,8 +138,9 @@ window.BeastBedroom.menu = (() => {
       const date = new Date(next.at);
       const today = B.util.startOfDay();
       const day = B.util.dateKey(date);
-      const label = next.at <= now ? t("Nu") : day === B.util.dateKey(today) ? t("I dag") : day === B.util.dateKey(B.util.addDays(today, 1)) ? t("I morgen") : capitalize(date.toLocaleDateString(locale(), { weekday: "long" }));
-      return plain(`${label}${next.allDay || next.at <= now ? "" : ` ${hm(date)}`} · ${next.title}`);
+      const started = next.at <= now;
+      const label = started && !next.allDay ? t("Nu") : started || day === B.util.dateKey(today) ? t("I dag") : day === B.util.dateKey(B.util.addDays(today, 1)) ? t("I morgen") : capitalize(date.toLocaleDateString(locale(), { weekday: "long" }));
+      return plain(`${label}${next.allDay || started ? "" : ` ${hm(date)}`} · ${next.title}`);
     },
     weather() {
       if (typeof ambientWeather !== "function") return off();
@@ -172,7 +173,7 @@ window.BeastBedroom.menu = (() => {
       if (!robots.length) return off();
       const running = robots.find((item) => ["cleaning", "mowing", "returning"].includes(item.st.state));
       if (running) {
-        const verb = running.st.state === "mowing" ? t("Plæneklipper") : running.st.state === "returning" ? t("Kører hjem") : t("Støvsuger");
+        const verb = running.st.state === "mowing" ? t("Klipper") : running.st.state === "returning" ? t("Kører hjem") : t("Støvsuger");
         return live(verb, displayName(running.id));
       }
       return plain(robots.every((item) => ["docked", "idle"].includes(item.st.state)) ? t("Alle i dock") : t("{n} robotter", { n: robots.length }));

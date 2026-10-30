@@ -509,10 +509,20 @@ window.BeastBedroom = (() => {
     updateCameraOverlays();
   }
 
+  // The go2rtc fallback player is its own document; it reports its health
+  // with postMessage, so the LIVE pill only shows once video really plays.
+  function onPlayerMessage(event) {
+    if (event.origin !== window.location.origin || !["camera-player-ready", "camera-player-health"].includes(event.data?.type)) return;
+    const frame = [...(root?.querySelectorAll(".bd-cam iframe") || [])].find((item) => item.contentWindow === event.source);
+    if (!frame) return;
+    frame.dataset.health = event.data.type === "camera-player-ready" ? "playing" : String(event.data.state || "");
+    updateCameraOverlays();
+  }
+
   function updateCameraOverlays() {
     root?.querySelectorAll(".bd-cam[data-index]").forEach((tile) => {
       const element = tile.querySelector("beast-ha-camera-stream");
-      const live = Boolean(element && (element.classList.contains("is-ready") || element.querySelector("iframe")));
+      const live = Boolean(element && (element.classList.contains("is-ready") || element.querySelector("iframe")?.dataset.health === "playing"));
       const pill = tile.querySelector(".bd-cam-live");
       if (pill && pill.dataset.live !== (live ? "live" : "connecting")) {
         pill.dataset.live = live ? "live" : "connecting";
@@ -769,10 +779,10 @@ window.BeastBedroom = (() => {
 
   function lightTileMarkup(model) {
     if (model.unavailable) {
-      return `<div class="bd-light is-unavailable" data-light="${esc(model.id)}"><div class="bd-light-tap"><span class="bd-light-text"><span class="bd-light-name">${esc(model.name)}</span><span class="bd-light-state">${esc(model.stateText)}</span></span>${icon("bulb", 18, "bd-light-ic")}</div></div>`;
+      return `<div class="bd-light is-unavailable" data-light="${esc(model.id)}"><div class="bd-light-tap"><span class="bd-light-text"><span class="bd-light-name">${esc(model.name)}</span><span class="bd-light-state">${esc(model.stateText)}</span></span>${icon("bulb", 16, "bd-light-ic")}</div></div>`;
     }
     return `<div class="bd-light${model.on ? " is-on" : ""}${model.canDim ? " can-dim" : ""}" data-light="${esc(model.id)}" style="--b:${model.pct}%">
-      <button type="button" class="bd-light-tap" data-bd-action="light-toggle" data-entity="${esc(model.id)}" aria-pressed="${model.on}"><span class="bd-light-text"><span class="bd-light-name">${esc(model.name)}</span><span class="bd-light-state">${esc(model.stateText)}</span></span>${icon("bulb", 18, "bd-light-ic")}</button>
+      <button type="button" class="bd-light-tap" data-bd-action="light-toggle" data-entity="${esc(model.id)}" aria-pressed="${model.on}"><span class="bd-light-text"><span class="bd-light-name">${esc(model.name)}</span><span class="bd-light-state">${esc(model.stateText)}</span></span>${icon("bulb", 16, "bd-light-ic")}</button>
       ${model.canDim ? `<div class="bd-dimmer" data-bd-dimmer="${esc(model.id)}" role="slider" tabindex="0" aria-label="${esc(t("Lysstyrke {name}", { name: model.name }))}" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${model.pct}"><span class="bd-track"><span class="bd-track-fill"></span><span class="bd-knob"></span></span></div>` : ""}
     </div>`;
   }
@@ -1614,6 +1624,7 @@ window.BeastBedroom = (() => {
       window.clearTimeout(connectedTimerId);
       connectedTimerId = window.setTimeout(() => { if (active) window.BeastBedroom.sleep?.onReconnected?.(); }, 30000);
     });
+    window.addEventListener("message", onPlayerMessage);
     if (go2rtcBase()) window.BeastCameras?.ensureStreamDiscovery?.(go2rtcBase()).then(() => { streamDiscoveryVersion += 1; if (active) mountCameras(); });
     if (isActive()) activate();
     else applyDim();

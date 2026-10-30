@@ -547,7 +547,7 @@ window.BeastBedroom.sleep = (() => {
         <div class="bd-sd-metrics">${TAB_ORDER.filter(hasMetric).map((metric) => metricCellMarkup(metric, m, { tabs: false })).join("")}</div></div>
       <div class="bd-sd-charts" data-n="${charts.length}">${charts.map((metric) => {
         const points = series(metric);
-        const avg = average(points);
+        const avg = points.filter((point) => point.value != null).length >= 3 ? average(points) : null;
         const latest = points[points.length - 1]?.value;
         return `<section class="bd-sd-card${metric === "score" ? " is-score" : ""}"><header><b>${esc(t(METRICS[metric].label))}</b><span>${avg == null ? "" : `${esc(t("snit"))} ${esc(formatMetric(metric, metric === "score" || metric === "mask" ? Math.round(avg) : avg))}`}${latest == null ? "" : ` · ${esc(t("i nat"))} <b>${esc(formatMetric(metric, latest))}</b>`}</span></header><div class="bd-chart" data-sd-chart="${metric}"></div></section>`;
       }).join("")}</div>

@@ -18,6 +18,7 @@ html.beast-chromeless .beast-notification-button,
 html.beast-chromeless .beast-notification-center,
 html.beast-chromeless .beast-quick-scenarios { display: none; }
 html.beast-chromeless .beast-status-dot-fixed { opacity: .35; box-shadow: none; }
+html.beast-chromeless.beast-bedroom-layer-open .beast-status-dot-fixed { display: none; }
 html.beast-chromeless .beast-offline-status { border-color: rgba(211, 146, 116, .38); background: #11100e; color: #e9e2d6; backdrop-filter: none; -webkit-backdrop-filter: none; box-shadow: none; }
 
 /* ---------- tokens ---------- */
@@ -154,7 +155,8 @@ html.beast-chromeless .beast-offline-status { border-color: rgba(211, 146, 116, 
 /* ---------- header: clock, date, climate ---------- */
 .bd-head { display: flex; align-items: center; gap: 24px; min-width: 0; height: var(--bd-head-h); padding: 0 2px; }
 .bd-clock { display: flex; align-items: center; gap: 16px; flex: none; }
-.bd-time { color: var(--bd-ink); font-size: 64px; font-weight: 180; line-height: .92; letter-spacing: -.035em; white-space: nowrap; }
+/* line-height 1 plus overflow clip keeps the glyph box inside the header (the digits sit well inside it). */
+.bd-time { height: 1em; overflow: hidden; color: var(--bd-ink); font-size: 64px; font-weight: 180; line-height: 1; letter-spacing: -.035em; white-space: nowrap; }
 .bd-time i { position: relative; top: -4px; margin: 0 -1px; color: var(--bd-gold-2); font-style: normal; font-weight: 160; }
 .bd-date { display: flex; flex-direction: column; gap: 6px; padding-top: 4px; }
 .bd-d1 { color: var(--bd-ink); font-size: 17px; font-weight: 350; letter-spacing: -.005em; white-space: nowrap; }
@@ -358,7 +360,7 @@ html.beast-chromeless .beast-offline-status { border-color: rgba(211, 146, 116, 
 }
 .bd-light.is-on { border-color: var(--bd-gold-line); background: var(--bd-surface-on); }
 .bd-light:active:not(.is-dragging) { transform: scale(.98); }
-.bd-root .bd-light-tap { position: absolute; inset: 0 0 44px 0; display: flex; align-items: flex-start; justify-content: space-between; gap: 6px; padding: 10px 11px 0 12px; }
+.bd-root .bd-light-tap { position: absolute; inset: 0 0 44px 0; display: flex; align-items: flex-start; justify-content: space-between; gap: 4px; padding: 10px 9px 0 11px; }
 .bd-light:not(.can-dim) .bd-light-tap { inset: 0; }
 .bd-light-text { display: flex; flex-direction: column; min-width: 0; }
 .bd-light-name { overflow: hidden; color: var(--bd-ink-2); font-size: 14px; font-weight: 450; line-height: 1.2; letter-spacing: -.005em; text-overflow: ellipsis; white-space: nowrap; }
@@ -691,7 +693,7 @@ html.beast-bedroom-menu-open .bd-page { visibility: hidden; }
 .bd-menu:not(.has-bed):not(.has-settings) { grid-template-columns: minmax(0, 1fr); grid-template-areas: "head" "pages" "screen"; }
 .bd-menu:not(.has-pages) { grid-template-rows: var(--bd-head-h) minmax(0, 1fr); }
 .bd-menu-head { grid-area: head; display: flex; align-items: center; gap: 22px; min-width: 0; padding: 0 2px; }
-.bd-menu-time { color: var(--bd-ink); font-size: 46px; font-weight: 190; line-height: 1; letter-spacing: -.035em; white-space: nowrap; }
+.bd-menu-time { height: 1em; overflow: hidden; color: var(--bd-ink); font-size: 46px; font-weight: 190; line-height: 1; letter-spacing: -.035em; white-space: nowrap; }
 .bd-menu-time i { position: relative; top: -3px; margin: 0 -1px; color: var(--bd-gold-2); font-style: normal; font-weight: 170; }
 .bd-menu-date { display: flex; flex-direction: column; gap: 6px; min-width: 0; padding-top: 2px; }
 .bd-menu-date .bd-d1 { font-size: 16px; font-weight: 380; }
