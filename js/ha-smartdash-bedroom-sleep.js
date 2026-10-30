@@ -249,28 +249,32 @@ window.BeastBedroom.sleep = (() => {
 
   async function loadHistory(force = false) {
     if (!configured()) return;
+    if (history.loading) {
+      await history.loading;
+      if (!force) return;
+    }
     const signature = historySignature();
     if (!force && history.signature === signature && Date.now() - history.at < HISTORY_TTL_MS) return;
-    if (history.loading) return history.loading;
     const i = ids();
     const entityList = [i.date, ...metricParsers(i).map(([, id]) => id)].filter(Boolean);
     const start = new Date(Date.now() - HISTORY_DAYS * 86400000);
     const path = `/api/history/period/${encodeURIComponent(start.toISOString())}?filter_entity_id=${encodeURIComponent([...new Set(entityList)].join(","))}&end_time=${encodeURIComponent(new Date().toISOString())}&minimal_response&no_attributes`;
-    history.loading = (async () => {
+    const run = (async () => {
       const approximate = new Set();
       let nights = new Map();
       let firstStart = Infinity;
       try {
         ({ nights, firstStart } = nightsFromRows(rowsById(await BeastAuth.haFetch(path)), i));
+        await fillFromStatistics(nights, approximate, nightKeys(), firstStart, i);
       } catch (error) {
         BeastCore.log(`Soveværelse: søvnhistorik kunne ikke hentes (${error.message}).`);
       }
-      await fillFromStatistics(nights, approximate, nightKeys(), firstStart, i);
       history = { nights, approximate, at: Date.now(), signature, loading: null };
       historyVersion += 1;
       B.renderSleep?.();
     })();
-    return history.loading;
+    history.loading = run;
+    try { await run; } finally { if (history.loading === run) history.loading = null; }
   }
 
   // The night on screen right now always reflects the live sensors, so a
@@ -388,11 +392,18 @@ window.BeastBedroom.sleep = (() => {
     return `<span class="bd-ring${m.stale ? " is-stale" : ""}"><svg viewBox="0 0 120 120" aria-hidden="true" focusable="false"><defs><linearGradient id="${gradient}" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#f0dcb6"/><stop offset="1" stop-color="#9c7a4c"/></linearGradient></defs><circle class="bd-ring-dial" cx="60" cy="60" r="57"/><circle class="bd-ring-track" cx="60" cy="60" r="48"/>${arc}</svg><span class="bd-ring-val"><b>${esc(text)}</b><small>${esc(label)}</small></span></span>`;
   }
 
+  // On the page the freshness chip sits in the panel's eyebrow (which gives
+  // the sentence a third line); the sheet shows it under the verdict.
+  function freshMarkup(m) {
+    if (m.stale) return `<span class="bd-fresh is-stale"><i></i>${esc(m.meta)}</span>`;
+    return m.fresh ? `<span class="bd-fresh"><i></i>${esc(m.fresh)}</span>` : "";
+  }
+
   function verdictMarkup(m, full = false) {
     const chip = m.chip ? `<span class="bd-chip-st is-${m.chip.tone}">${esc(m.chip.text)}</span>` : "";
     const sentence = m.sentence ? `<span class="bd-v2${full ? " is-full" : ""}">${m.sentence}</span>` : "";
-    const fresh = m.fresh ? `<span class="bd-fresh${m.stale ? " is-stale" : ""}"><i></i>${esc(m.fresh)}</span>` : "";
-    return `<span class="bd-verdict">${chip}<span class="bd-v1">${esc(m.title)}</span>${sentence}${fresh}</span>`;
+    const extra = full ? `${freshMarkup(m)}${m.meta && !m.stale ? `<span class="bd-v3">${esc(m.meta)}</span>` : ""}` : "";
+    return `<span class="bd-verdict">${chip}<span class="bd-v1">${esc(m.title)}</span>${sentence}${extra}</span>`;
   }
 
   function metricCellMarkup(metric, m, { tabs = true, active = null } = {}) {
@@ -407,7 +418,7 @@ window.BeastBedroom.sleep = (() => {
   }
 
   function panelMarkup() {
-    return `<div class="bd-eyebrow"><b>${esc(t("Søvn · CPAP"))}</b><span class="bd-sleep-eyeright"><span class="bd-meta" data-sleep-meta></span><button type="button" class="bd-sleep-open" data-bd-action="sleep-detail" aria-label="${esc(t("Åbn søvn og CPAP"))}">${icon("corners", 15)}</button></span></div><div class="bd-sleep-body" data-sleep-body></div>`;
+    return `<div class="bd-eyebrow"><b>${esc(t("Søvn · CPAP"))}</b><span class="bd-sleep-eyeright"><span class="bd-sleep-meta" data-sleep-meta></span><button type="button" class="bd-sleep-open" data-bd-action="sleep-detail" aria-label="${esc(t("Åbn søvn og CPAP"))}">${icon("corners", 15)}</button></span></div><div class="bd-sleep-body" data-sleep-body></div>`;
   }
 
   function activeMetric() {
@@ -439,7 +450,7 @@ window.BeastBedroom.sleep = (() => {
     if (signature !== panelSignature || !body.firstElementChild) {
       panelSignature = signature;
       const meta = panel.querySelector("[data-sleep-meta]");
-      if (meta) { meta.textContent = m.meta; meta.classList.toggle("is-warn", m.stale); }
+      if (meta) meta.innerHTML = m.allDown ? "" : freshMarkup(m);
       body.innerHTML = `<button type="button" class="bd-hero" data-bd-action="sleep-metric" data-metric="score" aria-pressed="${metric === "score"}">${ringMarkup(m)}${verdictMarkup(m)}</button>
         ${tabs.length ? `<div class="bd-metrics" data-n="${tabs.length}">${tabs.map((key) => metricCellMarkup(key, m, { active: metric })).join("")}</div>` : ""}
         <div class="bd-trend"><div class="bd-trend-head">${trendHeadMarkup(metric, points)}</div><div class="bd-chart" data-sleep-chart="${metric}"></div></div>`;

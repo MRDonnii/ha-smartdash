@@ -270,15 +270,18 @@ html.beast-chromeless .beast-offline-status { border-color: rgba(211, 146, 116, 
 }
 .bd-chip-st.is-warn { border-color: var(--bd-warn-line); background: var(--bd-warn-wash); color: var(--bd-warn); }
 .bd-v1 { color: var(--bd-ink); font-size: 21px; font-weight: 300; line-height: 1.15; letter-spacing: -.015em; }
-.bd-v2 { display: -webkit-box; margin-top: 4px; overflow: hidden; color: var(--bd-ink-2); font-size: 13px; line-height: 1.34; -webkit-box-orient: vertical; -webkit-line-clamp: 2; }
+.bd-v2 { display: -webkit-box; margin-top: 4px; overflow: hidden; color: var(--bd-ink-2); font-size: 13px; line-height: 1.34; -webkit-box-orient: vertical; -webkit-line-clamp: 3; }
 .bd-v2 em { color: var(--bd-gold); font-style: normal; }
 .bd-v2.is-full { display: block; -webkit-line-clamp: unset; }
+.bd-v3 { margin-top: 4px; color: var(--bd-ink-3); font-size: 12px; }
 .bd-sleep.is-night .bd-v2 { display: none; }
 .bd-sleep.is-morning .bd-v1 { font-size: 22px; }
-.bd-fresh { display: inline-flex; align-items: center; gap: 7px; margin-top: 6px; color: var(--bd-ink-3); font-size: 12px; white-space: nowrap; }
-.bd-fresh i { width: 6px; height: 6px; border-radius: 50%; background: var(--bd-ok); box-shadow: 0 0 0 3px rgba(155, 176, 143, .14); }
-.bd-fresh.is-stale i { background: transparent; border: 1px solid var(--bd-ink-3); box-shadow: none; }
-.bd-fresh.is-stale { opacity: .8; }
+.bd-fresh { display: inline-flex; align-items: center; gap: 7px; margin-top: 6px; color: var(--bd-ink-3); font-size: 12px; letter-spacing: .02em; text-transform: none; white-space: nowrap; }
+.bd-fresh i { flex: none; width: 6px; height: 6px; border-radius: 50%; background: var(--bd-ok); box-shadow: 0 0 0 3px rgba(155, 176, 143, .14); }
+.bd-fresh.is-stale { color: var(--bd-warn); }
+.bd-fresh.is-stale i { background: transparent; border: 1px solid currentColor; box-shadow: none; }
+.bd-sleep-meta { display: flex; min-width: 0; overflow: hidden; }
+.bd-sleep-meta .bd-fresh { margin-top: 0; font-weight: 450; }
 
 .bd-metrics { display: grid; grid-template-columns: 1fr 1fr; border-top: 1px solid var(--bd-hair); border-bottom: 1px solid var(--bd-hair); }
 .bd-root .bd-m { position: relative; display: flex; flex-direction: column; min-width: 0; padding: 6px 0 7px; }
