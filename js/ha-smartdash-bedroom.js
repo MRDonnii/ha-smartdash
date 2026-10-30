@@ -483,7 +483,7 @@ window.BeastBedroom = (() => {
     const specs = ids.map((id) => {
       const st = state(id);
       if (!statesReady) return { id, wait: true };
-      if (!st || st.state === "unavailable") return { id, unavailable: true, label: overrides().get(id) || displayName(id) };
+      if (!st || st.state === "unavailable") return { id, unavailable: true, label: overrides().get(id) || window.BeastCameras?.resolveCamera?.(id)?.label || displayName(id) };
       return { id, spec: cameraSpec(id) };
     });
     disconnectCameraObservers();
@@ -1043,7 +1043,7 @@ window.BeastBedroom = (() => {
         progress = Math.max(0, Math.min(100, ((position + elapsed) / durationS) * 100));
       }
     }
-    return { id, name, on, isTv, verb, rest, action, playing: status === "playing", progress: progress == null ? null : Math.round(progress * 2) / 2 };
+    return { id, name, on, isTv, verb, rest, action, playing: status === "playing", paused: status === "paused", progress: progress == null ? null : Math.round(progress * 2) / 2 };
   }
 
   function mediaRowMarkup(model) {
@@ -1053,7 +1053,8 @@ window.BeastBedroom = (() => {
     const button = model.action === "media_play_pause"
       ? `<button type="button" class="bd-ib${model.playing ? " is-on" : ""}" data-bd-action="media" data-service="media_play_pause" data-entity="${esc(model.id)}" aria-label="${esc(model.playing ? t("Pause") : t("Afspil"))}">${icon(model.playing ? "pause" : "play", 15)}</button>`
       : model.action ? `<button type="button" class="bd-ib${model.on ? " is-on" : ""}" data-bd-action="media" data-service="${model.action}" data-entity="${esc(model.id)}" aria-label="${esc(model.on ? t("Sluk") : t("Tænd"))}">${icon("power", 16)}</button>` : "";
-    const sub = model.verb ? `<b>${esc(model.verb)}</b>${model.rest ? ` · ${esc(model.rest)}` : ""}` : esc(model.rest);
+    const verb = model.paused ? esc(model.verb) : `<b>${esc(model.verb)}</b>`;
+    const sub = model.verb ? `${verb}${model.rest ? ` · ${esc(model.rest)}` : ""}` : esc(model.rest);
     return `<div class="bd-mrow${model.on ? " is-on" : ""}"><span class="bd-art">${icon(model.isTv ? "tv" : model.playing ? "play" : "speaker", 16)}</span><span class="bd-mtext"><span class="bd-m1">${esc(model.name)}</span><span class="bd-m2">${sub}</span>${model.progress != null ? `<span class="bd-mprog"><i style="width:${model.progress}%"></i></span>` : ""}</span>${button}</div>`;
   }
 
@@ -1124,13 +1125,21 @@ window.BeastBedroom = (() => {
     let status = st.state;
     if (pend?.alarm && !["arming", "pending", "disarming"].includes(status) && (status === "disarmed") === (pend.alarm !== "disarm")) status = pend.alarm === "disarm" ? "disarming" : "arming";
     const target = String(a.next_state || pend?.target || "").replace(/^armed_/, "");
+    // Panels that publish their exit delay (an end time, e.g. Alarmo's
+    // "expiration", or a length in seconds) get a live countdown; others
+    // just say "Aktiverer…".
     let countdown = "";
     if (status === "arming" || status === "pending") {
-      const total = Number(a.arming_time ?? a.exit_delay ?? a.delay_time ?? a.delay);
-      if (Number.isFinite(total) && total > 0) {
-        const since = (Date.now() - (Date.parse(st.last_changed || "") || Date.now())) / 1000;
-        const left = Math.max(0, Math.ceil(total - since));
-        countdown = `${Math.floor(left / 60)}:${pad2(left % 60)}`;
+      let left = null;
+      const expires = Date.parse(a.expiration || a.expires_at || "");
+      if (Number.isFinite(expires)) left = (expires - Date.now()) / 1000;
+      else {
+        const total = Number(a.arming_time ?? a.exit_delay ?? a.delay_time ?? a.delay);
+        if (Number.isFinite(total) && total > 0) left = total - (Date.now() - (Date.parse(st.last_changed || "") || Date.now())) / 1000;
+      }
+      if (left != null) {
+        const seconds = Math.max(0, Math.ceil(left));
+        countdown = `${Math.floor(seconds / 60)}:${pad2(seconds % 60)}`;
       }
     }
     return { id, name, status, modes, target, countdown, feedback: alarmFeedback && Date.now() < alarmFeedback.until ? alarmFeedback.text : "" };

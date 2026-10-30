@@ -874,6 +874,7 @@ html.beast-chromeless .beast-lock-overlay:not(.is-ambient) .beast-lock-dot.is-fi
 html.beast-chromeless .beast-lock-overlay:not(.is-ambient) .beast-lock-keypad { grid-template-columns: repeat(3, 68px); grid-auto-rows: 68px; gap: 14px 22px; }
 html.beast-chromeless .beast-lock-overlay:not(.is-ambient) .beast-lock-key { border: 1px solid rgba(226, 204, 166, .15); background: transparent; color: #e9e2d6; font-size: 26px; font-weight: 300; }
 html.beast-chromeless .beast-lock-overlay:not(.is-ambient) .beast-lock-key:active { background: rgba(214, 185, 138, .10); }
+html.beast-chromeless .beast-lock-overlay:not(.is-ambient) .beast-lock-key .beast-icon { color: inherit; }
 html.beast-chromeless .beast-lock-overlay:not(.is-ambient) .beast-lock-key-cancel { border-color: transparent; color: #a69d8f; }
 html.beast-chromeless .beast-lock-overlay:not(.is-ambient) .beast-lock-submit { border: 1px solid rgba(211, 146, 116, .38); background: transparent; color: #d39274; font-weight: 500; }
 html.beast-chromeless .beast-lock-overlay:not(.is-ambient) .beast-lock-forgot { color: #a69d8f; font-weight: 450; }
