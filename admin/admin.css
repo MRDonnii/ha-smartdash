@@ -200,7 +200,7 @@ button { cursor: pointer; }
 .admin-field-group > .admin-grid { padding: 6px 0 24px; }
 .admin-field > span { color: var(--ink-muted); font-size: 12px; font-weight: 800; }
 .admin-field-heading { display:flex; align-items:center; justify-content:space-between; gap:8px; }
-.admin-field-heading b { min-width:0; color:var(--ink-muted); font-size:12px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.admin-field-heading b { min-width:0; color:var(--ink-muted); font-size:12px; overflow-wrap:anywhere; }
 .admin-field-heading em { flex:0 0 auto; padding:3px 7px; border:1px solid var(--border); border-radius:999px; color:var(--accent-b); background:var(--accent-soft); font-size:9px; font-style:normal; font-weight:800; text-transform:uppercase; letter-spacing:.04em; }
 .admin-picker-meta { min-height:27px; display:flex; align-items:center; justify-content:space-between; gap:10px; padding:4px 8px; border-radius:8px; background:var(--surface-2); color:var(--ink-faint); font-size:10px; }
 .admin-picker-meta strong { min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; color:var(--accent-b); font-size:10px; }
