@@ -80,10 +80,11 @@ window.BeastBedroom = (() => {
     speaker: '<rect x="6" y="3.5" width="12" height="17" rx="2.5"/><circle cx="12" cy="14" r="3"/><path d="M12 7.5h.01"/>'
   };
 
+  // Strokes always land at 1.5 px on screen, whatever the icon size.
   function icon(name, size = 20, className = "") {
     const path = ICONS[name];
     if (!path) return "";
-    return `<svg class="bd-i${className ? ` ${className}` : ""}" width="${size}" height="${size}" viewBox="0 0 24 24" aria-hidden="true" focusable="false">${path}</svg>`;
+    return `<svg class="bd-i${className ? ` ${className}` : ""}" width="${size}" height="${size}" viewBox="0 0 24 24" stroke-width="${(36 / size).toFixed(2)}" aria-hidden="true" focusable="false">${path}</svg>`;
   }
 
   function locale() { return window.HASmartdashI18n?.locale || "da-DK"; }
@@ -218,6 +219,12 @@ window.BeastBedroom = (() => {
 
   function isActive() { return Boolean(zone?.closest(".beast-section")?.classList.contains("is-active")); }
 
+  // Forces every block to repaint except the camera tiles: rebuilding those
+  // would tear their live streams down.
+  function invalidateBlocks() {
+    [...blockSignatures.keys()].forEach((key) => { if (key !== "cams") blockSignatures.delete(key); });
+  }
+
   function setPending(id, value, ms = 6000) {
     pending.set(id, { ...value, at: Date.now(), until: Date.now() + ms });
   }
@@ -307,11 +314,20 @@ window.BeastBedroom = (() => {
     return gridTemplate(columns.map((name) => `minmax(0, ${weights[name]}fr)`), rows);
   }
 
+  // Portrait: cameras side by side, the sleep band across the full width,
+  // then controls on the left and security / calendar / Godnat on the right.
+  // Godnat sits under the calendar so the controls column keeps the height
+  // its light dimmers need.
   function portraitLayout(f) {
-    const left = [f.ctrl && "ctrl", f.night && "night"].filter(Boolean);
-    const right = [f.sec && "sec", f.cal && "cal"].filter(Boolean);
-    const leftCells = left.length === 2 ? ["ctrl", "ctrl", "night"] : left[0] === "ctrl" ? ["ctrl", "ctrl", "ctrl"] : left.length ? [".", ".", "night"] : null;
-    const rightCells = right.length === 2 ? ["sec", "cal", "cal"] : right.length ? [right[0], right[0], right[0]] : null;
+    const right = [f.sec && "sec", f.cal && "cal", f.night && "night"].filter(Boolean);
+    let rightCells = null;
+    if (right.length) {
+      rightCells = [right[0], right[Math.min(1, right.length - 1)], right[right.length - 1]];
+      if (right.length === 2 && right[1] === "night") rightCells = [right[0], right[0], "night"];
+      if (right.length === 2 && right[0] === "sec") rightCells = ["sec", "cal", "cal"];
+    }
+    let leftCells = f.ctrl ? ["ctrl", "ctrl", "ctrl"] : null;
+    if (leftCells && right.length === 1 && right[0] === "night") leftCells = rightCells = ["ctrl", "ctrl", "night"];
     const pair = (index) => {
       if (leftCells && rightCells) return [leftCells[index], rightCells[index]];
       const cells = leftCells || rightCells;
@@ -322,7 +338,7 @@ window.BeastBedroom = (() => {
     if (f.sleep) rows.push([pair(0) ? "auto" : "minmax(0, 1fr)", ["sleep", "sleep"]]);
     if (pair(0)) {
       rows.push(["auto", pair(0)], ["minmax(0, 1fr)", pair(1)]);
-      rows.push([f.night ? "64px" : "minmax(0, 1fr)", pair(2)]);
+      rows.push([rightCells?.[2] === "night" ? "64px" : "minmax(0, 1fr)", pair(2)]);
     } else if (!f.sleep) {
       rows.push(["minmax(0, 1fr)", [".", "."]]);
     }
@@ -713,7 +729,9 @@ window.BeastBedroom = (() => {
       if (size === lastSize) return;
       lastSize = size;
       blockSignatures.delete("cal");
-      window.requestAnimationFrame(renderCalendar);
+      // Synchronously: the list's own size never depends on its rows, so
+      // refitting here cannot loop.
+      renderCalendar();
     });
     calendarResizeObserver.observe(host);
   }
@@ -1179,11 +1197,17 @@ window.BeastBedroom = (() => {
     openConfirm({ title, confirmLabel }, () => run());
   }
 
+  // One tap, unless the lock itself wants a code for locking too.
   function lockDoor(id) {
-    setPending(id, { lock: "lock" }, 20000);
-    blockSignatures.delete("sec");
-    renderSecurity();
-    callService("lock", "lock", id).catch((error) => lockFailed(id, t("Kunne ikke låse"), error));
+    const st = state(id);
+    const run = (code) => {
+      setPending(id, { lock: "lock" }, 20000);
+      blockSignatures.delete("sec");
+      renderSecurity();
+      callService("lock", "lock", id, typeof code === "string" ? { code } : {}).catch((error) => lockFailed(id, t("Kunne ikke låse"), error));
+    };
+    if (st?.attributes?.code_format) askCode(st, t("Lås {name}", { name: displayName(id) }), run);
+    else run();
   }
 
   function unlockDoor(id) {
@@ -1581,7 +1605,7 @@ window.BeastBedroom = (() => {
     BeastHaSocket.onStatusChange((status) => {
       if (status !== "connected") return;
       resubscribe();
-      blockSignatures.clear();
+      invalidateBlocks();
       if (active) {
         if (JSON.stringify(computeFlags()) !== JSON.stringify(flags)) build();
         renderAll();
@@ -1619,6 +1643,11 @@ window.BeastBedroom = (() => {
     activeSceneId,
     setDim,
     dimOn: () => BeastLocalSettings.get("bedroomDim", false) === true,
-    rerender: () => { blockSignatures.clear(); renderAll(); }
+    rerender: () => { invalidateBlocks(); renderAll(); },
+    renderSleep: () => {
+      if (!active) return;
+      window.BeastBedroom.sleep?.render(root?.querySelector(".bd-sleep"));
+      window.BeastBedroom.sleep?.renderDetail?.();
+    }
   };
 })();
