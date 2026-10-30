@@ -249,7 +249,7 @@ html.beast-chromeless .beast-offline-status { border-color: rgba(224, 99, 74, .4
 
 /* ---------- cameras ---------- */
 .bd-cams { min-width: 0; min-height: 0; }
-.bd-cams-inner { display: flex; flex-direction: column; gap: 10px; height: 100%; }
+.bd-cams-inner { display: flex; flex-direction: column; justify-content: center; gap: 10px; height: 100%; }
 .bd-cam {
   position: relative;
   flex: 1 1 0;
@@ -495,7 +495,7 @@ html.beast-chromeless .beast-offline-status { border-color: rgba(224, 99, 74, .4
   justify-content: center;
   flex: 1 1 28%;
   min-width: 0;
-  height: calc(var(--bd-row) - 10px);
+  height: max(44px, calc(var(--bd-row) - 10px));
   padding: 0 8px;
   border: 1px solid var(--bd-hair);
   border-radius: 12px;
@@ -563,6 +563,13 @@ html.beast-chromeless .beast-offline-status { border-color: rgba(224, 99, 74, .4
 .bd-sec > .bd-eyebrow { margin-bottom: 0; }
 .bd-sec .bd-meta { font-size: 12px; }
 .bd-sec-alarm { display: none; }
+/* Without cameras the security card has the whole left column: one large
+   tile per door, the alarm under them. */
+@media (orientation: landscape) {
+  .bd-page:not([data-shape~="cams"]) .bd-sec { justify-content: flex-start; gap: 14px; }
+  .bd-page:not([data-shape~="cams"]) .bd-locks { grid-template-columns: minmax(0, 1fr); }
+  .bd-page:not([data-shape~="cams"]) .bd-root .bd-lock, .bd-page:not([data-shape~="cams"]) .bd-lock { height: 64px; }
+}
 .bd-root .bd-sec.is-triggered { border-color: var(--bd-warn); background: linear-gradient(180deg, rgba(224, 99, 74, .10), rgba(224, 99, 74, .04)), var(--bd-panel); }
 .bd-locks { display: grid; grid-template-columns: repeat(var(--n, 3), minmax(0, 1fr)); gap: 8px; }
 .bd-locks[data-n="1"] { --n: 1; }
@@ -641,7 +648,10 @@ html.beast-chromeless .beast-offline-status { border-color: rgba(224, 99, 74, .4
   .bd-cl { flex: 1 1 auto; padding: 0 14px; }
   .bd-cams { contain: none; }
   .bd-cams-inner { flex-direction: row; gap: 14px; height: auto; }
-  .bd-cam, .bd-cams-inner > .bd-cam:only-child { flex: 1 1 0; aspect-ratio: 16 / 9; }
+  .bd-cam { flex: 1 1 0; aspect-ratio: 16 / 9; }
+  .bd-cams-inner { justify-content: center; }
+  .bd-cams-inner > .bd-cam:only-child { flex: 0 0 calc(50% - 7px); aspect-ratio: 16 / 9; max-height: none; }
+  .bd-page:not([data-shape~="cams"]) { --bd-row: 70px; }
   .bd-chart { min-height: 96px; height: 96px; }
   .bd-cal .bd-ev-src { display: block; }
   .bd-sec-hint { display: none; }
@@ -658,8 +668,8 @@ html.beast-chromeless .beast-offline-status { border-color: rgba(224, 99, 74, .4
   .bd-block:not(.is-lead) .bd-blockhead { display: none; }
   .bd-scenes { flex-wrap: nowrap; gap: 5px; }
   .bd-root .bd-chip, .bd-scenes[data-n] .bd-chip { flex: 1 1 0; padding: 0 2px; font-size: 12px; }
-  .bd-root { --bd-row: clamp(48px, calc(52px + (100vh - 1080px) * .1), 72px); }
-  .bd-root .bd-chip, .bd-scenes[data-n] .bd-chip { height: calc(var(--bd-row) - 4px); }
+  .bd-root { --bd-row: clamp(46px, calc(52px + (100vh - 1080px) * .2), 72px); }
+  .bd-root .bd-chip, .bd-scenes[data-n] .bd-chip { height: max(44px, calc(var(--bd-row) - 4px)); }
   .bd-root .bd-tog { height: var(--bd-row); }
   .bd-mrow { height: calc(var(--bd-row) + 4px); }
   .bd-mrow.is-playing { height: calc(var(--bd-row) + 8px); }
