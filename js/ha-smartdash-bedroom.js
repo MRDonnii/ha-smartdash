@@ -1452,6 +1452,10 @@ window.BeastBedroom = (() => {
     renderScenes();
     renderComfort();
     renderMedia();
+    // The first visible block's heading doubles as the panel title.
+    const blocks = [...root.querySelectorAll(".bd-ctrl > .bd-block")];
+    const lead = blocks.find((block) => !block.hidden);
+    blocks.forEach((block) => block.classList.toggle("is-lead", block === lead));
     renderCalendar();
     renderSecurity();
     renderNight();

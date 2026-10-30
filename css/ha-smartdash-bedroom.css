@@ -71,6 +71,8 @@ html.beast-chromeless .beast-offline-status { border-color: rgba(211, 146, 116, 
 .bd-root button,
 .bd-root a,
 .beast-bedroom-camview button {
+  -webkit-appearance: none;
+  appearance: none;
   font: inherit;
   color: inherit;
   background: none;
@@ -345,9 +347,9 @@ html.beast-chromeless .beast-offline-status { border-color: rgba(211, 146, 116, 
 /* ---------- controls: lights, scenes, comfort, media ---------- */
 .bd-ctrl { gap: 0; }
 .bd-block[hidden] { display: none; }
-.bd-block + .bd-block { margin-top: 14px; }
+.bd-block:not([hidden]) ~ .bd-block:not([hidden]) { margin-top: 14px; }
 .bd-blockhead { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; min-width: 0; margin-bottom: 8px; color: var(--bd-ink-3); font-size: 11px; font-weight: 550; line-height: 15px; letter-spacing: .16em; text-transform: uppercase; }
-.bd-block:first-child .bd-blockhead { margin-bottom: 9px; color: var(--bd-ink-2); }
+.bd-block.is-lead .bd-blockhead { margin-bottom: 9px; color: var(--bd-ink-2); }
 .bd-blockhead b { font-weight: 550; white-space: nowrap; }
 
 .bd-lights { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
@@ -586,7 +588,7 @@ html.beast-chromeless .beast-offline-status { border-color: rgba(211, 146, 116, 
   .bd-scenes[data-n="1"] { --cols: 1; }
   .bd-scenes[data-n="5"] .bd-chip, .bd-scenes[data-n="4"] .bd-chip { padding: 0 3px; font-size: 12.5px; }
   .bd-scenes[data-n="5"] .bd-chip.is-on::before, .bd-scenes[data-n="4"] .bd-chip.is-on::before { display: none; }
-  .bd-block + .bd-block { margin-top: 12px; }
+  .bd-block:not([hidden]) ~ .bd-block:not([hidden]) { margin-top: 12px; }
 }
 
 /* Phones and small windows: no fit-to-screen, the page scrolls instead. */
