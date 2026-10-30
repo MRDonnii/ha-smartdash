@@ -21,6 +21,23 @@ const BeastScreenLock = (() => {
   let promptTitle = "";
   let promptSubtitle = "";
   let lockedByAlarm = false;
+  // Alarm codes have no fixed length (HA only says "number"), so code entry
+  // can collect a variable number of digits and submit with an OK key.
+  let codeVariable = false;
+  let codeMinLength = PIN_LENGTH;
+  let codeMaxLength = PIN_LENGTH;
+
+  function escapeText(value) {
+    return String(value ?? "").replace(/[&<>"']/g, (char) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[char]);
+  }
+
+  function entryLength() {
+    return mode === "code-entry" ? codeMaxLength : PIN_LENGTH;
+  }
+
+  function variableEntry() {
+    return mode === "code-entry" && codeVariable;
+  }
 
   // crypto.subtle needs a secure context (HTTPS or localhost); this panel is
   // served over plain HTTP on the LAN, so it's unavailable. This lock is a
@@ -92,7 +109,7 @@ const BeastScreenLock = (() => {
 
   function titleFor() {
     if (mode === "locked") return "Skærmen er låst";
-    if (mode === "code-entry") return promptTitle || "Indtast alarmkode";
+    if (mode === "code-entry") return escapeText(promptTitle || "Indtast alarmkode");
     if (mode === "verify") return "Indtast kode";
     if (mode === "set-first") return "Vælg en ny kode";
     if (mode === "set-confirm") return "Bekræft koden";
@@ -101,7 +118,7 @@ const BeastScreenLock = (() => {
 
   function subtitleFor() {
     if (mode === "locked") return "Indtast koden for at låse op";
-    if (mode === "code-entry") return promptSubtitle || "Koden sendes direkte og gemmes ikke";
+    if (mode === "code-entry") return escapeText(promptSubtitle || "Koden sendes direkte og gemmes ikke");
     if (mode === "verify") return "Bekræft med din nuværende kode";
     if (mode === "set-first") return `${PIN_LENGTH} cifre`;
     if (mode === "set-confirm") return "Indtast koden igen";
@@ -122,9 +139,10 @@ const BeastScreenLock = (() => {
     // theme instead, see ha-smartdash-screenlock.css.
     overlay.classList.toggle("is-ambient", mode === "locked");
 
-    const dots = Array.from({ length: PIN_LENGTH }, (_, i) => `<span class="beast-lock-dot${i < digits.length ? " is-filled" : ""}"></span>`).join("");
+    const dots = dotsMarkup();
     const showCancel = mode !== "locked";
     const showRecovery = hasPin() && ["locked", "verify"].includes(mode);
+    const showSubmit = variableEntry();
 
     overlay.innerHTML = `
       <div class="beast-lock-card${errorActive ? " is-shaking" : ""}">
@@ -138,12 +156,16 @@ const BeastScreenLock = (() => {
           <button type="button" class="beast-lock-key" data-digit="0">0</button>
           <button type="button" class="beast-lock-key" data-action="backspace">${BeastCore.icon("backspace", { size: 20 })}</button>
         </div>
+        ${showSubmit ? `<button type="button" class="beast-lock-submit" data-action="submit" ${digits.length >= codeMinLength ? "" : "disabled"}>OK</button>` : ""}
         ${showRecovery ? `<button type="button" class="beast-lock-forgot" data-action="recover">Glemt kode? Nulstil med Home Assistant-login</button>` : ""}
       </div>
     `;
 
     overlay.querySelectorAll("[data-digit]").forEach((btn) => {
       btn.addEventListener("click", () => onDigit(btn.dataset.digit));
+    });
+    overlay.querySelector("[data-action='submit']")?.addEventListener("click", () => {
+      if (digits.length >= codeMinLength) handleComplete();
     });
     overlay.querySelector("[data-action='backspace']")?.addEventListener("click", onBackspace);
     overlay.querySelector("[data-action='cancel']")?.addEventListener("click", onCancel);
@@ -161,23 +183,36 @@ const BeastScreenLock = (() => {
     if (/^[0-9]$/.test(event.key)) { event.preventDefault(); onDigit(event.key); return; }
     if (event.key === "Backspace" || event.key === "Delete") { event.preventDefault(); onBackspace(); return; }
     if (event.key === "Escape" && mode !== "locked") { event.preventDefault(); onCancel(); return; }
-    if (event.key === "Enter" && digits.length === PIN_LENGTH) { event.preventDefault(); handleComplete(); }
+    const complete = variableEntry() ? digits.length >= codeMinLength : digits.length === entryLength();
+    if (event.key === "Enter" && complete) { event.preventDefault(); handleComplete(); }
   }
 
   document.addEventListener("keydown", handleKeyboard);
 
+  function dotsMarkup() {
+    const count = variableEntry() ? Math.max(codeMinLength, digits.length) : entryLength();
+    return Array.from({ length: count }, (_, i) => `<span class="beast-lock-dot${i < digits.length ? " is-filled" : ""}"></span>`).join("");
+  }
+
   function updateDots() {
     const overlay = ensureOverlay();
+    if (variableEntry()) {
+      const row = overlay.querySelector(".beast-lock-dots");
+      if (row) row.innerHTML = dotsMarkup();
+      const submit = overlay.querySelector("[data-action='submit']");
+      if (submit) submit.disabled = digits.length < codeMinLength;
+      return;
+    }
     overlay.querySelectorAll(".beast-lock-dot").forEach((dot, index) => {
       dot.classList.toggle("is-filled", index < digits.length);
     });
   }
 
   function onDigit(digit) {
-    if (digits.length >= PIN_LENGTH) return;
+    if (digits.length >= entryLength()) return;
     digits += digit;
     updateDots();
-    if (digits.length === PIN_LENGTH) {
+    if (!variableEntry() && digits.length === entryLength()) {
       window.setTimeout(handleComplete, 150);
     }
   }
@@ -276,6 +311,9 @@ const BeastScreenLock = (() => {
     promptTitle = "";
     promptSubtitle = "";
     lockedByAlarm = false;
+    codeVariable = false;
+    codeMinLength = PIN_LENGTH;
+    codeMaxLength = PIN_LENGTH;
     render();
   }
 
@@ -318,11 +356,17 @@ const BeastScreenLock = (() => {
     resetFlow();
   }
 
+  // options.length: a fixed number of digits (auto-submits). Without it,
+  // options.variableLength collects minLength..maxLength digits and submits
+  // with OK or Enter.
   function requestCode(options, onDone) {
     mode = "code-entry";
     digits = "";
     promptTitle = options?.title || "Indtast alarmkode";
     promptSubtitle = options?.subtitle || "Koden sendes direkte og gemmes ikke";
+    codeVariable = options?.variableLength === true && !options?.length;
+    codeMinLength = Math.max(1, Number(options?.minLength) || (codeVariable ? 4 : PIN_LENGTH));
+    codeMaxLength = codeVariable ? Math.max(codeMinLength, Number(options?.maxLength) || 10) : Math.max(1, Number(options?.length) || PIN_LENGTH);
     onDoneCallback = onDone || null;
     render();
   }
