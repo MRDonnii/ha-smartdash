@@ -39,8 +39,10 @@ window.BeastBedroomAlerts = (() => {
     return `<svg class="bda-i" width="${size}" height="${size}" viewBox="0 0 24 24" stroke-width="${(36 / size).toFixed(2)}" aria-hidden="true" focusable="false">${ICONS[name]}</svg>`;
   }
 
-  function locale() { return window.HASmartdashI18n?.locale || "da-DK"; }
-  function hm(at) { return new Date(at).toLocaleTimeString(locale(), { hour: "2-digit", minute: "2-digit" }); }
+  function hm(at) {
+    const date = new Date(at);
+    return `${String(date.getHours()).padStart(2, "0")}:${String(date.getMinutes()).padStart(2, "0")}`;
+  }
   function cfg() { return BeastConfig.get("panels.bedroom") || {}; }
   function list(value) {
     if (Array.isArray(value)) return value.filter((item) => typeof item === "string" && item.includes("."));
@@ -98,7 +100,7 @@ window.BeastBedroomAlerts = (() => {
     lastZoneEntryAt = Math.max(lastZoneEntryAt, ...entries.map((entry) => entry.at));
     const now = Date.now();
     unseen.filter((entry) => isFresh(entry.at, now)).sort((a, b) => a.at - b.at).forEach((entry) => {
-      trigger({ key: `zone:${entry.zone}`, slug: entry.zone, what: whatKind(entry.what), name: zoneName(entry.name), at: entry.at });
+      trigger({ key: entry.zone, slug: entry.zone, what: whatKind(entry.what), name: zoneName(entry.name), at: entry.at });
     });
   }
 
@@ -129,7 +131,7 @@ window.BeastBedroomAlerts = (() => {
     if (next !== "on" || previous !== "off") return;
     const changedAt = Date.parse(st.last_changed || "");
     if (Number.isFinite(changedAt) && !isFresh(changedAt)) return;
-    trigger({ key: `sensor:${sensorSlug(id)}`, sensor: id, slug: sensorSlug(id), what: sensorWhat(id), name: "", at: Number.isFinite(changedAt) ? changedAt : Date.now() });
+    trigger({ key: sensorSlug(id), sensor: id, slug: sensorSlug(id), what: sensorWhat(id), name: "", at: Number.isFinite(changedAt) ? changedAt : Date.now() });
   }
 
   // ---------------------------------------------------------------------------
@@ -165,10 +167,13 @@ window.BeastBedroomAlerts = (() => {
     return prefixed.filter((camera) => camera.slug === shortest);
   }
 
+  // A top-level const in its own script, so not a window property.
+  function registry() { return typeof BeastRegistry === "undefined" ? null : BeastRegistry; }
+
   function camerasForSensor(cameras, sensorId) {
-    const deviceId = window.BeastRegistry?.isLoaded?.() ? BeastRegistry.getEntityMeta(sensorId)?.deviceId : null;
+    const deviceId = registry()?.isLoaded() ? registry().getEntityMeta(sensorId)?.deviceId : null;
     if (!deviceId) return [];
-    const ids = new Set(BeastRegistry.getDeviceEntityIds(deviceId, "camera"));
+    const ids = new Set(registry().getDeviceEntityIds(deviceId, "camera"));
     return cameras.filter((camera) => ids.has(camera.entityId));
   }
 
@@ -303,7 +308,9 @@ window.BeastBedroomAlerts = (() => {
     const { element, event, spec } = alert;
     const others = [...alert.recent.keys()].filter((key) => key !== event.key).length;
     element.querySelector(".bda-what").textContent = t(WHAT_LABELS[event.what] || WHAT_LABELS.motion);
-    element.querySelector(".bda-name").textContent = event.name || spec.label;
+    const name = event.name || spec.label;
+    element.querySelector(".bda-name").textContent = name;
+    element.querySelector(".bda-cam").hidden = name.toLocaleLowerCase() === spec.label.toLocaleLowerCase();
     element.querySelector(".bda-time").textContent = hm(event.at);
     const more = element.querySelector(".bda-more");
     more.hidden = !others;
@@ -406,7 +413,7 @@ window.BeastBedroomAlerts = (() => {
       if (!signature) { close(); closeView(); return; }
       if (zoneLog) unsubscribers.push(BeastHaSocket.subscribeEntity(zoneLog, (id, next) => onZoneLog(next)));
       sensors.forEach((id) => unsubscribers.push(BeastHaSocket.subscribeEntity(id, onSensor)));
-      if (sensors.length) window.BeastRegistry?.ensureLoaded?.().catch(() => {});
+      if (sensors.length) registry()?.ensureLoaded().catch(() => {});
       if (go2rtcBase()) window.BeastCameras?.ensureStreamDiscovery?.(go2rtcBase());
     }
     if (!signature) return;
