@@ -510,9 +510,10 @@ window.BeastBedroom.sleep = (() => {
     const max = values.length ? Math.max(...values) : 0;
     const yTop = def.top(max);
     const y = (value) => base - Math.max(0, Math.min(1, value / yTop)) * plotH;
-    const gap = Math.max(2, Math.min(5, plotW / points.length * 0.22));
-    const barW = Math.max(3, (plotW - gap * (points.length - 1)) / points.length);
-    const slot = barW + gap;
+    // Bars nearly touch on the page (4 px apart) but stay slim in a wide chart.
+    const slot = (plotW + 4) / points.length;
+    const barW = Math.max(3, Math.min(30, slot - 4, slot * 0.78 + (slot < 24 ? 4 : 0)));
+    const offset = (slot - 4 - barW) / 2;
     const lastIndex = points.length - 1;
     const todayKey = dateKey(startOfDay());
     const avg = average(points);
@@ -520,7 +521,7 @@ window.BeastBedroom.sleep = (() => {
     const seq = ++gradientSeq;
     parts.push(`<defs><linearGradient id="bdBarN${seq}" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#5C3415"/><stop offset="1" stop-color="#2E1B0D"/></linearGradient><linearGradient id="bdBarL${seq}" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#FFC27A"/><stop offset="1" stop-color="#D9732C"/></linearGradient><linearGradient id="bdBarB${seq}" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#8A3424"/><stop offset="1" stop-color="#3D1711"/></linearGradient></defs>`);
     points.forEach((point, index) => {
-      const x = index * slot;
+      const x = index * slot + Math.max(0, offset);
       const center = x + barW / 2;
       const latest = index === lastIndex;
       const wake = addDays(parseDateKey(point.key), 1);
@@ -537,7 +538,7 @@ window.BeastBedroom.sleep = (() => {
         const path = barPath(x, yy, barW, base);
         parts.push(path ? `<path class="bd-c-bar ${cls}"${fill} d="${path}"/>` : `<rect class="bd-c-bar ${cls}"${fill} x="${x.toFixed(1)}" y="${base - 2}" width="${barW.toFixed(1)}" height="2"/>`);
       }
-      parts.push(`<rect class="bd-c-hit" x="${(index * slot - gap / 2).toFixed(1)}" y="0" width="${slot.toFixed(1)}" height="${height}" data-bd-action="sleep-bar" data-metric="${metric}" data-index="${index}"/>`);
+      parts.push(`<rect class="bd-c-hit" x="${(index * slot - 2).toFixed(1)}" y="0" width="${slot.toFixed(1)}" height="${height}" data-bd-action="sleep-bar" data-metric="${metric}" data-index="${index}"/>`);
     });
     if (def.ref != null) {
       const yy = Math.round(y(def.ref)) + 0.5;
