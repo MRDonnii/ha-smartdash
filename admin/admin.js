@@ -175,25 +175,24 @@
     // enhed, so it is not counted as missing setup until it is configured.
     { id: "bedroom", title: "Soveværelse", optional: true, description: "Sengekantsside, der slås til pr. enhed under Denne enhed. Vælg kameraer, kalender, indeklima, søvn og CPAP, lys, scener, sikkerhed og Godnat.",
       sections: {
-        header: ["Overskrift og indeklima", "Vises øverst ved uret. Et felt uden valg vises ikke på siden."],
+        header: ["Indeklima", "Vises øverst ved uret. Et felt uden valg vises ikke på siden."],
         cameras: ["Kameraer og kalender", "De to første kameraer vises live. Kalenderen viser i dag og de kommende dage."],
         controls: ["Lys, scener og komfort", "De fire første lys og de fem første scener og scripts vises på siden. Alle findes i menuen."],
         security: ["Sikkerhed og godnat", "Lås op og frakobling kræver altid pinkode. Godnat kører scriptet, hvis det er valgt, ellers scenen."],
         sleep: ["Søvn og CPAP", "Fra ResMed myAir-integrationen (AirSense). Listerne viser kun CPAP-sensorer, og søvnkortet skjules, hvis intet er valgt."],
-        names: ["Visningsnavne", "Navnene fra Home Assistant bruges uden rummets navn, så \"Soveværelse loft\" bliver til \"Loft\"."]
+        names: ["Navne", "Rummets navn vises øverst på siden og fjernes fra navnene fra Home Assistant, så \"Soveværelse loft\" bliver til \"Loft\"."]
       },
       fields: [
-        { key: "title", section: "header", label: "Rummets navn", type: "text", placeholder: "Soveværelse" },
         { key: "temperature", section: "header", label: "Temperatur", type: "single", domain: "sensor", deviceClasses: ["temperature"], hints: ["sove", "bedroom"] },
         { key: "humidity", section: "header", label: "Luftfugtighed", type: "single", domain: "sensor", deviceClasses: ["humidity"], hints: ["sove", "bedroom"] },
         { key: "co2", section: "header", label: "CO₂", type: "single", domain: "sensor", deviceClasses: ["carbon_dioxide"], hints: ["sove", "bedroom"] },
         { key: "airQuality", section: "header", label: "Luftkvalitet", type: "single", domain: "sensor", hints: ["air_quality", "luftkvalitet", "aqi", "iaq"], rankHints: ["air_quality", "aqi", "iaq"] },
         { key: "pm25", section: "header", label: "Partikler (PM2.5)", type: "single", domain: "sensor", deviceClasses: ["pm25"], hints: ["sove", "bedroom"] },
         { key: "window", section: "header", label: "Vindue", type: "single", domain: "binary_sensor", deviceClasses: ["window", "opening", "door"], hints: ["sove", "bedroom"] },
-        { key: "motion", section: "header", label: "Bevægelse", type: "single", domain: "binary_sensor", deviceClasses: ["motion", "occupancy", "presence"], hints: ["sove", "bedroom", "seng"], hint: "Vises over lysene, fx \"Under sengen: ingen bevægelse\"." },
         { key: "cameras", section: "cameras", label: "Kameraer", type: "multi", domain: "camera", hints: ["sove", "bedroom"] },
         { key: "calendars", section: "cameras", label: "Kalendere", type: "multi", domain: "calendar" },
         { key: "lights", section: "controls", label: "Lys", type: "multi", domain: "light", hints: ["sove", "bedroom"] },
+        { key: "motion", section: "controls", label: "Bevægelse", type: "single", domain: "binary_sensor", deviceClasses: ["motion", "occupancy", "presence"], hints: ["sove", "bedroom", "seng"], hint: "Vises over lysene, fx \"Under sengen: ingen bevægelse\"." },
         { key: "scenes", section: "controls", label: "Scener", type: "multi", domain: "scene", hints: ["sove", "bedroom"] },
         { key: "scripts", section: "controls", label: "Scripts", type: "multi", domain: "script", hints: ["sove", "bedroom", "nat", "night"] },
         { key: "activeSceneMinutes", section: "controls", label: "Senest aktiveret scene (minutter)", type: "number", min: 1, max: 1440, placeholder: "30", hint: "Så længe markeres den senest aktiverede scene. Standard er 30." },
@@ -213,6 +212,7 @@
         { key: "cpapMaskEvents", section: "sleep", label: "Maske af/på (antal pr. nat)", type: "single", domain: "sensor", hints: CPAP_HINTS, filterHints: true, rankHints: ["mask_on_off", "mask on/off"], hint: "Et antal pr. nat, ikke om masken er på lige nu." },
         { key: "cpapDataDate", section: "sleep", label: "Dataenes dato", type: "single", domain: "sensor", hints: CPAP_HINTS, filterHints: true, rankHints: ["current_data_date", "data_date", "data date"] },
         { key: "cpapLastCollected", section: "sleep", label: "Senest hentet", type: "single", domain: "sensor", hints: CPAP_HINTS, filterHints: true, rankHints: ["last_collected", "last collected"] },
+        { key: "title", section: "names", label: "Rummets navn", type: "text", placeholder: "Soveværelse" },
         { key: "displayNames", section: "names", label: "Egne visningsnavne (valgfri)", type: "text", multiline: true, wide: true, placeholder: "light.eksempel=Loft\nmedia_player.eksempel=TV", hint: "Én pr. linje eller adskilt med semikolon: entity_id=Navn." }
       ]}
   ];
@@ -270,6 +270,9 @@
   const selectSources = new Map();
   const entityFieldBaseSources = new Map();
   const CHECK_LIST_RENDER_LIMIT = 80;
+  // Sectioned panels fold into one <details> per section (the bedroom panel is
+  // ~13,000px in portrait otherwise); which ones are open survives re-renders.
+  const openPanelSections = new Map();
   let dynamicGroupRowSequence = 0;
 
   function escapeHtml(value) {
@@ -917,11 +920,16 @@
 
   function renderPanel(panel) {
     const current = BeastConfig.get(`panels.${panel.id}`) || {};
-    const sectionHead = (field, index) => {
-      const section = panel.sections?.[field.section];
-      if (!section || panel.fields[index - 1]?.section === field.section) return "";
-      return `<div class="admin-field-section"><h3>${escapeHtml(section[0])}</h3>${section[1] ? `<p>${escapeHtml(section[1])}</p>` : ""}</div>`;
-    };
+    const fieldHtml = (field) => `<div class="admin-field${field.wide ? " is-wide" : ""}"><span class="admin-field-heading"><b>${escapeHtml(field.label)}</b>${field.domain ? `<em>${escapeHtml(field.domain)}</em>` : ""}</span>${field.hint ? `<p class="admin-field-hint">${escapeHtml(field.hint)}</p>` : ""}${renderField(panel, field, current)}</div>`;
+    const sectionKeys = Object.keys(panel.sections || {});
+    const openSections = openPanelSections.get(panel.id) || new Set(sectionKeys.slice(0, 1));
+    const isSet = (value) => (Array.isArray(value) ? value.length > 0 : value !== null && value !== undefined && value !== "");
+    const fieldsHtml = sectionKeys.length ? sectionKeys.map((key) => {
+      const fields = panel.fields.filter((field) => field.section === key);
+      const [title, hint] = panel.sections[key];
+      const chosen = fields.filter((field) => isSet(current[field.key])).length;
+      return `<details class="admin-field-group" data-panel-section="${key}"${openSections.has(key) ? " open" : ""}><summary><span><strong>${escapeHtml(title)}</strong><small>${escapeHtml(hint)}</small></span><em class="${chosen ? "is-set" : ""}">${t(`${chosen} af ${fields.length} valgt`, `${chosen} of ${fields.length} selected`)}</em>${BeastCore.icon("chevron-down", { size: 18 })}</summary><div class="admin-grid">${fields.map(fieldHtml).join("")}</div></details>`;
+    }).join("") : `<div class="admin-grid">${panel.fields.map(fieldHtml).join("")}</div>`;
     return `
       <section class="admin-view${activeView === panel.id ? " is-active" : ""}" data-admin-view="${panel.id}">
         <button type="button" class="admin-section-back" data-view="devices">${BeastCore.icon("chevron-right", { size: 17 })}<span>Alle enheder</span></button>
@@ -929,9 +937,7 @@
           <div class="admin-card-head"><div><h2>${escapeHtml(panel.title)}</h2><p>${escapeHtml(panel.description)}</p></div></div>
           ${panel.fields.some((field) => field.type === "device") ? `<div class="admin-scope-banner">Vælg først den konkrete enhed og gem. Derefter viser felterne kun entities, som HA har knyttet til den valgte enhed.</div>` : ""}
           ${panel.id === "bedroom" ? renderBedroomDeviceNote() : ""}
-          <div class="admin-grid">
-            ${panel.fields.map((field, index) => `${sectionHead(field, index)}<div class="admin-field${field.wide ? " is-wide" : ""}"><span class="admin-field-heading"><b>${escapeHtml(field.label)}</b>${field.domain ? `<em>${escapeHtml(field.domain)}</em>` : ""}</span>${field.hint ? `<p class="admin-field-hint">${escapeHtml(field.hint)}</p>` : ""}${renderField(panel, field, current)}</div>`).join("")}
-          </div>
+          ${fieldsHtml}
           ${panel.id === "rooms" ? renderRoomsEntityMappings(current) : ""}
           <div class="admin-actions"><button class="admin-save" type="button" data-save-panel="${panel.id}">Gem ${escapeHtml(panel.title)}</button><span class="admin-save-state" data-save-state="${panel.id}"></span></div>
         </div>
@@ -2572,6 +2578,9 @@
         weatherOverlayConditionOverride: ["off", "auto"].includes(mode) ? null : mode,
         weatherOverlayPages: Array.from(document.querySelectorAll("[data-weather-page]")).filter((input) => input.checked).map((input) => input.dataset.weatherPage)
       });
+    }));
+    document.querySelectorAll("[data-panel-section]").forEach((details) => details.addEventListener("toggle", () => {
+      openPanelSections.set(activeView, new Set(Array.from(document.querySelectorAll("[data-panel-section][open]"), (item) => item.dataset.panelSection)));
     }));
     document.querySelectorAll("[data-save-panel]").forEach((button) => button.addEventListener("click", async () => {
       const panel = PANELS.find((item) => item.id === button.dataset.savePanel);

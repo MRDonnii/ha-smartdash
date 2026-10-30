@@ -186,10 +186,18 @@ button { cursor: pointer; }
 .admin-field { display: grid; grid-template-columns: minmax(0, 1fr); align-content: start; gap: 8px; min-width: 0; }
 .admin-field.is-hidden { display: none; }
 .admin-field.is-wide { grid-column: 1 / -1; }
-.admin-field-section { grid-column: 1 / -1; margin-top: 8px; padding-top: 18px; border-top: 1px solid var(--border); }
-.admin-field-section:first-child { margin-top: 0; padding-top: 0; border-top: 0; }
-.admin-field-section h3 { margin: 0; font-size: 16px; }
-.admin-field-section p { margin: 5px 0 0; color: var(--ink-muted); font-size: 13px; line-height: 1.45; }
+.admin-field-group { border-top: 1px solid var(--border); }
+.admin-field-group:last-of-type { border-bottom: 1px solid var(--border); }
+.admin-field-group > summary { min-height: 64px; display: flex; align-items: center; gap: 14px; padding: 14px 0; cursor: pointer; list-style: none; }
+.admin-field-group > summary::-webkit-details-marker { display: none; }
+.admin-field-group > summary > span { flex: 1 1 auto; min-width: 0; }
+.admin-field-group > summary strong { display: block; font-size: 16px; }
+.admin-field-group > summary small { display: block; margin-top: 4px; color: var(--ink-muted); font-size: 13px; line-height: 1.45; }
+.admin-field-group > summary em { flex: 0 0 auto; padding: 4px 10px; border-radius: 999px; color: var(--ink-muted); background: var(--surface-2); font-size: 12px; font-style: normal; font-weight: 800; white-space: nowrap; }
+.admin-field-group > summary em.is-set { color: var(--success); background: color-mix(in srgb, var(--success) 12%, transparent); }
+.admin-field-group > summary > svg { flex: 0 0 auto; color: var(--ink-muted); transition: transform .15s ease; }
+.admin-field-group[open] > summary > svg { transform: rotate(180deg); }
+.admin-field-group > .admin-grid { padding: 6px 0 24px; }
 .admin-field > span { color: var(--ink-muted); font-size: 12px; font-weight: 800; }
 .admin-field-heading { display:flex; align-items:center; justify-content:space-between; gap:8px; }
 .admin-field-heading b { min-width:0; color:var(--ink-muted); font-size:12px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
