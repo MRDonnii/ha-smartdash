@@ -27,7 +27,7 @@
   text-align: left;
   /* Pushes the clock back without hiding it; taps here still wake the
      screensaver as usual, only the card is interactive. */
-  background: radial-gradient(70% 60% at 50% 50%, rgba(3, 4, 7, .78), rgba(3, 4, 7, .5) 70%, rgba(3, 4, 7, .28));
+  background: radial-gradient(75% 65% at 50% 50%, rgba(3, 4, 7, .86), rgba(3, 4, 7, .7) 70%, rgba(3, 4, 7, .55));
   animation: bda-fade .22s ease-out both;
 }
 .beast-bedroom-alert *,
