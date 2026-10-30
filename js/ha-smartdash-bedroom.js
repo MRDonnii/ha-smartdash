@@ -132,7 +132,8 @@ window.BeastBedroom = (() => {
     const value = Number(st.state);
     return Number.isFinite(value) ? value : null;
   }
-  function roomTitle() { return String(cfg().title || "").trim() || t(DEFAULT_TITLE); }
+  // A title left at the default name follows the dashboard language.
+  function roomTitle() { return t(String(cfg().title || "").trim() || DEFAULT_TITLE); }
 
   let overridesSource = null;
   let overridesMap = new Map();
