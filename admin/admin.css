@@ -36,6 +36,7 @@ button { cursor: pointer; }
 .admin-device-hub small { margin-top:5px; overflow:hidden; color:var(--ink-muted); font-size:11px; line-height:1.35; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; }
 .admin-device-hub em { padding:5px 9px; border-radius:999px; color:var(--warning); background:var(--warning-soft); font-size:10px; font-style:normal; font-weight:800; white-space:nowrap; }
 .admin-device-hub em.is-ready { color:var(--success); background:color-mix(in srgb,var(--success) 12%,transparent); }
+.admin-device-hub em.is-optional { color:var(--ink-muted); background:var(--surface-2); }
 .admin-section-back { min-height:46px; margin-bottom:14px; padding:0 14px; display:inline-flex; align-items:center; gap:8px; border:1px solid var(--border); border-radius:12px; background:var(--surface-2); color:var(--ink-muted); font-weight:750; }
 .admin-section-back svg { transform:rotate(180deg); }
 .admin-primary-action { width:100%; min-height:92px; display:grid; grid-template-columns:52px minmax(0,1fr) 24px; align-items:center; gap:14px; padding:17px; border:1px solid var(--accent-border); border-radius:16px; background:linear-gradient(135deg,var(--accent-soft),var(--surface-solid)); color:var(--ink); text-align:left; }
@@ -184,6 +185,11 @@ button { cursor: pointer; }
 .admin-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: start; gap: 16px; }
 .admin-field { display: grid; grid-template-columns: minmax(0, 1fr); align-content: start; gap: 8px; min-width: 0; }
 .admin-field.is-hidden { display: none; }
+.admin-field.is-wide { grid-column: 1 / -1; }
+.admin-field-section { grid-column: 1 / -1; margin-top: 8px; padding-top: 18px; border-top: 1px solid var(--border); }
+.admin-field-section:first-child { margin-top: 0; padding-top: 0; border-top: 0; }
+.admin-field-section h3 { margin: 0; font-size: 16px; }
+.admin-field-section p { margin: 5px 0 0; color: var(--ink-muted); font-size: 13px; line-height: 1.45; }
 .admin-field > span { color: var(--ink-muted); font-size: 12px; font-weight: 800; }
 .admin-field-heading { display:flex; align-items:center; justify-content:space-between; gap:8px; }
 .admin-field-heading b { min-width:0; color:var(--ink-muted); font-size:12px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
@@ -205,7 +211,8 @@ button { cursor: pointer; }
 .admin-room-map-field input[type="search"], .admin-room-map-extras input[type="search"], .admin-room-map-field select { width:100%; min-height:44px; padding:10px 12px; border:1px solid var(--border-strong); border-radius:10px; background:var(--surface-solid); color:var(--ink); }
 .admin-room-map-field select[size] { min-height:150px; }
 @media (max-width:760px) { .admin-room-map-sensors { grid-template-columns:1fr; } .admin-room-mappings > .admin-card-head { align-items:flex-start; flex-direction:column; } }
-.admin-field input[type="text"], .admin-field input[type="url"], .admin-field input[type="search"], .admin-field input[type="number"], .admin-field input[type="time"], .admin-field select { width: 100%; min-height: 44px; padding: 10px 12px; border: 1px solid var(--border-strong); border-radius: 10px; background: var(--surface-solid); color: var(--ink); }
+.admin-field input[type="text"], .admin-field input[type="url"], .admin-field input[type="search"], .admin-field input[type="number"], .admin-field input[type="time"], .admin-field select, .admin-field textarea { width: 100%; min-height: 44px; padding: 10px 12px; border: 1px solid var(--border-strong); border-radius: 10px; background: var(--surface-solid); color: var(--ink); }
+.admin-field textarea { min-height: 96px; font: inherit; line-height: 1.45; resize: vertical; }
 .admin-field select[size] { min-width: 0; max-width: 100%; min-height: 190px; }
 .admin-filter { margin-bottom: 7px; }
 .admin-entity-device-scope { display: grid; grid-template-columns: minmax(0, 1fr) minmax(150px, .72fr); gap: 7px 9px; padding: 9px; border: 1px solid rgba(100,170,255,.24); border-radius: 11px; background: rgba(78,142,240,.065); }
@@ -458,6 +465,9 @@ button { cursor: pointer; }
 .admin-empty { padding: 20px; color: var(--ink-muted); text-align: center; }
 .admin-list-hint { padding: 12px 10px; border-top: 1px solid var(--border); color: var(--ink-muted); font-size: 12px; text-align: center; }
 .admin-scope-banner { margin: -4px 0 20px; padding: 12px 14px; border: 1px solid color-mix(in srgb, var(--accent-b) 32%, var(--border)); border-radius: 11px; color: var(--accent-b); background: color-mix(in srgb, var(--accent-b) 9%, transparent); font-size: 13px; line-height: 1.5; }
+.admin-device-note { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px 16px; }
+.admin-device-note > span { flex: 1 1 260px; }
+.admin-device-note > .beast-btn { flex: 0 0 auto; }
 .admin-show-all { display: flex; align-items: center; gap: 8px; color: var(--ink-muted); font-size: 11px; font-weight: 650; }
 .admin-show-all input { width: 16px; height: 16px; accent-color: var(--accent-b); }
 

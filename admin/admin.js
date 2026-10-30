@@ -56,6 +56,7 @@
   // it changes what the preview (and a fresh save) actually produces.
   const OVERVIEW_SLOTS = [["compactTop","Venstre øverst"],["wideTop","Midte øverst"],["main","Stor plads"],["compactBottom","Venstre nederst"],["wideBottom","Midte nederst"]];
 
+  const CPAP_HINTS = ["cpap", "airsense", "myair", "resmed"];
   const PANELS = [
     { id: "weather", title: "Vejr", description: t("Vejrudsigt og aktuelle vejrdata. Radarbillede, varsler og målinger er valgfrie.", "Forecast and current weather. Radar image, warnings and measurements are optional."), fields: [
       { key: "entity", label: "Vejr-entity", type: "single", domain: "weather" },
@@ -169,7 +170,51 @@
       { key: "waterFlowSensor", label: "Vandflow nu (valgfri)", type: "single", domain: "sensor" },
       { key: "showWaterOnOverview", label: "Vis Vand-graf på forsiden", type: "boolean" },
       { key: "nowGroups", label: "\"Nu\"-visning · grupper pr. el-kreds", type: "groups" }
-    ]}
+    ]},
+    // Optional: the page only exists on devices that turn it on under Denne
+    // enhed, so it is not counted as missing setup until it is configured.
+    { id: "bedroom", title: "Soveværelse", optional: true, description: "Sengekantsside, der slås til pr. enhed under Denne enhed. Vælg kameraer, kalender, indeklima, søvn og CPAP, lys, scener, sikkerhed og Godnat.",
+      sections: {
+        header: ["Overskrift og indeklima", "Vises øverst ved uret. Et felt uden valg vises ikke på siden."],
+        cameras: ["Kameraer og kalender", "De to første kameraer vises live. Kalenderen viser i dag og de kommende dage."],
+        controls: ["Lys, scener og komfort", "De fire første lys og de fem første scener og scripts vises på siden. Alle findes i menuen."],
+        security: ["Sikkerhed og godnat", "Lås op og frakobling kræver altid pinkode. Godnat kører scriptet, hvis det er valgt, ellers scenen."],
+        sleep: ["Søvn og CPAP", "Fra ResMed myAir-integrationen (AirSense). Listerne viser kun CPAP-sensorer, og søvnkortet skjules, hvis intet er valgt."],
+        names: ["Visningsnavne", "Navnene fra Home Assistant bruges uden rummets navn, så \"Soveværelse loft\" bliver til \"Loft\"."]
+      },
+      fields: [
+        { key: "title", section: "header", label: "Rummets navn", type: "text", placeholder: "Soveværelse" },
+        { key: "temperature", section: "header", label: "Temperatur", type: "single", domain: "sensor", deviceClasses: ["temperature"], hints: ["sove", "bedroom"] },
+        { key: "humidity", section: "header", label: "Luftfugtighed", type: "single", domain: "sensor", deviceClasses: ["humidity"], hints: ["sove", "bedroom"] },
+        { key: "co2", section: "header", label: "CO₂", type: "single", domain: "sensor", deviceClasses: ["carbon_dioxide"], hints: ["sove", "bedroom"] },
+        { key: "airQuality", section: "header", label: "Luftkvalitet", type: "single", domain: "sensor", hints: ["air_quality", "luftkvalitet", "aqi", "iaq"], rankHints: ["air_quality", "aqi", "iaq"] },
+        { key: "pm25", section: "header", label: "Partikler (PM2.5)", type: "single", domain: "sensor", deviceClasses: ["pm25"], hints: ["sove", "bedroom"] },
+        { key: "window", section: "header", label: "Vindue", type: "single", domain: "binary_sensor", deviceClasses: ["window", "opening", "door"], hints: ["sove", "bedroom"] },
+        { key: "motion", section: "header", label: "Bevægelse", type: "single", domain: "binary_sensor", deviceClasses: ["motion", "occupancy", "presence"], hints: ["sove", "bedroom", "seng"], hint: "Vises over lysene, fx \"Under sengen: ingen bevægelse\"." },
+        { key: "cameras", section: "cameras", label: "Kameraer", type: "multi", domain: "camera", hints: ["sove", "bedroom"] },
+        { key: "calendars", section: "cameras", label: "Kalendere", type: "multi", domain: "calendar" },
+        { key: "lights", section: "controls", label: "Lys", type: "multi", domain: "light", hints: ["sove", "bedroom"] },
+        { key: "scenes", section: "controls", label: "Scener", type: "multi", domain: "scene", hints: ["sove", "bedroom"] },
+        { key: "scripts", section: "controls", label: "Scripts", type: "multi", domain: "script", hints: ["sove", "bedroom", "nat", "night"] },
+        { key: "activeSceneMinutes", section: "controls", label: "Senest aktiveret scene (minutter)", type: "number", min: 1, max: 1440, placeholder: "30", hint: "Så længe markeres den senest aktiverede scene. Standard er 30." },
+        { key: "comfort", section: "controls", label: "Komfort (kontakter)", type: "multi", domain: "switch", hints: ["sove", "bedroom"], hint: "Til/fra-kontakter, fx en sovetilstand." },
+        { key: "fans", section: "controls", label: "Ventilatorer", type: "multi", domain: "fan", hints: ["sove", "bedroom"] },
+        { key: "media", section: "controls", label: "Medieafspillere", type: "multi", domain: "media_player", hints: ["sove", "bedroom"], hint: "De to første vises med afspil og pause." },
+        { key: "locks", section: "security", label: "Dørlåse", type: "multi", domain: "lock" },
+        { key: "alarm", section: "security", label: "Alarmsystem", type: "single", domain: "alarm_control_panel" },
+        { key: "goodnightScript", section: "security", label: "Godnat-script", type: "single", domain: "script", hints: ["godnat", "goodnight", "good_night", "sengetid", "bedtime"] },
+        { key: "goodnightScene", section: "security", label: "Godnat-scene", type: "single", domain: "scene", hints: ["godnat", "goodnight", "good_night", "sengetid", "bedtime"] },
+        { key: "goodnightLabel", section: "security", label: "Undertekst på Godnat-knappen", type: "text", placeholder: "Låse døre · alarm Nat · sluk lys" },
+        { key: "cpapScore", section: "sleep", label: "Søvnscore (myAir)", type: "single", domain: "sensor", hints: CPAP_HINTS, filterHints: true, rankHints: ["score"] },
+        { key: "cpapUsageMinutes", section: "sleep", label: "Brugstid i minutter", type: "single", domain: "sensor", hints: CPAP_HINTS, filterHints: true, rankHints: ["usage_minutes", "usage minutes"] },
+        { key: "cpapUsageTime", section: "sleep", label: "Brugstid som tekst (valgfri)", type: "single", domain: "sensor", hints: CPAP_HINTS, filterHints: true, rankHints: ["usage_time", "usage time"] },
+        { key: "cpapAhi", section: "sleep", label: "AHI (hændelser pr. time)", type: "single", domain: "sensor", hints: CPAP_HINTS, filterHints: true, rankHints: ["ahi"] },
+        { key: "cpapLeak", section: "sleep", label: "Lækage (L/min)", type: "single", domain: "sensor", hints: CPAP_HINTS, filterHints: true, rankHints: ["leak"] },
+        { key: "cpapMaskEvents", section: "sleep", label: "Maske af/på (antal pr. nat)", type: "single", domain: "sensor", hints: CPAP_HINTS, filterHints: true, rankHints: ["mask_on_off", "mask on/off"], hint: "Et antal pr. nat, ikke om masken er på lige nu." },
+        { key: "cpapDataDate", section: "sleep", label: "Dataenes dato", type: "single", domain: "sensor", hints: CPAP_HINTS, filterHints: true, rankHints: ["current_data_date", "data_date", "data date"] },
+        { key: "cpapLastCollected", section: "sleep", label: "Senest hentet", type: "single", domain: "sensor", hints: CPAP_HINTS, filterHints: true, rankHints: ["last_collected", "last collected"] },
+        { key: "displayNames", section: "names", label: "Egne visningsnavne (valgfri)", type: "text", multiline: true, wide: true, placeholder: "light.eksempel=Loft\nmedia_player.eksempel=TV", hint: "Én pr. linje eller adskilt med semikolon: entity_id=Navn." }
+      ]}
   ];
 
   const MQTT_CONFIG_KEY = "beast_mqtt_settings_v1";
@@ -321,6 +366,11 @@
         const text = `${item.id} ${item.name} ${meta?.name || ""} ${meta?.originalName || ""} ${meta?.platform || ""}`.toLowerCase();
         return hints.some((hint) => text.includes(hint));
       });
+    }
+    if (field.rankHints?.length) {
+      // Hints only score 0/1, so sibling sensors of one device (the CPAP's eight) tie; this puts the field's own first.
+      const ranked = (item) => field.rankHints.some((hint) => `${item.id} ${item.name}`.toLowerCase().includes(hint));
+      list = list.slice().sort((a, b) => Number(ranked(b)) - Number(ranked(a)));
     }
     const seen = new Set(list.map((item) => item.id));
     selectedIds.filter(Boolean).forEach((id) => {
@@ -508,7 +558,11 @@
         <label class="admin-show-all"><input type="checkbox" data-show-all-devices="${fieldId(panel.id, field.key)}"> Vis alle HA-enheder, hvis den ikke blev fundet automatisk</label>`;
     }
     if (field.type === "text") {
+      if (field.multiline) return `<textarea id="${fieldId(panel.id, field.key)}" rows="3" placeholder="${escapeHtml(field.placeholder || "")}">${escapeHtml(selected || "")}</textarea>`;
       return `<input type="text" id="${fieldId(panel.id, field.key)}" value="${escapeHtml(selected || "")}" placeholder="${escapeHtml(field.placeholder || "")}">`;
+    }
+    if (field.type === "number") {
+      return `<input type="number" id="${fieldId(panel.id, field.key)}" value="${escapeHtml(selected ?? "")}"${field.min != null ? ` min="${field.min}"` : ""}${field.max != null ? ` max="${field.max}"` : ""} step="1" inputmode="numeric" placeholder="${escapeHtml(field.placeholder || "")}">`;
     }
     if (field.type === "boolean") {
       const checked = selected !== false;
@@ -532,6 +586,8 @@
       ids.filter(Boolean).forEach((entityId) => { if (!seen.has(entityId)) base.unshift({ id: entityId, name: BeastEntityPicker.friendlyName(entityId) }); });
       entityFieldBaseSources.set(id, base);
       const items = scope?.selectedDeviceId ? scopedEntityItems(id, scope.selectedDeviceId) : candidates(panel, field, current, ids);
+      // The scope lists only its device's entities; a selected entity without a device (e.g. a light group) must stay visible.
+      ids.forEach((entityId) => { if (!items.some((item) => item.id === entityId)) items.unshift({ id: entityId, name: BeastEntityPicker.friendlyName(entityId) }); });
       if (field.domain === "camera") annotateCameraItemsWithGo2rtc(items);
       return `${renderEntityDeviceScope(id, scope)}${renderCheckList(panel, field, ids, items)}`;
     }
@@ -852,16 +908,29 @@
     }
   }
 
+  function renderBedroomDeviceNote() {
+    const on = BeastLocalSettings.get("bedroomView", false) === true;
+    return `<div class="admin-scope-banner admin-device-note"><span>${on
+      ? t("Soveværelse er slået til på denne enhed. Andre skærme viser ikke siden, før den slås til dér.", "Bedroom is on for this device. Other screens don't show the page until it is turned on there.")
+      : t("Siden vises kun på enheder, hvor Soveværelse er slået til under Denne enhed. Den er slået fra her.", "The page only shows on devices where Bedroom is turned on under This device. It is off here.")}</span><button type="button" class="beast-btn" data-view="settings">${t("Åbn Denne enhed", "Open This device")}</button></div>`;
+  }
+
   function renderPanel(panel) {
     const current = BeastConfig.get(`panels.${panel.id}`) || {};
+    const sectionHead = (field, index) => {
+      const section = panel.sections?.[field.section];
+      if (!section || panel.fields[index - 1]?.section === field.section) return "";
+      return `<div class="admin-field-section"><h3>${escapeHtml(section[0])}</h3>${section[1] ? `<p>${escapeHtml(section[1])}</p>` : ""}</div>`;
+    };
     return `
       <section class="admin-view${activeView === panel.id ? " is-active" : ""}" data-admin-view="${panel.id}">
         <button type="button" class="admin-section-back" data-view="devices">${BeastCore.icon("chevron-right", { size: 17 })}<span>Alle enheder</span></button>
         <div class="admin-card">
           <div class="admin-card-head"><div><h2>${escapeHtml(panel.title)}</h2><p>${escapeHtml(panel.description)}</p></div></div>
           ${panel.fields.some((field) => field.type === "device") ? `<div class="admin-scope-banner">Vælg først den konkrete enhed og gem. Derefter viser felterne kun entities, som HA har knyttet til den valgte enhed.</div>` : ""}
+          ${panel.id === "bedroom" ? renderBedroomDeviceNote() : ""}
           <div class="admin-grid">
-            ${panel.fields.map((field) => `<div class="admin-field"><span class="admin-field-heading"><b>${escapeHtml(field.label)}</b>${field.domain ? `<em>${escapeHtml(field.domain)}</em>` : ""}</span>${field.hint ? `<p class="admin-field-hint">${escapeHtml(field.hint)}</p>` : ""}${renderField(panel, field, current)}</div>`).join("")}
+            ${panel.fields.map((field, index) => `${sectionHead(field, index)}<div class="admin-field${field.wide ? " is-wide" : ""}"><span class="admin-field-heading"><b>${escapeHtml(field.label)}</b>${field.domain ? `<em>${escapeHtml(field.domain)}</em>` : ""}</span>${field.hint ? `<p class="admin-field-hint">${escapeHtml(field.hint)}</p>` : ""}${renderField(panel, field, current)}</div>`).join("")}
           </div>
           ${panel.id === "rooms" ? renderRoomsEntityMappings(current) : ""}
           <div class="admin-actions"><button class="admin-save" type="button" data-save-panel="${panel.id}">Gem ${escapeHtml(panel.title)}</button><span class="admin-save-state" data-save-state="${panel.id}"></span></div>
@@ -872,13 +941,14 @@
   function renderDevicesView() {
     const groups = [
       ["Klima og forbrug", ["weather", "energy", "heating", "pool"]],
-      ["Hus og sikkerhed", ["rooms", "security", "cameras", "waste"]],
+      ["Hus og sikkerhed", ["rooms", "security", "cameras", "waste", "bedroom"]],
       ["Udstyr og medier", ["music", "car", "robots", "printer"]]
     ];
-    const icons = { weather:"cloud", energy:"bolt", heating:"thermometer", pool:"droplet", rooms:"grid", security:"shield", cameras:"camera", waste:"calendar", music:"music", car:"car", robots:"robot", printer:"printer" };
+    const icons = { weather:"cloud", energy:"bolt", heating:"thermometer", pool:"droplet", rooms:"grid", security:"shield", cameras:"camera", waste:"calendar", bedroom:"moon", music:"music", car:"car", robots:"robot", printer:"printer" };
+    const badge = (panel, configured) => configured ? `<em class="is-ready">Konfigureret</em>` : panel.optional ? `<em class="is-optional">Valgfri</em>` : `<em>Mangler opsætning</em>`;
     return `<section class="admin-view${activeView === "devices" ? " is-active" : ""}" data-admin-view="devices">
       <div class="admin-settings-intro"><span>${BeastCore.icon("grid", { size: 29 })}</span><div><h2>Enheder og datakilder</h2><p>Vælg hvilke Home Assistant-enheder der leverer data. Kort, størrelse og placering redigeres direkte på den enkelte dashboard-side.</p></div></div>
-      ${groups.map(([title, ids]) => `<div class="admin-card admin-device-group"><div class="admin-card-head"><div><h2>${title}</h2><p>Åbn kun den del, du vil forbinde eller ændre.</p></div></div><div class="admin-device-hub">${ids.map((id) => { const panel=PANELS.find((item)=>item.id===id); const configured=BeastConfig.isPanelConfigured(id); return `<button type="button" data-view="${id}"><i>${BeastCore.icon(icons[id] || "grid", { size: 24 })}</i><span><strong>${escapeHtml(panel.title)}</strong><small>${escapeHtml(panel.description)}</small></span><em class="${configured ? "is-ready" : ""}">${configured ? "Konfigureret" : "Mangler opsætning"}</em>${BeastCore.icon("chevron-right", { size: 18 })}</button>`; }).join("")}</div></div>`).join("")}
+      ${groups.map(([title, ids]) => `<div class="admin-card admin-device-group"><div class="admin-card-head"><div><h2>${title}</h2><p>Åbn kun den del, du vil forbinde eller ændre.</p></div></div><div class="admin-device-hub">${ids.map((id) => { const panel=PANELS.find((item)=>item.id===id); const configured=BeastConfig.isPanelConfigured(id); return `<button type="button" data-view="${id}"><i>${BeastCore.icon(icons[id] || "grid", { size: 24 })}</i><span><strong>${escapeHtml(panel.title)}</strong><small>${escapeHtml(panel.description)}</small></span>${badge(panel, configured)}${BeastCore.icon("chevron-right", { size: 18 })}</button>`; }).join("")}</div></div>`).join("")}
     </section>`;
   }
 
@@ -895,16 +965,24 @@
     </section>`;
   }
 
+  // The bedroom page only exists where this device turned it on, so it is added
+  // to per-device page lists here and never to central ones (auto-return,
+  // weather overlay): a kiosk without it would be sent to a page it lacks.
+  function devicePages() {
+    return BeastLocalSettings.get("bedroomView", false) === true ? [...PAGES, ["bedroom", "Soveværelse"]] : PAGES;
+  }
+
   function renderOverview() {
     const hidden = BeastLocalSettings.get("hiddenSections", BeastConfig.get("hiddenSections") || []);
     const entityCount = BeastHaSocket.getAllStates().size;
-    const configured = PANELS.filter((panel) => BeastConfig.isPanelConfigured(panel.id)).length;
+    const countedPanels = PANELS.filter((panel) => !panel.optional || BeastConfig.isPanelConfigured(panel.id));
+    const configured = countedPanels.filter((panel) => BeastConfig.isPanelConfigured(panel.id)).length;
     return `
       <section class="admin-view${activeView === "overview" ? " is-active" : ""}" data-admin-view="overview">
         <div class="admin-summary">
           <div><strong>${entityCount}</strong><span>entities hentet fra Home Assistant</span></div>
-          <div><strong>${configured}/${PANELS.length}</strong><span>standardsider konfigureret</span></div>
-          <div><strong>${PAGES.length - hidden.length}</strong><span>sider synlige i dashboardet</span></div>
+          <div><strong>${configured}/${countedPanels.length}</strong><span>standardsider konfigureret</span></div>
+          <div><strong>${devicePages().length - hidden.length}</strong><span>sider synlige i dashboardet</span></div>
         </div>
         <div class="admin-card admin-project-intro">
           <div class="admin-project-heading">
@@ -1211,7 +1289,7 @@
       return (ai < 0 ? 999 : ai) - (bi < 0 ? 999 : bi);
     });
     return `<div class="admin-local-favorites"><strong>Denne skærm</strong><div class="admin-grid">
-      <label class="admin-field"><span>Standardfane</span><select id="adminDefaultSection">${[["overview","Oversigt"],...PAGES].map(([id,label]) => `<option value="${id}"${BeastLocalSettings.get("defaultSection","overview") === id ? " selected" : ""}>${escapeHtml(label)}</option>`).join("")}</select></label>
+      <label class="admin-field"><span>Standardfane</span><select id="adminDefaultSection">${[["overview","Oversigt"],...devicePages()].map(([id,label]) => `<option value="${id}"${BeastLocalSettings.get("defaultSection","overview") === id ? " selected" : ""}>${escapeHtml(label)}</option>`).join("")}</select></label>
       <label class="admin-field"><span>Visningstæthed</span><select id="adminDensity"><option value="comfortable"${BeastLocalSettings.get("density","comfortable") === "comfortable" ? " selected" : ""}>Luftig</option><option value="compact"${BeastLocalSettings.get("density") === "compact" ? " selected" : ""}>Kompakt</option><option value="large"${BeastLocalSettings.get("density") === "large" ? " selected" : ""}>Store trykfelter</option></select></label>
     </div><div class="admin-favorite-list">${orderedPages.map(([id,label]) => `<label data-favorite-row="${id}"><input type="checkbox" data-favorite-section="${id}"${selectedSet.has(id) ? " checked" : ""}><span>${escapeHtml(label)}</span><button class="admin-icon-action" type="button" data-favorite-move="up" aria-label="Flyt ${escapeHtml(label)} op" title="Flyt op">${BeastCore.icon("chevron-up", { size: 16 })}</button><button class="admin-icon-action" type="button" data-favorite-move="down" aria-label="Flyt ${escapeHtml(label)} ned" title="Flyt ned">${BeastCore.icon("chevron-down", { size: 16 })}</button></label>`).join("")}</div><button type="button" class="admin-save" data-save-local-favorites>Gem denne skærm</button></div>`;
   }
@@ -1554,6 +1632,7 @@
     const floatingPlayerOn = isFloatingPlayerEnabled();
     const powerProfile = BeastLocalSettings.get("powerProfile", "balanced");
     const ipadMode = BeastLocalSettings.get("ipadMode", false) === true;
+    const bedroomView = BeastLocalSettings.get("bedroomView", false) === true;
     return `
       <section class="admin-view${activeView === "settings" ? " is-active" : ""}" data-admin-view="settings">
         <div class="admin-settings-intro"><div><h2>Denne enhed</h2><p>Maskinspecifik adfærd for netop denne kiosk eller browser. Visuelle valg (tema, farver, stil) findes under Tema og design. Kiosk-navigation og dørkamera findes under Forbindelser & kiosk.</p></div></div>
@@ -1564,6 +1643,7 @@
         <div class="admin-card admin-settings-group"><div class="admin-card-head"><div><h2>${t("Flydende musikafspiller", "Floating music player")}</h2><p>${t("Viser en lille afspiller-boks på forsiden mens der spilles musik. Gælder kun denne enhed/browser, ikke andre kiosker.", "Shows a small player box on the front page while music is playing. Applies only to this device/browser, not other kiosks.")}</p></div></div><div class="beast-stat-tile-actions"><button type="button" class="beast-security-action-btn${floatingPlayerOn ? " is-disarm" : ""}" id="adminSettingsFloatingPlayerBtn">${floatingPlayerOn ? t("Slå fra på denne enhed", "Turn off on this device") : t("Slå til på denne enhed", "Turn on on this device")}</button></div></div>
         <div class="admin-card admin-settings-group"><div class="admin-card-head"><div><h2>${t("Strømprofil", "Power profile")}</h2><p>${t("Gælder kun denne kiosk. Lav begrænser forsiden til to samtidige kameraer og fjerner animationer; dine gemte kameravalg ændres ikke.", "Applies only to this kiosk. Low limits the overview to two simultaneous cameras and removes animations; saved camera choices are unchanged.")}</p></div></div><label class="admin-field"><span>${t("Profil", "Profile")}</span><select id="adminPowerProfile"><option value="performance"${powerProfile === "performance" ? " selected" : ""}>${t("Ydelse", "Performance")}</option><option value="balanced"${powerProfile === "balanced" ? " selected" : ""}>${t("Balanceret", "Balanced")}</option><option value="low"${powerProfile === "low" ? " selected" : ""}>${t("Lavt forbrug", "Low power")}</option></select></label><div class="admin-actions"><button type="button" class="admin-save" id="adminSavePowerProfile">${t("Gem strømprofil", "Save power profile")}</button><span class="admin-save-state" data-save-state="powerProfile"></span></div></div>
         <div class="admin-card admin-settings-group"><div class="admin-card-head"><div><h2>${t("iPad-tilstand", "iPad mode")}</h2><p>${t("Gælder kun denne enhed. Gør dashboardet roligere på en iPad: ingen sløringseffekter, ingen zoom, og pauseskærmen med dæmpet ur starter altid efter inaktivitet (ikke kun om natten). Kameraerne er stadig live.", "Applies only to this device. Makes the dashboard lighter on an iPad: no blur effects, no zoom, and the dimmed clock screensaver always starts after inactivity (not only at night). Cameras stay live.")}</p></div></div><label class="admin-field"><span>${t("iPad-tilstand", "iPad mode")}</span><select id="adminIpadMode"><option value="0"${ipadMode ? "" : " selected"}>${t("Fra", "Off")}</option><option value="1"${ipadMode ? " selected" : ""}>${t("Til", "On")}</option></select></label><div class="admin-actions"><button type="button" class="admin-save" id="adminSaveIpadMode">${t("Gem iPad-tilstand", "Save iPad mode")}</button><span class="admin-save-state" data-save-state="ipadMode"></span></div></div>
+        <div class="admin-card admin-settings-group"><div class="admin-card-head"><div><h2>${t("Soveværelse på denne enhed", "Bedroom on this device")}</h2><p>${t("Gælder kun denne enhed. Tilføjer siden Soveværelse lige efter Oversigt og gør den til enhedens startside; andre skærme påvirkes ikke. Til en iPad ved sengen anbefales også iPad-tilstand.", "Applies only to this device. Adds the Bedroom page right after Overview and makes it this device's start page; other screens are unaffected. For an iPad by the bed, iPad mode is recommended as well.")}</p></div></div><label class="admin-field"><span>${t("Soveværelse", "Bedroom")}</span><select id="adminBedroomView"><option value="0"${bedroomView ? "" : " selected"}>${t("Fra", "Off")}</option><option value="1"${bedroomView ? " selected" : ""}>${t("Til", "On")}</option></select></label><div class="admin-actions"><button type="button" class="admin-save" id="adminSaveBedroomView">${t("Gem soveværelse", "Save bedroom")}</button><button type="button" class="beast-btn" data-view="bedroom">${t("Tilpas soveværelset", "Customise the bedroom")}</button><span class="admin-save-state" data-save-state="bedroomView"></span></div></div>
         <div class="admin-card admin-settings-group"><div class="admin-card-head"><div><h2>Kioskintegration</h2><p>Avanceret MQTT-styring og enhedskommandoer. Kan ignoreres på almindelige tablets.</p></div></div>${renderMqttPanel()}</div>
         <div class="admin-card admin-settings-group admin-diagnostics"><div class="admin-card-head"><div><h2>Diagnostik og session</h2><p>Seneste lokale hændelser samt mulighed for at logge Home Assistant-sessionen ud.</p></div></div><details><summary>Vis teknisk log</summary><pre class="beast-debug-log" id="adminDebugLog"></pre></details><button type="button" class="beast-btn" id="adminLogout">Log ud</button></div>
       </section>
@@ -2013,6 +2093,10 @@
           .filter((group) => group.ids.length);
       } else if (field.type === "boolean") {
         patch[field.key] = document.getElementById(id)?.value !== "0";
+      } else if (field.type === "number") {
+        const raw = document.getElementById(id)?.value.trim();
+        const value = Math.round(Number(raw));
+        patch[field.key] = raw && Number.isFinite(value) ? Math.min(field.max ?? value, Math.max(field.min ?? value, value)) : null;
       } else {
         patch[field.key] = document.getElementById(id)?.value.trim() || null;
       }
@@ -2518,6 +2602,7 @@
       renderShell();
     });
     document.getElementById("adminSaveIpadMode")?.addEventListener("click", (event) => save(event.currentTarget, "ipadMode", () => BeastLocalSettings.set("ipadMode", document.getElementById("adminIpadMode")?.value === "1")));
+    document.getElementById("adminSaveBedroomView")?.addEventListener("click", (event) => save(event.currentTarget, "bedroomView", () => BeastLocalSettings.set("bedroomView", document.getElementById("adminBedroomView")?.value === "1")));
     document.getElementById("adminSavePowerProfile")?.addEventListener("click", (event) => save(event.currentTarget, "powerProfile", () => BeastLocalSettings.set("powerProfile", document.getElementById("adminPowerProfile")?.value || "balanced")));
     document.getElementById("adminShowAdminButton")?.addEventListener("change", (event) => {
       if (!event.currentTarget.checked) {
