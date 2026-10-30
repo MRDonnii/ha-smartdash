@@ -363,6 +363,9 @@
   // are filled in after the lookup, so one key covers every value.
   Object.assign(en, {
     "Soveværelse": "Bedroom", "Soveværelset": "Bedroom", "Vis menu": "Show menu", "Menu": "Menu",
+    "Ingen data": "No data", "Bevægelse nu": "Motion now", "Ingen bevægelse": "No motion", "{name} tændt": "{name} on", "{name} slukket": "{name} off",
+    "Stemninger": "Moods", "Hastighed {pct} %": "Speed {pct} %", "Sikring": "Security", "tryk for at låse": "tap to lock", "alarm {state}": "alarm {state}",
+    "Fejl": "Error", "Søvnterapi": "Sleep therapy", "Ingen data i nat": "No data last night", "{n} nætter": "{n} nights", "Brug": "Usage", "Læk": "Leak", "Score": "Score",
     "Soveværelset er ikke sat op endnu": "The bedroom is not set up yet",
     "Vælg enheder i Administration → Soveværelse": "Choose devices in Administration → Bedroom",
     "Fugt": "Humidity", "Luft": "Air", "Luft ud": "Air out", "Vindue": "Window",

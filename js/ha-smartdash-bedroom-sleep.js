@@ -16,7 +16,7 @@ window.BeastBedroom.sleep = (() => {
 
   const METRICS = {
     score: { key: "cpapScore", label: "Score", bad: (v) => v < 60, top: () => 100 },
-    usage: { key: "cpapUsageMinutes", label: "Brugstid", unit: "t", ref: 240, refLabel: "4 t", bad: (v) => v < 240, top: (max) => Math.max(540, max * 1.12) },
+    usage: { key: "cpapUsageMinutes", label: "Brugstid", short: "Brug", unit: "t", ref: 240, refLabel: "4 t", bad: (v) => v < 240, top: (max) => Math.max(540, max * 1.12) },
     ahi: { key: "cpapAhi", label: "AHI", unit: "/t", ref: 5, refLabel: "5", bad: (v) => v >= 5, top: (max) => Math.max(6.25, max * 1.2) },
     leak: { key: "cpapLeak", label: "Lækage", unit: "L/min", ref: 24, refLabel: "24", bad: (v) => v >= 24, top: (max) => Math.max(36, max * 1.2) },
     mask: { key: "cpapMaskEvents", label: "Maske af/på", bad: () => false, top: (max) => Math.max(5, max * 1.2) }
@@ -384,17 +384,21 @@ window.BeastBedroom.sleep = (() => {
   // be in the document at once.
   let gradientSeq = 0;
 
+  // A 270° gauge (open at the bottom): track and value arc share the start.
+  const RING_SWEEP = RING_CIRCUMFERENCE * 0.75;
+
   function ringMarkup(m) {
     const score = m.values.score;
     const usage = m.values.usage;
     const useScore = ids().score != null;
-    const value = m.allDown ? null : useScore ? score : usage;
+    const value = m.allDown || m.stale ? null : useScore ? score : usage;
     const fraction = value == null ? 0 : useScore ? Math.max(0, Math.min(1, value / 100)) : Math.max(0, Math.min(1, value / 480));
     const label = useScore ? "myAir" : t("Timer");
-    const text = value == null ? "—" : useScore ? fmt(value, 0) : hours(value);
-    const gradient = `bdRingGold${++gradientSeq}`;
-    const arc = fraction > 0 ? `<circle class="bd-ring-arc" style="stroke:url(#${gradient})" cx="60" cy="60" r="48" stroke-dasharray="${(fraction * RING_CIRCUMFERENCE).toFixed(1)} ${RING_CIRCUMFERENCE.toFixed(1)}" transform="rotate(-90 60 60)"/>` : "";
-    return `<span class="bd-ring${m.stale ? " is-stale" : ""}"><svg viewBox="0 0 120 120" aria-hidden="true" focusable="false"><defs><linearGradient id="${gradient}" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#f0dcb6"/><stop offset="1" stop-color="#9c7a4c"/></linearGradient></defs><circle class="bd-ring-dial" cx="60" cy="60" r="57"/><circle class="bd-ring-track" cx="60" cy="60" r="48"/>${arc}</svg><span class="bd-ring-val"><b>${esc(text)}</b><small>${esc(label)}</small></span></span>`;
+    const text = value == null ? "–" : useScore ? fmt(value, 0) : hours(value);
+    const gradient = `bdRingAmber${++gradientSeq}`;
+    const dash = (length) => `${length.toFixed(1)} ${RING_CIRCUMFERENCE.toFixed(1)}`;
+    const arc = fraction > 0 ? `<circle class="bd-ring-arc" style="stroke:url(#${gradient})" cx="60" cy="60" r="48" stroke-dasharray="${dash(Math.max(0.5, fraction * RING_SWEEP))}" transform="rotate(135 60 60)"/>` : "";
+    return `<span class="bd-ring${m.stale ? " is-stale" : ""}"><svg viewBox="0 0 120 120" aria-hidden="true" focusable="false"><defs><linearGradient id="${gradient}" x1="0" y1="1" x2="1" y2="0"><stop offset="0" stop-color="#9A4716"/><stop offset=".55" stop-color="#F0A24A"/><stop offset="1" stop-color="#FFD08F"/></linearGradient></defs><circle class="bd-ring-track" cx="60" cy="60" r="48" stroke-dasharray="${dash(RING_SWEEP)}" transform="rotate(135 60 60)"/>${arc}</svg><span class="bd-ring-val"><b>${esc(text)}</b><small>${esc(label)}</small></span></span>`;
   }
 
   // On the page the freshness chip sits in the panel's eyebrow (which gives
@@ -405,25 +409,29 @@ window.BeastBedroom.sleep = (() => {
   }
 
   function verdictMarkup(m, full = false) {
-    const chip = m.chip ? `<span class="bd-chip-st is-${m.chip.tone}">${esc(m.chip.text)}</span>` : "";
+    let chip = m.chip ? `<span class="bd-chip-st is-${m.chip.tone}"><i></i>${esc(m.chip.text)}</span>` : "";
+    if (m.stale && !full) chip = `<span class="bd-chip-st is-mute"><i></i>${esc(t("Ingen data i nat"))}</span>`;
     const sentence = m.sentence ? `<span class="bd-v2${full ? " is-full" : ""}">${m.sentence}</span>` : "";
     const extra = full ? `${freshMarkup(m)}${m.meta && !m.stale ? `<span class="bd-v3">${esc(m.meta)}</span>` : ""}` : "";
     return `<span class="bd-verdict">${chip}<span class="bd-v1">${esc(m.title)}</span>${sentence}${extra}</span>`;
   }
 
+  // Label and verdict on top, the value, then a short scale with the
+  // threshold tick. On the page the tiles also pick the chart's metric.
   function metricCellMarkup(metric, m, { tabs = true, active = null } = {}) {
     const value = m.allDown ? null : m.values[metric];
     const verdict = m.stale || m.allDown ? null : verdictFor(metric, value);
     const track = trackFor(metric, m.allDown ? null : value);
     const unit = metric === "mask" ? (value === 1 ? t("gang") : t("gange")) : METRICS[metric].unit ? t(METRICS[metric].unit) : "";
-    const warn = verdict?.tone === "warn";
-    const inner = `<span class="bd-m-k">${esc(t(METRICS[metric].label))}</span><span class="bd-m-v"><span class="bd-m-num">${esc(formatMetric(metric, value))}</span>${value != null && unit ? `<small>${esc(unit)}</small>` : ""}${verdict ? `<i class="bd-m-q is-${verdict.tone}">${esc(t(verdict.text))}</i>` : ""}</span><span class="bd-m-track${warn ? " is-warn" : ""}"><span class="bd-m-fill" style="width:${track.fill.toFixed(1)}%"></span>${track.ticks.map((tick) => `<span class="bd-m-tick" style="left:${tick.left.toFixed(1)}%;opacity:${tick.opacity}"></span>`).join("")}</span>`;
-    if (!tabs) return `<div class="bd-m">${inner}</div>`;
-    return `<button type="button" class="bd-m" data-bd-action="sleep-metric" data-metric="${metric}" aria-pressed="${active === metric}">${inner}</button>`;
+    const tone = verdict?.tone || "";
+    const down = value == null ? " is-empty" : "";
+    const inner = `<span class="bd-m-k">${esc(t(METRICS[metric].short || METRICS[metric].label))}</span>${verdict ? `<i class="bd-m-q is-${tone}">${esc(t(verdict.text))}</i>` : "<i></i>"}<span class="bd-m-v"><span class="bd-m-num">${esc(formatMetric(metric, value))}</span>${value != null && unit ? `<small>${esc(unit)}</small>` : ""}</span><span class="bd-m-track${tone === "warn" ? " is-warn" : ""}"><span class="bd-m-fill" style="width:${track.fill.toFixed(1)}%"></span>${track.ticks.map((tick) => `<span class="bd-m-tick" style="left:${tick.left.toFixed(1)}%;opacity:${tick.opacity}"></span>`).join("")}</span>`;
+    if (!tabs) return `<div class="bd-m${down}">${inner}</div>`;
+    return `<button type="button" class="bd-m${down}" data-bd-action="sleep-metric" data-metric="${metric}" aria-pressed="${active === metric}">${inner}</button>`;
   }
 
   function panelMarkup() {
-    return `<div class="bd-eyebrow"><b>${esc(t("Søvn · CPAP"))}</b><span class="bd-sleep-eyeright"><span class="bd-sleep-meta" data-sleep-meta></span><button type="button" class="bd-sleep-open" data-bd-action="sleep-detail" aria-label="${esc(t("Åbn søvn og CPAP"))}">${icon("corners", 15)}</button></span></div><div class="bd-sleep-body" data-sleep-body></div>`;
+    return `<div class="bd-eyebrow"><b>${esc(t("Søvnterapi"))}</b><span class="bd-sleep-eyeright"><span class="bd-sleep-meta" data-sleep-meta></span><button type="button" class="bd-sleep-open" data-bd-action="sleep-detail" aria-label="${esc(t("Åbn søvn og CPAP"))}">${icon("corners", 14)}</button></span></div><div class="bd-sleep-body" data-sleep-body></div>`;
   }
 
   function activeMetric() {
@@ -432,12 +440,14 @@ window.BeastBedroom.sleep = (() => {
     return TAB_ORDER.find(hasMetric) || "score";
   }
 
-  function trendHeadMarkup(metric, points) {
-    const avg = points.filter((point) => point.value != null).length >= 3 ? average(points) : null;
-    const label = t("{metric} · {n} nætter", { metric: t(METRICS[metric].label), n: NIGHTS });
-    let right = avg == null ? "" : `${esc(t("snit"))} <b>${esc(formatMetric(metric, metric === "score" || metric === "mask" ? Math.round(avg) : avg))}</b>`;
-    if (barNote && barNote.metric === metric) right = `<b>${esc(barNote.text)}</b>`;
-    return `<span class="bd-trend-k">${esc(label)}</span><span class="bd-trend-m">${right}</span>`;
+  // Chart tabs: Score and the three metrics with a threshold. "Maske af/på"
+  // has no tab; its tile still selects it.
+  const CHART_TABS = [["score", "Score"], ["usage", "Brug"], ["ahi", "AHI"], ["leak", "Læk"]];
+
+  function trendHeadMarkup(metric) {
+    const tabs = CHART_TABS.filter(([key]) => (key === "score" ? ids().score : hasMetric(key)));
+    const note = barNote && barNote.metric === metric ? `<span class="bd-trend-note">${esc(barNote.text)}</span>` : "";
+    return `<span class="bd-trend-k">${esc(t("{n} nætter", { n: NIGHTS }))}</span>${note || `<span class="bd-tabs" role="tablist">${tabs.map(([key, label]) => `<button type="button" class="bd-tab" role="tab" data-bd-action="sleep-metric" data-metric="${key}" aria-selected="${key === metric}">${esc(t(label))}</button>`).join("")}</span>`}`;
   }
 
   function render(panel) {
@@ -455,10 +465,10 @@ window.BeastBedroom.sleep = (() => {
     if (signature !== panelSignature || !body.firstElementChild) {
       panelSignature = signature;
       const meta = panel.querySelector("[data-sleep-meta]");
-      if (meta) meta.innerHTML = m.allDown ? "" : freshMarkup(m);
+      if (meta) meta.innerHTML = m.allDown || !m.meta ? "" : `<span class="bd-sleep-when${m.stale ? " is-stale" : ""}">${esc(m.meta)}</span>`;
       body.innerHTML = `<button type="button" class="bd-hero" data-bd-action="sleep-metric" data-metric="score" aria-pressed="${metric === "score"}">${ringMarkup(m)}${verdictMarkup(m)}</button>
         ${tabs.length ? `<div class="bd-metrics" data-n="${tabs.length}">${tabs.map((key) => metricCellMarkup(key, m, { active: metric })).join("")}</div>` : ""}
-        <div class="bd-trend"><div class="bd-trend-head">${trendHeadMarkup(metric, points)}</div><div class="bd-chart" data-sleep-chart="${metric}"></div></div>`;
+        <div class="bd-trend"><div class="bd-trend-head">${trendHeadMarkup(metric)}</div><div class="bd-chart" data-sleep-chart="${metric}"></div></div>`;
       chartSignature = "";
     }
     drawChart(body.querySelector("[data-sleep-chart]"), metric, points);
@@ -486,57 +496,60 @@ window.BeastBedroom.sleep = (() => {
     return `M${x.toFixed(1)},${base} V${(y + r).toFixed(1)} Q${x.toFixed(1)},${y.toFixed(1)} ${(x + r).toFixed(1)},${y.toFixed(1)} H${(x + w - r).toFixed(1)} Q${(x + w).toFixed(1)},${y.toFixed(1)} ${(x + w).toFixed(1)},${(y + r).toFixed(1)} V${base} Z`;
   }
 
+  // Amber bars: warm brown nights, last night lit amber, bad nights ember
+  // red; a dashed average line labelled at the top right and, for metrics
+  // with a limit (4 t, AHI 5, leak 24), a solid threshold line.
   function chartSvg(metric, points, width, height) {
     const def = METRICS[metric];
-    const labelRoom = 30;
-    const top = 16;
-    const axis = 17;
-    const plotW = Math.max(40, width - labelRoom);
+    const top = 14;
+    const axis = 16;
+    const plotW = width;
     const base = height - axis;
     const plotH = Math.max(10, base - top);
     const values = points.map((point) => point.value).filter((value) => value != null);
     const max = values.length ? Math.max(...values) : 0;
     const yTop = def.top(max);
     const y = (value) => base - Math.max(0, Math.min(1, value / yTop)) * plotH;
-    const slot = plotW / points.length;
-    const barW = Math.max(4, Math.min(16, slot * 0.6));
+    const gap = Math.max(2, Math.min(5, plotW / points.length * 0.22));
+    const barW = Math.max(3, (plotW - gap * (points.length - 1)) / points.length);
+    const slot = barW + gap;
     const lastIndex = points.length - 1;
     const todayKey = dateKey(startOfDay());
     const avg = average(points);
     const parts = [];
-    const gradient = `bdBarGold${++gradientSeq}`;
-    parts.push(`<defs><linearGradient id="${gradient}" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ecd5aa"/><stop offset="1" stop-color="#a5845a"/></linearGradient></defs>`);
-    parts.push(`<line class="bd-c-base" x1="0" y1="${base + 0.5}" x2="${plotW.toFixed(1)}" y2="${base + 0.5}"/>`);
-    const labels = [];
+    const seq = ++gradientSeq;
+    parts.push(`<defs><linearGradient id="bdBarN${seq}" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#5C3415"/><stop offset="1" stop-color="#2E1B0D"/></linearGradient><linearGradient id="bdBarL${seq}" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#FFC27A"/><stop offset="1" stop-color="#D9732C"/></linearGradient><linearGradient id="bdBarB${seq}" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#8A3424"/><stop offset="1" stop-color="#3D1711"/></linearGradient></defs>`);
     points.forEach((point, index) => {
-      const x = index * slot + (slot - barW) / 2;
+      const x = index * slot;
       const center = x + barW / 2;
       const latest = index === lastIndex;
       const wake = addDays(parseDateKey(point.key), 1);
       const initial = wake.toLocaleDateString(locale(), { weekday: "narrow" }).toLocaleUpperCase(locale());
       const isToday = dateKey(wake) === todayKey;
-      parts.push(`<text class="bd-c-day${isToday ? " is-today" : ""}" x="${center.toFixed(1)}" y="${(height - 3).toFixed(1)}" text-anchor="middle">${esc(initial)}</text>`);
+      parts.push(`<text class="bd-c-day${isToday || latest ? " is-today" : ""}" x="${center.toFixed(1)}" y="${(height - 2).toFixed(1)}" text-anchor="middle">${esc(initial)}</text>`);
       if (point.value == null) {
         parts.push(`<rect class="bd-c-stub" x="${x.toFixed(1)}" y="${base - 2}" width="${barW.toFixed(1)}" height="2" rx="1"/>`);
       } else {
         const bad = def.bad(point.value);
         const yy = Math.min(base - 2, y(point.value));
         const cls = latest ? "is-last" : bad ? "is-bad" : "";
+        const fill = ` style="fill:url(#bdBar${latest ? "L" : bad ? "B" : "N"}${seq})"`;
         const path = barPath(x, yy, barW, base);
-        const fill = latest ? ` style="fill:url(#${gradient})"` : "";
         parts.push(path ? `<path class="bd-c-bar ${cls}"${fill} d="${path}"/>` : `<rect class="bd-c-bar ${cls}"${fill} x="${x.toFixed(1)}" y="${base - 2}" width="${barW.toFixed(1)}" height="2"/>`);
-        if (latest || bad) labels.push(`<text class="bd-c-val${latest ? " is-last" : " is-bad"}" x="${center.toFixed(1)}" y="${Math.max(11, yy - 4).toFixed(1)}" text-anchor="middle">${esc(formatMetric(metric, point.value))}</text>`);
       }
-      parts.push(`<rect class="bd-c-hit" x="${(index * slot).toFixed(1)}" y="0" width="${slot.toFixed(1)}" height="${height}" data-bd-action="sleep-bar" data-metric="${metric}" data-index="${index}"/>`);
+      parts.push(`<rect class="bd-c-hit" x="${(index * slot - gap / 2).toFixed(1)}" y="0" width="${slot.toFixed(1)}" height="${height}" data-bd-action="sleep-bar" data-metric="${metric}" data-index="${index}"/>`);
     });
-    const guide = (value, cls, text) => {
-      const yy = Math.round(y(value)) + 0.5;
-      parts.push(`<line class="${cls}" x1="0" y1="${yy}" x2="${(plotW + 4).toFixed(1)}" y2="${yy}"/>`);
-      parts.push(`<text class="${cls}-t" x="${(plotW + 7).toFixed(1)}" y="${(yy + 4).toFixed(1)}">${esc(text)}</text>`);
-    };
-    if (def.ref != null) guide(def.ref, "bd-c-ref", t(def.refLabel));
-    else if (avg != null && values.length >= 3) guide(avg, "bd-c-avg", formatMetric(metric, metric === "score" || metric === "mask" ? Math.round(avg) : avg));
-    return `<svg width="${width}" height="${height}" viewBox="0 0 ${width} ${height}" role="img" aria-label="${esc(t("{metric} de seneste {n} nætter", { metric: t(def.label), n: NIGHTS }))}">${parts.join("")}${labels.join("")}</svg>`;
+    if (def.ref != null) {
+      const yy = Math.round(y(def.ref)) + 0.5;
+      parts.push(`<line class="bd-c-ref" x1="0" y1="${yy}" x2="${plotW.toFixed(1)}" y2="${yy}"/>`);
+    }
+    if (avg != null && values.length >= 3) {
+      const yy = Math.round(y(avg)) + 0.5;
+      parts.push(`<line class="bd-c-avg" x1="0" y1="${yy}" x2="${plotW.toFixed(1)}" y2="${yy}"/>`);
+      const text = `${t("snit")} ${formatMetric(metric, metric === "score" || metric === "mask" ? Math.round(avg) : avg)}`;
+      parts.push(`<text class="bd-c-avg-t" x="${plotW.toFixed(1)}" y="${Math.max(10, yy - 4).toFixed(1)}" text-anchor="end">${esc(text)}</text>`);
+    }
+    return `<svg width="${width}" height="${height}" viewBox="0 0 ${width} ${height}" role="img" aria-label="${esc(t("{metric} de seneste {n} nætter", { metric: t(def.label), n: NIGHTS }))}">${parts.join("")}</svg>`;
   }
 
   function observeChart(host) {

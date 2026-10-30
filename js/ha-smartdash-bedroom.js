@@ -8,7 +8,8 @@ window.BeastBedroom = (() => {
   const SECTION_ID = "bedroom";
   const DEFAULT_TITLE = "Soveværelse";
   const DEFAULT_GOODNIGHT_LABEL = "Låser døre";
-  const CALENDAR_COLORS = ["#d6b98a", "#c79b7a", "#8fa08a", "#9aa6b8", "#b5a3c4", "#a8b58a"];
+  // Warm hues only (no blue light at night): one per configured calendar, in order.
+  const CALENDAR_COLORS = ["#E8A85A", "#D4795A", "#CDB38A", "#C98A8A", "#A8B07A", "#8C9A86"];
   const CALENDAR_REFRESH_MS = 5 * 60 * 1000;
   const CAMERA_VIEW_MAX_MS = 3 * 60 * 1000;
   const POSTER_REFRESH_MS = 10 * 60 * 1000;
@@ -77,6 +78,7 @@ window.BeastBedroom = (() => {
     play: '<path d="M8 5.5v13l10-6.5Z" fill="currentColor" stroke="none"/>',
     pause: '<rect x="6.5" y="5" width="3.8" height="14" rx="1.1" fill="currentColor" stroke="none"/><rect x="13.7" y="5" width="3.8" height="14" rx="1.1" fill="currentColor" stroke="none"/>',
     tv: '<rect x="2.5" y="4.5" width="19" height="13" rx="2.2"/><path d="M8.5 20.5h7"/>',
+    fan: '<circle cx="12" cy="12" r="1.6"/><path d="M12 10.4c-.6-2.6.2-5.9 2.6-6.4 2.2-.4 3.2 2.4 1.4 4.1-1 .9-2.4 1.6-4 2.3Z"/><path d="M13.4 12.8c2.5.8 4.9 3.2 4.1 5.5-.7 2.1-3.6 1.6-4-.8-.2-1.3 0-2.9-.1-4.7Z"/><path d="M10.6 12.8c-1.9 1.8-5.2 2.7-6.8.9-1.4-1.7.5-4 2.8-3.2 1.3.4 2.6 1.4 4 2.3Z"/>',
     speaker: '<rect x="6" y="3.5" width="12" height="17" rx="2.5"/><circle cx="12" cy="14" r="3"/><path d="M12 7.5h.01"/>'
   };
 
@@ -272,75 +274,51 @@ window.BeastBedroom = (() => {
     };
   }
 
+  // A column of up to two cards over three rows: the first card takes the
+  // first row(s), the second the rest. Which rows depends on which card sizes
+  // itself (see the row sizes below).
+  function stackCells(first, second, firstRows) {
+    if (first && second) return [0, 1, 2].map((index) => (index < firstRows ? first : second));
+    const only = first || second;
+    return only ? [only, only, only] : null;
+  }
+
+  // Landscape (Amber): cameras over security on the left, sleep over the
+  // calendar in the middle, all controls on the right. Rows: the sleep card's
+  // own height, the flexible rest, the security card's own height. The
+  // cameras fill rows 1-2 and the calendar rows 2-3, so both take what the
+  // two content-sized cards leave.
   function landscapeLayout(f) {
-    let colA = [f.cams && "cams", f.cal && "cal"].filter(Boolean);
-    let colB = [f.sleep && "sleep", f.sec && "sec"].filter(Boolean);
-    let bottomSpan = null;
-    if (f.cams && f.sleep && (f.cal !== f.sec)) {
-      bottomSpan = f.cal ? "cal" : "sec";
-      colA = ["cams"]; colB = ["sleep"];
-    } else if (!f.cams && f.cal && f.sleep && f.sec) {
-      colA = ["cal"];
-    } else if (f.cams && !f.sleep && f.cal && f.sec) {
-      colA = ["cams"]; colB = ["cal", "sec"];
-    } else if (!colA.length && colB.length === 2 && !f.ctrl && !f.night) {
-      colA = [colB.shift()];
-    } else if (!colB.length && colA.length === 2) {
-      colB = [colA.pop()];
-    }
-    const colC = [f.ctrl && "ctrl", f.night && "night"].filter(Boolean);
     const columns = [];
-    const cellsFor = [];
-    const stack = (items, name) => {
-      if (!items.length) return;
-      columns.push(name);
-      if (bottomSpan && (name === "A" || name === "B")) {
-        cellsFor.push([items[0], bottomSpan, bottomSpan]);
-        return;
-      }
-      cellsFor.push(items.length === 2 ? [items[0], items[1], items[1]] : [items[0], items[0], items[0]]);
-    };
-    stack(colA, "A");
-    stack(colB, "B");
-    if (colC.length) {
-      columns.push("C");
-      cellsFor.push(colC.length === 2 ? ["ctrl", "ctrl", "night"] : colC[0] === "ctrl" ? ["ctrl", "ctrl", "ctrl"] : [".", ".", "night"]);
-    }
+    const cells = [];
+    const weights = { A: 440, B: 286, C: 286 };
+    const add = (name, column) => { if (column) { columns.push(name); cells.push(column); } };
+    add("A", stackCells(f.cams && "cams", f.sec && "sec", 2));
+    add("B", stackCells(f.sleep && "sleep", f.cal && "cal", 1));
+    add("C", f.ctrl ? ["ctrl", "ctrl", "ctrl"] : null);
     if (!columns.length) return null;
-    const weights = { A: 345, B: 340, C: 323 };
+    // Without cameras and controls the two remaining cards share the width.
+    if (columns.length === 1) weights[columns[0]] = 1;
     const head = Array(columns.length).fill("head");
-    const row = (index) => cellsFor.map((cells) => cells[index]);
-    const rows = [["auto", head], ["minmax(min-content, 1.9fr)", row(0)], ["minmax(0, 1fr)", row(1)]];
-    rows.push([f.night ? "64px" : "minmax(0, 1fr)", row(2)]);
+    const row = (index) => cells.map((column) => column[index]);
+    const rows = [["auto", head], ["auto", row(0)], ["minmax(0, 1fr)", row(1)], ["auto", row(2)]];
     return gridTemplate(columns.map((name) => `minmax(0, ${weights[name]}fr)`), rows);
   }
 
-  // Portrait: cameras side by side, the sleep band across the full width,
-  // then controls on the left and security / calendar / Godnat on the right.
-  // Godnat sits under the calendar so the controls column keeps the height
-  // its light dimmers need.
+  // Portrait (Amber): cameras side by side, then sleep over the calendar on
+  // the left and security over the controls on the right. Rows: security's
+  // height, the rest of the sleep card, the flexible rest.
   function portraitLayout(f) {
-    const right = [f.sec && "sec", f.cal && "cal", f.night && "night"].filter(Boolean);
-    let rightCells = null;
-    if (right.length) {
-      rightCells = [right[0], right[Math.min(1, right.length - 1)], right[right.length - 1]];
-      if (right.length === 2 && right[1] === "night") rightCells = [right[0], right[0], "night"];
-      if (right.length === 2 && right[0] === "sec") rightCells = ["sec", "cal", "cal"];
-    }
-    let leftCells = f.ctrl ? ["ctrl", "ctrl", "ctrl"] : null;
-    if (leftCells && right.length === 1 && right[0] === "night") leftCells = rightCells = ["ctrl", "ctrl", "night"];
-    const pair = (index) => {
-      if (leftCells && rightCells) return [leftCells[index], rightCells[index]];
-      const cells = leftCells || rightCells;
-      return cells ? [cells[index], cells[index]] : null;
-    };
+    let left = stackCells(f.sleep && "sleep", f.cal && "cal", 2);
+    let right = stackCells(f.sec && "sec", f.ctrl && "ctrl", 1);
+    if (!left) left = right;
+    if (!right) right = left;
     const rows = [["auto", ["head", "head"]]];
     if (f.cams) rows.push(["auto", ["cams", "cams"]]);
-    if (f.sleep) rows.push([pair(0) ? "auto" : "minmax(0, 1fr)", ["sleep", "sleep"]]);
-    if (pair(0)) {
-      rows.push(["auto", pair(0)], ["minmax(0, 1fr)", pair(1)]);
-      rows.push([rightCells?.[2] === "night" ? "64px" : "minmax(0, 1fr)", pair(2)]);
-    } else if (!f.sleep) {
+    if (left) {
+      const pair = (index) => [left[index], right[index]];
+      rows.push(["auto", pair(0)], ["auto", pair(1)], ["minmax(0, 1fr)", pair(2)]);
+    } else if (f.cams) {
       rows.push(["minmax(0, 1fr)", [".", "."]]);
     }
     return gridTemplate(["minmax(0, 1fr)", "minmax(0, 1fr)"], rows);
@@ -353,12 +331,13 @@ window.BeastBedroom = (() => {
 
   function skeletonMarkup() {
     const f = flags;
-    const any = f.cams || f.sleep || f.cal || f.sec || f.ctrl || f.night;
+    const any = f.cams || f.sleep || f.cal || f.sec || f.ctrl;
     const landscape = any ? landscapeLayout(f) : null;
     const portrait = any ? portraitLayout(f) : null;
     const style = landscape ? ` style="--bd-cols-l:${landscape.cols};--bd-rows-l:${landscape.rows};--bd-areas-l:${esc(landscape.areas)};--bd-cols-p:${portrait.cols};--bd-rows-p:${portrait.rows};--bd-areas-p:${esc(portrait.areas)}"` : "";
     const sleepModule = window.BeastBedroom.sleep;
-    const parts = [`<header class="bd-head" data-bd-area="head"></header>`];
+    // Godnat sits in the header, top right, next to the menu button.
+    const parts = [`<header class="bd-head${f.night ? " has-night" : ""}" data-bd-area="head"><div class="bd-clock" data-bd-clock></div><div class="bd-climate" data-bd-climate></div>${f.night ? `<button type="button" class="bd-night" data-bd-action="goodnight"></button>` : ""}<button type="button" class="bd-menu-btn" data-bd-action="menu" aria-label="${esc(t("Vis menu"))}">${icon("grid", 18)}</button></header>`];
     if (!any) {
       parts.push(`<div class="bd-empty"><strong>${esc(t("Soveværelset er ikke sat op endnu"))}</strong><span>${esc(t("Vælg enheder i Administration → Soveværelse"))}</span></div>`);
     }
@@ -367,8 +346,8 @@ window.BeastBedroom = (() => {
     if (f.ctrl) parts.push(panelMarkup("ctrl", `<div class="bd-block" data-bd-block="lights" hidden></div><div class="bd-block" data-bd-block="scenes" hidden></div><div class="bd-block" data-bd-block="comfort" hidden></div><div class="bd-block" data-bd-block="media" hidden></div>`));
     if (f.cal) parts.push(panelMarkup("cal", `<div class="bd-eyebrow"><b>${esc(t("Kalender"))}</b><span class="bd-meta" data-bd-cal-meta></span></div><div class="bd-cal-list" data-bd-cal-list></div>`));
     if (f.sec) parts.push(panelMarkup("sec", ""));
-    if (f.night) parts.push(`<button type="button" class="bd-night" data-bd-area="night" data-bd-action="goodnight"></button>`);
-    return `<div class="bd-page${any ? "" : " is-empty"}" data-cams-fill="${f.cams && f.sleep ? "1" : "0"}"${style}>${parts.join("")}</div><div class="bd-layer" data-bd-layer hidden></div>`;
+    const shape = [f.cams && "cams", f.sec && "sec", f.sleep && "sleep", f.cal && "cal", f.ctrl && "ctrl"].filter(Boolean).join(" ");
+    return `<div class="bd-page${any ? "" : " is-empty"}" data-shape="${shape}"${style}>${parts.join("")}</div><div class="bd-layer" data-bd-layer hidden></div>`;
   }
 
   function build() {
@@ -401,7 +380,7 @@ window.BeastBedroom = (() => {
     const co2Id = single(c.co2);
     if (co2Id) {
       const co2 = numberState(co2Id);
-      cells.push({ value: co2 == null ? "–" : fmt(co2, 0), unit: "ppm", label: co2 > 1400 ? t("Luft ud") : "CO₂", warn: co2 > 1000, dim: co2 == null });
+      cells.push({ value: co2 == null ? "–" : fmt(co2, 0), unit: "ppm", label: co2 > 1400 ? t("Luft ud") : "CO₂", warn: co2 > 1400 ? "bad" : co2 > 1000, dim: co2 == null });
     }
     const airId = single(c.airQuality);
     const pmId = single(c.pm25);
@@ -437,9 +416,13 @@ window.BeastBedroom = (() => {
     if (blockSignatures.get("head") === signature) return;
     blockSignatures.set("head", signature);
     const [hours, minutes] = hm(now).split(":");
-    head.innerHTML = `<div class="bd-clock"><div class="bd-time" aria-label="${esc(hm(now))}">${hours}<i>:</i>${minutes}</div><div class="bd-date"><span class="bd-d1">${esc(capitalize(now.toLocaleDateString(locale(), { weekday: "long", day: "numeric", month: "long" })))}</span><span class="bd-d2">${esc(roomTitle())}</span></div></div>
-      ${cells.length ? `<div class="bd-climate">${cells.map((cell) => `<div class="bd-cl${cell.optional ? " is-optional" : ""}${cell.warn ? " is-warn" : ""}${cell.dim ? " is-dim" : ""}"><span class="bd-cl-v">${esc(cell.value)}${cell.unit ? `<small>${esc(cell.unit)}</small>` : ""}</span><span class="bd-cl-k">${cell.dot ? `<i class="bd-dot is-${cell.dot}"></i>` : ""}${esc(cell.label)}</span></div>`).join("")}</div>` : `<div class="bd-climate"></div>`}
-      <button type="button" class="bd-menu-btn" data-bd-action="menu" aria-label="${esc(t("Vis menu"))}">${icon("grid", 18)}</button>`;
+    const clock = head.querySelector("[data-bd-clock]");
+    const climate = head.querySelector("[data-bd-climate]");
+    if (clock) clock.innerHTML = `<div class="bd-time" aria-label="${esc(hm(now))}">${hours}<i>:</i>${minutes}</div><div class="bd-date"><span class="bd-d2">${esc(roomTitle())}</span><span class="bd-d1">${esc(capitalize(now.toLocaleDateString(locale(), { weekday: "long", day: "numeric", month: "long" })))}</span></div>`;
+    if (climate) {
+      climate.hidden = !cells.length;
+      climate.innerHTML = cells.map((cell) => `<div class="bd-cl${cell.optional ? " is-optional" : ""}${cell.dot ? ` is-tone-${cell.dot}` : ""}${cell.warn ? ` is-${cell.warn === "bad" ? "bad" : "warn"}` : ""}${cell.dim ? " is-dim" : ""}"><span class="bd-cl-v">${cell.dot ? `<i class="bd-dot is-${cell.dot}"></i>` : ""}<span class="bd-cl-n">${esc(cell.value)}</span>${cell.unit ? `<small>${esc(cell.unit)}</small>` : ""}</span><span class="bd-cl-k">${esc(cell.label)}</span></div>`).join("");
+    }
   }
 
   // ---------------------------------------------------------------------------
@@ -490,14 +473,12 @@ window.BeastBedroom = (() => {
     disconnectCameraObservers();
     host.innerHTML = specs.map((item, index) => {
       if (item.wait || !item.spec) {
-        return `<div class="bd-cam is-unavailable"><span class="bd-cam-empty">${esc(item.wait ? t("Forbinder…") : t("Kamera utilgængeligt"))}</span>${item.label ? `<span class="bd-cam-name">${esc(item.label)}</span>` : ""}</div>`;
+        return `<div class="bd-cam is-unavailable"><span class="bd-cam-empty">${item.wait ? "" : icon("camera", 22)}<span>${esc(item.wait ? t("Forbinder…") : t("Kamera utilgængeligt"))}</span></span>${item.label ? `<span class="bd-cam-top"><span class="bd-cam-name">${esc(item.label)}</span></span>` : ""}</div>`;
       }
       return `<div class="bd-cam" role="button" tabindex="0" data-bd-action="camera-view" data-index="${index}" aria-label="${esc(t("Vis {name} i fuld skærm", { name: item.spec.label }))}">
         <div class="bd-cam-media">${streamMarkup(item.spec)}</div>
         <div class="bd-cam-scrim"></div>
-        <span class="bd-cam-live" data-live="connecting">${esc(t("Forbinder"))}</span>
-        <span class="bd-cam-time"></span>
-        <span class="bd-cam-name">${esc(item.spec.label)}</span>
+        <span class="bd-cam-top"><span class="bd-cam-name">${esc(item.spec.label)}</span><span class="bd-cam-live" data-live="connecting">${esc(t("Forbinder"))}</span><span class="bd-cam-time"></span></span>
         <span class="bd-cam-expand">${icon("corners", 16)}</span>
       </div>`;
     }).join("");
@@ -778,42 +759,71 @@ window.BeastBedroom = (() => {
     return { id, name, on, pct, canDim, stateText, members };
   }
 
-  function lightTileMarkup(model) {
+  // A row that is also the dimmer: tap toggles, a sideways drag anywhere on
+  // the row sets the brightness. The warm fill behind the text shows the
+  // level; its handle runs along the bottom edge so it never crosses the name.
+  function lightTileMarkup(model, sub = null) {
+    const lamps = model.members && model.members.length > 1 ? t("{n} lamper", { n: model.members.length }) : "";
     if (model.unavailable) {
-      return `<div class="bd-light is-unavailable" data-light="${esc(model.id)}"><div class="bd-light-tap"><span class="bd-light-text"><span class="bd-light-name">${esc(model.name)}</span><span class="bd-light-state">${esc(model.stateText)}</span></span>${icon("bulb", 16, "bd-light-ic")}</div></div>`;
+      return `<div class="bd-light is-unavailable" data-light="${esc(model.id)}"><div class="bd-light-tap"><span class="bd-light-ic">${icon("bulb", 18)}</span><span class="bd-light-text"><span class="bd-light-name">${esc(model.name)}</span><span class="bd-light-sub">${esc(t("Utilgængelig"))}</span></span></div></div>`;
     }
-    return `<div class="bd-light${model.on ? " is-on" : ""}${model.canDim ? " can-dim" : ""}" data-light="${esc(model.id)}" style="--b:${model.pct}%">
-      <button type="button" class="bd-light-tap" data-bd-action="light-toggle" data-entity="${esc(model.id)}" aria-pressed="${model.on}"><span class="bd-light-text"><span class="bd-light-name">${esc(model.name)}</span><span class="bd-light-state">${esc(model.stateText)}</span></span>${icon("bulb", 16, "bd-light-ic")}</button>
-      ${model.canDim ? `<div class="bd-dimmer" data-bd-dimmer="${esc(model.id)}" role="slider" tabindex="0" aria-label="${esc(t("Lysstyrke {name}", { name: model.name }))}" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${model.pct}"><span class="bd-track"><span class="bd-track-fill"></span><span class="bd-knob"></span></span></div>` : ""}
+    const pend = pendingFor(model.id);
+    const busy = Boolean(pend && Date.now() - pend.at < 3000);
+    const value = busy ? "…" : !model.on ? t("Fra") : model.canDim ? `${fmt(model.pct, 0)} %` : t("Til");
+    let subText = sub ? sub.text : "";
+    if (!subText) subText = model.members && model.members.length > 1 ? (model.on ? model.stateText : lamps) : model.on ? t("Tændt") : t("Slukket");
+    return `<div class="bd-light${model.on ? " is-on" : ""}${model.canDim ? " can-dim" : ""}${busy ? " is-busy" : ""}" data-light="${esc(model.id)}"${model.canDim ? ` data-bd-dimmer="${esc(model.id)}" role="group" aria-label="${esc(t("Lysstyrke {name}", { name: model.name }))}" aria-valuenow="${model.pct}"` : ""} style="--b:${model.pct}%">
+      ${model.canDim ? `<span class="bd-light-fill"></span><span class="bd-light-rail"><span class="bd-light-knob"></span></span>` : ""}
+      <button type="button" class="bd-light-tap" data-bd-action="light-toggle" data-entity="${esc(model.id)}" aria-pressed="${model.on}"><span class="bd-light-ic">${icon("bulb", 18)}</span><span class="bd-light-text"><span class="bd-light-name">${esc(model.name)}</span><span class="bd-light-sub${sub?.tone ? ` is-${sub.tone}` : ""}">${esc(subText)}</span></span><span class="bd-light-val">${esc(value)}</span></button>
     </div>`;
   }
 
-  function motionMeta() {
+  // Motion sensor (e.g. under the bed): the bit of its name before the
+  // motion word, and its state as a short line.
+  function motionInfo() {
     const id = single(cfg().motion);
-    if (!id) return "";
+    if (!id) return null;
     const st = state(id);
     const raw = overrides().get(id) || String(displayName(id)).replace(/\s+(occupancy|motion|presence|bevægelse|tilstedeværelse)$/i, "").replace(/^(motion|bevægelse)\s+/i, "").trim();
     const name = capitalize(raw) || t("Bevægelse");
-    if (unavailable(st)) return `<span class="bd-meta">${esc(t("{name}: ingen data", { name }))}</span>`;
+    if (unavailable(st)) return { name, short: t("Ingen data"), line: t("{name}: ingen data", { name }) };
     return st.state === "on"
-      ? `<span class="bd-meta is-gold">${esc(t("{name}: bevægelse nu", { name }))}</span>`
-      : `<span class="bd-meta">${esc(t("{name}: ingen bevægelse", { name }))}</span>`;
+      ? { name, short: t("Bevægelse nu"), line: t("{name}: bevægelse nu", { name }), tone: "gold" }
+      : { name, short: t("Ingen bevægelse"), line: t("{name}: ingen bevægelse", { name }) };
   }
 
   function lightIds() { return list(cfg().lights); }
 
+  // The room's "all lights" group: a configured light group that contains at
+  // least two of the other configured lights. It becomes the pill in the
+  // block heading instead of a row.
+  function roomGroupId(ids) {
+    return ids.find((id) => {
+      const members = state(id)?.attributes?.entity_id;
+      return Array.isArray(members) && ids.filter((other) => other !== id && members.includes(other)).length >= 2;
+    }) || null;
+  }
+
   function renderLights() {
     const block = root?.querySelector('[data-bd-block="lights"]');
     if (!block || lightDrag) return;
-    const ids = lightIds().slice(0, 4);
-    block.hidden = !ids.length;
-    if (!ids.length) return;
+    const all = lightIds();
+    const groupId = all.length > 2 ? roomGroupId(all) : null;
+    const ids = all.filter((id) => id !== groupId).slice(0, 4);
+    block.hidden = !all.length;
+    if (!all.length) return;
     const models = ids.map(lightModel);
-    const meta = motionMeta();
-    const signature = JSON.stringify([models, meta]);
+    const group = groupId ? lightModel(groupId) : null;
+    const motion = motionInfo();
+    const norm = (text) => String(text || "").toLocaleLowerCase(locale()).trim();
+    const motionRow = motion ? models.find((model) => norm(model.name) === norm(motion.name)) : null;
+    const signature = JSON.stringify([models, group, motion, motionRow?.id, ids.map((id) => pendingFor(id) ? 1 : 0)]);
     if (blockSignatures.get("lights") === signature) return;
     blockSignatures.set("lights", signature);
-    block.innerHTML = `<div class="bd-blockhead"><b>${esc(t("Lys"))}</b>${meta}</div><div class="bd-lights" data-n="${models.length}">${models.map(lightTileMarkup).join("")}</div>`;
+    const pill = group && !group.unavailable
+      ? `<button type="button" class="bd-pill${group.on ? " is-on" : ""}" data-bd-action="light-toggle" data-entity="${esc(group.id)}" aria-pressed="${group.on}"><i></i><span>${esc(group.on ? t("{name} tændt", { name: group.name }) : t("{name} slukket", { name: group.name }))}</span></button>`
+      : motion && !motionRow ? `<span class="bd-meta${motion.tone ? ` is-${motion.tone}` : ""}">${esc(motion.line)}</span>` : "";
+    block.innerHTML = `<div class="bd-blockhead"><b>${esc(t("Lys"))}</b>${pill}</div><div class="bd-lights" data-n="${models.length}">${models.map((model) => lightTileMarkup(model, model === motionRow ? { text: motion.short, tone: motion.tone } : null)).join("")}</div>`;
   }
 
   function toggleLight(id) {
@@ -847,59 +857,82 @@ window.BeastBedroom = (() => {
     window.BeastBedroom.menu?.refresh?.();
   }
 
-  function dimmerPct(zoneEl, clientX) {
-    const track = zoneEl.querySelector(".bd-track");
-    const rect = (track || zoneEl).getBoundingClientRect();
-    return Math.max(0, Math.min(100, Math.round(((clientX - rect.left) / Math.max(1, rect.width)) * 100)));
+  function previewDimmer(row, pct) {
+    row.style.setProperty("--b", `${pct}%`);
+    row.classList.toggle("is-on", pct > 0);
+    row.setAttribute("aria-valuenow", String(pct));
+    const value = row.querySelector(".bd-light-val");
+    if (value) value.textContent = pct > 0 ? `${fmt(pct, 0)} %` : t("Fra");
   }
 
-  function previewDimmer(zoneEl, pct) {
-    const tile = zoneEl.closest(".bd-light");
-    if (!tile) return;
-    tile.style.setProperty("--b", `${pct}%`);
-    tile.classList.toggle("is-on", pct > 0);
-    zoneEl.setAttribute("aria-valuenow", String(pct));
-    const label = tile.querySelector(".bd-light-state");
-    if (label) label.textContent = pct > 0 ? `${fmt(pct, 0)} %` : t("Slukket");
-  }
+  // Sideways drag on a dimmable row. Brightness follows the finger relative
+  // to where it started (no jump on touch-down); the light gets at most one
+  // command every 250 ms while dragging plus one on release. A drag never
+  // toggles: the click that follows it is swallowed.
+  const DRAG_START_PX = 8;
+  const DRAG_SEND_MS = 250;
+  let suppressClickUntil = 0;
 
   function onDimmerDown(event) {
-    const zoneEl = event.target.closest("[data-bd-dimmer]");
-    if (!zoneEl || !root.contains(zoneEl) || event.button > 0) return;
-    event.preventDefault();
-    lightDrag = { id: zoneEl.dataset.bdDimmer, zoneEl, pointerId: event.pointerId, pct: dimmerPct(zoneEl, event.clientX) };
-    zoneEl.setPointerCapture?.(event.pointerId);
-    zoneEl.closest(".bd-light")?.classList.add("is-dragging");
-    previewDimmer(zoneEl, lightDrag.pct);
+    const row = event.target.closest("[data-bd-dimmer]");
+    if (!row || !root.contains(row) || event.button > 0 || lightDrag) return;
+    const id = row.dataset.bdDimmer;
+    const startPct = Number(row.getAttribute("aria-valuenow")) || 0;
+    const startX = event.clientX;
+    const startY = event.clientY;
+    const width = Math.max(1, row.getBoundingClientRect().width);
+    let dragging = false;
+    let sentAt = 0;
+    let sendTimer = null;
+    let pct = startPct;
+    const send = () => {
+      sentAt = Date.now();
+      sendTimer = null;
+      const request = pct > 0 ? callService("light", "turn_on", id, { brightness_pct: pct }) : callService("light", "turn_off", id);
+      request.catch(() => {});
+    };
     const move = (moveEvent) => {
-      if (!lightDrag || moveEvent.pointerId !== lightDrag.pointerId) return;
-      lightDrag.pct = dimmerPct(zoneEl, moveEvent.clientX);
-      previewDimmer(zoneEl, lightDrag.pct);
+      if (moveEvent.pointerId !== event.pointerId) return;
+      const dx = moveEvent.clientX - startX;
+      if (!dragging) {
+        if (Math.abs(dx) < DRAG_START_PX || Math.abs(dx) < Math.abs(moveEvent.clientY - startY)) return;
+        dragging = true;
+        lightDrag = { id, row };
+        row.setPointerCapture?.(event.pointerId);
+        row.classList.add("is-dragging");
+      }
+      moveEvent.preventDefault();
+      pct = Math.max(0, Math.min(100, Math.round(startPct + (dx / width) * 100)));
+      previewDimmer(row, pct);
+      if (Date.now() - sentAt >= DRAG_SEND_MS) send();
+      else if (!sendTimer) sendTimer = window.setTimeout(send, DRAG_SEND_MS - (Date.now() - sentAt));
     };
     const finish = (endEvent) => {
-      if (!lightDrag || endEvent.pointerId !== lightDrag.pointerId) return;
-      zoneEl.removeEventListener("pointermove", move);
-      zoneEl.removeEventListener("pointerup", finish);
-      zoneEl.removeEventListener("pointercancel", finish);
-      zoneEl.releasePointerCapture?.(endEvent.pointerId);
-      const { id, pct } = lightDrag;
+      if (endEvent.pointerId !== event.pointerId) return;
+      row.removeEventListener("pointermove", move);
+      row.removeEventListener("pointerup", finish);
+      row.removeEventListener("pointercancel", finish);
+      if (!dragging) return;
+      window.clearTimeout(sendTimer);
+      row.releasePointerCapture?.(endEvent.pointerId);
+      row.classList.remove("is-dragging");
       lightDrag = null;
-      zoneEl.closest(".bd-light")?.classList.remove("is-dragging");
+      suppressClickUntil = Date.now() + 400;
       if (endEvent.type === "pointercancel") renderLightsEverywhere();
       else commitBrightness(id, pct);
     };
-    zoneEl.addEventListener("pointermove", move);
-    zoneEl.addEventListener("pointerup", finish);
-    zoneEl.addEventListener("pointercancel", finish);
+    row.addEventListener("pointermove", move);
+    row.addEventListener("pointerup", finish);
+    row.addEventListener("pointercancel", finish);
   }
 
   function onDimmerKey(event) {
-    const zoneEl = event.target.closest?.("[data-bd-dimmer]");
-    if (!zoneEl || !["ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown"].includes(event.key)) return;
+    const row = event.target.closest?.("[data-bd-dimmer]");
+    if (!row || !["ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown"].includes(event.key)) return;
     event.preventDefault();
-    const current = Number(zoneEl.getAttribute("aria-valuenow")) || 0;
+    const current = Number(row.getAttribute("aria-valuenow")) || 0;
     const pct = Math.max(0, Math.min(100, current + (["ArrowRight", "ArrowUp"].includes(event.key) ? 10 : -10)));
-    commitBrightness(zoneEl.dataset.bdDimmer, pct);
+    commitBrightness(row.dataset.bdDimmer, pct);
   }
 
   // ---------------------------------------------------------------------------
@@ -952,7 +985,7 @@ window.BeastBedroom = (() => {
     const signature = `${markup}|${state(ids[0]) ? "1" : "0"}`;
     if (blockSignatures.get("scenes") === signature) return;
     blockSignatures.set("scenes", signature);
-    block.innerHTML = `<div class="bd-blockhead"><b>${esc(t("Stemning"))}</b></div><div class="bd-scenes" data-n="${ids.length}">${markup}</div>`;
+    block.innerHTML = `<div class="bd-blockhead"><b>${esc(t("Stemninger"))}</b></div><div class="bd-scenes" data-n="${ids.length}">${markup}</div>`;
   }
 
   function activateScene(id) {
@@ -978,6 +1011,13 @@ window.BeastBedroom = (() => {
   // ---------------------------------------------------------------------------
   // Comfort toggles (switches and fans) and media
   // ---------------------------------------------------------------------------
+  // Komfort: switches and fans as tiles with an icon well; the whole tile
+  // toggles. Fans that report a speed show it.
+  function comfortIcon(id) {
+    if (id.startsWith("fan.")) return "fan";
+    return /sleep|søvn|sove|night|nat/i.test(`${id} ${displayName(id)}`) ? "moon" : "power";
+  }
+
   function renderComfort() {
     const block = root?.querySelector('[data-bd-block="comfort"]');
     if (!block) return;
@@ -988,12 +1028,14 @@ window.BeastBedroom = (() => {
       const st = state(id);
       const pend = pendingFor(id);
       const on = pend && "on" in pend ? pend.on : st?.state === "on";
-      return { id, name: displayName(id), on, off: unavailable(st) };
+      const speed = id.startsWith("fan.") && on && !pend ? Number(st?.attributes?.percentage) : NaN;
+      const sub = unavailable(st) ? t("Utilgængelig") : on ? (Number.isFinite(speed) && speed > 0 ? t("Hastighed {pct} %", { pct: fmt(speed, 0) }) : t("Tændt")) : t("Slukket");
+      return { id, name: displayName(id), on, off: unavailable(st), sub, glyph: comfortIcon(id) };
     });
     const signature = JSON.stringify(items);
     if (blockSignatures.get("comfort") === signature) return;
     blockSignatures.set("comfort", signature);
-    block.innerHTML = `<div class="bd-blockhead"><b>${esc(t("Komfort"))}</b></div><div class="bd-toggles" data-n="${items.length}">${items.map((item) => `<button type="button" class="bd-tog${item.on ? " is-on" : ""}" role="switch" aria-checked="${item.on}" data-bd-action="toggle" data-entity="${esc(item.id)}"${item.off ? " disabled" : ""}><span class="bd-tog-name">${esc(item.name)}</span><span class="bd-sw"></span></button>`).join("")}</div>`;
+    block.innerHTML = `<div class="bd-blockhead"><b>${esc(t("Komfort"))}</b></div><div class="bd-toggles" data-n="${items.length}">${items.map((item) => `<button type="button" class="bd-tog${item.on ? " is-on" : ""}${item.off ? " is-off" : ""}" role="switch" aria-checked="${item.on}" data-bd-action="toggle" data-entity="${esc(item.id)}"${item.off ? " disabled" : ""}><span class="bd-tog-ic">${icon(item.glyph, 18)}</span><span class="bd-tog-text"><span class="bd-tog-name">${esc(item.name)}</span><span class="bd-tog-sub">${esc(item.sub)}</span></span></button>`).join("")}</div>`;
   }
 
   function toggleEntity(id) {
@@ -1045,19 +1087,29 @@ window.BeastBedroom = (() => {
         progress = Math.max(0, Math.min(100, ((position + elapsed) / durationS) * 100));
       }
     }
-    return { id, name, on, isTv, verb, rest, action, playing: status === "playing", paused: status === "paused", progress: progress == null ? null : Math.round(progress * 2) / 2 };
+    return { id, name, on, isTv, verb, rest, action, title, playing: status === "playing", paused: status === "paused", progress: progress == null ? null : Math.round(progress * 2) / 2 };
   }
 
+  // Playing something with a title: the title leads and the device follows
+  // (as on a lock screen); otherwise the device name and its state.
   function mediaRowMarkup(model) {
     if (model.unavailable) {
-      return `<div class="bd-mrow is-unavailable"><span class="bd-art">${icon("speaker", 16)}</span><span class="bd-mtext"><span class="bd-m1">${esc(model.name)}</span><span class="bd-m2">${esc(t("Utilgængelig"))}</span></span></div>`;
+      return `<div class="bd-mrow is-unavailable"><span class="bd-art">${icon("speaker", 18)}</span><span class="bd-mtext"><span class="bd-m1">${esc(model.name)}</span><span class="bd-m2">${esc(t("Utilgængelig"))}</span></span></div>`;
     }
     const button = model.action === "media_play_pause"
-      ? `<button type="button" class="bd-ib${model.playing ? " is-on" : ""}" data-bd-action="media" data-service="media_play_pause" data-entity="${esc(model.id)}" aria-label="${esc(model.playing ? t("Pause") : t("Afspil"))}">${icon(model.playing ? "pause" : "play", 15)}</button>`
-      : model.action ? `<button type="button" class="bd-ib${model.on ? " is-on" : ""}" data-bd-action="media" data-service="${model.action}" data-entity="${esc(model.id)}" aria-label="${esc(model.on ? t("Sluk") : t("Tænd"))}">${icon("power", 16)}</button>` : "";
-    const verb = model.paused ? esc(model.verb) : `<b>${esc(model.verb)}</b>`;
-    const sub = model.verb ? `${verb}${model.rest ? ` · ${esc(model.rest)}` : ""}` : esc(model.rest);
-    return `<div class="bd-mrow${model.on ? " is-on" : ""}"><span class="bd-art">${icon(model.isTv ? "tv" : model.playing ? "play" : "speaker", 16)}</span><span class="bd-mtext"><span class="bd-m1">${esc(model.name)}</span><span class="bd-m2">${sub}</span>${model.progress != null ? `<span class="bd-mprog"><i style="width:${model.progress}%"></i></span>` : ""}</span>${button}</div>`;
+      ? `<button type="button" class="bd-ib${model.playing ? " is-on" : ""}" data-bd-action="media" data-service="media_play_pause" data-entity="${esc(model.id)}" aria-label="${esc(model.playing ? t("Pause") : t("Afspil"))}">${icon(model.playing ? "pause" : "play", 16)}</button>`
+      : model.action ? `<button type="button" class="bd-ib" data-bd-action="media" data-service="${model.action}" data-entity="${esc(model.id)}" aria-label="${esc(model.on ? t("Sluk") : t("Tænd"))}">${icon("power", 17)}</button>` : "";
+    const titled = (model.playing || model.paused) && model.title;
+    let line1 = model.name;
+    let line2;
+    if (titled) {
+      line1 = model.title;
+      line2 = `${esc(model.name)}${model.paused ? ` · ${esc(t("Pause"))}` : ""}`;
+    } else {
+      const verb = model.paused ? esc(model.verb) : `<b>${esc(model.verb)}</b>`;
+      line2 = model.verb ? `${verb}${model.rest ? ` · ${esc(model.rest)}` : ""}` : esc(model.rest);
+    }
+    return `<div class="bd-mrow${model.on ? " is-on" : ""}${model.playing ? " is-playing" : ""}"><span class="bd-art">${icon(model.isTv ? "tv" : model.playing ? "music" : "speaker", 18)}</span><span class="bd-mtext"><span class="bd-m1">${esc(line1)}</span><span class="bd-m2">${line2}</span>${model.progress != null ? `<span class="bd-mprog"><i style="width:${model.progress}%"></i></span>` : ""}</span>${button}</div>`;
   }
 
   function renderMedia() {
@@ -1103,15 +1155,19 @@ window.BeastBedroom = (() => {
     return { id, name, kind, error: lockFeedback.get(id)?.text || "" };
   }
 
+  // A lock is a tile: tap an unlocked (or jammed) door to lock it at once;
+  // tapping a locked door asks for the code/PIN before it unlocks.
   function lockRowMarkup(model) {
-    const labels = { locked: "Låst", unlocked: "Ulåst", open: "Åben", jammed: "Fastlåst", locking: "Låser…", unlocking: "Låser op…", unavailable: "Utilgængelig" };
-    const warn = ["unlocked", "open", "jammed"].includes(model.kind);
+    const labels = { locked: "Låst", unlocked: "Ulåst", open: "Åben", jammed: "Fejl", locking: "Låser…", unlocking: "Låser op…", unavailable: "Utilgængelig" };
+    const tone = ["unlocked", "open"].includes(model.kind) ? "warn" : model.kind === "jammed" ? "bad" : model.kind === "locked" ? "ok" : "";
     let action = "";
-    if (["unlocked", "open"].includes(model.kind)) action = `<button type="button" class="bd-lock-act" data-bd-action="lock" data-entity="${esc(model.id)}">${icon("lock", 14)}<span>${esc(t("Lås"))}</span></button>`;
-    else if (model.kind === "jammed") action = `<button type="button" class="bd-lock-act" data-bd-action="lock" data-entity="${esc(model.id)}">${icon("lock", 14)}<span>${esc(t("Prøv igen"))}</span></button>`;
-    else if (model.kind === "locked") action = `<button type="button" class="bd-lock-act is-danger" data-bd-action="unlock" data-entity="${esc(model.id)}">${icon("unlock", 14)}<span>${esc(t("Lås op"))}</span></button>`;
-    else if (["locking", "unlocking"].includes(model.kind)) action = `<button type="button" class="bd-lock-act is-busy" disabled><span>${esc(t(labels[model.kind]))}</span></button>`;
-    return `<div class="bd-lock is-${model.kind}"><span class="bd-lock-st${warn ? " is-warn" : model.kind === "locked" ? " is-ok" : ""}">${icon(model.kind === "locked" || model.kind === "locking" ? "lock" : "unlock", 15)}</span><span class="bd-lock-nm"><span class="bd-lock-name">${esc(model.name)}</span><span class="bd-lock-state${model.error ? " is-warn" : ""}">${esc(model.error || t(labels[model.kind]))}</span></span>${action}</div>`;
+    let hint = "";
+    if (["unlocked", "open", "jammed"].includes(model.kind)) { action = "lock"; hint = t("Lås {name}", { name: model.name }); }
+    else if (model.kind === "locked") { action = "unlock"; hint = t("Lås {name} op?", { name: model.name }); }
+    const busy = ["locking", "unlocking"].includes(model.kind);
+    const stateText = model.error || t(labels[model.kind]);
+    const attrs = action ? ` data-bd-action="${action}" data-entity="${esc(model.id)}" aria-label="${esc(`${model.name}: ${stateText}. ${hint}`)}"` : " disabled";
+    return `<button type="button" class="bd-lock is-${model.kind}${tone ? ` is-${tone}` : ""}${busy ? " is-busy" : ""}"${attrs}><span class="bd-lock-ic">${icon(model.kind === "locked" || model.kind === "locking" ? "lock" : "unlock", 17)}</span><span class="bd-lock-nm"><span class="bd-lock-name">${esc(model.name)}</span><span class="bd-lock-state${model.error ? " is-bad" : ""}">${esc(stateText)}</span></span></button>`;
   }
 
   function alarmModel() {
@@ -1147,21 +1203,28 @@ window.BeastBedroom = (() => {
     return { id, name, status, modes, target, countdown, feedback: alarmFeedback && Date.now() < alarmFeedback.until ? alarmFeedback.text : "" };
   }
 
+  function alarmLabel(model) {
+    return model.feedback || (model.status === "arming" && model.countdown ? `${t("Aktiverer…")} ${model.countdown}` : t(ALARM_STATE_LABELS[model.status] || model.status));
+  }
+
+  // Status block, a segmented Hjemme | Nat | Ude control (only the modes the
+  // panel supports) and a dashed "Frakobl" that always goes via code/PIN.
   function alarmMarkup(model) {
     if (!model) return "";
-    if (model.unavailable) return `<div class="bd-alarm is-unavailable"><div class="bd-alarm-top"><span class="bd-a1">${esc(model.name)}</span><span class="bd-a2">${esc(t("Utilgængelig"))}</span></div></div>`;
+    if (model.unavailable) return `<div class="bd-alarm is-unavailable"><span class="bd-alarm-st"><span class="bd-shield">${icon("shield", 16)}</span><span class="bd-alarm-tx"><b>${esc(model.name)}</b><small>${esc(t("Utilgængelig"))}</small></span></span></div>`;
     const armed = model.status.startsWith("armed_");
     const busy = ["arming", "pending", "disarming"].includes(model.status);
-    const label = model.feedback || (model.status === "arming" && model.countdown ? `${t("Aktiverer…")} ${model.countdown}` : t(ALARM_STATE_LABELS[model.status] || model.status));
+    const triggered = model.status === "triggered";
+    const label = alarmLabel(model);
     const buttons = model.modes.map(([mode, , text]) => {
       const current = model.status === `armed_${mode}`;
       const arming = busy && model.status !== "disarming" && model.target === mode;
-      const caption = arming ? `${t("Aktiverer…")}${model.countdown ? ` ${model.countdown}` : ""}` : t(text);
-      return `<button type="button" class="bd-arm${current ? " is-on" : ""}${arming ? " is-arming" : ""}" data-bd-action="arm" data-mode="${mode}"${busy || current ? " disabled" : ""}>${esc(caption)}</button>`;
+      return `<button type="button" class="bd-arm${current ? " is-on" : ""}${arming ? " is-arming" : ""}" data-bd-action="arm" data-mode="${mode}"${busy || current ? " disabled" : ""}${current ? ' aria-pressed="true"' : ""}>${esc(arming ? "…" : t(text))}</button>`;
     }).join("");
-    const canDisarm = armed || busy || model.status === "triggered";
-    return `<div class="bd-alarm"><div class="bd-alarm-top"><span class="bd-a1">${esc(model.name)}</span><span class="bd-a2${armed ? " is-armed" : ""}${model.status === "triggered" || model.feedback ? " is-warn" : ""}${busy ? " is-busy" : ""}">${esc(label)}</span></div>
-      <div class="bd-arms" style="--n:${model.modes.length}">${buttons}<button type="button" class="bd-arm is-danger" data-bd-action="disarm"${canDisarm && model.status !== "disarming" ? "" : " disabled"}>${icon("key", 13)}<span>${esc(t("Frakobl"))}</span></button></div></div>`;
+    const canDisarm = (armed || busy || triggered) && model.status !== "disarming";
+    const tone = triggered || model.feedback ? " is-bad" : armed || busy ? " is-armed" : "";
+    return `<div class="bd-alarm${armed || busy ? " is-armed" : ""}"><span class="bd-alarm-st"><span class="bd-shield">${icon("shield", 16)}</span><span class="bd-alarm-tx"><b>${esc(model.name)}</b><small class="${tone.trim()}${busy ? " is-busy" : ""}">${esc(label)}</small></span></span>
+      ${model.modes.length ? `<div class="bd-seg" style="--n:${model.modes.length}">${buttons}</div>` : ""}<button type="button" class="bd-disarm${canDisarm ? " is-ready" : ""}" data-bd-action="disarm"${canDisarm ? "" : " disabled"}>${icon("key", 15)}<span>${esc(t("Frakobl"))}</span></button></div>`;
   }
 
   function renderSecurity() {
@@ -1175,11 +1238,14 @@ window.BeastBedroom = (() => {
     const unlocked = locks.filter((lock) => ["unlocked", "open"].includes(lock.kind)).length;
     const jammed = locks.some((lock) => lock.kind === "jammed");
     let meta = "";
-    if (jammed) meta = `<span class="bd-meta is-warn">${esc(t("Lås fastlåst"))}</span>`;
-    else if (unlocked) meta = `<span class="bd-meta is-warn">${esc(unlocked === 1 ? t("1 dør ulåst") : t("{n} døre ulåst", { n: unlocked }))}</span>`;
-    else if (locks.length && locks.every((lock) => lock.kind === "locked")) meta = `<span class="bd-meta is-ok">${esc(locks.length === 1 ? t("Døren er låst") : t("Alle døre låst"))}</span>`;
-    panel.innerHTML = `<div class="bd-eyebrow"><b>${esc(t("Sikkerhed"))}</b>${meta}</div>${locks.length ? `<div class="bd-locks">${locks.map(lockRowMarkup).join("")}</div>` : ""}${alarmMarkup(alarm)}`;
+    if (jammed) meta = `<b class="is-bad">${esc(t("Lås fastlåst"))}</b>`;
+    else if (unlocked) meta = `<b class="is-warn">${esc(unlocked === 1 ? t("1 dør ulåst") : t("{n} døre ulåst", { n: unlocked }))}</b><span class="bd-sec-hint"> · ${esc(t("tryk for at låse"))}</span>`;
+    else if (locks.length && locks.every((lock) => lock.kind === "locked")) meta = `<b class="is-ok">${esc(locks.length === 1 ? t("Døren er låst") : t("Alle døre låst"))}</b>`;
+    // Portrait has no room for the alarm's status block: its state joins the meta line instead.
+    const alarmMeta = alarm && !alarm.unavailable && locks.length ? `<span class="bd-sec-alarm"> · ${esc(t("alarm {state}", { state: alarmLabel(alarm).toLocaleLowerCase(locale()) }))}</span>` : "";
+    panel.innerHTML = `<div class="bd-eyebrow"><b>${esc(t("Sikring"))}</b><span class="bd-meta">${meta}${alarmMeta}</span></div>${locks.length ? `<div class="bd-locks" data-n="${locks.length}">${locks.map(lockRowMarkup).join("")}</div>` : ""}${alarmMarkup(alarm)}`;
     panel.classList.toggle("has-locks", locks.length > 0);
+    panel.classList.toggle("is-triggered", alarm?.status === "triggered");
     manageSecondTicker(alarm);
   }
 
@@ -1325,7 +1391,7 @@ window.BeastBedroom = (() => {
     blockSignatures.set("night", signature);
     button.className = `bd-night is-${phase}`;
     button.setAttribute("aria-label", `${title}. ${sub}`);
-    button.innerHTML = `<span class="bd-night-mo">${icon("moon", 17)}</span><span class="bd-night-text"><span class="bd-g1">${esc(title)}</span><span class="bd-g2">${esc(sub)}</span></span>${phase === "running" ? `<span class="bd-dots"><i></i><i></i><i></i></span>` : phase === "countdown" ? `<span class="bd-night-x">${icon("x", 16)}</span>` : `<span class="bd-night-chev">${icon("chev", 18)}</span>`}`;
+    button.innerHTML = `<span class="bd-night-mo">${phase === "countdown" ? `<b>${goodnight.count}</b>` : icon("moon", 16)}</span><span class="bd-night-text"><span class="bd-g1">${esc(title)}</span><span class="bd-g2">${esc(sub)}</span></span>`;
   }
 
   function setGoodnight(phase, extra = {}) {
@@ -1568,7 +1634,7 @@ window.BeastBedroom = (() => {
     switch (target.dataset.bdAction) {
       case "menu": window.BeastBedroom.menu?.open(target); break;
       case "close-layer": closeLayer(); break;
-      case "light-toggle": toggleLight(id); break;
+      case "light-toggle": if (Date.now() > suppressClickUntil) toggleLight(id); break;
       case "scene": activateScene(id); break;
       case "toggle": toggleEntity(id); break;
       case "media": mediaAction(id, target.dataset.service); break;
