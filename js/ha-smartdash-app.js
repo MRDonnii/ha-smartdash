@@ -165,7 +165,7 @@ function noteUserActivity() {
 }
 
 function setKioskScreenPower(on) {
-  if (!window.BeastAuth?.haFetch) return;
+  if (!window.BeastAuth?.haFetch || !KIOSK_SCREEN_ENTITY_ID()) return;
   kioskScreenIsOff = !on;
   BeastAuth.haFetch(`/api/services/light/turn_${on ? "on" : "off"}`, {
     method: "POST",
@@ -476,7 +476,7 @@ function wireAmbientBrightness(overlay) {
 function isNightScreenPeriod(date = new Date()) {
   const config = screensaverConfig();
   if (!config.enabled) return false;
-  if (config.schedule === "always") return true;
+  if (config.schedule === "always" || document.documentElement.classList.contains("beast-ipad")) return true;
   const minutes = date.getHours() * 60 + date.getMinutes();
   const start = parseTimeToMinutes(config.startTime, 23 * 60);
   const end = parseTimeToMinutes(config.endTime, 5 * 60 + 30);

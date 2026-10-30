@@ -6,6 +6,7 @@ const BeastLocalSettings = (() => {
     density: "comfortable",
     favoriteSections: [],
     powerProfile: "balanced",
+    ipadMode: false,
     kioskScreenLight: null,
     language: "en",
     screensaver: { enabled: true, schedule: "custom", startTime: "23:00", endTime: "05:30", offAfterMinutes: 5 }

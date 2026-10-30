@@ -1,0 +1,47 @@
+/* iPad mode: everything is scoped to html.beast-ipad, set by js/ha-smartdash-ipad.js
+   (auto-detected on iPad, or forced with ?ipad=1 / removed with ?ipad=0). */
+
+html.beast-ipad {
+  -webkit-text-size-adjust: 100%;
+  -webkit-touch-callout: none;
+  -webkit-tap-highlight-color: transparent;
+  overscroll-behavior: none;
+}
+
+html.beast-ipad body {
+  -webkit-user-select: none;
+  user-select: none;
+  overscroll-behavior: none;
+  touch-action: manipulation;
+}
+
+/* The A10 GPU in an iPad 7 stutters on stacked blur layers while the live
+   camera streams are decoding; solid panels cost nothing. */
+html.beast-ipad *,
+html.beast-ipad *::before,
+html.beast-ipad *::after {
+  -webkit-backdrop-filter: none !important;
+  backdrop-filter: none !important;
+}
+
+html.beast-ipad .beast-lock-overlay { background: rgba(3, 4, 6, 0.9); }
+html.beast-ipad .beast-lock-overlay.is-ambient { background: rgba(3, 4, 6, 0.98); }
+
+/* Dimmed clock screensaver: pure black, low-luminance text, no brightness
+   slider (a web page cannot change the iPad's backlight). */
+html.beast-ipad .beast-ambient-mode:not(.has-custom-background) {
+  background: #000;
+}
+html.beast-ipad .beast-ambient-time { color: rgba(255, 255, 255, .42); }
+html.beast-ipad .beast-ambient-date { color: rgba(255, 255, 255, .26); }
+html.beast-ipad .beast-ambient-summary > span {
+  border-color: rgba(255, 255, 255, .06);
+  background: rgba(255, 255, 255, .02);
+  color: rgba(255, 255, 255, .28);
+}
+html.beast-ipad .beast-ambient-summary b { color: rgba(255, 255, 255, .4); }
+html.beast-ipad .beast-ambient-bottom small { color: rgba(255, 255, 255, .18); }
+html.beast-ipad .beast-ambient-brightness { display: none; }
+html.beast-ipad .beast-ambient-weather-fx { opacity: .35; }
+
+html.beast-ipad .beast-ambient-camera-tile { opacity: .75; }
