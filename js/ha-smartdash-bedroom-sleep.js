@@ -371,6 +371,9 @@ window.BeastBedroom.sleep = (() => {
   // Markup
   // ---------------------------------------------------------------------------
   const RING_CIRCUMFERENCE = 2 * Math.PI * 48;
+  // Gradient ids must be unique per inline SVG: several rings and charts can
+  // be in the document at once.
+  let gradientSeq = 0;
 
   function ringMarkup(m) {
     const score = m.values.score;
@@ -380,8 +383,9 @@ window.BeastBedroom.sleep = (() => {
     const fraction = value == null ? 0 : useScore ? Math.max(0, Math.min(1, value / 100)) : Math.max(0, Math.min(1, value / 480));
     const label = useScore ? "myAir" : t("Timer");
     const text = value == null ? "—" : useScore ? fmt(value, 0) : hours(value);
-    const arc = fraction > 0 ? `<circle class="bd-ring-arc" cx="60" cy="60" r="48" stroke-dasharray="${(fraction * RING_CIRCUMFERENCE).toFixed(1)} ${RING_CIRCUMFERENCE.toFixed(1)}" transform="rotate(-90 60 60)"/>` : "";
-    return `<span class="bd-ring${m.stale ? " is-stale" : ""}"><svg viewBox="0 0 120 120" aria-hidden="true" focusable="false"><defs><linearGradient id="bdRingGold" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#f0dcb6"/><stop offset="1" stop-color="#9c7a4c"/></linearGradient></defs><circle class="bd-ring-dial" cx="60" cy="60" r="57"/><circle class="bd-ring-track" cx="60" cy="60" r="48"/>${arc}</svg><span class="bd-ring-val"><b>${esc(text)}</b><small>${esc(label)}</small></span></span>`;
+    const gradient = `bdRingGold${++gradientSeq}`;
+    const arc = fraction > 0 ? `<circle class="bd-ring-arc" style="stroke:url(#${gradient})" cx="60" cy="60" r="48" stroke-dasharray="${(fraction * RING_CIRCUMFERENCE).toFixed(1)} ${RING_CIRCUMFERENCE.toFixed(1)}" transform="rotate(-90 60 60)"/>` : "";
+    return `<span class="bd-ring${m.stale ? " is-stale" : ""}"><svg viewBox="0 0 120 120" aria-hidden="true" focusable="false"><defs><linearGradient id="${gradient}" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#f0dcb6"/><stop offset="1" stop-color="#9c7a4c"/></linearGradient></defs><circle class="bd-ring-dial" cx="60" cy="60" r="57"/><circle class="bd-ring-track" cx="60" cy="60" r="48"/>${arc}</svg><span class="bd-ring-val"><b>${esc(text)}</b><small>${esc(label)}</small></span></span>`;
   }
 
   function verdictMarkup(m, full = false) {
@@ -484,7 +488,8 @@ window.BeastBedroom.sleep = (() => {
     const todayKey = dateKey(startOfDay());
     const avg = average(points);
     const parts = [];
-    parts.push(`<defs><linearGradient id="bdBarGold" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ecd5aa"/><stop offset="1" stop-color="#a5845a"/></linearGradient></defs>`);
+    const gradient = `bdBarGold${++gradientSeq}`;
+    parts.push(`<defs><linearGradient id="${gradient}" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ecd5aa"/><stop offset="1" stop-color="#a5845a"/></linearGradient></defs>`);
     parts.push(`<line class="bd-c-base" x1="0" y1="${base + 0.5}" x2="${plotW.toFixed(1)}" y2="${base + 0.5}"/>`);
     const labels = [];
     points.forEach((point, index) => {
@@ -502,7 +507,8 @@ window.BeastBedroom.sleep = (() => {
         const yy = Math.min(base - 2, y(point.value));
         const cls = latest ? "is-last" : bad ? "is-bad" : "";
         const path = barPath(x, yy, barW, base);
-        parts.push(path ? `<path class="bd-c-bar ${cls}" d="${path}"/>` : `<rect class="bd-c-bar ${cls}" x="${x.toFixed(1)}" y="${base - 2}" width="${barW.toFixed(1)}" height="2"/>`);
+        const fill = latest ? ` style="fill:url(#${gradient})"` : "";
+        parts.push(path ? `<path class="bd-c-bar ${cls}"${fill} d="${path}"/>` : `<rect class="bd-c-bar ${cls}"${fill} x="${x.toFixed(1)}" y="${base - 2}" width="${barW.toFixed(1)}" height="2"/>`);
         if (latest || bad) labels.push(`<text class="bd-c-val${latest ? " is-last" : " is-bad"}" x="${center.toFixed(1)}" y="${Math.max(11, yy - 4).toFixed(1)}" text-anchor="middle">${esc(formatMetric(metric, point.value))}</text>`);
       }
       parts.push(`<rect class="bd-c-hit" x="${(index * slot).toFixed(1)}" y="0" width="${slot.toFixed(1)}" height="${height}" data-bd-action="sleep-bar" data-metric="${metric}" data-index="${index}"/>`);
