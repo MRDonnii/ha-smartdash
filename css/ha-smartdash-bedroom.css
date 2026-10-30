@@ -86,6 +86,10 @@ html.beast-chromeless .beast-offline-status { border-color: rgba(211, 146, 116, 
   -webkit-tap-highlight-color: transparent;
   touch-action: manipulation;
 }
+/* Outranks the dashboard's "large" density rule, which would make every
+   44 px control 48 px tall and break the fit. */
+:root .bd-root button,
+:root .beast-bedroom-camview button { min-height: 0; }
 .bd-root button:disabled { cursor: default; }
 .bd-root :focus { outline: none; }
 .bd-root :focus-visible { outline: 1px solid var(--bd-gold-line); outline-offset: 2px; }

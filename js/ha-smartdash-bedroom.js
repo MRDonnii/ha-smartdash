@@ -918,7 +918,8 @@ window.BeastBedroom = (() => {
   // "Senest aktiveret": the most recently activated scene, and only while it
   // is younger than activeSceneMinutes.
   function activeSceneId(ids) {
-    const minutes = Math.max(0, Number(cfg().activeSceneMinutes) || 30);
+    const raw = cfg().activeSceneMinutes;
+    const minutes = raw === "" || raw == null || !Number.isFinite(Number(raw)) ? 30 : Math.max(0, Number(raw));
     const cutoff = Date.now() - minutes * 60000;
     let best = null;
     let bestAt = 0;
