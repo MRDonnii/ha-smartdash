@@ -209,18 +209,21 @@ window.BeastBedroom.sleep = (() => {
       return noon && (!nights.has(key)) && addDays(noon, 1).getTime() < Math.min(firstStart, Date.now());
     });
     const metrics = metricParsers(i).filter(([metric, id]) => metric !== "usage" || id === i.usage);
-    if (!missing.length || !metrics.length) return;
+    if (!missing.length || !metrics.length) return true;
     const start = addDays(parseDateKey(missing[0]), 1);
     start.setHours(11, 0, 0, 0);
     const end = new Date(Math.min(Date.now(), firstStart === Infinity ? Date.now() : firstStart + 3600000));
-    if (end <= start) return;
+    if (end <= start) return true;
     let stats = null;
     try {
       stats = await BeastHaSocket.sendCommand("recorder/statistics_during_period", {
         start_time: start.toISOString(), end_time: end.toISOString(), period: "hour",
         statistic_ids: metrics.map(([, id]) => id), types: ["mean", "min", "max"]
       });
-    } catch (_) { return; }
+    } catch (error) {
+      // Only a socket that wasn't up yet is worth another try soon.
+      return !/^SOCKET_/.test(String(error?.message || ""));
+    }
     const startOf = (row) => (typeof row.start === "number" ? row.start : Date.parse(row.start || ""));
     missing.forEach((key) => {
       const day = addDays(parseDateKey(key), 1);
@@ -236,6 +239,7 @@ window.BeastBedroom.sleep = (() => {
       });
       if (Object.keys(night).length) { nights.set(key, night); approximate.add(key); }
     });
+    return true;
   }
 
   function latestKey() {
@@ -263,13 +267,14 @@ window.BeastBedroom.sleep = (() => {
       const approximate = new Set();
       let nights = new Map();
       let firstStart = Infinity;
+      let complete = false;
       try {
         ({ nights, firstStart } = nightsFromRows(rowsById(await BeastAuth.haFetch(path)), i));
-        await fillFromStatistics(nights, approximate, nightKeys(), firstStart, i);
+        complete = await fillFromStatistics(nights, approximate, nightKeys(), firstStart, i);
       } catch (error) {
         BeastCore.log(`Soveværelse: søvnhistorik kunne ikke hentes (${error.message}).`);
       }
-      history = { nights, approximate, at: Date.now(), signature, loading: null };
+      history = { nights, approximate, at: complete ? Date.now() : 0, signature, loading: null };
       historyVersion += 1;
       B.renderSleep?.();
     })();
@@ -654,7 +659,7 @@ window.BeastBedroom.sleep = (() => {
   function onActivate() { loadHistory(); }
 
   function onReconnected() {
-    if (Date.now() - history.at > 30 * 60 * 1000) loadHistory(true);
+    if (!history.at || Date.now() - history.at > 30 * 60 * 1000) loadHistory(true);
   }
 
   // For the menu row "Søvn & CPAP".
