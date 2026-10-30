@@ -532,7 +532,8 @@ button { cursor: pointer; }
   .admin-card-head > div:last-child { flex-wrap: wrap; justify-content: flex-end; }
   /* Device panels are one long card (car/printer: 5-9k px), so keep Save in reach. --surface-2-solid is translucent, hence the --bg underlay. */
   .admin-view > .admin-card:only-of-type > .admin-actions:last-child { position: sticky; bottom: 0; z-index: 5; margin: 22px -24px -24px; padding: 12px 24px; border-top: 1px solid var(--border); border-radius: 0 0 18px 18px; background-color: var(--bg); background-image: linear-gradient(var(--surface-2-solid), var(--surface-2-solid)); }
-  #adminScreensaverCameraEntities { max-height: 340px; overflow-y: auto; padding: 6px; border: 1px solid var(--border-strong); border-radius: 10px; overscroll-behavior: contain; }
+  /* max-content rows: in a height-capped grid, auto rows stay at the labels' 44px min-height and long camera names spill over the next row */
+  #adminScreensaverCameraEntities { max-height: 340px; overflow-y: auto; padding: 6px; border: 1px solid var(--border-strong); border-radius: 10px; overscroll-behavior: contain; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); grid-auto-rows: max-content; }
   .admin-check small, .admin-picker-meta, .admin-picker-meta strong, .admin-entity-device-scope small, .admin-entity-preview small,
   .admin-entity-preview > span, .admin-favicon-upload small, .admin-main .beast-mqtt-metrics span { font-size: 12px; }
   .admin-field-heading em, .admin-device-hub em, .admin-check-badge { font-size: 11px; }
