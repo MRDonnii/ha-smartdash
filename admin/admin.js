@@ -201,6 +201,10 @@
   };
 
   const root = document.getElementById("beastAdminRoot");
+  // Set by admin/index.html. iOS draws a <select size> as a tall menu button and
+  // Android as a cramped scroll box, so touch devices get plain dropdowns.
+  const touchUi = document.documentElement.classList.contains("is-touch");
+  function listboxSize(rows) { return touchUi ? "" : ` size="${rows}"`; }
   let connected = false;
   const requestedView = window.location.hash.replace(/^#/, "");
   let activeView = requestedView || "overview";
@@ -445,6 +449,18 @@
     }).join("")}`;
   }
 
+  // iOS Safari still lists hidden <option>s in its picker, so filtered-out
+  // options are taken out of the select instead (the full set is kept here).
+  const allSelectOptions = new WeakMap();
+  function filterSelectOptions(select, query = "") {
+    if (!allSelectOptions.has(select)) allSelectOptions.set(select, Array.from(select.options));
+    const value = select.value;
+    const likelyOnly = select.hasAttribute("data-device-select") && select.dataset.showAll !== "true";
+    select.replaceChildren(...allSelectOptions.get(select).filter((option, index) => !index || option.value === value
+      || ((!query || option.dataset.search?.includes(query)) && (!likelyOnly || option.dataset.likely === "true"))));
+    select.value = value;
+  }
+
   function entityPreviewHtml(id, entityId) {
     if (BeastConfig.get("features.adminPreview") !== true) return "";
     const state = entityId ? BeastHaSocket.getState(entityId) : null;
@@ -485,9 +501,9 @@
       const items = deviceCandidates(field, selected);
       return `
         <input class="admin-filter" type="search" placeholder="Søg efter enhed, producent eller integration…" data-filter-select="${fieldId(panel.id, field.key)}">
-        <select id="${fieldId(panel.id, field.key)}" data-device-select size="${Math.min(8, Math.max(3, items.filter((item) => item.likely).length + 1))}">
+        <select id="${fieldId(panel.id, field.key)}" data-device-select${listboxSize(Math.min(8, Math.max(3, items.filter((item) => item.likely).length + 1)))}>
           <option value=""${selected ? "" : " selected"}>— Vælg enhed —</option>
-          ${items.map((item) => `<option value="${escapeHtml(item.id)}"${item.id === selected ? " selected" : ""} data-likely="${item.likely}" data-search="${escapeHtml(`${item.name} ${item.detail}`.toLowerCase())}"${item.likely ? "" : " hidden"}>${escapeHtml(item.name)} — ${escapeHtml(item.detail)}</option>`).join("")}
+          ${items.map((item) => `<option value="${escapeHtml(item.id)}"${item.id === selected ? " selected" : ""} data-likely="${item.likely}" data-search="${escapeHtml(`${item.name} ${item.detail}`.toLowerCase())}">${escapeHtml(item.name)} — ${escapeHtml(item.detail)}</option>`).join("")}
         </select>
         <label class="admin-show-all"><input type="checkbox" data-show-all-devices="${fieldId(panel.id, field.key)}"> Vis alle HA-enheder, hvis den ikke blev fundet automatisk</label>`;
     }
@@ -541,7 +557,7 @@
       ${renderEntityDeviceScope(id, scope)}
       <div class="admin-picker-meta" data-picker-meta="${id}"><span>${scopedItems.length} ${escapeHtml(field.domain || "")} entities</span><strong>${escapeHtml(selectedName)}</strong></div>
       <input class="admin-filter" type="search" placeholder="Søg på navn, entity-id eller enhed…" data-filter-select="${id}">
-      <select id="${id}" size="6">
+      <select id="${id}"${listboxSize(6)}>
         ${renderSelectOptions(id, selected)}
       </select>${entityPreviewHtml(id, selected)}`;
   }
@@ -581,7 +597,7 @@
 
   function roomSinglePicker(id, items, selected, label) {
     selectSources.set(id, items);
-    return `<div class="admin-room-map-field"><span>${escapeHtml(label)}</span><div class="admin-picker-meta" data-picker-meta="${id}"><span>${items.length} sensors</span><strong>${escapeHtml(selected ? BeastEntityPicker.friendlyName(selected) : "Automatisk")}</strong></div><input class="admin-filter" type="search" placeholder="Søg på navn, entity-id eller enhed…" data-filter-select="${id}"><select id="${id}" size="5">${renderSelectOptions(id, selected)}</select></div>`;
+    return `<div class="admin-room-map-field"><span>${escapeHtml(label)}</span><div class="admin-picker-meta" data-picker-meta="${id}"><span>${items.length} sensors</span><strong>${escapeHtml(selected ? BeastEntityPicker.friendlyName(selected) : "Automatisk")}</strong></div><input class="admin-filter" type="search" placeholder="Søg på navn, entity-id eller enhed…" data-filter-select="${id}"><select id="${id}"${listboxSize(5)}>${renderSelectOptions(id, selected)}</select></div>`;
   }
 
   function renderRoomsEntityMappings(current) {
@@ -1007,7 +1023,7 @@
         entityFieldBaseSources.set(entitySelectId, entitySource);
         const needsEntity = card.type === "custom" || card.type === "heatpump";
         const entityLabel = card.type === "heatpump" ? "Vælg varmepumpe" : "Vælg entity";
-        return `<div class="admin-overview-slot admin-overview-card-row" draggable="true" data-overview-card="${escapeHtml(key)}"><div class="admin-overview-row-head"><span class="admin-overview-drag-handle" data-overview-drag-handle aria-label="Træk for at flytte kort" title="Træk for at flytte">${BeastCore.icon("grip", { size: 18 })}</span><strong>Kort ${index+1}</strong><div class="admin-icon-actions"><button class="admin-icon-action" type="button" data-overview-move="up" aria-label="Flyt kort op" title="Flyt op">${BeastCore.icon("chevron-up", { size: 18 })}</button><button class="admin-icon-action" type="button" data-overview-move="down" aria-label="Flyt kort ned" title="Flyt ned">${BeastCore.icon("chevron-down", { size: 18 })}</button><button class="admin-icon-action is-danger" type="button" data-overview-remove aria-label="Fjern kort" title="Fjern kort">${BeastCore.icon("close", { size: 18 })}</button></div></div><label>Indhold<select data-overview-type>${OVERVIEW_SLOT_OPTIONS.filter(([value])=>value!=="empty").map(([value,name]) => `<option value="${value}"${card.type === value ? " selected" : ""}>${name}</option>`).join("")}</select></label><label>Titel<input type="text" data-overview-label value="${escapeHtml(card.label || "")}" placeholder="Valgfri titel"></label><div class="admin-overview-custom"${needsEntity ? "" : " hidden"}><strong data-overview-entity-label>${entityLabel}</strong><input class="admin-filter" type="search" placeholder="Søg efter entity…" data-filter-select="${entitySelectId}"><select id="${entitySelectId}" data-overview-entity size="5">${renderSelectOptions(entitySelectId, card.entity)}</select></div><div class="admin-overview-sizes"><fieldset><legend>Stor skærm · 12 kolonner</legend><label>Bredde<select data-size="desktop.w">${sizeOptions(card.desktop?.w || 4,12)}</select></label><label>Højde<select data-size="desktop.h">${sizeOptions(Math.min(card.desktop?.h || 1,2),2)}</select></label></fieldset><fieldset><legend>Smal/tablet · 2 kolonner</legend><label>Bredde<select data-size="tablet.w">${sizeOptions(card.tablet?.w || 1,2)}</select></label><label>Højde<select data-size="tablet.h">${sizeOptions(card.tablet?.h || 1,3)}</select></label></fieldset><fieldset><legend>Lodret/mobil · 1 kolonne</legend><label>Højde<select data-size="portrait.h">${sizeOptions(card.portrait?.h || 1,3)}</select></label></fieldset></div></div>`;
+        return `<div class="admin-overview-slot admin-overview-card-row" draggable="true" data-overview-card="${escapeHtml(key)}"><div class="admin-overview-row-head"><span class="admin-overview-drag-handle" data-overview-drag-handle aria-label="Træk for at flytte kort" title="Træk for at flytte">${BeastCore.icon("grip", { size: 18 })}</span><strong>Kort ${index+1}</strong><div class="admin-icon-actions"><button class="admin-icon-action" type="button" data-overview-move="up" aria-label="Flyt kort op" title="Flyt op">${BeastCore.icon("chevron-up", { size: 18 })}</button><button class="admin-icon-action" type="button" data-overview-move="down" aria-label="Flyt kort ned" title="Flyt ned">${BeastCore.icon("chevron-down", { size: 18 })}</button><button class="admin-icon-action is-danger" type="button" data-overview-remove aria-label="Fjern kort" title="Fjern kort">${BeastCore.icon("close", { size: 18 })}</button></div></div><label>Indhold<select data-overview-type>${OVERVIEW_SLOT_OPTIONS.filter(([value])=>value!=="empty").map(([value,name]) => `<option value="${value}"${card.type === value ? " selected" : ""}>${name}</option>`).join("")}</select></label><label>Titel<input type="text" data-overview-label value="${escapeHtml(card.label || "")}" placeholder="Valgfri titel"></label><div class="admin-overview-custom"${needsEntity ? "" : " hidden"}><strong data-overview-entity-label>${entityLabel}</strong><input class="admin-filter" type="search" placeholder="Søg efter entity…" data-filter-select="${entitySelectId}"><select id="${entitySelectId}" data-overview-entity${listboxSize(5)}>${renderSelectOptions(entitySelectId, card.entity)}</select></div><div class="admin-overview-sizes"><fieldset><legend>Stor skærm · 12 kolonner</legend><label>Bredde<select data-size="desktop.w">${sizeOptions(card.desktop?.w || 4,12)}</select></label><label>Højde<select data-size="desktop.h">${sizeOptions(Math.min(card.desktop?.h || 1,2),2)}</select></label></fieldset><fieldset><legend>Smal/tablet · 2 kolonner</legend><label>Bredde<select data-size="tablet.w">${sizeOptions(card.tablet?.w || 1,2)}</select></label><label>Højde<select data-size="tablet.h">${sizeOptions(card.tablet?.h || 1,3)}</select></label></fieldset><fieldset><legend>Lodret/mobil · 1 kolonne</legend><label>Højde<select data-size="portrait.h">${sizeOptions(card.portrait?.h || 1,3)}</select></label></fieldset></div></div>`;
       };
     return `<div class="admin-card"><div class="admin-card-head"><div><h2>Visuel forsidebygger</h2><p>Træk kortene for at flytte dem rundt. Skift indhold, titel og størrelse nedenfor — forhåndsvisningerne opdateres med det samme.</p></div></div><div class="admin-overview-visual-preview" id="adminOverviewVisualPreview"></div><div class="admin-overview-preview" id="adminOverviewPreview"></div><div class="admin-overview-builder" data-overview-card-list>${cards.map(row).join("")}</div><div class="admin-actions"><button type="button" class="beast-btn" data-add-overview-card>+ Tilføj kort</button><button class="admin-save" type="button" data-save-overview-cards>Gem og anvend forside</button><span class="admin-save-state" data-save-state="overviewCards"></span></div></div>`;
   }
@@ -2193,13 +2209,9 @@
         select.innerHTML = renderSelectOptions(select.id, selected, query);
         return;
       }
-      Array.from(select.options).forEach((option, index) => {
-        if (!index) return;
-        const outsideSearch = Boolean(query && !option.dataset.search.includes(query));
-        const outsideLikely = select.hasAttribute("data-device-select") && select.dataset.showAll !== "true" && option.dataset.likely !== "true";
-        option.hidden = outsideSearch || outsideLikely;
-      });
+      filterSelectOptions(select, query);
     }));
+    document.querySelectorAll("[data-device-select]").forEach((select) => filterSelectOptions(select));
     document.querySelectorAll("select[id]").forEach((select) => select.addEventListener("change", () => {
       updateEntityPreview(select.id, select.value);
       const meta = document.querySelector(`[data-picker-meta="${select.id}"] strong`);
@@ -2230,11 +2242,7 @@
       document.querySelector(`[data-filter-select="${select.id}"]`)?.dispatchEvent(new Event("input"));
     }));
     document.querySelectorAll("[data-filter-entity-device]").forEach((input) => input.addEventListener("input", () => {
-      const select = document.getElementById(input.dataset.filterEntityDevice);
-      const query = input.value.trim().toLowerCase();
-      Array.from(select.options).forEach((option, index) => {
-        option.hidden = Boolean(index && query && !option.dataset.search.includes(query));
-      });
+      filterSelectOptions(document.getElementById(input.dataset.filterEntityDevice), input.value.trim().toLowerCase());
     }));
     document.querySelectorAll("[data-entity-device-scope]").forEach((select) => select.addEventListener("change", () => {
       const fieldElId = select.dataset.entityDeviceScope;
@@ -2360,9 +2368,14 @@
     {
       const cardList = document.querySelector("[data-overview-card-list]");
       let draggedRow = null;
+      let dragFromHandle = false;
       cardList?.addEventListener("input", refreshOverviewPreview);
       cardList?.addEventListener("change", refreshOverviewPreview);
+      // dragstart's target is always the row, so remember where the touch began.
+      cardList?.addEventListener("pointerdown", (event) => { dragFromHandle = Boolean(event.target.closest("[data-overview-drag-handle]")); });
       cardList?.addEventListener("dragstart", (event) => {
+        // On touch a long-press in Titel/Indhold would otherwise lift the whole card.
+        if (touchUi && !dragFromHandle) { event.preventDefault(); return; }
         const row = event.target.closest("[data-overview-card]");
         if (!row) return;
         draggedRow = row;

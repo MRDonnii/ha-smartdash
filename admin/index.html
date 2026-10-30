@@ -8,6 +8,8 @@
   <meta name="theme-color" content="#080a0d">
   <title>HA Smartdash Admin</title>
   <script>if (location.pathname.startsWith("/beast/admin")) location.replace("/admin/" + location.search + location.hash);</script>
+  <!-- Touch/iOS classes for admin.css; MacIntel + touch points is iPadOS Safari in desktop-site mode. -->
+  <script>(function () { var d = document.documentElement, ios = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1); if (ios) d.classList.add("is-ios"); if (ios || matchMedia("(hover: none) and (pointer: coarse)").matches) d.classList.add("is-touch"); })();</script>
   <link rel="icon" type="image/svg+xml" href="../favicon.svg">
   <link rel="stylesheet" href="../css/ha-smartdash-tokens.css?v=116-themerestore1">
   <link rel="stylesheet" href="../css/ha-smartdash-misc.css?v=20261010-5">

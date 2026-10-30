@@ -632,3 +632,20 @@ button { cursor: pointer; }
 
 .admin-hint { color: var(--ink-muted); font-size: 12px; }
 .admin-weather-pages { margin: 4px 0 2px; }
+
+/* Touch devices (classes set in admin/index.html). iOS zooms the page when a control under 16px gets focus. */
+html.is-touch .admin-main input:not([type="checkbox"]):not([type="radio"]):not([type="color"]):not([type="file"]),
+html.is-touch .admin-main select, html.is-touch .admin-main textarea,
+html.is-touch .beast-modal input, html.is-touch .beast-modal select { font-size: 16px; }
+html.is-touch .admin-icon-action { width: 44px; height: 44px; }
+html.is-touch .admin-favorite-list label { min-height: 44px; }
+html.is-touch .admin-favorite-list .admin-icon-action { width: 40px; height: 40px; }
+html.is-touch .admin-overview-sizes select, html.is-touch .admin-overview-slot select, html.is-touch .admin-overview-slot input { min-height: 44px; }
+html.is-touch .beast-btn, html.is-touch .beast-security-action-btn, html.is-touch .admin-save,
+html.is-touch .admin-version-row > button, html.is-touch .admin-backup-tools button, html.is-touch .admin-backup-tools label,
+html.is-touch .admin-group-name, html.is-touch .admin-group-remove, html.is-touch .admin-add-group, html.is-touch .admin-login-discovery-list button { min-height: 44px; }
+html.is-touch .admin-project-details summary { padding: 12px 0; }
+html.is-touch .admin-diagnostics summary, html.is-touch .admin-changelog-details > summary { padding-block: 14px; }
+/* Forside cards only drag from the handle on touch (admin.js), so the row should not promise more */
+html.is-touch .admin-overview-card-row { cursor: default; }
+html.is-touch .admin-overview-drag-handle { min-width: 44px; min-height: 44px; justify-content: center; align-items: center; }
