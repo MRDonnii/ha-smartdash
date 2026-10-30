@@ -863,6 +863,8 @@ window.BeastBedroom = (() => {
     row.setAttribute("aria-valuenow", String(pct));
     const value = row.querySelector(".bd-light-val");
     if (value) value.textContent = pct > 0 ? `${fmt(pct, 0)} %` : t("Fra");
+    const sub = row.querySelector(".bd-light-sub");
+    if (sub && [t("Slukket"), t("Tændt")].includes(sub.textContent)) sub.textContent = pct > 0 ? t("Tændt") : t("Slukket");
   }
 
   // Sideways drag on a dimmable row. Brightness follows the finger relative
