@@ -299,59 +299,55 @@ html.beast-bedroom-device .bda-card {
 }
 
 /* ---------- screensaver shortcuts (bedroom devices) ----------
-   The first tap on the screensaver shows four calm ways in near the bottom;
-   it fades out again after a few seconds. Opacity/transform only. */
+   Four quiet ways in, always on the screensaver near the bottom: dark,
+   low-luminance pills (44 px+ targets) that read as part of the night
+   screen rather than buttons. Tapping anywhere else wakes to the bedroom
+   page. During a camera pop-up the row steps back. Opacity only. */
 html.beast-bedroom-device .beast-bedroom-shortcuts {
   position: absolute;
   left: 50%;
-  bottom: max(48px, 7vh);
+  bottom: max(24px, 4vh);
   z-index: 4;
   display: flex;
-  gap: 14px;
+  gap: 12px;
   width: max-content;
   max-width: calc(100vw - 32px);
   transform: translateX(-50%);
   color-scheme: dark;
   font-family: "Inter", -apple-system, "SF Pro Text", "Helvetica Neue", Arial, sans-serif;
   -webkit-tap-highlight-color: transparent;
-  animation: bds-in .32s cubic-bezier(.2, .7, .2, 1) both;
+  transition: opacity .4s ease;
 }
-html.beast-bedroom-device .beast-bedroom-shortcuts.is-leaving { animation: bds-out .3s ease-in both; }
+html.beast-bedroom-device .has-bd-alert .beast-bedroom-shortcuts { opacity: 0; pointer-events: none; }
 html.beast-bedroom-device .bds-btn {
   -webkit-appearance: none;
   appearance: none;
   display: flex;
-  flex-direction: column;
   align-items: center;
   justify-content: center;
   gap: 10px;
-  width: min(150px, 21vw);
-  height: 104px;
+  min-width: 132px;
+  height: 52px;
   margin: 0;
-  padding: 0;
-  border: 1px solid #242b39;
-  border-radius: 22px;
-  background: rgba(14, 18, 27, .82);
-  color: rgba(234, 223, 203, .78);
+  padding: 0 18px 0 14px;
+  border: 1px solid rgba(234, 223, 203, .07);
+  border-radius: 26px;
+  background: rgba(10, 11, 14, .55);
+  color: rgba(234, 223, 203, .36);
   font: inherit;
   font-size: 15px;
   font-weight: 500;
   cursor: pointer;
   touch-action: manipulation;
-  transition: background-color .12s, border-color .12s;
+  transition: background-color .12s, border-color .12s, color .12s;
 }
-html.beast-bedroom-device .bds-btn:active { border-color: #5a3416; background: rgba(36, 23, 12, .9); }
-html.beast-bedroom-device .bds-ic { display: grid; place-items: center; width: 46px; height: 46px; border: 1px solid #4a2c12; border-radius: 14px; background: rgba(240, 162, 74, .10); color: #f0a24a; }
-html.beast-bedroom-device .bds-lbl { max-width: 100%; overflow: hidden; padding: 0 8px; text-overflow: ellipsis; white-space: nowrap; }
+html.beast-bedroom-device .bds-btn:active { border-color: rgba(240, 162, 74, .3); background: rgba(36, 23, 12, .8); color: rgba(234, 223, 203, .7); }
+html.beast-bedroom-device .bds-ic { display: grid; place-items: center; width: 22px; height: 22px; color: rgba(240, 162, 74, .5); }
+html.beast-bedroom-device .bds-lbl { max-width: 160px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 html.beast-bedroom-device .beast-bedroom-shortcuts .bda-i { display: block; fill: none; stroke: currentColor; stroke-linecap: round; stroke-linejoin: round; }
+/* The row replaces the "tap to open" hint. */
 html.beast-bedroom-device .has-bd-shortcuts .beast-ambient-bottom { opacity: 0; }
-@media (orientation: portrait) {
-  html.beast-bedroom-device .beast-bedroom-shortcuts { display: grid; grid-template-columns: repeat(2, auto); bottom: max(56px, 6vh); }
-  html.beast-bedroom-device .bds-btn { width: min(220px, 40vw); height: 96px; }
-}
-@keyframes bds-in { from { opacity: 0; transform: translate(-50%, 10px); } to { opacity: 1; transform: translate(-50%, 0); } }
-@keyframes bds-out { from { opacity: 1; transform: translate(-50%, 0); } to { opacity: 0; transform: translate(-50%, 6px); } }
-@media (prefers-reduced-motion: reduce) {
-  html.beast-bedroom-device .beast-bedroom-shortcuts,
-  html.beast-bedroom-device .beast-bedroom-shortcuts.is-leaving { animation: none; }
+@media (max-width: 700px) {
+  html.beast-bedroom-device .beast-bedroom-shortcuts { gap: 8px; }
+  html.beast-bedroom-device .bds-btn { min-width: 0; padding: 0 14px 0 12px; font-size: 14px; }
 }
