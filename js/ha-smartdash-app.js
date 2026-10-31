@@ -756,6 +756,115 @@ async function checkForDashboardUpdate() {
   }
 }
 
+// Deployed-build watch. The GitHub check above compares the *server's*
+// installed build with the newest release; when a build is deployed straight
+// onto the server, the server is current but every open page (the bedside
+// iPad, the wall kiosk) keeps running the build it loaded, possibly for days.
+// So each page also asks the server which build it now has (GET
+// api/update.php -> currentVersion, the beast-build meta of the deployed
+// beast.html) and, if that differs from its own, reloads itself -- but only
+// when nobody is using it: the screensaver is up or nothing has been touched
+// for two minutes, and no dialog, PIN pad, sheet, full-screen camera, alert
+// or update install is open. Otherwise it simply tries again at the next
+// check. The open page and the screensaver come back after the reload.
+const DEPLOYED_BUILD_CHECK_MS = 5 * 60 * 1000;
+const DEPLOYED_BUILD_IDLE_MS = 2 * 60 * 1000;
+const DEPLOYED_BUILD_RETRY_MS = 10 * 60 * 1000;
+// A page that still reports its old build after reloading twice for the
+// same target (a cache in between, a half-finished deploy) stops trying
+// for this session instead of reloading forever.
+const DEPLOYED_BUILD_MAX_RELOADS = 2;
+const DEPLOYED_BUILD_RELOAD_KEY = "beast_deployed_build_reload_v1";
+const RELOAD_INTO_AMBIENT_KEY = "beast_reload_into_ambient_v1";
+const RELOAD_BLOCKERS = [
+  ".beast-modal-overlay", ".beast-lock-overlay.is-open", ".beast-screen-lock", "[aria-modal='true']", "dialog[open]",
+  ".bd-sheet", ".beast-bedroom-camview", ".beast-bedroom-alert", "#beastDoorbellView", "#beastEventFocus"
+].join(", ");
+let deployedBuildTimerId = null;
+let deployedBuildCheckRunning = false;
+let pendingDeployedBuild = null;
+const dashboardCovers = new Set();
+document.addEventListener("beast:dashboard-cover", (event) => {
+  const source = event.detail?.source || "external";
+  if (event.detail?.on) dashboardCovers.add(source); else dashboardCovers.delete(source);
+});
+
+function screensaverShowing() {
+  return document.body.classList.contains("beast-is-ambient") && Boolean(document.getElementById("beastAmbientMode")?.classList.contains("is-visible"));
+}
+
+// Why the page must not be reloaded right now ("" when it may).
+function reloadBlocker() {
+  if (updateInstallInFlight) return "update install";
+  if (dashboardCovers.size) return `cover ${[...dashboardCovers][0]}`;
+  if (document.fullscreenElement || document.webkitFullscreenElement) return "fullscreen";
+  if (document.documentElement.classList.contains("beast-bedroom-layer-open")) return "bedroom layer";
+  const active = document.activeElement;
+  if (active && active !== document.body && active.matches?.("input:not([type=range]):not([type=checkbox]):not([type=radio]), textarea, select, [contenteditable='true']")) return "typing";
+  const open = Array.from(document.querySelectorAll(RELOAD_BLOCKERS)).find((element) => element.getClientRects().length && getComputedStyle(element).visibility !== "hidden");
+  return open ? (open.id || String(open.className || open.tagName).split(" ")[0]) : "";
+}
+
+function deployedReloadRecord() {
+  try { return JSON.parse(sessionStorage.getItem(DEPLOYED_BUILD_RELOAD_KEY) || "null"); } catch (_) { return null; }
+}
+
+function maybeReloadForDeployedBuild() {
+  const target = pendingDeployedBuild;
+  if (!target || target === currentBuildId() || document.hidden) return;
+  const record = deployedReloadRecord();
+  const previous = record?.target === target ? record : null;
+  if (previous && (previous.count >= DEPLOYED_BUILD_MAX_RELOADS || Date.now() - previous.at < DEPLOYED_BUILD_RETRY_MS)) return;
+  const saver = screensaverShowing();
+  if (!saver && Date.now() - lastUserActivityAt < DEPLOYED_BUILD_IDLE_MS) return;
+  const blocker = reloadBlocker();
+  if (blocker) return;
+  try {
+    sessionStorage.setItem(DEPLOYED_BUILD_RELOAD_KEY, JSON.stringify({ target, from: currentBuildId(), at: Date.now(), count: (previous?.count || 0) + 1 }));
+    if (saver) sessionStorage.setItem(RELOAD_INTO_AMBIENT_KEY, "1");
+  } catch (_) {
+    // Without sessionStorage there is no loop guard: better not to reload.
+    return;
+  }
+  BeastCore.log(`Serveren har build ${target}, siden kører ${currentBuildId()} -- genindlæser.`);
+  const nextUrl = new URL(window.location.href);
+  nextUrl.searchParams.set("dashboardUpdate", target);
+  window.location.replace(nextUrl.href);
+}
+
+async function checkDeployedBuild() {
+  if (deployedBuildCheckRunning || document.hidden) return;
+  deployedBuildCheckRunning = true;
+  try {
+    const response = await fetch(smartdashLocalUrl(`api/update.php?_=${Date.now()}`), { cache: "no-store" });
+    if (!response.ok) return;
+    const data = await response.json().catch(() => null);
+    const deployed = typeof data?.currentVersion === "string" ? data.currentVersion.trim() : "";
+    pendingDeployedBuild = deployed && deployed !== "legacy" && deployed !== currentBuildId() ? deployed : null;
+    maybeReloadForDeployedBuild();
+  } catch (error) {
+    BeastCore.log(`Build-kontrol: ${error.message}`);
+  } finally {
+    deployedBuildCheckRunning = false;
+  }
+}
+
+function startDeployedBuildWatch() {
+  if (deployedBuildTimerId) return;
+  deployedBuildTimerId = window.setInterval(checkDeployedBuild, DEPLOYED_BUILD_CHECK_MS);
+  window.setTimeout(checkDeployedBuild, 10 * 1000);
+  document.addEventListener("visibilitychange", () => { if (!document.hidden) window.setTimeout(checkDeployedBuild, 1500); });
+  document.addEventListener("beast:ambientchange", (event) => { if (event.detail?.on) window.setTimeout(checkDeployedBuild, 3000); });
+  // A reload made from the screensaver goes straight back into it, unless
+  // someone touches the screen first.
+  let reopen = false;
+  try { reopen = sessionStorage.getItem(RELOAD_INTO_AMBIENT_KEY) === "1"; sessionStorage.removeItem(RELOAD_INTO_AMBIENT_KEY); } catch (_) {}
+  if (reopen) {
+    const since = lastUserActivityAt;
+    window.setTimeout(() => { if (lastUserActivityAt === since && !screensaverShowing()) showAmbientMode(true); }, 1500);
+  }
+}
+
 function reloadCameraFrame(frame, reason) {
   const url = new URL(frame.src, window.location.href);
   url.searchParams.set("recover", String(Date.now()));
@@ -825,6 +934,7 @@ function startKioskWatchdogs() {
     buildCheckTimerId = window.setInterval(checkForDashboardUpdate, BUILD_CHECK_INTERVAL_MS);
     window.setTimeout(checkForDashboardUpdate, 5000);
   }
+  startDeployedBuildWatch();
   if (!cameraHealthTimerId) cameraHealthTimerId = window.setInterval(runCameraHealthCheck, CAMERA_HEALTH_CHECK_INTERVAL_MS);
   // An always-on kiosk never gets the fresh start a manual reload gives.
   // Reconciling every individual widget's stale state after a real outage
