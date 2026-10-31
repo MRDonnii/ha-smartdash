@@ -1,5 +1,16 @@
 [
   {
+    "version": "20261101-3",
+    "tag": "v0.8.85",
+    "date": "2026-11-01",
+    "changes": [
+      {
+        "da": "Soveværelsesenhedens pauseskærm afløser nattilstanden og viser forskelligt efter tidspunktet: om natten døre, alarm og temperatur med en Lås-knap ved ulåste døre, om morgenen nattens søvnscore, næste aftale og vejret, om dagen vejr og næste aftale og om aftenen døre og hvad der spiller. Knapperne virker direkte, og et tryk et andet sted åbner hele siden. Den gamle nat-side er fjernet. (Claude AI)",
+        "en": "The bedroom device's screensaver replaces the night view and changes with the time of day: at night doors, alarm and temperature with a Lock button for unlocked doors, in the morning last night's sleep score, next event and weather, during the day weather and next event, and in the evening doors and what is playing. Its buttons act directly, and a tap elsewhere opens the full page. The old night page is removed."
+      }
+    ]
+  },
+  {
     "version": "20261101-2",
     "tag": "v0.8.84",
     "date": "2026-11-01",

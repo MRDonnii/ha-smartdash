@@ -1,3 +1,7 @@
+## 0.8.85
+
+- Soveværelsesenhedens pauseskærm afløser nattilstanden og viser forskelligt efter tidspunktet: om natten døre, alarm og temperatur med en Lås-knap ved ulåste døre, om morgenen nattens søvnscore, næste aftale og vejret, om dagen vejr og næste aftale og om aftenen døre og hvad der spiller. Knapperne virker direkte, og et tryk et andet sted åbner hele siden. Den gamle nat-side er fjernet. (Claude AI)
+
 ## 0.8.84
 
 - Om natten åbner et tryk på soveværelsessidens ur nu hele siden med alt i 10 minutter, og en lille tekst viser, at man kan trykke. (Claude AI)
