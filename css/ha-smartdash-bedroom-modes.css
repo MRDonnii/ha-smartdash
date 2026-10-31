@@ -46,7 +46,7 @@
 
 /* ---------- Dag: the controls size their own row ---------- */
 @media (orientation: landscape) and (min-width: 701px) and (min-height: 541px) {
-  .bd-root[data-mode="dag"] .bd-ctrl { contain: none; justify-content: flex-start; gap: 14px; }
+  .bd-root[data-mode="dag"] .bd-ctrl { contain: none; justify-content: space-between; gap: 14px; }
 }
 
 /* ---------- calendar: Morgen's "Næste" box ---------- */
