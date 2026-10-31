@@ -238,6 +238,11 @@
    thin, warm ivory; it moves only by transform (set from JS) and the rest
    of the screensaver content only fades. */
 html.beast-bedroom-device .beast-ambient-mode { -webkit-backdrop-filter: none; backdrop-filter: none; }
+/* The weather behind the bedroom clock is drawn dim on purpose (see the
+   "calm" layers in ha-smartdash-weatherfx.js), so the iPad rule that fades
+   the canvas to a third does not apply here. */
+html.beast-bedroom-device .beast-ambient-weather-fx,
+html.beast-bedroom-device.beast-ipad .beast-ambient-weather-fx { opacity: 1; }
 html.beast-bedroom-device .beast-ambient-time,
 html.beast-bedroom-device .beast-ambient-time.is-size-small,
 html.beast-bedroom-device .beast-ambient-time.is-size-large {
