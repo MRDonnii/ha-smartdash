@@ -2191,10 +2191,25 @@ window.BeastBedroom = (() => {
     const blocks = [...root.querySelectorAll(".bd-ctrl > .bd-block")];
     const lead = blocks.find((block) => !block.hidden);
     blocks.forEach((block) => block.classList.toggle("is-lead", block === lead));
+    fitControls();
     renderCalendar();
     renderSecurity();
     renderNight();
     renderSheets();
+  }
+
+  // A busy evening (fan, sleep mode and both players on) can hold more
+  // than the controls card: first the sub-headings go, then rows tighten.
+  function fitControls() {
+    const panel = root?.querySelector(".bd-ctrl");
+    if (!panel || !panel.clientHeight) return;
+    const steps = ["is-tight", "is-tighter", "is-tightest"];
+    panel.classList.remove(...steps);
+    const overflows = () => panel.scrollHeight > panel.clientHeight + 1;
+    for (const step of steps) {
+      if (!overflows()) break;
+      panel.classList.add(step);
+    }
   }
 
   function renderSheets() {
@@ -2392,6 +2407,11 @@ window.BeastBedroom = (() => {
       connectedTimerId = window.setTimeout(() => { if (active) window.BeastBedroom.sleep?.onReconnected?.(); }, 30000);
     });
     window.addEventListener("message", onPlayerMessage);
+    let fitTimerId = null;
+    window.addEventListener("resize", () => {
+      window.clearTimeout(fitTimerId);
+      fitTimerId = window.setTimeout(() => { if (active) fitControls(); }, 150);
+    });
     if (go2rtcBase()) window.BeastCameras?.ensureStreamDiscovery?.(go2rtcBase()).then(() => { streamDiscoveryVersion += 1; if (active) mountCameras(); });
     if (isActive()) activate();
     else applyDim();

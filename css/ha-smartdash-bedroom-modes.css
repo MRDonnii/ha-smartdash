@@ -325,7 +325,7 @@
 .bd-ms-now-row { display: flex; align-items: baseline; gap: 12px; min-width: 0; margin-bottom: 12px; }
 .bd-ms-now-row strong { color: var(--bd-amber-hi); font-size: 26px; font-weight: 300; letter-spacing: -.02em; }
 .bd-ms-now-row span { overflow: hidden; color: var(--bd-ink-2); font-size: 13px; text-overflow: ellipsis; white-space: nowrap; }
-.bd-ms-seg { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); height: 48px; padding: 3px; border: 1px solid var(--bd-hair-2); border-radius: 14px; background: #090c12; }
+.bd-ms-seg { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); height: 52px; padding: 3px; border: 1px solid var(--bd-hair-2); border-radius: 14px; background: #090c12; }
 .bd-root .bd-ms-mode { border-radius: 11px; color: var(--bd-ink-2); font-size: 14px; font-weight: 600; text-align: center; }
 .bd-root .bd-ms-mode + .bd-ms-mode { box-shadow: inset 1px 0 0 var(--bd-hair-2); }
 .bd-root .bd-ms-mode.is-on { background: linear-gradient(180deg, #2a1a0c, #1e130a); box-shadow: inset 0 0 0 1px var(--bd-on-line); color: var(--bd-amber-hi); }
@@ -392,3 +392,11 @@
   .bd-camgrid { height: auto; grid-template-columns: repeat(2, minmax(0, 1fr)); grid-template-rows: none; grid-auto-rows: auto; }
   .bd-root .bd-gtile { aspect-ratio: 16 / 9; }
 }
+
+/* Controls that do not fit (fitControls in JS): the rows tighten first,
+   then the sub-headings go, then the rows tighten once more. */
+.bd-root .bd-ctrl.is-tight { --bd-row: 50px; }
+.bd-root .bd-ctrl.is-tighter .bd-block:not(.is-lead) .bd-blockhead { display: none; }
+.bd-root .bd-ctrl.is-tightest { --bd-row: 44px; gap: 6px; }
+.bd-root .bd-ctrl.is-tightest .bd-block, .bd-root .bd-ctrl.is-tightest .bd-lights, .bd-root .bd-ctrl.is-tightest .bd-media { gap: 6px; }
+.bd-root .bd-ctrl.is-tightest .bd-mrow, .bd-root .bd-ctrl.is-tightest .bd-mrow.is-playing { height: 48px; }
