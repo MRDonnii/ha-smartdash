@@ -303,6 +303,8 @@ html.beast-bedroom-device .beast-bedroom-shortcuts {
   z-index: 4;
   display: flex;
   gap: 14px;
+  width: max-content;
+  max-width: calc(100vw - 32px);
   transform: translateX(-50%);
   color-scheme: dark;
   font-family: "Inter", -apple-system, "SF Pro Text", "Helvetica Neue", Arial, sans-serif;
@@ -339,7 +341,7 @@ html.beast-bedroom-device .bds-lbl { max-width: 100%; overflow: hidden; padding:
 html.beast-bedroom-device .beast-bedroom-shortcuts .bda-i { display: block; fill: none; stroke: currentColor; stroke-linecap: round; stroke-linejoin: round; }
 html.beast-bedroom-device .has-bd-shortcuts .beast-ambient-bottom { opacity: 0; }
 @media (orientation: portrait) {
-  html.beast-bedroom-device .beast-bedroom-shortcuts { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); bottom: max(56px, 6vh); }
+  html.beast-bedroom-device .beast-bedroom-shortcuts { display: grid; grid-template-columns: repeat(2, auto); bottom: max(56px, 6vh); }
   html.beast-bedroom-device .bds-btn { width: min(220px, 40vw); height: 96px; }
 }
 @keyframes bds-in { from { opacity: 0; transform: translate(-50%, 10px); } to { opacity: 1; transform: translate(-50%, 0); } }

@@ -650,8 +650,8 @@ window.BeastBedroom = (() => {
     if (windowId) {
       const st = state(windowId);
       const open = st?.state === "on";
-      // In the time modes the window only shows while it is open.
-      if (open || flags.mode === "alle") cells.push({ value: unavailable(st) ? "–" : open ? t("Åben") : t("Lukket"), label: t("Vindue"), warn: open });
+      // The window only shows while it is open (rules §2).
+      if (open) cells.push({ value: unavailable(st) ? "–" : open ? t("Åben") : t("Lukket"), label: t("Vindue"), warn: open });
     }
     return cells;
   }

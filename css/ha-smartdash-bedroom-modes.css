@@ -309,10 +309,11 @@
 .bd-ms {
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-  grid-template-rows: auto auto minmax(0, 1fr) auto;
+  grid-template-rows: auto auto auto auto;
   grid-template-areas: "now cards" "all cards" "times cards" "times foot";
+  align-content: start;
+  align-items: start;
   gap: 14px;
-  min-height: 100%;
 }
 .bd-ms-card { min-width: 0; padding: 14px 16px; border: 1px solid var(--bd-hair); border-radius: 22px; background: var(--bd-panel); }
 .bd-ms-now { grid-area: now; }
@@ -330,7 +331,7 @@
 .bd-root .bd-ms-mode.is-on { background: linear-gradient(180deg, #2a1a0c, #1e130a); box-shadow: inset 0 0 0 1px var(--bd-on-line); color: var(--bd-amber-hi); }
 .bd-root .bd-ms-mode:active { background: var(--bd-surface-3); }
 .bd-root .bd-ms-follow { width: 100%; height: 44px; margin-top: 10px; border: 1px solid var(--bd-hair-2); border-radius: 13px; color: var(--bd-ink-2); font-size: 13.5px; font-weight: 600; text-align: center; }
-.bd-root .bd-ms-all { display: flex; align-items: center; gap: 13px; height: 72px; padding: 0 16px 0 14px; }
+.bd-root .bd-ms-all { display: flex; align-items: center; gap: 13px; height: 72px; padding: 0 16px 0 14px; border: 1px solid var(--bd-hair); border-radius: 22px; background: var(--bd-panel); }
 .bd-root .bd-ms-all.is-on .bd-row-badge { border-color: var(--bd-on-line); background: rgba(240, 162, 74, .12); color: var(--bd-amber-hi); }
 .bd-ms-all.is-on .bd-row-sw { border-color: var(--bd-on-line); background: rgba(240, 162, 74, .18); }
 .bd-ms-all.is-on .bd-row-sw::after { transform: translateX(16px); background: var(--bd-amber-hi); }
@@ -352,7 +353,9 @@
 .bd-root .bd-ms-reset { display: flex; align-items: center; gap: 8px; height: 48px; padding: 0 18px; border: 1px dashed var(--bd-hair-2); border-radius: 14px; color: var(--bd-ink-2); font-size: 14px; font-weight: 500; }
 .bd-ms-saved { color: var(--bd-ok); font-size: 13px; }
 @media (orientation: portrait) {
-  .bd-ms { grid-template-rows: auto auto auto minmax(0, 1fr); grid-template-areas: "now now" "all all" "times cards" "foot cards"; align-content: start; }
+  .bd-ms { grid-template-rows: auto auto auto auto; grid-template-areas: "now now" "all all" "times cards" "foot cards"; }
+  .bd-ms-cgrid { grid-template-columns: minmax(0, 1fr) repeat(4, 50px); gap: 6px; }
+  .bd-ms-l .bd-i { display: none; }
   .bd-ms-foot { flex-direction: column; align-items: stretch; }
   .bd-ms-tgrid { grid-template-columns: minmax(48px, auto) minmax(0, 1fr) minmax(0, 1fr); gap: 8px 6px; }
   .bd-ms-step { grid-template-columns: 44px minmax(0, 1fr) 44px; }
