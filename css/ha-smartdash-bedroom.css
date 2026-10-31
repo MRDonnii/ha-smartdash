@@ -797,7 +797,10 @@ html.beast-bedroom-menu-open .bd-page { visibility: hidden; }
 .bd-menu:not(.has-bed) { grid-template-columns: repeat(2, minmax(0, 1fr)); grid-template-areas: "head head" "pages pages" "screen settings"; }
 .bd-menu.has-bed:not(.has-settings) { grid-template-columns: repeat(2, minmax(0, 1fr)); grid-template-areas: "head head" "pages pages" "bed screen"; }
 .bd-menu:not(.has-bed):not(.has-settings) { grid-template-columns: minmax(0, 1fr); grid-template-areas: "head" "pages" "screen"; }
-.bd-menu:not(.has-pages) { grid-template-rows: var(--bd-head-h) minmax(0, 1fr); }
+.bd-menu:not(.has-pages) { grid-template-rows: var(--bd-head-h) minmax(0, .7fr) auto minmax(0, 1fr); grid-template-areas: "head head head" ". . ." "bed screen settings" ". . ."; }
+.bd-menu:not(.has-pages):not(.has-bed) { grid-template-areas: "head head" ". ." "screen settings" ". ."; }
+.bd-menu.has-bed:not(.has-pages):not(.has-settings) { grid-template-areas: "head head" ". ." "bed screen" ". ."; }
+.bd-menu:not(.has-pages):not(.has-bed):not(.has-settings) { grid-template-areas: "head" "." "screen" "."; }
 .bd-menu-head { grid-area: head; display: flex; align-items: center; gap: 22px; min-width: 0; padding: 0 2px; }
 .bd-menu-time { height: 1em; overflow: hidden; color: var(--bd-ink); font-size: 46px; font-weight: 250; line-height: 1; letter-spacing: -.035em; white-space: nowrap; }
 .bd-menu-time i { color: var(--bd-amber); font-style: normal; font-weight: 300; }
@@ -995,4 +998,10 @@ html.beast-chromeless .beast-lock-overlay:not(.is-ambient) .beast-lock-forgot { 
   .bd-layer, .bd-layer.is-leaving, .bd-menu > .bd-mpanel, .bd-sheet-body, .bd-layer .bd-back-x svg, .bd-confirm, .beast-bedroom-camview { animation: bd-fade-in .12s linear both; }
   .bd-layer.is-leaving { animation: bd-fade-out .12s linear both; }
   .bd-root *, .bd-root *::before, .bd-root *::after { transition-duration: .01ms !important; }
+}
+@media (orientation: portrait) {
+  .bd-menu:not(.has-pages) { grid-template-columns: repeat(2, minmax(0, 1fr)); grid-template-rows: var(--bd-head-h) minmax(0, .7fr) auto auto minmax(0, 1fr); grid-template-areas: "head head" ". ." "bed bed" "screen settings" ". ."; }
+  .bd-menu:not(.has-pages):not(.has-bed) { grid-template-rows: var(--bd-head-h) minmax(0, .7fr) auto minmax(0, 1fr); grid-template-areas: "head head" ". ." "screen settings" ". ."; }
+  .bd-menu.has-bed:not(.has-pages):not(.has-settings) { grid-template-areas: "head head" ". ." "bed bed" "screen screen" ". ."; }
+  .bd-menu:not(.has-pages):not(.has-bed):not(.has-settings) { grid-template-columns: minmax(0, 1fr); grid-template-rows: var(--bd-head-h) minmax(0, .7fr) auto minmax(0, 1fr); grid-template-areas: "head" "." "screen" "."; }
 }
