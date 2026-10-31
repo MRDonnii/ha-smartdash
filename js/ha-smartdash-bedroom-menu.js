@@ -232,11 +232,19 @@ window.BeastBedroom.menu = (() => {
     if (sleep) rows.push({ action: "sleep", iconName: "bed", title: t("Søvn & CPAP"), sub: esc(sleep.text), offline: Boolean(sleep.off) });
     const lightIds = B.lightIds();
     if (lightIds.length > 1) rows.push({ action: "lights", iconName: "bulb", title: t("Alt lys"), ...lightsRow(lightIds) });
-    const cameraIds = B.cameraIds();
-    if (cameraIds.length) rows.push({ action: "cameras", iconName: "expand", title: t("Kameraer i fuld skærm"), sub: esc(cameraIds.map((id) => window.BeastCameras?.resolveCamera?.(id)?.label || displayName(id)).join(" · ")) });
+    const cameraCount = B.allCameraIds?.().length || 0;
+    if (cameraCount) rows.push({ action: "cameras", iconName: "camera", title: t("Kameraer"), sub: esc(cameraCount === 1 ? t("1 kamera") : t("Alle {n} kameraer", { n: cameraCount })) });
     const sceneIds = B.sceneIds();
     if (sceneIds.length) rows.push({ action: "scenes", iconName: "scene", title: t("Scener"), ...scenesRow(sceneIds) });
+    rows.push({ action: "modes", iconName: "sliders", title: t("Tilstande"), ...modesRow() });
     return rows;
+  }
+
+  // "Aften · Nat kl. 22:30", or "Vis alt · 8 min".
+  function modesRow() {
+    const info = B.modeInfo();
+    if (info.showAll) return { sub: `<b>${esc(t("Vis alt · {n} min", { n: info.showAllLeft }))}</b>`, on: true };
+    return { sub: `<b>${esc(B.modeLabel(info.mode))}</b>${info.nextAt ? ` · ${esc(t("{mode} kl. {time}", { mode: B.modeLabel(info.nextMode), time: hm(new Date(info.nextAt)) }))}` : ""}`, on: info.source !== "schedule" };
   }
 
   function lightsRow(ids) {
@@ -459,7 +467,8 @@ window.BeastBedroom.menu = (() => {
       case "sleep": close(true); B.sleep?.openDetail(); break;
       case "lights": close(true); B.openLightsSheet(); break;
       case "scenes": close(true); B.openScenesSheet(); break;
-      case "cameras": close(true); B.openCameraView(0); break;
+      case "cameras": close(true); B.openAllCameras(); break;
+      case "modes": openModes(); break;
       case "screensaver": close(true); window.showAmbientMode?.(true); break;
       case "dim": B.setDim(!B.dimOn()); refresh(); break;
       case "reload": reload(target); break;
@@ -469,5 +478,111 @@ window.BeastBedroom.menu = (() => {
     }
   }
 
-  return { open, close, refresh, tickClock, isOpen };
+  // ---------------------------------------------------------------------------
+  // Tilstande: the current mode, Vis alt, start times and cards per mode.
+  // Saved centrally (panels.bedroom.modes) and applied at once.
+  // ---------------------------------------------------------------------------
+  const Modes = window.BeastBedroomModes;
+  const STEP_MIN = 15;
+  const CARD_ICONS = { cams: "camera", sec: "shield", sleep: "bed", cal: "cal", lights: "bulb", scenes: "scene", comfort: "moon", media: "tv" };
+  let draft = null;
+  let saveTimerId = null;
+  let savedTimerId = null;
+  let saveNote = "";
+  let modesHtml = "";
+
+  function modesBody() {
+    const info = B.modeInfo();
+    const next = info.nextAt ? t("{mode} kl. {time}", { mode: B.modeLabel(info.nextMode), time: hm(new Date(info.nextAt)) }) : "";
+    const source = info.source === "goodnight" ? t("Godnat er kørt") : info.source === "manual" ? t("Skiftet manuelt") : t("Efter tidsplanen");
+    const seg = Modes.MODES.map((mode) => `<button type="button" class="bd-ms-mode${mode === info.mode ? " is-on" : ""}" data-ms="mode" data-mode="${mode}" aria-pressed="${mode === info.mode}">${esc(B.modeLabel(mode))}</button>`).join("");
+    const now = `<section class="bd-ms-card bd-ms-now"><div class="bd-ms-k">${esc(t("Nu"))}</div>
+      <div class="bd-ms-now-row"><strong>${esc(B.modeLabel(info.mode))}</strong><span>${esc([source, next ? t("derefter {next}", { next }) : ""].filter(Boolean).join(" · "))}</span></div>
+      <div class="bd-ms-seg" role="group" aria-label="${esc(t("Skift tilstand nu"))}">${seg}</div>
+      ${info.source === "manual" ? `<button type="button" class="bd-ms-follow" data-ms="follow">${esc(t("Følg tidsplanen igen"))}</button>` : ""}</section>`;
+    const showAll = `<button type="button" class="bd-ms-card bd-ms-all${info.showAll ? " is-on" : ""}" data-ms="showall" role="switch" aria-checked="${info.showAll}"><span class="bd-row-badge">${icon("grid", 20)}</span><span class="bd-row-text"><span class="bd-row-t1">${esc(t("Vis alt"))}</span><span class="bd-row-t2">${esc(info.showAll ? t("Til · {n} min tilbage", { n: info.showAllLeft }) : t("Alle kort i {n} min", { n: draft.showAllMinutes }))}</span></span><span class="bd-row-sw"></span></button>`;
+    const stepper = (type, mode) => `<div class="bd-ms-step"><button type="button" data-ms="time" data-type="${type}" data-mode="${mode}" data-delta="-${STEP_MIN}" aria-label="${esc(t("{mode} tidligere", { mode: B.modeLabel(mode) }))}">−</button><b>${esc(draft.times[type][mode])}</b><button type="button" data-ms="time" data-type="${type}" data-mode="${mode}" data-delta="${STEP_MIN}" aria-label="${esc(t("{mode} senere", { mode: B.modeLabel(mode) }))}">+</button></div>`;
+    const times = `<section class="bd-ms-card bd-ms-times"><div class="bd-ms-k">${esc(t("Starttider"))}</div>
+      <div class="bd-ms-tgrid"><span></span><span class="bd-ms-h">${esc(t("Hverdage"))}</span><span class="bd-ms-h">${esc(t("Weekend"))}</span>
+      ${Modes.MODES.map((mode) => `<span class="bd-ms-l">${esc(B.modeLabel(mode))}</span>${stepper("weekday", mode)}${stepper("weekend", mode)}`).join("")}</div>
+      <p class="bd-ms-note">${esc(t("Godnat skifter til Nat med det samme. Weekend er lørdag og søndag."))}</p></section>`;
+    const cards = `<section class="bd-ms-card bd-ms-cards"><div class="bd-ms-k">${esc(t("Kort pr. tilstand"))}</div>
+      <div class="bd-ms-cgrid"><span></span>${Modes.MODES.map((mode) => `<span class="bd-ms-h${mode === info.mode ? " is-now" : ""}">${esc(B.modeLabel(mode))}</span>`).join("")}
+      ${Modes.CARDS.map((card) => `<span class="bd-ms-l">${icon(CARD_ICONS[card], 16)}<span>${esc(t(Modes.CARD_LABELS[card]))}</span></span>${Modes.MODES.map((mode) => {
+        const on = draft.cards[mode][card] !== false;
+        return `<button type="button" class="bd-ms-tog${on ? " is-on" : ""}" data-ms="card" data-mode="${mode}" data-card="${card}" aria-pressed="${on}" aria-label="${esc(`${t(Modes.CARD_LABELS[card])} · ${B.modeLabel(mode)}`)}">${on ? icon("check", 18) : ""}</button>`;
+      }).join("")}`).join("")}</div></section>`;
+    const foot = `<div class="bd-ms-foot"><button type="button" class="bd-ms-reset" data-ms="reset">${icon("reload", 16)}<span>${esc(t("Nulstil til standard"))}</span></button><span class="bd-ms-saved">${esc(saveNote)}</span></div>`;
+    return `<div class="bd-ms">${now}${showAll}${times}${cards}${foot}</div>`;
+  }
+
+  function renderModes(force = false) {
+    if (B.layerKind?.() !== "modes") return;
+    const body = B.root?.querySelector('[data-sheet="modes"] [data-sheet-body]');
+    if (!body || !draft) return;
+    const html = modesBody();
+    if (!force && html === modesHtml) return;
+    modesHtml = html;
+    body.innerHTML = html;
+  }
+
+  function saveModes(reset = false) {
+    window.clearTimeout(saveTimerId);
+    saveNote = "";
+    // The payload is taken now: the sheet may close before the save runs.
+    const modes = reset ? null : JSON.parse(JSON.stringify(draft));
+    saveTimerId = window.setTimeout(() => {
+      BeastConfig.setPanel("bedroom", { modes }).then((result) => {
+        saveNote = result?.success === false ? t("Kunne ikke gemme") : t("Gemt");
+        renderModes();
+        window.clearTimeout(savedTimerId);
+        savedTimerId = window.setTimeout(() => { saveNote = ""; renderModes(); }, 2200);
+      });
+    }, reset ? 0 : 450);
+  }
+
+  function shiftTime(type, mode, delta) {
+    const order = Modes.MODES;
+    const toMin = (time) => Number(time.slice(0, 2)) * 60 + Number(time.slice(3));
+    const index = order.indexOf(mode);
+    const lower = index > 0 ? toMin(draft.times[type][order[index - 1]]) + STEP_MIN : 0;
+    const upper = index < order.length - 1 ? toMin(draft.times[type][order[index + 1]]) - STEP_MIN : 24 * 60 - STEP_MIN;
+    const current = toMin(draft.times[type][mode]);
+    // Snap to the step, then keep the modes in order.
+    const snapped = Math.round((current + delta) / STEP_MIN) * STEP_MIN;
+    const value = Math.max(lower, Math.min(upper, snapped));
+    if (value === current) return;
+    draft.times[type][mode] = `${String(Math.floor(value / 60)).padStart(2, "0")}:${String(value % 60).padStart(2, "0")}`;
+    saveModes();
+  }
+
+  function onModesClick(event) {
+    const target = event.target.closest("[data-ms]");
+    if (!target || target.disabled) return;
+    switch (target.dataset.ms) {
+      case "mode": B.setManualMode(target.dataset.mode); break;
+      case "follow": B.setManualMode(null); break;
+      case "showall": B.setShowAll(!B.modeInfo().showAll); break;
+      case "time": shiftTime(target.dataset.type, target.dataset.mode, Number(target.dataset.delta)); break;
+      case "card": draft.cards[target.dataset.mode][target.dataset.card] = !(draft.cards[target.dataset.mode][target.dataset.card] !== false); saveModes(); break;
+      case "reset": draft = Modes.defaults(); saveModes(true); break;
+      default: return;
+    }
+    renderModes();
+  }
+
+  function openModes() {
+    close(true);
+    draft = Modes.normalize(cfg().modes);
+    saveNote = "";
+    modesHtml = "";
+    const layerHost = B.openLayer("modes", B.sheetMarkup("modes", t("Tilstande"), ""), () => {
+      window.clearTimeout(savedTimerId);
+      draft = null;
+    });
+    layerHost?.querySelector(".bd-sheet")?.addEventListener("click", onModesClick);
+    renderModes(true);
+  }
+
+  return { open, close, refresh, tickClock, isOpen, openModes, renderModes };
 })();

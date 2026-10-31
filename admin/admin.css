@@ -673,3 +673,15 @@ html.is-touch .admin-diagnostics summary, html.is-touch .admin-changelog-details
 html.is-touch .admin-overview-card-row { cursor: default; }
 html.is-touch .admin-overview-drag-handle { min-width: 44px; min-height: 44px; justify-content: center; align-items: center; }
 html.is-touch .admin-overview-row-head { align-items: center; }
+
+/* Bedroom → Tidstilstande: start times and cards per mode. */
+.admin-modes { display: grid; gap: 16px; }
+.admin-modes-tables { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 16px; align-items: start; }
+.admin-modes-table { width: 100%; border-collapse: collapse; }
+.admin-modes-table th, .admin-modes-table td { padding: 6px 8px; text-align: left; }
+.admin-modes-table thead th { color: var(--muted, inherit); font-size: 12px; font-weight: 600; letter-spacing: .04em; text-transform: uppercase; }
+.admin-modes-table tbody th { font-weight: 500; white-space: nowrap; }
+.admin-modes-table.is-cards td, .admin-modes-table.is-cards thead th:not(:first-child) { text-align: center; }
+.admin-modes-table input[type="time"] { width: 100%; min-height: 44px; }
+.admin-modes-table input[type="checkbox"] { width: 24px; height: 24px; margin: 10px; }
+.admin-modes-extra { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; }

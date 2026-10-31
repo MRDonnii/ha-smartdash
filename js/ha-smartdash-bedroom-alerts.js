@@ -16,8 +16,16 @@ window.BeastBedroomAlerts = (() => {
   const WHAT_ALIASES = { person: "person", human: "person", face: "person", vehicle: "vehicle", car: "vehicle", licenseplate: "vehicle", license_plate: "vehicle", animal: "animal", pet: "animal" };
   const ICONS = {
     x: '<path d="M6.5 6.5l11 11M17.5 6.5l-11 11"/>',
-    corners: '<path d="M4 9V4h5M15 4h5v5M20 15v5h-5M9 20H4v-5"/>'
+    corners: '<path d="M4 9V4h5M15 4h5v5M20 15v5h-5M9 20H4v-5"/>',
+    bed: '<path d="M3 18.5v-12"/><path d="M3 14.5h18v4"/><path d="M21 14.5v-2a3 3 0 0 0-3-3h-7v5"/><circle cx="7" cy="11.5" r="1.75"/>',
+    camera: '<rect x="2.75" y="6.5" width="13.5" height="11" rx="2.5"/><path d="m16.25 10.5 4.75-2.6v8.2l-4.75-2.6"/>',
+    bulb: '<path d="M9.25 17.5h5.5M10 20.5h4"/><path d="M12 3.5a6 6 0 0 0-3.6 10.8c.7.5 1.1 1.3 1.1 2.1v1.1h5v-1.1c0-.8.4-1.6 1.1-2.1A6 6 0 0 0 12 3.5Z"/>',
+    moon: '<path d="M19.5 14.6A7.8 7.8 0 0 1 9.4 4.5a7.8 7.8 0 1 0 10.1 10.1Z"/>'
   };
+  const SHORTCUT_MS = 8000;
+  // The tap that reveals the row must not also press the button that
+  // appears under the finger.
+  const SHORTCUT_GUARD_MS = 400;
 
   let wiredSignature = "";
   let unsubscribers = [];
@@ -228,6 +236,7 @@ window.BeastBedroomAlerts = (() => {
     alert.event = event;
     alert.windowMs = windowMs;
     alert.deadline = now + windowMs;
+    hideShortcuts();
     if (!alert.element || !alert.element.isConnected) mount(overlay);
     if (alert.slug !== camera.slug) {
       alert.slug = camera.slug;
@@ -465,6 +474,86 @@ window.BeastBedroomAlerts = (() => {
   }
 
   // ---------------------------------------------------------------------------
+  // Shortcuts: on a bedroom device the first tap on the screensaver shows a
+  // calm row of four ways in (for a few seconds) without waking it; a
+  // shortcut wakes and opens that view, a tap anywhere else wakes as before.
+  // The camera pop-up has priority: while it shows, taps behave as before.
+  // ---------------------------------------------------------------------------
+  let shortcuts = null;
+
+  function shortcutItems() {
+    const bedroom = window.BeastBedroom;
+    if (!bedroom) return [];
+    return [
+      { id: "bedroom", icon: "bed", label: bedroom.util?.roomTitle?.() || t("Soveværelse") },
+      (bedroom.allCameraIds?.() || []).length ? { id: "cameras", icon: "camera", label: t("Kameraer") } : null,
+      (bedroom.lightIds?.() || []).length ? { id: "lights", icon: "bulb", label: t("Lys") } : null,
+      bedroom.sleep?.configured?.() ? { id: "sleep", icon: "moon", label: t("Søvn") } : null
+    ].filter(Boolean);
+  }
+
+  function revealShortcuts(overlay) {
+    const items = shortcutItems();
+    if (!items.length) return false;
+    hideShortcuts(true);
+    const element = document.createElement("div");
+    element.className = "beast-bedroom-shortcuts";
+    element.setAttribute("role", "group");
+    element.setAttribute("aria-label", t("Genveje"));
+    element.innerHTML = items.map((item) => `<button type="button" class="bds-btn" data-bds="${item.id}"><span class="bds-ic">${icon(item.icon, 26)}</span><span class="bds-lbl">${esc(item.label)}</span></button>`).join("");
+    element.addEventListener("click", (event) => {
+      const button = event.target.closest("[data-bds]");
+      if (!button || !shortcuts || Date.now() - shortcuts.shownAt < SHORTCUT_GUARD_MS) return;
+      event.stopPropagation();
+      openShortcut(button.dataset.bds);
+    });
+    overlay.appendChild(element);
+    overlay.classList.add("has-bd-shortcuts");
+    shortcuts = { element, shownAt: Date.now(), timerId: window.setTimeout(() => hideShortcuts(), SHORTCUT_MS) };
+    return true;
+  }
+
+  function hideShortcuts(instant = false) {
+    if (!shortcuts) return;
+    const { element, timerId } = shortcuts;
+    shortcuts = null;
+    window.clearTimeout(timerId);
+    element.parentElement?.classList.remove("has-bd-shortcuts");
+    element.style.pointerEvents = "none";
+    if (instant || window.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches) { element.remove(); return; }
+    element.classList.add("is-leaving");
+    window.setTimeout(() => element.remove(), 320);
+  }
+
+  function openShortcut(id) {
+    hideShortcuts(true);
+    // Waking lands on the device's home page, the bedroom.
+    if (typeof window.noteUserActivity === "function") window.noteUserActivity();
+    else window.hideAmbientMode?.();
+    window.setTimeout(() => {
+      const bedroom = window.BeastBedroom;
+      if (!bedroom) return;
+      if (!bedroom.isActive?.()) document.querySelector('.beast-rail-btn[data-section="bedroom"]')?.click();
+      if (id === "cameras") bedroom.openAllCameras?.();
+      else if (id === "lights") bedroom.openLightsSheet?.();
+      else if (id === "sleep") bedroom.sleep?.openDetail?.();
+    }, 80);
+  }
+
+  // Capture phase, so it runs before the screensaver's own wake handler.
+  function onSaverPointerDown(event) {
+    if (!enabledHere()) return;
+    const overlay = ambientOverlay();
+    if (!overlay || !overlay.contains(event.target)) return;
+    if (event.target.closest(".bda-card") || alert) return;
+    if (event.target.closest("[data-bds]")) { event.stopPropagation(); return; }
+    if (shortcuts) return;
+    if (!revealShortcuts(overlay)) return;
+    event.stopPropagation();
+    event.preventDefault();
+  }
+
+  // ---------------------------------------------------------------------------
   // Wiring
   // ---------------------------------------------------------------------------
   // Bedroom devices get their own (larger, Amber) screensaver clock; the
@@ -498,8 +587,10 @@ window.BeastBedroomAlerts = (() => {
   BeastHaSocket.onStatusChange((status) => { if (status === "connected") sync(); });
   document.addEventListener("beast:config-changed", sync);
   document.addEventListener("beast:local-settings-changed", sync);
+  document.addEventListener("pointerdown", onSaverPointerDown, true);
   document.addEventListener("beast:ambientchange", (event) => {
-    if (!event.detail?.on) { close(); return; }
+    if (!event.detail?.on) { close(); hideShortcuts(true); return; }
+    hideShortcuts(true);
     closeView();
     // Reopening the screensaver rebuilds its content; a pop-up still inside
     // its window goes back on top.
@@ -517,5 +608,5 @@ window.BeastBedroomAlerts = (() => {
   window.addEventListener("resize", onResize);
   markDevice();
 
-  return { parseZoneLog, close, isShowing: () => Boolean(alert) };
+  return { parseZoneLog, close, isShowing: () => Boolean(alert), shortcutsShowing: () => Boolean(shortcuts) };
 })();

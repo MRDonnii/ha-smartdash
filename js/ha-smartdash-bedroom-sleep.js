@@ -450,10 +450,42 @@ window.BeastBedroom.sleep = (() => {
     return `<span class="bd-trend-k">${esc(t("{n} nætter", { n: NIGHTS }))}</span>${note || `<span class="bd-tabs" role="tablist">${tabs.map(([key, label]) => `<button type="button" class="bd-tab" role="tab" data-bd-action="sleep-metric" data-metric="${key}" aria-selected="${key === metric}">${esc(t(label))}</button>`).join("")}</span>`}`;
   }
 
+  // One line for the compact card: "5:19 t · AHI 0,5 · tæt maske".
+  function shortLine(m) {
+    if (m.allDown || m.stale) return m.allDown ? "" : t("Ingen data i nat");
+    const { usage, ahi, leak } = m.values;
+    const parts = [];
+    if (usage != null) parts.push(`${hours(usage)} ${t("t")}`);
+    if (ahi != null) parts.push(`AHI ${fmt1(ahi)}`);
+    if (leak != null) parts.push(leak < 24 ? t("tæt maske") : t("høj lækage"));
+    return parts.join(" · ");
+  }
+
+  // Dag and Aften: ring, verdict, one line and (when there is room) the
+  // score bars; the whole card opens the sheet.
+  function renderCompact(panel, body) {
+    const m = model();
+    const metric = ids().score ? "score" : activeMetric();
+    const signature = JSON.stringify(["compact", m, metric, historyVersion]);
+    panel.classList.toggle("is-night", false);
+    panel.classList.toggle("is-morning", false);
+    panel.classList.toggle("is-down", m.allDown);
+    if (signature !== panelSignature || !body.firstElementChild) {
+      panelSignature = signature;
+      const meta = panel.querySelector("[data-sleep-meta]");
+      if (meta) meta.innerHTML = m.allDown || !m.meta ? "" : `<span class="bd-sleep-when${m.stale ? " is-stale" : ""}">${esc(m.meta)}</span>`;
+      body.innerHTML = `<div class="bd-sc-top"><button type="button" class="bd-sc-hero" data-bd-action="sleep-detail" aria-label="${esc(t("Åbn søvn og CPAP"))}">${ringMarkup(m)}<span class="bd-sc-tx"><b>${esc(m.title)}</b><small>${esc(shortLine(m))}</small></span></button><button type="button" class="bd-sc-open" data-bd-action="sleep-detail" aria-label="${esc(t("Åbn søvn og CPAP"))}">${icon("chev", 18)}</button></div>
+        <div class="bd-chart" data-sleep-chart="${metric}"></div>`;
+      chartSignature = "";
+    }
+    drawChart(body.querySelector("[data-sleep-chart]"), metric, series(metric));
+  }
+
   function render(panel) {
     if (!panel || !configured()) return;
     const body = panel.querySelector("[data-sleep-body]");
     if (!body) return;
+    if (panel.closest(".bd-page")?.classList.contains("is-sleep-compact")) { renderCompact(panel, body); return; }
     const m = model();
     const metric = activeMetric();
     const tabs = TAB_ORDER.filter(hasMetric);

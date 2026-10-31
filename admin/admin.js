@@ -181,6 +181,7 @@
         security: ["Sikkerhed og godnat", "Lås op og frakobling kræver altid pinkode. Godnat låser dørene og kører derefter de valgte trin."],
         alerts: ["Kamera på pauseskærmen", "Når pauseskærmen er tændt, popper kameraet op ved aktivitet i alarmzonerne. Kun på enheder med enhedstypen Soveværelse."],
         sleep: ["Søvn og CPAP", "Fra ResMed myAir-integrationen (AirSense). Listerne viser kun CPAP-sensorer, og søvnkortet skjules, hvis intet er valgt."],
+        modes: ["Tidstilstande", "Morgen, Dag, Aften og Nat skifter efter klokken og viser hver sine kort. Kan også justeres på enheden under Menu → Tilstande."],
         names: ["Navne", "Rummets navn vises øverst på siden og fjernes fra navnene fra Home Assistant, så \"Soveværelse loft\" bliver til \"Loft\"."]
       },
       fields: [
@@ -221,6 +222,7 @@
         { key: "cpapMaskEvents", section: "sleep", label: "Maske af/på (antal pr. nat)", type: "single", domain: "sensor", hints: CPAP_HINTS, filterHints: true, rankHints: ["mask_on_off", "mask on/off"], hint: "Et antal pr. nat, ikke om masken er på lige nu." },
         { key: "cpapDataDate", section: "sleep", label: "Dataenes dato", type: "single", domain: "sensor", hints: CPAP_HINTS, filterHints: true, rankHints: ["current_data_date", "data_date", "data date"] },
         { key: "cpapLastCollected", section: "sleep", label: "Senest hentet", type: "single", domain: "sensor", hints: CPAP_HINTS, filterHints: true, rankHints: ["last_collected", "last collected"] },
+        { key: "modes", section: "modes", label: "Starttider og kort", type: "bedroomModes", wide: true },
         { key: "title", section: "names", label: "Rummets navn", type: "text", placeholder: "Soveværelse" },
         { key: "displayNames", section: "names", label: "Egne visningsnavne (valgfri)", type: "text", multiline: true, wide: true, placeholder: "light.eksempel=Loft\nmedia_player.eksempel=TV", hint: "Én pr. linje eller adskilt med semikolon: entity_id=Navn." }
       ]}
@@ -603,6 +605,7 @@
       if (field.domain === "camera") annotateCameraItemsWithGo2rtc(items);
       return `${renderEntityDeviceScope(id, scope)}${renderCheckList(panel, field, ids, items)}`;
     }
+    if (field.type === "bedroomModes") return renderBedroomModesField(fieldId(panel.id, field.key), selected);
     if (field.type === "groups") {
       const groups = Array.isArray(selected) ? selected : [];
       const id = fieldId(panel.id, field.key);
@@ -628,6 +631,54 @@
       <select id="${id}"${listboxSize(6)}>
         ${renderSelectOptions(id, selected)}
       </select>${entityPreviewHtml(id, selected)}`;
+  }
+
+  // Time-of-day modes of the bedroom page: start times for weekdays and the
+  // weekend and which cards each mode shows. Same settings as the bedside
+  // device's Menu → Tilstande (panels.bedroom.modes).
+  const MODE_LABELS_EN = { morgen: "Morning", dag: "Day", aften: "Evening", nat: "Night" };
+  const MODE_CARD_LABELS_EN = { cams: "Cameras", sec: "Security", sleep: "Sleep", cal: "Calendar", lights: "Lights", scenes: "Moods", comfort: "Comfort", media: "Media" };
+  function renderBedroomModesField(id, raw) {
+    const M = window.BeastBedroomModes;
+    if (!M) return "";
+    const value = M.normalize(raw);
+    const modeLabel = (mode) => t(M.LABELS[mode], MODE_LABELS_EN[mode]);
+    const times = M.MODES.map((mode) => `<tr><th scope="row">${escapeHtml(modeLabel(mode))}</th>${M.DAY_TYPES.map((type) => `<td><input type="time" step="300" data-modes-time="${type}.${mode}" value="${escapeHtml(value.times[type][mode])}" aria-label="${escapeHtml(`${modeLabel(mode)} · ${type === "weekday" ? t("Hverdage", "Weekdays") : t("Weekend", "Weekend")}`)}"></td>`).join("")}</tr>`).join("");
+    const cards = M.CARDS.map((card) => `<tr><th scope="row">${escapeHtml(t(M.CARD_LABELS[card], MODE_CARD_LABELS_EN[card]))}</th>${M.MODES.map((mode) => `<td><input type="checkbox" data-modes-card="${mode}.${card}"${value.cards[mode][card] !== false ? " checked" : ""} aria-label="${escapeHtml(`${t(M.CARD_LABELS[card], MODE_CARD_LABELS_EN[card])} · ${modeLabel(mode)}`)}"></td>`).join("")}</tr>`).join("");
+    return `<div class="admin-modes" id="${id}" data-modes-field>
+      <div class="admin-modes-tables">
+        <table class="admin-modes-table"><thead><tr><th></th><th>${escapeHtml(t("Hverdage", "Weekdays"))}</th><th>${escapeHtml(t("Weekend (lør–søn)", "Weekend (Sat–Sun)"))}</th></tr></thead><tbody>${times}</tbody></table>
+        <table class="admin-modes-table is-cards"><thead><tr><th></th>${M.MODES.map((mode) => `<th>${escapeHtml(modeLabel(mode))}</th>`).join("")}</tr></thead><tbody>${cards}</tbody></table>
+      </div>
+      <div class="admin-modes-extra">
+        <label class="admin-field"><span>${escapeHtml(t("\"Vis alt\" varer (minutter)", "\"Show all\" lasts (minutes)"))}</span><input type="number" min="1" max="120" step="1" data-modes-number="showAllMinutes" value="${value.showAllMinutes}"></label>
+        <label class="admin-field"><span>${escapeHtml(t("Godnat skifter til Nat", "Goodnight switches to Night"))}</span><select data-modes-bool="nightOnGoodnight"><option value="1"${value.nightOnGoodnight ? " selected" : ""}>${escapeHtml(t("Ja, med det samme", "Yes, right away"))}</option><option value="0"${value.nightOnGoodnight ? "" : " selected"}>${escapeHtml(t("Nej, kun efter klokken", "No, only by the clock"))}</option></select></label>
+        <label class="admin-field"><span>${escapeHtml(t("Vis blæseren fra (°C)", "Show the fan from (°C)"))}</span><input type="number" min="15" max="35" step="0.5" data-modes-number="fanWarmAt" value="${value.fanWarmAt}"></label>
+      </div>
+      <div class="admin-actions"><button type="button" class="beast-btn" data-modes-reset="${id}">${escapeHtml(t("Nulstil til standard", "Reset to defaults"))}</button></div>
+    </div>`;
+  }
+
+  function collectBedroomModes(id) {
+    const M = window.BeastBedroomModes;
+    const host = document.getElementById(id);
+    if (!M || !host) return BeastConfig.get("panels.bedroom.modes") ?? null;
+    const out = M.defaults();
+    host.querySelectorAll("[data-modes-time]").forEach((input) => {
+      const [type, mode] = input.dataset.modesTime.split(".");
+      const time = M.validTime(input.value);
+      if (time) out.times[type][mode] = time;
+    });
+    host.querySelectorAll("[data-modes-card]").forEach((input) => {
+      const [mode, card] = input.dataset.modesCard.split(".");
+      out.cards[mode][card] = input.checked;
+    });
+    host.querySelectorAll("[data-modes-number]").forEach((input) => {
+      const number = Number(input.value);
+      if (input.value !== "" && Number.isFinite(number)) out[input.dataset.modesNumber] = number;
+    });
+    host.querySelectorAll("[data-modes-bool]").forEach((select) => { out[select.dataset.modesBool] = select.value !== "0"; });
+    return M.normalize(out);
   }
 
   const ROOM_EXTRA_DOMAINS = new Set(["light", "climate", "sensor", "binary_sensor", "cover", "lock", "switch", "fan", "media_player", "input_boolean", "input_select", "automation", "valve", "vacuum"]);
@@ -2099,6 +2150,8 @@
             ids: Array.from(checkListSelections.get(row.dataset.selectionId) || [])
           }))
           .filter((group) => group.ids.length);
+      } else if (field.type === "bedroomModes") {
+        patch[field.key] = collectBedroomModes(id);
       } else if (field.type === "boolean") {
         patch[field.key] = document.getElementById(id)?.value !== "0";
       } else if (field.type === "number") {
@@ -2844,6 +2897,15 @@
     if (meta) meta.textContent = `${selected.size} valgt`;
   }
   document.addEventListener("click", (event) => {
+    const modesReset = event.target.closest("[data-modes-reset]");
+    if (modesReset) {
+      const host = document.getElementById(modesReset.dataset.modesReset);
+      if (host && window.BeastBedroomModes) {
+        hasUnsavedPanelChanges = true;
+        host.outerHTML = renderBedroomModesField(modesReset.dataset.modesReset, null);
+      }
+      return;
+    }
     const addBtn = event.target.closest("[data-add-group]");
     if (addBtn) {
       hasUnsavedPanelChanges = true;

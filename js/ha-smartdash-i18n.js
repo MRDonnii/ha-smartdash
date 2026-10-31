@@ -445,6 +445,29 @@
   });
   // Screensaver camera alert on bedroom devices.
   Object.assign(en, { "Person": "Person", "Dyr": "Animal", "+{n} zone": "+{n} zone", "+{n} zoner": "+{n} zones" });
+  // Bedroom time-of-day modes, the Tilstande sheet, all cameras and the screensaver shortcuts.
+  Object.assign(en, {
+    "Morgen": "Morning", "Dag": "Day", "Aften": "Evening", "Nat": "Night", "Søvn": "Sleep",
+    "Vis alt": "Show all", "Vis alt · {n} min": "Show all · {n} min", "Tilstande": "Modes",
+    "Næste · om {n} min": "Next · in {n} min", "Ingen aftaler i morgen": "Nothing planned tomorrow",
+    "1 tændt": "1 on", "{name} er ulåst": "{name} is unlocked", "Alt er låst": "All locked", "Alarm {state}": "Alarm {state}",
+    "1 dør låst": "1 door locked", "{n} døre låst": "{n} doors locked", "Skift alarm til Hjemme": "Switch the alarm to Home",
+    "Alarm frakoblet": "Alarm disarmed", "tryk for {mode}": "tap for {mode}", "Alarm": "Alarm", "alarm {state}": "alarm {state}",
+    "Vindue åbent": "Window open", "{n} døre er ulåst": "{n} doors are unlocked", "Låst op {time}": "Unlocked {time}",
+    "alarm {state} er aktiv": "alarm {state} is on", "alarm frakoblet": "alarm disarmed", "Lås {n} døre": "Lock {n} doors",
+    "Pause": "Pause", "Tændt · tryk for at slukke": "On · tap to turn off", "{n} tændt · sluk": "{n} on · turn off",
+    "Vis {name} live": "Show {name} live", "tæt maske": "mask sealed", "høj lækage": "high leak",
+    "1 kamera": "1 camera", "Alle {n} kameraer": "All {n} cameras", "{mode} kl. {time}": "{mode} at {time}",
+    "Godnat er kørt": "Goodnight has run", "Skiftet manuelt": "Switched by hand", "Efter tidsplanen": "On schedule",
+    "derefter {next}": "then {next}", "Skift tilstand nu": "Switch mode now", "Følg tidsplanen igen": "Follow the schedule again",
+    "Til · {n} min tilbage": "On · {n} min left", "Alle kort i {n} min": "Every card for {n} min",
+    "{mode} tidligere": "{mode} earlier", "{mode} senere": "{mode} later", "Starttider": "Start times", "Hverdage": "Weekdays",
+    "Weekend": "Weekend", "Godnat skifter til Nat med det samme. Weekend er lørdag og søndag.": "Goodnight switches to Night right away. The weekend is Saturday and Sunday.",
+    "Kort pr. tilstand": "Cards per mode", "Nulstil til standard": "Reset to defaults", "Kunne ikke gemme": "Could not save", "Gemt": "Saved",
+    "Genveje": "Shortcuts",
+    "Tidstilstande": "Time-of-day modes", "Starttider og kort": "Start times and cards",
+    "Morgen, Dag, Aften og Nat skifter efter klokken og viser hver sine kort. Kan også justeres på enheden under Menu → Tilstande.": "Morning, Day, Evening and Night change with the clock and each show their own cards. Can also be adjusted on the device under Menu → Modes."
+  });
 
   function currentLanguage() {
     const stored = typeof BeastLocalSettings !== "undefined" ? BeastLocalSettings.get("language", "en") : "en";
