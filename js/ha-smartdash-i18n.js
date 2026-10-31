@@ -402,7 +402,7 @@
     "Frakobl alarmen?": "Disarm the alarm?", "Tilkobl alarmen · {mode}": "Arm the alarm · {mode}", "Forkert kode": "Wrong code",
     "Kunne ikke tilkoble": "Could not arm", "Kunne ikke frakoble": "Could not disarm",
     "Indtast alarmkode": "Enter alarm code", "Koden sendes direkte og gemmes ikke": "The code is sent directly and never stored",
-    "Godnat": "Good night", "Låser døre": "Locks doors", "Godnat om {n}…": "Good night in {n}…",
+    "Godnat": "Good night", "Tryk for at se alt": "Tap to see everything", "Låser døre": "Locks doors", "Godnat om {n}…": "Good night in {n}…",
     "Låser {name}": "Locks {name}", "Låser {n} døre": "Locks {n} doors", "slukker {name}": "turns off {name}", "slukker {n} lys": "turns off {n} lights",
     "Tryk for at annullere": "Tap to cancel", "Kører…": "Running…", "Godnat · {time}": "Good night · {time}", "Kunne ikke køre — prøv igen": "Could not run — try again",
     "Søvn · CPAP": "Sleep · CPAP", "Søvn & CPAP": "Sleep & CPAP", "Åbn søvn og CPAP": "Open sleep and CPAP",

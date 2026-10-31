@@ -1,5 +1,16 @@
 [
   {
+    "version": "20261101-2",
+    "tag": "v0.8.84",
+    "date": "2026-11-01",
+    "changes": [
+      {
+        "da": "Om natten åbner et tryk på soveværelsessidens ur nu hele siden med alt i 10 minutter, og en lille tekst viser, at man kan trykke. (Claude AI)",
+        "en": "At night a tap on the bedroom page clock now opens the full page with everything for 10 minutes, and a small hint shows that it can be tapped."
+      }
+    ]
+  },
+  {
     "version": "20261101-1",
     "tag": "v0.8.83",
     "date": "2026-11-01",

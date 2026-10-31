@@ -1,3 +1,7 @@
+## 0.8.84
+
+- Om natten åbner et tryk på soveværelsessidens ur nu hele siden med alt i 10 minutter, og en lille tekst viser, at man kan trykke. (Claude AI)
+
 ## 0.8.83
 
 - Soveværelsesenhedens pauseskærm viser nu en rolig vejranimation efter det aktuelle vejr (stjerner, sol, skyer, regn, sne, tåge), et tryk åbner soveværelsessiden direkte, og genvejene står altid diskret nederst. (Claude AI)

@@ -553,7 +553,7 @@ window.BeastBedroom = (() => {
   function nightMarkup() {
     return `<div class="bd-page bd-nat" data-shape="nat">
       <div class="bd-nat-top"><span class="bd-nat-title" data-bd-nat-title></span>${menuButtonMarkup()}</div>
-      <div class="bd-nat-mid"><div class="bd-nat-clock" data-bd-nat-clock></div><div class="bd-nat-date" data-bd-nat-date></div><div class="bd-nat-pills" data-bd-nat-pills></div></div>
+      <div class="bd-nat-mid"><div class="bd-nat-clock" data-bd-nat-clock></div><div class="bd-nat-date" data-bd-nat-date></div><div class="bd-nat-pills" data-bd-nat-pills></div><div class="bd-nat-hint">${esc(t("Tryk for at se alt"))}</div></div>
       <div class="bd-nat-alerts" data-bd-nat-alerts></div>
       <div class="bd-nat-dock" data-bd-nat-dock></div>
     </div>`;
@@ -2323,6 +2323,10 @@ window.BeastBedroom = (() => {
 
   function onClick(event) {
     const target = event.target.closest("[data-bd-action]");
+    if (!target && event.target.closest(".bd-nat") && !event.target.closest("button, a, input, [role=\"button\"], .bd-nat-dock")) {
+      setShowAll(true);
+      return;
+    }
     if (!target || !root.contains(target) || target.disabled) return;
     const id = target.dataset.entity;
     switch (target.dataset.bdAction) {
