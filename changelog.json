@@ -1,5 +1,24 @@
 [
   {
+    "version": "20261031-3",
+    "tag": "v0.8.82",
+    "date": "2026-10-31",
+    "changes": [
+      {
+        "da": "Soveværelsessiden skifter nu mellem Morgen, Dag, Aften og Nat og viser kun det, der er brug for: nattens søvndata om morgenen, kameraer og kalender om dagen, medier, Sikring og Godnat om aftenen og et roligt ur med dørstatus om natten. Ulåste døre, åbne vinduer og tændte afspillere bliver fremhævet, når det er relevant. Godnat skifter straks til Nat. (Claude AI)",
+        "en": "The bedroom page now switches between Morning, Day, Evening and Night and only shows what is needed: last night's sleep data in the morning, cameras and calendar during the day, media, security and Goodnight in the evening, and a calm clock with door status at night. Unlocked doors, open windows and playing media are highlighted when relevant. Goodnight switches to Night immediately."
+      },
+      {
+        "da": "Tidstilstandene kan justeres i soveværelsesmenuen under Tilstande og i Administration: tider for hverdag og weekend, hvilke kort der vises i hver tilstand og Vis alt i 10 minutter. (Claude AI)",
+        "en": "The time modes can be adjusted in the bedroom menu under Modes and in Administration: weekday and weekend times, which cards each mode shows and Show all for 10 minutes."
+      },
+      {
+        "da": "På soveværelsesenheden viser et tryk på pauseskærmen genveje til Soveværelse, Kameraer, Lys og Søvn, og kameravisningen viser nu alle husets kameraer med tryk for stort livebillede. (Claude AI)",
+        "en": "On the bedroom device a tap on the screensaver shows shortcuts to Bedroom, Cameras, Lights and Sleep, and the camera view now shows all cameras in the house with tap for a large live view."
+      }
+    ]
+  },
+  {
     "version": "20261031-2",
     "tag": "v0.8.81",
     "date": "2026-10-31",

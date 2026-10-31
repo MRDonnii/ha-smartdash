@@ -1,3 +1,9 @@
+## 0.8.82
+
+- Soveværelsessiden skifter nu mellem Morgen, Dag, Aften og Nat og viser kun det, der er brug for: nattens søvndata om morgenen, kameraer og kalender om dagen, medier, Sikring og Godnat om aftenen og et roligt ur med dørstatus om natten. Ulåste døre, åbne vinduer og tændte afspillere bliver fremhævet, når det er relevant. Godnat skifter straks til Nat. (Claude AI)
+- Tidstilstandene kan justeres i soveværelsesmenuen under Tilstande og i Administration: tider for hverdag og weekend, hvilke kort der vises i hver tilstand og Vis alt i 10 minutter. (Claude AI)
+- På soveværelsesenheden viser et tryk på pauseskærmen genveje til Soveværelse, Kameraer, Lys og Søvn, og kameravisningen viser nu alle husets kameraer med tryk for stort livebillede. (Claude AI)
+
 ## 0.8.81
 
 - Hver enhed har nu en enhedstype under Administration → Denne enhed: Kiosk (standard) eller Soveværelse. En soveværelsesenhed viser kun soveværelsessiden uden menulinje, og en kiosk kan ikke vise den. Skift kræver pinkoden. (Claude AI)
