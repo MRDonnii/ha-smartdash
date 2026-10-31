@@ -274,6 +274,11 @@ window.BeastBedroom = (() => {
   }
 
   function modeLabel(mode) { return t(Modes.LABELS[mode] || mode); }
+  function pageModeFor(mode) { return mode === "nat" ? "aften" : mode; }
+  function goodnightRanTonight(info) {
+    const at = goodnightAt();
+    return info.mode === "nat" && at > 0 && Date.now() - at < 12 * 60 * 60 * 1000;
+  }
 
   function lockIsOpen(id) {
     const value = state(id)?.state;
@@ -309,7 +314,6 @@ window.BeastBedroom = (() => {
     const fans = list(c.fans);
     const isOn = (id) => (pendingFor(id)?.on ?? state(id)?.state === "on");
     if (mode === "alle") return [...switches, ...helpers, ...fans];
-    if (mode === "nat") return fans.filter((id) => fanShown(id, settings, true));
     const shownFans = fans.filter((id) => fanShown(id, settings));
     if (mode === "morgen") return [...switches.filter(isOn), ...shownFans];
     if (mode === "dag") return shownFans;
@@ -329,8 +333,11 @@ window.BeastBedroom = (() => {
     const c = cfg();
     const sleep = window.BeastBedroom?.sleep;
     const info = modeInfo();
-    const mode = info.showAll ? "alle" : info.mode;
-    const on = (card) => mode === "alle" || info.settings.cards[info.mode][card] !== false;
+    // Nat lives on the screensaver; woken during Nat the page shows the
+    // Aften composition (with Aften's cards).
+    const pageMode = pageModeFor(info.mode);
+    const mode = info.showAll ? "alle" : pageMode;
+    const on = (card) => mode === "alle" || info.settings.cards[pageMode][card] !== false;
     const has = {
       cams: list(c.cameras).length > 0,
       sleep: Boolean(sleep?.configured()),
@@ -350,8 +357,8 @@ window.BeastBedroom = (() => {
     const unlocked = unlockedDoors().length;
     const flags = {
       mode,
-      cams: has.cams && on("cams") && mode !== "nat",
-      sleep: has.sleep && on("sleep") && mode !== "nat",
+      cams: has.cams && on("cams"),
+      sleep: has.sleep && on("sleep"),
       cal: has.cal && on("cal"),
       sec,
       lights,
@@ -359,9 +366,9 @@ window.BeastBedroom = (() => {
       comfort: comfort.join(","),
       media: mediaInCtrl,
       mediaPanel,
-      mediaOn: mode === "nat" && has.media && on("media") ? mediaIds().filter(mediaIsOn).join(",") : "",
       ctrl: lights || scenes || comfort.length > 0 || mediaInCtrl,
-      night: goodnightPlan().any && (mode === "aften" || mode === "alle"),
+      // Once Godnat has run tonight its button steps aside until the next Aften.
+      night: goodnightPlan().any && (mode === "aften" || mode === "alle") && !goodnightRanTonight(info),
       sleepHero: mode === "morgen" && sleepFresh(),
       secHero: sec && mode === "aften" && unlocked > 0,
       secCompact: sec && (mode === "morgen" || (mode === "aften" && unlocked === 0)),
@@ -369,7 +376,7 @@ window.BeastBedroom = (() => {
     };
     // A combination the mode grids cannot place uses the base grid, which
     // has no media card of its own: the players join the controls.
-    if (!["alle", "nat"].includes(mode) && (flags.cams || flags.sleep || flags.cal || flags.sec || flags.ctrl || flags.mediaPanel)
+    if (mode !== "alle" && (flags.cams || flags.sleep || flags.cal || flags.sec || flags.ctrl || flags.mediaPanel)
       && (!checkedModeLayout(flags, "l") || !checkedModeLayout(flags, "p"))) {
       flags.layoutFallback = true;
       if (flags.mediaPanel) { flags.mediaPanel = false; flags.media = true; flags.ctrl = true; }
@@ -548,19 +555,7 @@ window.BeastBedroom = (() => {
     return `<button type="button" class="bd-menu-btn" data-bd-action="menu" aria-label="${esc(t("Vis menu"))}">${icon("grid", 18)}</button>`;
   }
 
-  // Nat: a column of its own: a quiet top bar, the big clock with a row of
-  // status pills, an optional alert and the light dock at the bottom.
-  function nightMarkup() {
-    return `<div class="bd-page bd-nat" data-shape="nat">
-      <div class="bd-nat-top"><span class="bd-nat-title" data-bd-nat-title></span>${menuButtonMarkup()}</div>
-      <div class="bd-nat-mid"><div class="bd-nat-clock" data-bd-nat-clock></div><div class="bd-nat-date" data-bd-nat-date></div><div class="bd-nat-pills" data-bd-nat-pills></div><div class="bd-nat-hint">${esc(t("Tryk for at se alt"))}</div></div>
-      <div class="bd-nat-alerts" data-bd-nat-alerts></div>
-      <div class="bd-nat-dock" data-bd-nat-dock></div>
-    </div>`;
-  }
-
   function pageMarkup(f, entering = false) {
-    if (f.mode === "nat") return nightMarkup();
     const any = f.cams || f.sleep || f.cal || f.sec || f.ctrl || f.mediaPanel;
     const fallback = f.mode === "alle" || f.layoutFallback;
     const landscape = any ? (!fallback && checkedModeLayout(f, "l")) || landscapeLayout(f) : null;
@@ -1072,7 +1067,9 @@ window.BeastBedroom = (() => {
     const host = panel?.querySelector("[data-bd-cal-list]");
     if (!host || !active) return;
     const now = Date.now();
-    const mode = flags.mode;
+    // Woken during Nat the page uses the Aften layout; after midnight the
+    // day to look ahead to is today, so the list is not cut to tomorrow.
+    const mode = flags.mode === "aften" && new Date(now).getHours() < 12 ? "dag" : flags.mode;
     const next = mode === "morgen" ? nextTodayEvent(now) : null;
     const { groups, tomorrowKey } = calendarRows(now, { fromTomorrow: mode === "aften", skip: next });
     const boundary = groups.flatMap((group) => group.rows).map((row) => (row.ongoing ? row.end : row.start)).concat(next ? [next.start] : []).filter((at) => at > now).sort((a, b) => a - b)[0] || 0;
@@ -1107,17 +1104,34 @@ window.BeastBedroom = (() => {
     else meta.textContent = lastShown && lastShown > tomorrowKey ? t("De næste dage") : t("I dag og i morgen");
   }
 
-  // Nat: the first event of the coming day as one pill.
-  function nightCalendarPill(now = Date.now()) {
+  // Screensaver (Aften/Nat): the first timed event of the coming day.
+  // Before noon the coming day is today, after it tomorrow.
+  function comingDayEvent(now = Date.now()) {
     if (!calendarEvents) return null;
     const today = startOfDay(new Date(now));
-    // Before noon the coming day is today, after it tomorrow.
-    const target = new Date(now).getHours() < 12 ? today : addDays(today, 1);
+    const tomorrow = new Date(now).getHours() >= 12;
+    const target = tomorrow ? addDays(today, 1) : today;
     const key = dateKey(target);
-    const events = calendarEvents.filter((event) => event.start > now && dateKey(new Date(event.start)) === key && !event.allDay).sort((a, b) => a.start - b.start);
-    const first = events[0];
+    const first = calendarEvents.filter((event) => event.start > now && dateKey(new Date(event.start)) === key && !event.allDay).sort((a, b) => a.start - b.start)[0];
     if (!first) return null;
-    return { day: capitalize(weekdayName(target)), time: hm(new Date(first.start)), title: first.title };
+    return { day: tomorrow ? t("I morgen") : capitalize(weekdayName(target)), time: hm(new Date(first.start)), title: first.title };
+  }
+
+  // Screensaver (Morgen/Dag): the next timed event, today or else tomorrow.
+  function upcomingEvent(now = Date.now()) {
+    const today = nextTodayEvent(now);
+    if (today) return { day: t("Næste"), time: hm(new Date(today.start)), title: today.title };
+    const tomorrowKey = dateKey(addDays(startOfDay(new Date(now)), 1));
+    const next = (calendarEvents || []).filter((event) => !event.allDay && event.start > now && dateKey(new Date(event.start)) === tomorrowKey).sort((a, b) => a.start - b.start)[0];
+    return next ? { day: t("I morgen"), time: hm(new Date(next.start)), title: next.title } : null;
+  }
+
+  // The screensaver reads the calendar while the page itself may be asleep.
+  function ensureCalendar() {
+    if (!list(cfg().calendars).length) return Promise.resolve(false);
+    if (calendarFetchedAt && Date.now() - calendarFetchedAt < CALENDAR_REFRESH_MS) return Promise.resolve(false);
+    if (!calendarLoading) calendarLoading = loadCalendar().finally(() => { calendarLoading = null; });
+    return calendarLoading.then(() => true);
   }
 
   // Whole rows only: drop rows (and a day header left without rows) from the
@@ -1281,9 +1295,7 @@ window.BeastBedroom = (() => {
 
   function renderLightsEverywhere() {
     blockSignatures.delete("lights");
-    blockSignatures.delete("nat-dock");
     renderLights();
-    renderNat();
     if (layerKind === "lights") renderLightsSheet();
     window.BeastBedroom.menu?.refresh?.();
   }
@@ -1408,7 +1420,6 @@ window.BeastBedroom = (() => {
   }
 
   function renderScenes() {
-    if (flags.mode === "nat") { renderNat(); return; }
     const block = root?.querySelector('[data-bd-block="scenes"]');
     if (!block) return;
     const ids = sceneIds().slice(0, 5);
@@ -1453,7 +1464,6 @@ window.BeastBedroom = (() => {
   }
 
   function renderComfort() {
-    if (flags.mode === "nat") { renderNat(); return; }
     const block = root?.querySelector('[data-bd-block="comfort"]');
     if (!block) return;
     // The ids come from the layout flags so the block and the grid agree.
@@ -1552,7 +1562,6 @@ window.BeastBedroom = (() => {
   // Morgen and Dag the players join the controls only while one is on.
   function renderMedia() {
     if (!root) return;
-    if (flags.mode === "nat") { renderNat(); return; }
     const ctrlBlock = root.querySelector('.bd-ctrl [data-bd-block="media"]');
     const panelBlock = root.querySelector('.bd-mediap [data-bd-block="media"]');
     if (ctrlBlock && !flags.media) ctrlBlock.hidden = true;
@@ -1705,7 +1714,6 @@ window.BeastBedroom = (() => {
   }
 
   function renderSecurity() {
-    if (flags.mode === "nat") { renderNat(); return; }
     const panel = root?.querySelector(".bd-sec");
     if (!panel) return;
     const locks = list(cfg().locks).map(lockModel);
@@ -1770,8 +1778,9 @@ window.BeastBedroom = (() => {
     openConfirm({ title, confirmLabel }, () => run());
   }
 
-  // One tap, unless the lock itself wants a code for locking too.
-  function lockDoor(id) {
+  // One tap, unless the lock itself wants a code for locking too. The
+  // screensaver passes noCode: locking never needs the PIN there.
+  function lockDoor(id, { noCode = false } = {}) {
     const st = state(id);
     const run = (code) => {
       setPending(id, { lock: "lock" }, 20000);
@@ -1779,7 +1788,7 @@ window.BeastBedroom = (() => {
       renderSecurity();
       callService("lock", "lock", id, typeof code === "string" ? { code } : {}).catch((error) => lockFailed(id, t("Kunne ikke låse"), error));
     };
-    if (st?.attributes?.code_format) askCode(st, t("Lås {name}", { name: displayName(id) }), run);
+    if (st?.attributes?.code_format && !noCode) askCode(st, t("Lås {name}", { name: displayName(id) }), run);
     else run();
   }
 
@@ -2029,132 +2038,6 @@ window.BeastBedroom = (() => {
     host.querySelector('[data-confirm="no"]')?.focus();
   }
 
-  // ---------------------------------------------------------------------------
-  // Nat: clock, quiet pills, an alert for unlocked doors, the light dock
-  // ---------------------------------------------------------------------------
-  // The light for getting up: the one named like the motion sensor (e.g.
-  // "Under sengen"), otherwise the first single light.
-  function nightLightId() {
-    const all = lightIds();
-    const groupId = all.length > 2 ? roomGroupId(all) : null;
-    const singles = all.filter((id) => id !== groupId && !Array.isArray(state(id)?.attributes?.entity_id));
-    const motion = motionInfo();
-    const norm = (text) => String(text || "").toLocaleLowerCase(locale()).trim();
-    return (motion && singles.find((id) => norm(displayName(id)) === norm(motion.name))) || singles[0] || all.find((id) => id !== groupId) || null;
-  }
-
-  function nightSceneId() {
-    const ids = sceneIds();
-    return ids.find((id) => /(^|[\s_.-])(nat|night)/i.test(`${id} ${displayName(id)}`)) || ids[0] || null;
-  }
-
-  function pillMarkup({ iconName, html, tone = "", action = "", extra = "" }) {
-    const tag = action ? "button" : "span";
-    return `<${tag}${action ? ` type="button" data-bd-action="${action}"${extra}` : ""} class="bd-np${tone ? ` is-${tone}` : ""}">${iconName ? icon(iconName, 15) : ""}<span>${html}</span></${tag}>`;
-  }
-
-  function nightPills() {
-    const pills = [];
-    const c = cfg();
-    if (flags.sec && !unlockedDoors().length) {
-      const alarm = alarmModel();
-      const locks = list(c.locks);
-      const disarmed = alarm && !alarm.unavailable && alarm.status === "disarmed";
-      if (disarmed && alarm.modes.length) {
-        const target = alarm.modes.some(([mode]) => mode === "night") ? "night" : alarm.modes[0][0];
-        const label = t(ALARM_MODES.find(([mode]) => mode === target)[2]);
-        pills.push(pillMarkup({ iconName: "shield", tone: "warn", action: "arm", extra: ` data-mode="${target}"`, html: `<b>${esc(t("Alarm frakoblet"))}</b><em> · ${esc(t("tryk for {mode}", { mode: label.toLocaleLowerCase(locale()) }))}</em>` }));
-      } else {
-        const alarmText = alarm && !alarm.unavailable ? ` · ${t("alarm {state}", { state: alarmLabel(alarm).toLocaleLowerCase(locale()) })}` : "";
-        if (locks.length || alarmText) pills.push(pillMarkup({ iconName: "check", html: `<b>${esc(locks.length ? t("Alt er låst") : t("Alarm"))}</b><em>${esc(alarmText)}</em>` }));
-      }
-    }
-    if (flags.cal) {
-      const event = nightCalendarPill();
-      if (event) pills.push(pillMarkup({ iconName: "cal", html: `${esc(event.day)} <b>${esc(event.time)} ${esc(event.title)}</b>` }));
-    }
-    const temp = numberState(single(c.temperature));
-    const humidity = numberState(single(c.humidity));
-    const climate = [temp == null ? "" : `${fmt(temp, 1)}°`, humidity == null ? "" : `${fmt(humidity, 0)} %`].filter(Boolean).join(" · ");
-    if (climate) pills.push(pillMarkup({ html: esc(climate), tone: "quiet" }));
-    if (state(single(c.window))?.state === "on") pills.push(pillMarkup({ iconName: "unlock", tone: "warn", html: `<b>${esc(t("Vindue åbent"))}</b>` }));
-    return pills.join("");
-  }
-
-  function nightAlerts() {
-    const parts = [];
-    const open = flags.sec ? unlockedDoors() : [];
-    if (open.length) {
-      const alarm = alarmModel();
-      const armed = alarm && !alarm.unavailable && alarm.status.startsWith("armed_");
-      const busy = open.some((id) => pendingFor(id)?.lock);
-      const title = open.length === 1 ? t("{name} er ulåst", { name: displayName(open[0]) }) : t("{n} døre er ulåst", { n: open.length });
-      const subs = [];
-      if (open.length === 1) {
-        const at = Date.parse(state(open[0])?.last_changed || "");
-        if (Number.isFinite(at)) subs.push(t("Låst op {time}", { time: hm(new Date(at)) }));
-      } else subs.push(open.map(displayName).join(", "));
-      if (alarm && !alarm.unavailable) subs.push(armed ? t("alarm {state} er aktiv", { state: alarmLabel(alarm).toLocaleLowerCase(locale()) }) : t("alarm frakoblet"));
-      const label = open.length === 1 ? t("Lås {name}", { name: displayName(open[0]) }) : t("Lås {n} døre", { n: open.length });
-      parts.push(`<div class="bd-nat-alert"><span class="bd-nat-alert-ic">${icon("unlock", 18)}</span><span class="bd-nat-alert-tx"><b>${esc(title)}</b><small>${esc(subs.join(" · "))}</small></span><button type="button" class="bd-nat-alert-btn${busy ? " is-busy" : ""}" data-bd-action="lock-all">${icon("lock", 16)}<span>${esc(busy ? t("Låser…") : label)}</span></button></div>`);
-    }
-    (flags.mediaOn ? flags.mediaOn.split(",") : []).forEach((id) => {
-      const model = mediaModel(id);
-      if (model.unavailable || !model.on) return;
-      const line = model.title && (model.playing || model.paused) ? `${model.title}` : model.verb || t("Tændt");
-      const service = model.isTv || !(model.playing || model.paused) ? "turn_off" : "media_play_pause";
-      parts.push(`<div class="bd-nat-line"><span class="bd-nat-line-ic">${icon(model.isTv ? "tv" : "speaker", 17)}</span><span class="bd-nat-line-tx"><b>${esc(model.name)}</b><small>${esc(line)}</small></span><button type="button" class="bd-nat-line-btn" data-bd-action="media" data-service="${service}" data-entity="${esc(id)}">${esc(service === "turn_off" ? t("Sluk") : t("Pause"))}</button></div>`);
-    });
-    return parts.join("");
-  }
-
-  function nightDock() {
-    const tiles = [];
-    const lightId = flags.lights ? nightLightId() : null;
-    if (lightId) {
-      const motion = motionInfo();
-      tiles.push(`<div class="bd-nat-light">${lightTileMarkup(lightModel(lightId), motion ? { text: motion.short, tone: motion.tone } : null)}</div>`);
-    }
-    const sceneId = flags.scenes ? nightSceneId() : null;
-    if (sceneId) {
-      const pend = pendingFor(sceneId);
-      const activeNow = activeSceneId(sceneIds()) === sceneId;
-      const off = !state(sceneId) || state(sceneId).state === "unavailable";
-      const sub = pend?.scene === "error" ? t("Kunne ikke køre — prøv igen") : activeNow ? t("senest aktiveret") : t("Stemning");
-      tiles.push(`<button type="button" class="bd-nat-tile${activeNow || pend?.scene === "running" ? " is-on" : ""}" data-bd-action="scene" data-entity="${esc(sceneId)}"${off ? " disabled" : ""}><span class="bd-nat-tile-ic">${icon("bulb", 17)}</span><span class="bd-nat-tile-tx"><b>${esc(displayName(sceneId))}</b><small>${esc(capitalize(sub))}</small></span></button>`);
-    }
-    (flags.comfort ? flags.comfort.split(",") : []).forEach((id) => {
-      tiles.push(`<button type="button" class="bd-nat-tile is-on" data-bd-action="toggle" data-entity="${esc(id)}"><span class="bd-nat-tile-ic">${icon(comfortIcon(id), 17)}</span><span class="bd-nat-tile-tx"><b>${esc(displayName(id))}</b><small>${esc(t("Tændt · tryk for at slukke"))}</small></span></button>`);
-    });
-    if (flags.lights) {
-      const others = lightIds().filter((id) => id !== lightId && !Array.isArray(state(id)?.attributes?.entity_id) && lightModel(id).on);
-      tiles.push(`<button type="button" class="bd-nat-tile is-all${others.length ? " is-warn" : ""}" data-bd-action="lights-off"><span class="bd-nat-tile-ic">${icon("bulb", 17)}</span><span class="bd-nat-tile-tx"><b>${esc(t("Alt lys"))}</b><small>${esc(others.length ? t("{n} tændt · sluk", { n: others.length }) : t("Sluk"))}</small></span></button>`);
-    }
-    return { markup: tiles.join(""), n: tiles.length };
-  }
-
-  function renderNat() {
-    const page = root?.querySelector(".bd-nat");
-    if (!page || lightDrag) return;
-    const now = new Date();
-    const set = (selector, html, key) => {
-      if (blockSignatures.get(key) === html) return;
-      blockSignatures.set(key, html);
-      const element = page.querySelector(selector);
-      if (element) element.innerHTML = html;
-    };
-    const [hours, minutes] = hm(now).split(":");
-    set("[data-bd-nat-title]", esc(`${roomTitle()} · ${modeLabel("nat")}`), "nat-title");
-    set("[data-bd-nat-clock]", `<span aria-label="${esc(hm(now))}">${hours}<i>:</i>${minutes}</span>`, "nat-clock");
-    set("[data-bd-nat-date]", esc(capitalize(now.toLocaleDateString(locale(), { weekday: "long", day: "numeric", month: "long" }))), "nat-date");
-    set("[data-bd-nat-pills]", nightPills(), "nat-pills");
-    set("[data-bd-nat-alerts]", nightAlerts(), "nat-alerts");
-    const dock = nightDock();
-    page.querySelector("[data-bd-nat-dock]").dataset.n = String(dock.n);
-    set("[data-bd-nat-dock]", dock.markup, "nat-dock");
-    page.classList.toggle("has-alert", Boolean(page.querySelector(".bd-nat-alert")));
-  }
-
   function allLightsOff() {
     const ids = lightIds();
     if (!ids.length) return;
@@ -2175,11 +2058,6 @@ window.BeastBedroom = (() => {
     // A state that changes the composition (a door unlocked in Aften, a TV
     // turned on) rebuilds the page first; that rebuild renders it.
     if (relayoutIfNeeded()) return;
-    if (flags.mode === "nat") {
-      renderNat();
-      renderSheets();
-      return;
-    }
     renderHeader();
     mountCameras();
     window.BeastBedroom.sleep?.render(root.querySelector(".bd-sleep"));
@@ -2221,12 +2099,6 @@ window.BeastBedroom = (() => {
 
   function onMinute() {
     if (relayoutIfNeeded()) { window.BeastBedroom.menu?.tickClock?.(); return; }
-    if (flags.mode === "nat") {
-      renderNat();
-      window.BeastBedroom.menu?.tickClock?.();
-      window.BeastBedroom.menu?.renderModes?.();
-      return;
-    }
     blockSignatures.delete("media");
     renderHeader();
     updateCameraOverlays();
@@ -2259,6 +2131,7 @@ window.BeastBedroom = (() => {
   }
 
   let calendarChangeTimerId = null;
+  let calendarLoading = null;
   function onEntityChange(entityId, newState, oldState) {
     const entry = pending.get(entityId);
     if (entry && Date.now() - entry.at > 250 && !entry.scene) pending.delete(entityId);
@@ -2323,10 +2196,6 @@ window.BeastBedroom = (() => {
 
   function onClick(event) {
     const target = event.target.closest("[data-bd-action]");
-    if (!target && event.target.closest(".bd-nat") && !event.target.closest("button, a, input, [role=\"button\"], .bd-nat-dock")) {
-      setShowAll(true);
-      return;
-    }
     if (!target || !root.contains(target) || target.disabled) return;
     const id = target.dataset.entity;
     switch (target.dataset.bdAction) {
@@ -2443,6 +2312,13 @@ window.BeastBedroom = (() => {
     openAllCameras,
     modeInfo,
     modeLabel,
+    // For the bedroom screensaver (ha-smartdash-bedroom-saver.js).
+    saver: {
+      relevantIds, lockModel, alarmModel, alarmLabel, mediaModel, mediaIds, mediaIsOn, unlockedDoors, mediaAction, sleepFresh,
+      comingDayEvent, upcomingEvent, ensureCalendar, hasCalendars: () => list(cfg().calendars).length > 0,
+      lockDoors: (ids) => ids.forEach((id) => lockDoor(id, { noCode: true })),
+      lockPending: (id) => Boolean(pendingFor(id)?.lock)
+    },
     setShowAll,
     setManualMode,
     lightModel,

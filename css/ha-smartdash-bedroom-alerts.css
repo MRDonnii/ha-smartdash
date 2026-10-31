@@ -351,3 +351,134 @@ html.beast-bedroom-device .has-bd-shortcuts .beast-ambient-bottom { opacity: 0; 
   html.beast-bedroom-device .beast-bedroom-shortcuts { gap: 8px; }
   html.beast-bedroom-device .bds-btn { min-width: 0; padding: 0 14px 0 12px; font-size: 14px; }
 }
+
+/* ---------- screensaver content (bedroom devices) ----------
+   The bedside screen's Nat view lives on the screensaver: under the clock
+   a row of calm pills, an amber card when a door is unlocked and a line
+   per player that is on. What shows follows the time-of-day mode (see
+   ha-smartdash-bedroom-saver.js). Low luminance throughout, no bright
+   surfaces; it fades (opacity only) while a camera pop-up shows. */
+html.beast-bedroom-device .has-bdv .beast-ambient-summary { display: none; }
+html.beast-bedroom-device .beast-bedroom-saverinfo {
+  --bdv-tx: rgba(234, 223, 203, .62);
+  --bdv-tx-2: rgba(234, 223, 203, .42);
+  --bdv-tx-3: rgba(234, 223, 203, .3);
+  --bdv-line: rgba(234, 223, 203, .07);
+  --bdv-amber: rgba(240, 162, 74, .78);
+  position: relative;
+  z-index: 4;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+  width: min(900px, 100%);
+  margin-top: 18px;
+  color: var(--bdv-tx-2);
+  color-scheme: dark;
+  font-family: "Inter", -apple-system, "SF Pro Text", "Helvetica Neue", Arial, sans-serif;
+  font-feature-settings: "tnum" 1, "cv11" 1, "ss01" 1;
+  -webkit-font-smoothing: antialiased;
+  -webkit-tap-highlight-color: transparent;
+  text-align: left;
+  transition: opacity .4s ease;
+}
+html.beast-bedroom-device .beast-bedroom-saverinfo:empty { display: none; }
+html.beast-bedroom-device .has-bd-alert .beast-bedroom-saverinfo { opacity: 0; pointer-events: none; }
+html.beast-bedroom-device .beast-bedroom-saverinfo .bd-i { display: block; flex: none; fill: none; stroke: currentColor; stroke-linecap: round; stroke-linejoin: round; }
+
+.bdv-pills { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; max-width: 100%; }
+html.beast-bedroom-device .bdv-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  max-width: 100%;
+  height: 44px;
+  padding: 0 16px 0 14px;
+  border: 1px solid var(--bdv-line);
+  border-radius: 22px;
+  background: rgba(10, 11, 14, .55);
+  color: var(--bdv-tx-2);
+  font-size: 15px;
+  white-space: nowrap;
+}
+.bdv-pill .bd-i { color: rgba(240, 162, 74, .42); }
+.bdv-pill-tx { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.bdv-pill b { color: var(--bdv-tx); font-weight: 600; }
+.bdv-pill em { color: var(--bdv-tx-3); font-style: normal; }
+.bdv-ev { color: var(--bdv-tx); }
+.bdv-pill .bdv-ev { display: inline-block; max-width: 300px; overflow: hidden; text-overflow: ellipsis; vertical-align: bottom; }
+.bdv-verdict { color: rgba(255, 194, 122, .62); }
+html.beast-bedroom-device .bdv-pill.is-quiet { color: var(--bdv-tx-3); }
+html.beast-bedroom-device .bdv-pill.is-warn { border-color: rgba(240, 162, 74, .2); background: rgba(26, 16, 8, .7); }
+.bdv-pill.is-warn .bd-i, .bdv-pill.is-warn b { color: var(--bdv-amber); }
+
+/* Unlocked doors (Aften, Nat): the one amber surface, still dark. */
+html.beast-bedroom-device .bdv-card {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  width: min(640px, 100%);
+  min-width: 0;
+  padding: 12px 12px 12px 14px;
+  border: 1px solid rgba(240, 162, 74, .22);
+  border-radius: 22px;
+  background: linear-gradient(90deg, rgba(30, 19, 10, .82) 0%, rgba(12, 10, 8, .7) 100%);
+}
+.bdv-card-ic { display: grid; place-items: center; flex: none; width: 46px; height: 46px; border-radius: 13px; background: rgba(54, 32, 14, .7); color: var(--bdv-amber); }
+.bdv-card-tx, .bdv-line-tx { display: flex; flex-direction: column; gap: 3px; flex: 1 1 auto; min-width: 0; }
+.bdv-card-tx b { overflow: hidden; color: rgba(234, 223, 203, .78); font-size: 18px; font-weight: 500; text-overflow: ellipsis; white-space: nowrap; }
+.bdv-card-tx small, .bdv-line-tx small { overflow: hidden; color: var(--bdv-tx-3); font-size: 13px; text-overflow: ellipsis; white-space: nowrap; }
+html.beast-bedroom-device .bdv-card-btn,
+html.beast-bedroom-device .bdv-line-btn {
+  -webkit-appearance: none;
+  appearance: none;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: none;
+  height: 52px;
+  margin: 0;
+  padding: 0 20px;
+  border: 1px solid rgba(240, 162, 74, .4);
+  border-radius: 16px;
+  background: linear-gradient(180deg, rgba(64, 32, 12, .9) 0%, rgba(40, 20, 9, .9) 100%);
+  color: rgba(255, 194, 122, .9);
+  font: inherit;
+  font-size: 15px;
+  font-weight: 600;
+  white-space: nowrap;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+html.beast-bedroom-device .bdv-card-btn:active { background: rgba(84, 42, 14, .95); }
+html.beast-bedroom-device .bdv-card-btn.is-busy { opacity: .6; }
+
+/* A player that is on: one quiet line with Sluk / Pause. */
+.bdv-lines { display: flex; flex-direction: column; gap: 8px; width: min(560px, 100%); }
+html.beast-bedroom-device .bdv-line {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+  padding: 6px 6px 6px 12px;
+  border: 1px solid var(--bdv-line);
+  border-radius: 18px;
+  background: rgba(10, 11, 14, .55);
+}
+.bdv-line-ic { display: grid; place-items: center; flex: none; width: 36px; height: 36px; border-radius: 11px; color: rgba(240, 162, 74, .42); }
+.bdv-line-tx b { overflow: hidden; color: var(--bdv-tx); font-size: 15px; font-weight: 500; text-overflow: ellipsis; white-space: nowrap; }
+html.beast-bedroom-device .bdv-line-btn { height: 44px; padding: 0 18px; border-color: rgba(234, 223, 203, .1); background: rgba(18, 20, 26, .8); color: var(--bdv-tx); font-size: 14px; font-weight: 500; }
+html.beast-bedroom-device .bdv-line-btn:active { background: rgba(36, 23, 12, .9); }
+
+/* With a door card in landscape the clock gives up some height, so the
+   card and the shortcut row both fit. */
+@media (orientation: landscape) {
+  html.beast-bedroom-device .has-bdv-card .beast-ambient-time,
+  html.beast-bedroom-device .has-bdv-lines .beast-ambient-time { font-size: min(21vw, 27vh); }
+  html.beast-bedroom-device .has-bdv-card.has-bdv-lines .beast-ambient-time { font-size: min(18vw, 22vh); }
+}
+@media (max-width: 700px) {
+  html.beast-bedroom-device .bdv-pill { height: 40px; padding: 0 13px 0 12px; font-size: 14px; }
+  html.beast-bedroom-device .bdv-card { flex-wrap: wrap; }
+  html.beast-bedroom-device .bdv-card-btn { width: 100%; justify-content: center; }
+}

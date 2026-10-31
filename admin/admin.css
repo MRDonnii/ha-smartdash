@@ -684,4 +684,6 @@ html.is-touch .admin-overview-row-head { align-items: center; }
 .admin-modes-table.is-cards td, .admin-modes-table.is-cards thead th:not(:first-child) { text-align: center; }
 .admin-modes-table input[type="time"] { width: 100%; min-height: 44px; }
 .admin-modes-table input[type="checkbox"] { width: 24px; height: 24px; margin: 10px; }
+.admin-modes-table td.is-na { color: var(--muted, inherit); opacity: .6; }
+.admin-modes-note { margin: 0; color: var(--muted, inherit); font-size: 13px; }
 .admin-modes-extra { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; }

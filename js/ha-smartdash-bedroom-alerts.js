@@ -548,7 +548,9 @@ window.BeastBedroomAlerts = (() => {
     const overlay = ambientOverlay();
     if (!overlay || !overlay.contains(event.target)) return;
     if (event.target.closest(".bda-card")) return;
-    if (!alert && event.target.closest("[data-bds]")) { event.stopPropagation(); return; }
+    // Shortcuts and the content's own buttons (Lås, Sluk/Pause) keep the
+    // screensaver up; their click does the work.
+    if (!alert && event.target.closest("[data-bds], [data-bdv]")) { event.stopPropagation(); return; }
     swallowClickUntil = Date.now() + WAKE_CLICK_GUARD_MS;
   }
 

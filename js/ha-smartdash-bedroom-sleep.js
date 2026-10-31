@@ -721,7 +721,7 @@ window.BeastBedroom.sleep = (() => {
   }
 
   return {
-    configured, entityIds, panelMarkup, render, renderDetail, openDetail, onAction, onEntityChange, onActivate, onReconnected, summary,
+    configured, entityIds, model, panelMarkup, render, renderDetail, openDetail, onAction, onEntityChange, onActivate, onReconnected, summary,
     reload: () => loadHistory(true)
   };
 })();

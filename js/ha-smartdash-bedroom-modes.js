@@ -9,6 +9,12 @@ window.BeastBedroomModes = (() => {
   const CARDS = ["cams", "sec", "sleep", "cal", "lights", "scenes", "comfort", "media"];
   const CARD_LABELS = { cams: "Kameraer", sec: "Sikring", sleep: "Søvn", cal: "Kalender", lights: "Lys", scenes: "Stemninger", comfort: "Komfort", media: "Medier" };
   const DAY_TYPES = ["weekday", "weekend"];
+  // Nat has no page of its own: it is the screensaver's night content, and a
+  // screen woken at night shows the Aften page. So in Nat only the cards the
+  // screensaver can show apply (and they apply to the screensaver in every
+  // mode: a card hidden in a mode is hidden on that mode's screensaver too).
+  const SAVER_CARDS = ["sec", "sleep", "cal", "media"];
+  function cardApplies(mode, card) { return mode !== "nat" || SAVER_CARDS.includes(card); }
 
   // Owner-approved defaults (design/amber-modes/rules.md): cameras are not
   // mounted in Morgen and Nat, the CPAP card is hidden at night.
@@ -144,5 +150,5 @@ window.BeastBedroomModes = (() => {
     return result;
   }
 
-  return { MODES, LABELS, CARDS, CARD_LABELS, DAY_TYPES, defaults, normalize, validTime, scheduled, compute, isWeekend, dayType };
+  return { MODES, LABELS, CARDS, CARD_LABELS, DAY_TYPES, SAVER_CARDS, cardApplies, defaults, normalize, validTime, scheduled, compute, isWeekend, dayType };
 })();

@@ -402,7 +402,7 @@
     "Frakobl alarmen?": "Disarm the alarm?", "Tilkobl alarmen · {mode}": "Arm the alarm · {mode}", "Forkert kode": "Wrong code",
     "Kunne ikke tilkoble": "Could not arm", "Kunne ikke frakoble": "Could not disarm",
     "Indtast alarmkode": "Enter alarm code", "Koden sendes direkte og gemmes ikke": "The code is sent directly and never stored",
-    "Godnat": "Good night", "Tryk for at se alt": "Tap to see everything", "Låser døre": "Locks doors", "Godnat om {n}…": "Good night in {n}…",
+    "Godnat": "Good night", "Låser døre": "Locks doors", "Godnat om {n}…": "Good night in {n}…",
     "Låser {name}": "Locks {name}", "Låser {n} døre": "Locks {n} doors", "slukker {name}": "turns off {name}", "slukker {n} lys": "turns off {n} lights",
     "Tryk for at annullere": "Tap to cancel", "Kører…": "Running…", "Godnat · {time}": "Good night · {time}", "Kunne ikke køre — prøv igen": "Could not run — try again",
     "Søvn · CPAP": "Sleep · CPAP", "Søvn & CPAP": "Sleep & CPAP", "Åbn søvn og CPAP": "Open sleep and CPAP",
@@ -464,7 +464,8 @@
     "{mode} tidligere": "{mode} earlier", "{mode} senere": "{mode} later", "Starttider": "Start times", "Hverdage": "Weekdays",
     "Weekend": "Weekend", "Godnat skifter til Nat med det samme. Weekend er lørdag og søndag.": "Goodnight switches to Night right away. The weekend is Saturday and Sunday.",
     "Kort pr. tilstand": "Cards per mode", "Nulstil til standard": "Reset to defaults", "Kunne ikke gemme": "Could not save", "Gemt": "Saved",
-    "Genveje": "Shortcuts",
+    "Genveje": "Shortcuts", "Klart": "Clear",
+    "Nat vises på pauseskærmen. Vækker du skærmen om natten, vises Aftens kort. Kortene gælder også pauseskærmen.": "Night is shown on the screensaver. Wake the screen at night and Evening's cards are shown. The cards also apply to the screensaver.",
     "Tidstilstande": "Time-of-day modes", "Starttider og kort": "Start times and cards",
     "Morgen, Dag, Aften og Nat skifter efter klokken og viser hver sine kort. Kan også justeres på enheden under Menu → Tilstande.": "Morning, Day, Evening and Night change with the clock and each show their own cards. Can also be adjusted on the device under Menu → Modes."
   });

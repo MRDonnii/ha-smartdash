@@ -509,9 +509,11 @@ window.BeastBedroom.menu = (() => {
     const cards = `<section class="bd-ms-card bd-ms-cards"><div class="bd-ms-k">${esc(t("Kort pr. tilstand"))}</div>
       <div class="bd-ms-cgrid"><span></span>${Modes.MODES.map((mode) => `<span class="bd-ms-h${mode === info.mode ? " is-now" : ""}">${esc(B.modeLabel(mode))}</span>`).join("")}
       ${Modes.CARDS.map((card) => `<span class="bd-ms-l">${icon(CARD_ICONS[card], 16)}<span>${esc(t(Modes.CARD_LABELS[card]))}</span></span>${Modes.MODES.map((mode) => {
+        if (!Modes.cardApplies(mode, card)) return `<span class="bd-ms-na" aria-hidden="true">–</span>`;
         const on = draft.cards[mode][card] !== false;
         return `<button type="button" class="bd-ms-tog${on ? " is-on" : ""}" data-ms="card" data-mode="${mode}" data-card="${card}" aria-pressed="${on}" aria-label="${esc(`${t(Modes.CARD_LABELS[card])} · ${B.modeLabel(mode)}`)}">${on ? icon("check", 18) : ""}</button>`;
-      }).join("")}`).join("")}</div></section>`;
+      }).join("")}`).join("")}</div>
+      <p class="bd-ms-note">${esc(t("Nat vises på pauseskærmen. Vækker du skærmen om natten, vises Aftens kort. Kortene gælder også pauseskærmen."))}</p></section>`;
     const foot = `<div class="bd-ms-foot"><button type="button" class="bd-ms-reset" data-ms="reset">${icon("reload", 16)}<span>${esc(t("Nulstil til standard"))}</span></button><span class="bd-ms-saved">${esc(saveNote)}</span></div>`;
     return `<div class="bd-ms">${now}${showAll}${times}${cards}${foot}</div>`;
   }
@@ -564,7 +566,7 @@ window.BeastBedroom.menu = (() => {
       case "follow": B.setManualMode(null); break;
       case "showall": B.setShowAll(!B.modeInfo().showAll); break;
       case "time": shiftTime(target.dataset.type, target.dataset.mode, Number(target.dataset.delta)); break;
-      case "card": draft.cards[target.dataset.mode][target.dataset.card] = !(draft.cards[target.dataset.mode][target.dataset.card] !== false); saveModes(); break;
+      case "card": if (!Modes.cardApplies(target.dataset.mode, target.dataset.card)) return; draft.cards[target.dataset.mode][target.dataset.card] = !(draft.cards[target.dataset.mode][target.dataset.card] !== false); saveModes(); break;
       case "reset": draft = Modes.defaults(); saveModes(true); break;
       default: return;
     }
