@@ -1,3 +1,8 @@
+## 0.8.83
+
+- Soveværelsesenhedens pauseskærm viser nu en rolig vejranimation efter det aktuelle vejr (stjerner, sol, skyer, regn, sne, tåge), et tryk åbner soveværelsessiden direkte, og genvejene står altid diskret nederst. (Claude AI)
+- Åbne skærme genindlæser nu automatisk den nyeste version, når serveren er opdateret, men kun når pauseskærmen er på, eller ingen har rørt skærmen i to minutter. (Claude AI)
+
 ## 0.8.82
 
 - Soveværelsessiden skifter nu mellem Morgen, Dag, Aften og Nat og viser kun det, der er brug for: nattens søvndata om morgenen, kameraer og kalender om dagen, medier, Sikring og Godnat om aftenen og et roligt ur med dørstatus om natten. Ulåste døre, åbne vinduer og tændte afspillere bliver fremhævet, når det er relevant. Godnat skifter straks til Nat. (Claude AI)

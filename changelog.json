@@ -1,5 +1,20 @@
 [
   {
+    "version": "20261101-1",
+    "tag": "v0.8.83",
+    "date": "2026-11-01",
+    "changes": [
+      {
+        "da": "Soveværelsesenhedens pauseskærm viser nu en rolig vejranimation efter det aktuelle vejr (stjerner, sol, skyer, regn, sne, tåge), et tryk åbner soveværelsessiden direkte, og genvejene står altid diskret nederst. (Claude AI)",
+        "en": "The bedroom device's screensaver now shows a calm weather animation for the current weather (stars, sun, clouds, rain, snow, fog), a tap opens the bedroom page directly, and the shortcuts are always shown discreetly at the bottom."
+      },
+      {
+        "da": "Åbne skærme genindlæser nu automatisk den nyeste version, når serveren er opdateret, men kun når pauseskærmen er på, eller ingen har rørt skærmen i to minutter. (Claude AI)",
+        "en": "Open screens now automatically reload onto the newest version after the server is updated, but only while the screensaver is on or nobody has touched the screen for two minutes."
+      }
+    ]
+  },
+  {
     "version": "20261031-3",
     "tag": "v0.8.82",
     "date": "2026-10-31",
