@@ -1,3 +1,9 @@
+## 0.8.81
+
+- Hver enhed har nu en enhedstype under Administration → Denne enhed: Kiosk (standard) eller Soveværelse. En soveværelsesenhed viser kun soveværelsessiden uden menulinje, og en kiosk kan ikke vise den. Skift kræver pinkoden. (Claude AI)
+- Godnat er nu en indbygget rutine: den låser de valgte døre (som standard alle soveværelsessidens låse), slukker kun lys, hvis det er valgt, og kan til sidst aktivere en scene. Den rører aldrig alarmen, og undertitlen viser, hvad der sker. (Claude AI)
+- Komfort på soveværelsessiden kan også vise til/fra-hjælpere (input_boolean). (Claude AI)
+
 ## 0.8.80
 
 - Soveværelsessiden har fået et nyt, varmt ravfarvet design med kameraerne i fokus, og menusiden, PIN-tastaturet og søvnkortet følger med. På soveværelses-iPad'en er pauseskærmens ur større, og når et kamera popper op ved aktivitet i alarmzonerne, glider uret op i hjørnet, så kameraet kan fylde det meste af skærmen. (Claude AI)

@@ -1,5 +1,24 @@
 [
   {
+    "version": "20261031-2",
+    "tag": "v0.8.81",
+    "date": "2026-10-31",
+    "changes": [
+      {
+        "da": "Hver enhed har nu en enhedstype under Administration → Denne enhed: Kiosk (standard) eller Soveværelse. En soveværelsesenhed viser kun soveværelsessiden uden menulinje, og en kiosk kan ikke vise den. Skift kræver pinkoden. (Claude AI)",
+        "en": "Each device now has a device type under Administration → This device: Kiosk (default) or Bedroom. A bedroom device shows only the bedroom page without the navigation bar, and a kiosk cannot show it. Changing it requires the PIN."
+      },
+      {
+        "da": "Godnat er nu en indbygget rutine: den låser de valgte døre (som standard alle soveværelsessidens låse), slukker kun lys, hvis det er valgt, og kan til sidst aktivere en scene. Den rører aldrig alarmen, og undertitlen viser, hvad der sker. (Claude AI)",
+        "en": "Goodnight is now a built-in routine: it locks the chosen doors (by default all locks on the bedroom page), only turns lights off when chosen, and can finish with a scene. It never touches the alarm, and its subtitle shows what will happen."
+      },
+      {
+        "da": "Komfort på soveværelsessiden kan også vise til/fra-hjælpere (input_boolean). (Claude AI)",
+        "en": "Comfort on the bedroom page can also show on/off helpers (input_boolean)."
+      }
+    ]
+  },
+  {
     "version": "20261031-1",
     "tag": "v0.8.80",
     "date": "2026-10-31",
