@@ -1,3 +1,7 @@
+## 0.8.88
+
+- Overblikket og de øvrige sider ser nu pæne ud på en stående skærm bredere end 1100 px (fx en roteret 1440p-skærm): kortene bruger de to-kolonne tablet-størrelser i stedet for at blive strakt over hele højden som lange strimler, kameraer vises tre ved siden af hinanden, og ventilationskortet får fuld bredde og plads til tegningen. Kameraer, Energi, Sikkerhed og Varme holder landskabets proportioner i stedet for at strække rækkerne over skærmens fulde højde. Liggende skærme og telefoner er uændrede. (Claude AI)
+
 ## 0.8.87
 
 - Første opsætning finder nu selv Home Assistant på netværket: loginskærmen og administrationen viser de installationer, der blev fundet (mDNS og en scanning af port 8123), og du vælger din i stedet for at taste en IP-adresse. Docker, Unraid og tilføjelsen kan startes uden HA_URL, og serveren husker valget; uden for Docker viser installationsscriptet en nummereret liste. Manuel indtastning findes stadig, og loginskærmen er oversat til engelsk. (Claude AI)

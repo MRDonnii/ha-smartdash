@@ -1,5 +1,16 @@
 [
   {
+    "version": "20261101-6",
+    "tag": "v0.8.88",
+    "date": "2026-11-01",
+    "changes": [
+      {
+        "da": "Overblikket og de øvrige sider ser nu pæne ud på en stående skærm bredere end 1100 px (fx en roteret 1440p-skærm): kortene bruger de to-kolonne tablet-størrelser i stedet for at blive strakt over hele højden som lange strimler, kameraer vises tre ved siden af hinanden, og ventilationskortet får fuld bredde og plads til tegningen. Kameraer, Energi, Sikkerhed og Varme holder landskabets proportioner i stedet for at strække rækkerne over skærmens fulde højde. Liggende skærme og telefoner er uændrede. (Claude AI)",
+        "en": "The overview and the other pages now look good on a portrait screen wider than 1100 px (for example a rotated 1440p monitor): cards use the two-column tablet sizes instead of being stretched over the full height as tall strips, cameras are shown three side by side, and the ventilation card gets the full width and room for its drawing. Cameras, Energy, Security and Heating keep landscape proportions instead of stretching their rows over the full screen height. Landscape screens and phones are unchanged. (Claude AI)"
+      }
+    ]
+  },
+  {
     "version": "20261101-5",
     "tag": "v0.8.87",
     "date": "2026-11-01",

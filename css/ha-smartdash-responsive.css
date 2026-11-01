@@ -319,6 +319,31 @@ html, body, .beast-app { width: 100%; height: 100%; height: 100dvh; }
   .beast-overview-grid.is-freeform > .beast-ov-card { grid-column:span 1 !important; grid-row:span var(--portrait-h) !important; min-height:0 !important; height:auto; }
 }
 
+/* A tall screen wider than 1100px (e.g. a rotated 1440p monitor) would
+   otherwise keep the landscape 12-column grid and stretch its few rows over
+   the whole height. Use the tablet sizes in two columns instead; rows are
+   half-units that share the height, so the page is filled without cards
+   turning into tall strips. Ventilation spans the full width at 1.5 units
+   and cameras sit in 1.5 units so three 16:9 tiles fit without blank bands. */
+@media (orientation: portrait) and (min-width: 1101px) {
+  .beast-overview-grid.is-freeform { grid-template-columns:repeat(2,minmax(0,1fr)); grid-template-rows:none; grid-auto-rows:minmax(110px,1fr); }
+  .beast-overview-grid.is-freeform > .beast-ov-card { grid-column:span var(--tablet-w) !important; grid-row:span calc(var(--tablet-h) * 2) !important; min-height:0 !important; height:auto; }
+  .beast-overview-grid.is-freeform > .beast-ov-card[data-card="ventilation"] { grid-column:1 / -1 !important; grid-row:span calc(var(--tablet-h) * 2 + 1) !important; }
+  .beast-overview-grid.is-freeform > .beast-ov-card[data-card="cameras"] { grid-row:span calc(var(--tablet-h) * 2 - 1) !important; }
+  /* Pages with the 12-column editor layout size their rows to the viewport
+     height; cap the row height so a tall screen keeps landscape proportions. */
+  .beast-section .beast-native-layout-grid { flex:0 0 auto; height:min(100%, calc(var(--native-total-rows, 12) * 88px + (var(--native-total-rows, 12) - 1) * var(--space-4))) !important; }
+  .beast-section .beast-energy-panel.has-native-layout,
+  .beast-section .beast-security-panel { flex:0 0 auto; height:min(100%, 1500px); }
+  @container (min-aspect-ratio: 3 / 2) {
+    .beast-overview-grid.is-freeform .beast-ov-camera-strip,
+    .beast-overview-grid.is-freeform .beast-ov-camera-strip[data-count] { grid-template-columns:repeat(3,minmax(0,1fr)); grid-template-rows:auto; align-content:center; }
+    .beast-overview-grid.is-freeform .beast-ov-camera-strip[data-count="1"] { grid-template-columns:minmax(0,1fr); }
+    .beast-overview-grid.is-freeform .beast-ov-camera-strip[data-count="2"] { grid-template-columns:repeat(2,minmax(0,1fr)); }
+    .beast-overview-grid.is-freeform .beast-ov-camera-thumb { width:100%; height:auto; aspect-ratio:16 / 9; }
+  }
+}
+
 /* The two rules above key off viewport width, but the rail (96-142px) and
    .beast-content's own padding (64px) eat into that before the grid ever
    sees it -- at a 1280px viewport there's only ~1140-1180px actually left
