@@ -54,25 +54,88 @@ window.BeastStandardCards = (function () {
     historyCache.set(entityId, { promise, at: Date.now() }); return promise;
   }
 
-  function templatePriceValues(bindings) {
+  // The bars of the "Elpris" card: [{ price, label, start? }]. The first list with at least four prices wins, as
+  // before. Lists with timestamps follow the shared 1 time / 15 min choice (BeastEnergyPrices, energy.js) and show
+  // the 24 hours from the first entry -- 24 bars on 1 time, 96 on 15 min. Lists without timestamps keep the old
+  // behaviour: the first 24 values, one per hour.
+  function templatePriceEntries(bindings) {
+    const prices = window.BeastEnergyPrices;
     const states = [bindings.forecast, bindings.tomorrow, bindings.price].filter(Boolean).map((id) => BeastHaSocket.getState(id)).filter(Boolean);
+    let quarterAvailable = false;
+    let result = null;
     for (const state of states) {
       for (const value of Object.values(state.attributes || {})) {
         const list = Array.isArray(value?.value) ? value.value : (Array.isArray(value) ? value : null);
         if (!list) continue;
-        const prices = list.map((entry) => Number(typeof entry === "number" ? entry : entry?.price ?? entry?.value)).filter(Number.isFinite);
-        if (prices.length >= 4) return prices.slice(0, 24);
+        const values = list.map((entry) => Number(typeof entry === "number" ? entry : entry?.price ?? entry?.value)).filter(Number.isFinite);
+        if (values.length < 4) continue;
+        if (result) continue;
+        const slots = timedSlots(list);
+        if (prices && slots.length === values.length) {
+          quarterAvailable = prices.hasQuarters(slots);
+          const shaped = prices.shapeSlots(slots);
+          const limit = new Date(shaped[0].start).getTime() + 24 * 3600000;
+          result = shaped.filter((slot) => new Date(slot.start).getTime() < limit).map((slot) => {
+            const start = new Date(slot.start);
+            return { price: slot.price, start, label: `${String(start.getHours()).padStart(2, "0")}:${String(start.getMinutes()).padStart(2, "0")}` };
+          });
+        } else {
+          result = values.slice(0, 24).map((price, index) => ({ price, label: `${index}:00` }));
+        }
       }
+      if (result) break;
     }
-    return [];
+    return { entries: result || [], quarterAvailable };
+  }
+
+  function timedSlots(list) {
+    if (!window.BeastEnergyPrices) return [];
+    const entries = [];
+    list.forEach((entry) => {
+      const price = Number(typeof entry === "number" ? entry : entry?.price ?? entry?.value);
+      const date = new Date(entry?.start || entry?.time || entry?.datetime || NaN);
+      if (!Number.isFinite(price) || Number.isNaN(date.getTime())) return;
+      const end = entry?.end ? new Date(entry.end) : null;
+      entries.push({ start: date.toISOString(), end: end && !Number.isNaN(end.getTime()) ? end.toISOString() : undefined, price });
+    });
+    return window.BeastEnergyPrices.slots(entries);
   }
 
   function renderPriceTemplate(host, card, bindings) {
     const current = BeastHaSocket.getState(bindings.price);
-    const prices = templatePriceValues(bindings);
+    const { entries, quarterAvailable } = templatePriceEntries(bindings);
     const currentValue = Number(current?.state);
-    const max = Math.max(...prices, 1);
-    host.innerHTML = `<div class="beast-template-energy-price"><header><div><small>Energi</small><strong>${escape(card.dataset.label || "Elpris time for time")}</strong></div><b>${Number.isFinite(currentValue) ? `${currentValue.toFixed(2)} kr/kWh` : "–"}</b></header>${prices.length ? `<div class="beast-template-energy-bars">${prices.map((price, index) => `<i style="--h:${Math.max(8, price / max * 100)}%;--c:${price < 1.5 ? "var(--success)" : price < 3 ? "var(--warning)" : "var(--danger)"}" title="${index}:00 · ${price.toFixed(2)} kr/kWh"></i>`).join("")}</div>` : `<em>Ingen prisprognose på den valgte entity</em>`}</div>`;
+    const max = Math.max(...entries.map((entry) => entry.price), 1);
+    const bars = entries.map((entry) => {
+      const price = entry.price;
+      return `<i style="--h:${Math.max(8, price / max * 100)}%;--c:${price < 1.5 ? "var(--success)" : price < 3 ? "var(--warning)" : "var(--danger)"}" title="${entry.label} · ${price.toFixed(2)} kr/kWh"></i>`;
+    }).join("");
+    const toggle = window.BeastEnergyPrices && quarterAvailable ? window.BeastEnergyPrices.toggleMarkup(true, "is-compact") : "";
+    // The default title follows what is shown; a renamed card keeps its own name.
+    const showsQuarters = entries.length > 1 && entries[0].start && entries[1].start && new Date(entries[1].start) - new Date(entries[0].start) < 3600000;
+    const baseTitle = card.dataset.label || "Elpris time for time";
+    const priceTitle = baseTitle === "Elpris time for time" && showsQuarters ? "Elpris kvarter for kvarter" : baseTitle;
+    host.innerHTML = `<div class="beast-template-energy-price"><header><div><small>Energi</small><strong>${escape(priceTitle)}</strong></div>${toggle}<b>${Number.isFinite(currentValue) ? `${currentValue.toFixed(2)} kr/kWh` : "–"}</b></header>${entries.length ? `<div class="beast-template-energy-bars${entries.length > 30 ? " is-dense" : ""}">${bars}</div>` : `<em>Ingen prisprognose på den valgte entity</em>`}</div>`;
+  }
+
+  // Redraws only the price cards when the choice changes, instead of re-wiring every standard card on the page.
+  function refreshPriceTemplates() {
+    document.querySelectorAll('[data-standard-card][data-template-id="energy-price-card"] .beastStandardCardBody').forEach((host) => {
+      const card = host.closest("[data-standard-card]");
+      let bindings = {}; try { bindings = JSON.parse(decodeURIComponent(card.dataset.bindings || "%7B%7D")); } catch (_) { bindings = {}; }
+      renderPriceTemplate(host, card, bindings);
+    });
+  }
+  document.addEventListener("beast:local-settings-changed", (event) => {
+    const path = event.detail?.path;
+    if (path === "priceResolution" || path === "*") refreshPriceTemplates();
+  });
+  let priceHelperId = null;
+  function followPriceHelper() {
+    const id = (BeastConfig.get("panels.energy") || {}).priceResolution;
+    if (!id || id === priceHelperId) return;
+    priceHelperId = id;
+    BeastHaSocket.subscribeEntity(id, refreshPriceTemplates);
   }
 
   function renderUsageTemplate(host, card, bindings) {
@@ -202,6 +265,7 @@ window.BeastStandardCards = (function () {
       card.classList.toggle("is-visibility-hidden", !visibilityMatches && !card.closest(".is-editing"));
       const boundFields = template?.fields?.filter((field) => bindings[field.key]) || [];
       if (template?.id === "energy-price-card") {
+        followPriceHelper();
         renderPriceTemplate(host, card, bindings); card.classList.toggle("is-unavailable", !bindings.price); return;
       }
       if (template?.id === "energy-usage-card") {

@@ -5,6 +5,7 @@ const BeastAuth = (() => {
   // is /ha on a normal Docker host and /api/hassio_ingress/<token>/ha when the
   // same files are opened through Home Assistant Ingress.
   const HA_PROXY_PATH = new URL("ha", APP_ROOT_URL).pathname.replace(/\/$/, "");
+  const DISCOVERY_URL = new URL("api/discover-ha.php", APP_ROOT_URL).pathname;
   const OAUTH_STORAGE_KEY = "beast_panel_ha_oauth_v1";
   const AUTH_PENDING_KEY = "beast_panel_ha_auth_pending_v1";
   const AUTH_DIAGNOSTICS_KEY = "beast_panel_ha_auth_diagnostics_v1";
@@ -204,6 +205,126 @@ const BeastAuth = (() => {
     startLogin(options);
   }
 
+  function userError(code, message) {
+    const error = new Error(code);
+    error.userMessage = message;
+    return error;
+  }
+
+  // --- Finding Home Assistant on the network --------------------------------
+
+  // The last answer from api/discover-ha.php. connectToHa() reads it to know
+  // whether the server's proxy may be re-pointed at the address being used.
+  let lastDiscovery = null;
+
+  // Opened through Home Assistant Ingress, the page itself is served by the
+  // Home Assistant to connect to, so that is the one address the browser is
+  // known to reach -- the server-side scan only sees add-on-internal ones.
+  async function ownOriginCandidate() {
+    if (!HA_PROXY_PATH.includes("/hassio_ingress/")) return null;
+    try {
+      const response = await fetch(`${window.location.origin}/auth/providers`, { cache: "no-store", headers: { Accept: "application/json" } });
+      const payload = response.ok ? await response.json() : null;
+      if (!Array.isArray(payload?.providers)) return null;
+    } catch (_) {
+      return null;
+    }
+    return { url: window.location.origin, host: window.location.host, name: null, version: null, label: window.location.host, source: "ingress", current: true };
+  }
+
+  async function discoverHa(options = {}) {
+    let payload;
+    try {
+      const response = await fetch(`${DISCOVERY_URL}${options.refresh ? "?refresh=1" : ""}`, { cache: "no-store", headers: { Accept: "application/json" } });
+      if (!response.ok) return null;
+      payload = await response.json();
+    } catch (_) {
+      return null;
+    }
+    if (!Array.isArray(payload?.candidates)) return null;
+    const own = await ownOriginCandidate();
+    const candidates = own
+      ? [own]
+      : payload.candidates.filter((candidate) => candidate && typeof candidate.url === "string" && !candidate.internal);
+    lastDiscovery = { ...payload, candidates, canSwitch: own ? false : Boolean(payload.canSwitch) };
+    return lastDiscovery;
+  }
+
+  async function proxyReachesHa() {
+    try {
+      const response = await fetch(`${HA_PROXY_PATH}/auth/providers`, { cache: "no-store", headers: { Accept: "application/json" } });
+      if (!response.ok) return false;
+      return Array.isArray((await response.json())?.providers);
+    } catch (_) {
+      return false;
+    }
+  }
+
+  const SWITCH_ERRORS = {
+    switch_not_allowed: "Smartdash-serveren er sat fast til en bestemt Home Assistant (HA_URL eller tilføjelsens indstilling). Ret den dér, eller fjern HA_URL for at vælge her.",
+    not_home_assistant: "Det valgte svarede ikke som en Home Assistant. Kontrollér adressen og prøv igen.",
+    invalid_url: "Adressen kan ikke bruges til at forbinde serveren. Brug en lokal adresse som http://192.168.1.10:8123.",
+    cross_origin: "Skiftet blev afvist, fordi siden er åbnet fra en anden adresse end serveren.",
+    write_failed: "Smartdash kunne ikke gemme valget på serveren. Kontrollér at datamappen kan skrives."
+  };
+
+  // Points the server's /ha/ proxy at the chosen Home Assistant (Docker/Unraid
+  // before anything is configured) and waits for nginx to pick it up.
+  async function switchServerUpstream(url) {
+    let response;
+    try {
+      response = await fetch(DISCOVERY_URL, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "X-Smartdash-Setup": "1" },
+        body: JSON.stringify({ url })
+      });
+    } catch (_) {
+      throw userError("HA_SWITCH_NETWORK", "Smartdash kunne ikke kontakte serveren for at skifte Home Assistant.");
+    }
+    if (!response.ok) {
+      let code = "";
+      try { code = (await response.json())?.error || ""; } catch (_) { /* keep generic message */ }
+      recordDiagnostic({ phase: "switch-upstream", status: response.status, code });
+      throw userError("HA_SWITCH_REFUSED", SWITCH_ERRORS[code] || `Serveren afviste skiftet (HTTP ${response.status}).`);
+    }
+    const deadline = Date.now() + 25000;
+    while (Date.now() < deadline) {
+      if (await proxyReachesHa()) return;
+      await new Promise((resolve) => setTimeout(resolve, 1000));
+    }
+    recordDiagnostic({ phase: "switch-upstream", code: "timeout" });
+    throw userError("HA_SWITCH_TIMEOUT", "Serveren nåede ikke at skifte til den valgte Home Assistant. Vent lidt og prøv igen.");
+  }
+
+  function sameService(left, right) {
+    try {
+      return new URL(left).origin === new URL(right).origin;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  // Saves the address. If the server hasn't got a working Home Assistant yet
+  // and may be pointed at the one chosen, that happens first so the proxy and
+  // the login agree.
+  async function useHaAddress(url) {
+    const baseUrl = setHaBaseUrl(url);
+    const state = lastDiscovery;
+    if (state?.canSwitch && !state.candidates.some((candidate) => candidate.current && sameService(candidate.url, baseUrl))) {
+      let parsed = null;
+      try { parsed = new URL(baseUrl); } catch (_) { /* leave the proxy check to report it */ }
+      if (parsed && (parsed.pathname === "/" || parsed.pathname === "") && /^\d{1,3}(\.\d{1,3}){3}$/.test(parsed.hostname)) {
+        await switchServerUpstream(parsed.origin);
+      }
+    }
+    return baseUrl;
+  }
+
+  async function connectToHa(url) {
+    await useHaAddress(url);
+    await prepareLogin();
+  }
+
   function clearAuthQueryParams() {
     const url = new URL(window.location.href);
     ["code", "state", "error", "error_description"].forEach((key) => url.searchParams.delete(key));
@@ -401,6 +522,9 @@ const BeastAuth = (() => {
     checkProxy,
     loginWithToken,
     prepareLogin,
+    discoverHa,
+    useHaAddress,
+    connectToHa,
     startLogin,
     handleAuthCallback,
     refreshAccessToken,

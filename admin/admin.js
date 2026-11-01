@@ -158,7 +158,8 @@
       { key: "priceSensor", label: "Elpris nu", type: "single", domain: "sensor", deviceClasses: ["monetary"], hints: ["price", "pris"] },
       { key: "priceForecastSensor", label: "Prisprognose (valgfri)", type: "single", domain: "sensor", hints: ["forecast", "prognose", "pris"] },
       { key: "tomorrowAvailableSensor", label: "I morgen tilgængelig (valgfri)", type: "single", domain: "binary_sensor", hints: ["tomorrow", "morgen"] },
-      { key: "priceResolution", label: "Prisopløsning – kvarter/time (valgfri, fx EV Ledgers)", type: "single", domain: "select", hints: ["price_resolution", "prisopløsning", "resolution"] },
+      { key: "priceResolution", label: "Prisopløsning – standard for enheder (valgfri, fx EV Ledgers)", type: "single", domain: "select", hints: ["price_resolution", "prisopløsning", "resolution"],
+        hint: "Valgfri standard for de enheder, der ikke selv har valgt. Har prisdata kvarterpriser, kan hver enhed selv vælge \"1 time\" eller \"15 min\" i prisgraferne – det valg gælder først og huskes på enheden. Uden et valg og uden denne entity vises priserne time for time." },
       { key: "totalEnergySensor", label: "Energi i dag", type: "single", domain: "sensor", deviceClasses: ["energy"] },
       { key: "totalCostSensor", label: "Pris i dag", type: "single", domain: "sensor", deviceClasses: ["monetary"] },
       { key: "nowMeasuredSensor", label: "\"Nu\" · målt total (valgfri)", type: "single", domain: "sensor", hints: ["malt", "total", "measured"] },
@@ -2936,20 +2937,14 @@
     }
   });
 
-  // Home Assistant instances found automatically on the local network by
+  // Home Assistant installations found on the local network by
   // api/discover-ha.php (server-side, since the server -- not the browser
   // tab -- is what actually sits on the LAN). Only offered when there's no
   // address already configured: once BeastAuth/BeastConfig already knows
   // one, re-scanning on every login-screen visit would just be noise.
-  async function discoverHaCandidates() {
-    try {
-      const response = await fetch(localApiUrl("discover-ha.php"), { cache: "no-store" });
-      if (!response.ok) return [];
-      const payload = await response.json();
-      return Array.isArray(payload?.candidates) ? payload.candidates : [];
-    } catch (_) {
-      return [];
-    }
+  function discoveredHaLabel(candidate) {
+    const detail = [candidate.host, candidate.version ? `version ${candidate.version}` : null].filter(Boolean).join(" · ");
+    return candidate.name ? `${candidate.name} · ${detail}` : (candidate.label || detail || candidate.url);
   }
 
   function renderLogin(message) {
@@ -2961,7 +2956,8 @@
       const discoveryEl = document.getElementById("adminLoginDiscovery");
       discoveryEl.hidden = false;
       discoveryEl.innerHTML = `<small>${BeastCore.icon("wifi", { size: 13 })}Søger efter Home Assistant på netværket…</small>`;
-      discoverHaCandidates().then((candidates) => {
+      BeastAuth.discoverHa().then((state) => {
+        const candidates = state?.candidates || [];
         const addressField = document.getElementById("adminHaUrl");
         if (!addressField || !candidates.length) { discoveryEl.hidden = true; return; }
         // A single match is filled in but left for the user to confirm with
@@ -2969,7 +2965,7 @@
         // to whatever the scan found the moment the screen opens.
         if (candidates.length === 1) addressField.value = candidates[0].url;
         discoveryEl.innerHTML = `<small>${BeastCore.icon("wifi", { size: 13 })}${candidates.length === 1 ? "Fundet på netværket:" : "Fundet på netværket -- vælg én:"}</small>
-          <div class="admin-login-discovery-list">${candidates.map((candidate) => `<button type="button" data-discovered-url="${escapeHtml(candidate.url)}">${escapeHtml(candidate.label)}</button>`).join("")}</div>`;
+          <div class="admin-login-discovery-list">${candidates.map((candidate) => `<button type="button" data-discovered-url="${escapeHtml(candidate.url)}">${escapeHtml(discoveredHaLabel(candidate))}</button>`).join("")}</div>`;
         discoveryEl.querySelectorAll("[data-discovered-url]").forEach((button) => button.addEventListener("click", () => {
           addressField.value = button.dataset.discoveredUrl;
           discoveryEl.querySelectorAll("[data-discovered-url]").forEach((other) => other.classList.toggle("is-active", other === button));
@@ -2978,12 +2974,11 @@
     }
     document.getElementById("adminLoginForm").addEventListener("submit", async (event) => {
       event.preventDefault();
-      BeastAuth.setHaBaseUrl(document.getElementById("adminHaUrl").value);
       const button = event.currentTarget.querySelector("button[type=submit]");
       button.disabled = true;
       button.textContent = "Kontrollerer forbindelse…";
       try {
-        await BeastAuth.prepareLogin();
+        await BeastAuth.connectToHa(document.getElementById("adminHaUrl").value);
       } catch (error) {
         renderLogin(error.userMessage || "Kunne ikke kontrollere Home Assistant-forbindelsen.");
       }
@@ -2992,11 +2987,11 @@
       event.preventDefault();
       const address = document.getElementById("adminHaUrl");
       if (!address.reportValidity()) return;
-      BeastAuth.setHaBaseUrl(address.value);
       const button = event.currentTarget.querySelector("button[type=submit]");
       button.disabled = true;
       button.textContent = "Kontrollerer token…";
       try {
+        await BeastAuth.useHaAddress(address.value);
         await BeastAuth.loginWithToken(document.getElementById("adminHaToken").value);
         window.location.reload();
       } catch (error) {

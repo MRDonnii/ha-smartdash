@@ -1,5 +1,24 @@
 [
   {
+    "version": "20261101-5",
+    "tag": "v0.8.87",
+    "date": "2026-11-01",
+    "changes": [
+      {
+        "da": "Første opsætning finder nu selv Home Assistant på netværket: loginskærmen og administrationen viser de installationer, der blev fundet (mDNS og en scanning af port 8123), og du vælger din i stedet for at taste en IP-adresse. Docker, Unraid og tilføjelsen kan startes uden HA_URL, og serveren husker valget; uden for Docker viser installationsscriptet en nummereret liste. Manuel indtastning findes stadig, og loginskærmen er oversat til engelsk. (Claude AI)",
+        "en": "First-time setup now finds Home Assistant on the network by itself: the login screen and the administration show the installations that were found (mDNS and a port 8123 scan) and you pick yours instead of typing an IP address. Docker, Unraid and the add-on can start without HA_URL and the server remembers the choice; outside Docker the install script shows a numbered list. Manual entry is still there, and the login screen is translated to English."
+      },
+      {
+        "da": "I graferne med elpriser kan du nu vælge mellem 1 time og 15 min med en knap i grafen: Energisiden, forsidens energikort og skabelonkortet Elpris viser enten 24 timesøjler eller 96 kvartersøjler, og de bedste tre timer følger valget. Valget gemmes pr. enhed og går forud for HA-hjælperen for prisopløsning; knappen vises kun, når kilden har kvarterspriser. Grafens titel viser nu også rigtigt \"kvarter for kvarter\". (Claude AI)",
+        "en": "The electricity price charts now have a 1 hour / 15 min button: the Energy page, the front page's energy card and the Elpris template card show either 24 hourly bars or 96 quarter-hour bars, and the best three hours follow the choice. The choice is stored per device and takes precedence over the Home Assistant price resolution helper; the button only appears when the source has quarter-hour prices. The chart title now also correctly says \"quarter by quarter\"."
+      },
+      {
+        "da": "Dantherm-kortet er opdateret til den nyeste version (v0.5.241) fra Smart Home Cards: dele uden entiteter (klima, eftervarme og målinger) udelades, og layoutet lukker hullet, og en direkte tilsluttet MK2 viser alle sine driftstilstande. Smartdash sender kun de entiteter videre, du selv har sat op, så et almindeligt Dantherm-anlæg ikke tegnes med HAC1-eftervarme. (Claude AI)",
+        "en": "The Dantherm card is updated to the latest version (v0.5.241) from Smart Home Cards: parts without entities (climate, afterheat and readings) are left out and the layout closes the gap, and a directly connected MK2 shows all its operation modes. Smartdash only passes on the entities you set up yourself, so a plain Dantherm unit is no longer drawn with HAC1 afterheat."
+      }
+    ]
+  },
+  {
     "version": "20261101-4",
     "tag": "v0.8.86",
     "date": "2026-11-01",

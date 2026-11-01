@@ -4,3 +4,4 @@ data/backup-settings.json
 data/backups/
 data/*.tmp
 
+data/ha-upstream

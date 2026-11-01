@@ -1030,15 +1030,22 @@ function renderLoginScreen(root, message) {
   const screen = BeastCore.el("div", "beast-login-screen");
   const card = BeastCore.el("div", "beast-login-card", [
     BeastCore.el("h2", null, "HA Smartdash"),
-    BeastCore.el("p", null, "Vælg selv den Home Assistant-adresse, denne skærm skal logge ind på."),
+    BeastCore.el("p", null, "Vælg den Home Assistant, denne skærm skal logge ind på."),
     message ? BeastCore.el("p", null, message) : null
   ]);
+
+  const discovery = BeastCore.el("div", "beast-ha-discovery");
+  discovery.setAttribute("aria-live", "polite");
+  card.appendChild(discovery);
+
+  const manualDetails = BeastCore.el("details", "beast-login-details beast-login-manual");
+  manualDetails.appendChild(BeastCore.el("summary", null, "Indtast adresse manuelt"));
   const form = BeastCore.el("form", "beast-login-form");
   const label = BeastCore.el("label", null, "Home Assistant-adresse");
   const addressInput = BeastCore.el("input");
   addressInput.type = "url";
   addressInput.name = "haBaseUrl";
-  addressInput.placeholder = "http://homeassistant.local:8123";
+  addressInput.placeholder = "http://192.168.1.10:8123";
   addressInput.autocomplete = "url";
   addressInput.required = true;
   addressInput.value = BeastAuth.getHaBaseUrl() || `${window.location.origin}/ha`;
@@ -1050,26 +1057,101 @@ function renderLoginScreen(root, message) {
     event.preventDefault();
     const address = addressInput.value.trim();
     if (!addressInput.reportValidity()) return;
-    BeastAuth.setHaBaseUrl(address);
     loginButton.disabled = true;
     loginButton.textContent = "Kontrollerer forbindelse…";
     try {
-      await BeastAuth.prepareLogin();
+      await BeastAuth.connectToHa(address);
     } catch (error) {
       renderLoginScreen(root, error.userMessage || "Kunne ikke kontrollere Home Assistant-forbindelsen.");
     }
   });
-  card.appendChild(form);
+  manualDetails.appendChild(form);
+  if (message) manualDetails.open = true;
+  card.appendChild(manualDetails);
+
+  const describeCandidate = (candidate) => {
+    const port = (() => { try { return new URL(candidate.url).port; } catch (_) { return ""; } })();
+    return [candidate.host && port && port !== "8123" ? `${candidate.host}:${port}` : candidate.host, candidate.version ? `version ${candidate.version}` : null].filter(Boolean).join(" · ");
+  };
+
+  const renderDiscovery = (state) => {
+    discovery.innerHTML = "";
+    if (!state) {
+      manualDetails.open = true;
+      return;
+    }
+    if (!state.candidates.length) {
+      discovery.append(
+        BeastCore.el("p", "beast-ha-discovery-note", "Jeg kunne ikke finde nogen Home Assistant automatisk."),
+        BeastCore.el("p", "beast-ha-discovery-hint", `${state.scanned?.length ? `Søgte på ${state.scanned.join(", ")}. ` : ""}Kører Home Assistant på et andet netværk, eller bruger den en anden port end 8123, kan du indtaste adressen selv.`)
+      );
+      manualDetails.open = true;
+    } else {
+      const locked = (candidate) => state.mode !== "unknown" && !state.canSwitch && !candidate.current;
+      const list = BeastCore.el("div", "beast-ha-candidates");
+      state.candidates.forEach((candidate) => {
+        const button = BeastCore.el("button", "beast-ha-candidate");
+        button.type = "button";
+        button.disabled = locked(candidate);
+        button.append(...[
+          BeastCore.el("strong", null, candidate.name || (candidate.source === "ingress" ? "Denne Home Assistant" : "Home Assistant")),
+          BeastCore.el("span", null, describeCandidate(candidate)),
+          candidate.current && candidate.source !== "ingress" ? BeastCore.el("em", null, "Bruges af Smartdash") : null,
+          button.disabled ? BeastCore.el("em", null, "Serveren er sat til en anden Home Assistant") : null
+        ].filter(Boolean));
+        button.addEventListener("click", async () => {
+          list.querySelectorAll("button").forEach((other) => { other.disabled = true; });
+          button.classList.add("is-busy");
+          try {
+            await BeastAuth.connectToHa(candidate.url);
+          } catch (error) {
+            renderLoginScreen(root, error.userMessage || "Kunne ikke kontrollere Home Assistant-forbindelsen.");
+          }
+        });
+        list.appendChild(button);
+      });
+      discovery.append(
+        BeastCore.el("p", "beast-ha-discovery-note", state.candidates.length === 1 ? "Fundet på netværket:" : "Fundet på netværket – vælg én:"),
+        list
+      );
+      if (!addressInput.value || addressInput.value === `${window.location.origin}/ha`) {
+        const preferred = state.candidates.find((candidate) => candidate.current) || state.candidates[0];
+        addressInput.value = preferred.url;
+      }
+    }
+    const again = BeastCore.el("button", "beast-ha-discovery-again", "Søg igen");
+    again.type = "button";
+    again.addEventListener("click", () => runDiscovery(true));
+    discovery.appendChild(again);
+  };
+
+  const runDiscovery = async (refresh) => {
+    discovery.innerHTML = "";
+    discovery.appendChild(BeastCore.el("p", "beast-ha-discovery-note beast-ha-discovery-searching", "Søger efter Home Assistant på netværket…"));
+    const state = await BeastAuth.discoverHa({ refresh });
+    if (discovery.isConnected) renderDiscovery(state);
+  };
+  runDiscovery(false);
+
   const tokenDetails = BeastCore.el("details", "beast-login-details");
   tokenDetails.innerHTML = `<summary>Log ind med token</summary><form class="beast-login-form beast-token-login-form"><label>Long-Lived Access Token<textarea rows="4" autocomplete="off" spellcheck="false" placeholder="Indsæt token fra din Home Assistant-profil" required></textarea></label><small>Tokenet gemmes kun i denne browser og medtages aldrig i fejlloggen.</small><button type="submit" class="beast-btn beast-btn-primary">Kontrollér token og log ind</button></form>`;
   tokenDetails.querySelector("form").addEventListener("submit", async (event) => {
     event.preventDefault();
-    if (!addressInput.reportValidity()) return;
-    BeastAuth.setHaBaseUrl(addressInput.value.trim());
+    if (!addressInput.value.trim()) {
+      manualDetails.open = true;
+      addressInput.focus();
+      return;
+    }
+    if (!addressInput.checkValidity()) {
+      manualDetails.open = true;
+      addressInput.reportValidity();
+      return;
+    }
     const button = event.currentTarget.querySelector("button");
     button.disabled = true;
     button.textContent = "Kontrollerer token…";
     try {
+      await BeastAuth.useHaAddress(addressInput.value.trim());
       await BeastAuth.loginWithToken(event.currentTarget.querySelector("textarea").value);
       window.location.reload();
     } catch (error) {

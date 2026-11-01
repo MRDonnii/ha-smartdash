@@ -21,6 +21,13 @@ The interactive helper can generate the Nginx server block:
 sudo sh deploy/setup-smartdash.sh
 ```
 
+The helper first looks for Home Assistant on your network (mDNS and a short
+port 8123 scan) and lets you pick it from a numbered list; you can also type the
+address yourself. The login screen lists the Home Assistant installations it
+finds too, but on a plain web server the proxy target stays whatever your Nginx
+configuration says, so a different choice there needs the Nginx `/ha/` upstream
+changed.
+
 ## Update
 
 Export a profile backup first. The built-in updater downloads a GitHub release,

@@ -18,7 +18,13 @@
       host.replaceChildren(element);
     }
     element.toggleAttribute('mobile', !!host.closest('.beast-ov-m-card'));
-    const entities = card.entities || {};
+    // The card draws only what has an entity, so pass it only what the
+    // user set up. Smartdash's own "afterheat_setpoint" is no HAC1 signal,
+    // but the card treats any afterheat_* entity as an external afterheater
+    // and would draw the HAC1 wiring for a plain Dantherm unit. A current
+    // fan level (stock "level" sensor) can stand in for the effective level.
+    const { afterheat_setpoint: _unused, ...entities } = card.entities || {};
+    if (!entities.effective_level && entities.level) entities.effective_level = entities.level;
     const afterheatCoil = card.afterheatCoil === 'water' ? 'water' : 'electric';
     const signature = JSON.stringify([entities, afterheatCoil]);
     if (element._smartdashConfig !== signature) {

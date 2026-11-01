@@ -1,3 +1,9 @@
+## 0.8.87
+
+- Første opsætning finder nu selv Home Assistant på netværket: loginskærmen og administrationen viser de installationer, der blev fundet (mDNS og en scanning af port 8123), og du vælger din i stedet for at taste en IP-adresse. Docker, Unraid og tilføjelsen kan startes uden HA_URL, og serveren husker valget; uden for Docker viser installationsscriptet en nummereret liste. Manuel indtastning findes stadig, og loginskærmen er oversat til engelsk. (Claude AI)
+- I graferne med elpriser kan du nu vælge mellem 1 time og 15 min med en knap i grafen: Energisiden, forsidens energikort og skabelonkortet Elpris viser enten 24 timesøjler eller 96 kvartersøjler, og de bedste tre timer følger valget. Valget gemmes pr. enhed og går forud for HA-hjælperen for prisopløsning; knappen vises kun, når kilden har kvarterspriser. Grafens titel viser nu også rigtigt "kvarter for kvarter". (Claude AI)
+- Dantherm-kortet er opdateret til den nyeste version (v0.5.241) fra Smart Home Cards: dele uden entiteter (klima, eftervarme og målinger) udelades, og layoutet lukker hullet, og en direkte tilsluttet MK2 viser alle sine driftstilstande. Smartdash sender kun de entiteter videre, du selv har sat op, så et almindeligt Dantherm-anlæg ikke tegnes med HAC1-eftervarme. (Claude AI)
+
 ## 0.8.86
 
 - Automatisk pauseskærm kan nu slås til og fra pr. enhed, og ventetiden kan sættes fra 10 sekunder til 60 minutter, både i soveværelsesmenuen under Skærm og i Administration → Denne enhed. (Claude AI)

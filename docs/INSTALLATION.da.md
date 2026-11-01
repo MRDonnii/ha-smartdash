@@ -46,7 +46,7 @@ På en dedikeret Smartdash Nginx-server kan førstegangs-scriptet bruges:
 sh deploy/setup-smartdash.sh
 ```
 
-Scriptet spørger efter HA-adresse, webrod, Nginx-serverfil, port og PHP-FPM. Det tager backup, skriver konfigurationen, kører `nginx -t`, ruller tilbage ved en ugyldig konfiguration, genindlæser Nginx og tester `/ha/`.
+Scriptet søger først efter Home Assistant på netværket (mDNS og en kort scanning af port 8123) og lader dig vælge fra en nummereret liste; du kan også skrive adressen selv. Derefter spørger det efter webrod, Nginx-serverfil, port og PHP-FPM. Det tager backup, skriver konfigurationen, kører `nginx -t`, ruller tilbage ved en ugyldig konfiguration, genindlæser Nginx og tester `/ha/`.
 
 Til Docker eller Unraid kan det køres uden spørgsmål:
 

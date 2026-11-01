@@ -28,6 +28,70 @@ prompt() {
   fi
 }
 
+# Looks for Home Assistant on the local network and prints one "url name" line
+# per installation: mDNS first, then a short port 8123 scan of the /24 networks
+# this machine is on. A Home Assistant answers GET /api/ with 401 Unauthorized.
+discover_ha() {
+  found_file=$(mktemp)
+  scan_file=$(mktemp)
+  if command -v avahi-browse >/dev/null 2>&1; then
+    avahi-browse -rpt _home-assistant._tcp 2>/dev/null | awk -F';' '$1 == "=" && $3 == "IPv4" { gsub(/\\032/, " ", $4); print "http://" $8 ":" $9 " " $4 }' >>"$found_file" || true
+  fi
+  if command -v curl >/dev/null 2>&1; then
+    prefixes=$(
+      { ip -4 -o addr show scope global 2>/dev/null | awk '{ sub(/\/.*/, "", $4); print $4 }'
+        hostname -I 2>/dev/null | tr ' ' '\n'; } |
+        awk -F. 'NF == 4 && ($1 == 10 || ($1 == 192 && $2 == 168) || ($1 == 172 && $2 >= 16 && $2 <= 31)) { print $1 "." $2 "." $3 }' | sort -u | head -3
+    )
+    for prefix in $prefixes; do
+      host_number=1
+      while [ "$host_number" -le 254 ]; do
+        (
+          target="$prefix.$host_number"
+          reply=$(curl -s -m 1 "http://$target:8123/api/" 2>/dev/null || true)
+          case "$reply" in *"401: Unauthorized"*) printf 'http://%s:8123 Home Assistant\n' "$target" >>"$scan_file" ;; esac
+        ) &
+        host_number=$((host_number + 1))
+        [ $((host_number % 64)) -eq 0 ] && wait
+      done
+      wait
+    done
+  fi
+  cat "$found_file" "$scan_file" | awk '!seen[$1]++'
+  rm -f "$found_file" "$scan_file"
+}
+
+choose_ha_url() {
+  say "Søger efter Home Assistant på netværket..."
+  discovered=$(discover_ha)
+  if [ -z "$discovered" ]; then
+    say "Jeg fandt ingen Home Assistant automatisk."
+    return 0
+  fi
+  say "Fundet:"
+  choice_number=0
+  OLD_IFS=$IFS
+  IFS='
+'
+  for line in $discovered; do
+    choice_number=$((choice_number + 1))
+    say "  $choice_number) ${line%% *}  (${line#* })"
+  done
+  IFS=$OLD_IFS
+  printf 'Vælg nummer [1], eller skriv 0 for at indtaste adressen selv: '
+  IFS= read -r choice_value
+  case "$choice_value" in
+    '') choice_value=1 ;;
+    http://*|https://*) SMARTDASH_HA_URL=$choice_value; return 0 ;;
+    *[!0-9]*) return 0 ;;
+  esac
+  if [ "$choice_value" -ge 1 ] && [ "$choice_value" -le "$choice_number" ]; then
+    picked=$(printf '%s\n' "$discovered" | sed -n "${choice_value}p")
+    SMARTDASH_HA_URL=${picked%% *}
+  fi
+}
+
+if [ -z "${SMARTDASH_HA_URL:-}" ] && [ -t 0 ]; then choose_ha_url; fi
 prompt SMARTDASH_HA_URL "Home Assistant intern URL" "http://homeassistant.local:8123"
 prompt SMARTDASH_WEB_ROOT "Smartdash webrod" "/var/www/ha-smartdash"
 prompt SMARTDASH_NGINX_CONF "Aktiv Nginx serverfil" "/etc/nginx/conf.d/ha-smartdash.conf"

@@ -7,7 +7,9 @@ services:
       - "${SMARTDASH_PORT:-8099}:8099"
     environment:
       TZ: Europe/Copenhagen
-      HA_URL: http://homeassistant.local:8123
+      # Optional. Leave empty to pick Home Assistant from the list the
+      # dashboard finds on first start, or pin it: HA_URL=http://192.168.1.10:8123
+      HA_URL: ${HA_URL:-}
     volumes:
       - ./smartdash-data:/data
     healthcheck:

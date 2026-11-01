@@ -16,8 +16,13 @@ Download `docker-compose.yml` and `.env.example` from the repository. Rename
 SMARTDASH_PORT=8099
 ```
 
-Edit `HA_URL` in `docker-compose.yml`. It must be reachable from inside the
-container, for example `http://192.168.1.10:8123` or a Docker network alias.
+`HA_URL` in `docker-compose.yml` is optional. Leave it empty and Smartdash
+finds Home Assistant on your network the first time you open it: the login
+screen lists the installations it found and you pick yours. The server then
+remembers the choice in `/data/ha-upstream` (mount `/data` so it survives
+updates). Set `HA_URL` (for example `http://192.168.1.10:8123` or a Docker
+network alias) if you want to pin one Home Assistant; the address must be
+reachable from inside the container, and the login screen then offers that one.
 
 ## 2. Start and verify
 

@@ -15,14 +15,18 @@ instead, edit the repository field to `ghcr.io/mrdonnii/ha-smartdash:beta`.
 3. Choose any unused **Web UI port**.
 4. Keep `/mnt/user/appdata/ha-smartdash` or choose another persistent appdata
    path for container path `/data`.
-5. Enter a Home Assistant URL reachable from the container.
+5. Leave **Home Assistant URL** empty to pick your Home Assistant from a list
+   of installations found on the network when you first open Smartdash, or enter
+   a URL reachable from the container to pin one.
 6. Apply the template and wait for the health status to become healthy.
 
 The host port is freely selectable. Container port 8099 must remain unchanged.
 
 ## First login and Home Assistant proxy
 
-Open the Web UI from Unraid and connect a Home Assistant user. If Home
+Open the Web UI from Unraid, choose your Home Assistant from the list the login
+screen found (or enter the address manually if none is listed) and connect a
+Home Assistant user. If Home
 Assistant reports an untrusted reverse proxy, inspect the Home Assistant log
 for the exact source address and add only that address or the smallest correct
 Docker network to `http.trusted_proxies`.

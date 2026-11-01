@@ -907,6 +907,22 @@ a.beast-rail-btn:visited {
 .beast-login-diagnostics pre { max-height:220px; margin:0 14px 10px; padding:12px; overflow:auto; border-radius:9px; background:var(--bg); color:var(--ink-muted); font:11px/1.45 ui-monospace,monospace; white-space:pre-wrap; overflow-wrap:anywhere; }
 .beast-login-diagnostics > div { display:flex; gap:8px; padding:0 14px 14px; }
 .beast-login-diagnostics > div button { min-height:38px; padding:0 12px; font-size:12px; }
+/* Home Assistant installations found by api/discover-ha.php on the first-run connect screen. */
+.beast-ha-discovery { display:grid; gap:10px; text-align:left; }
+.beast-ha-discovery-note { margin:0; color:var(--ink-muted); font-size:13px; font-weight:800; }
+.beast-ha-discovery .beast-ha-discovery-hint { font-size:12px; line-height:1.5; }
+.beast-ha-discovery-searching { display:flex; align-items:center; gap:9px; }
+.beast-ha-discovery-searching::before { content:""; flex:none; width:14px; height:14px; border:2px solid var(--border-strong); border-top-color:var(--accent-b); border-radius:50%; animation:beast-ha-discovery-spin .8s linear infinite; }
+@keyframes beast-ha-discovery-spin { to { transform:rotate(360deg); } }
+.beast-ha-candidates { display:grid; gap:8px; }
+.beast-ha-candidate { display:grid; gap:3px; width:100%; min-height:62px; padding:12px 15px; border:1px solid var(--border-strong); border-radius:12px; background:var(--surface-solid); color:var(--ink); text-align:left; cursor:pointer; touch-action:manipulation; }
+.beast-ha-candidate strong { font-size:15px; font-weight:800; overflow-wrap:anywhere; }
+.beast-ha-candidate span { color:var(--ink-muted); font-size:12px; overflow-wrap:anywhere; }
+.beast-ha-candidate em { justify-self:start; margin-top:2px; padding:2px 8px; border-radius:999px; background:var(--accent-soft); color:var(--accent-b); font-size:11px; font-style:normal; font-weight:800; }
+.beast-ha-candidate:hover:not(:disabled), .beast-ha-candidate:focus-visible { border-color:var(--accent-b); outline:none; }
+.beast-ha-candidate:disabled { opacity:.55; cursor:not-allowed; }
+.beast-ha-candidate.is-busy { border-color:var(--accent-b); opacity:1; }
+.beast-ha-discovery-again { justify-self:start; min-height:36px; padding:0 4px; border:0; background:none; color:var(--accent-b); font-size:13px; font-weight:800; cursor:pointer; touch-action:manipulation; }
 .beast-section-quality { position:absolute; z-index:30; top:8px; right:8px; padding:5px 8px; border:1px solid rgba(47,224,168,.28); border-radius:999px; background:rgba(5,9,12,.76); color:var(--success); font-size:9px; font-weight:800; backdrop-filter:blur(8px); pointer-events:none; }
 .beast-section-quality[data-quality="stale"] { color:var(--warning); border-color:rgba(255,200,87,.35); }
 .beast-section-quality[data-quality="unavailable"] { color:var(--danger); border-color:rgba(255,72,105,.35); }

@@ -41,6 +41,9 @@
   let todayEnergyKwh = null;
   let todayCostKr = null;
   let priceView = "today";
+  // True while the price chart on screen shows 15-minute entries. applyNativeLayout() rewrites the panel title from
+  // the card label after every render, so the quarter wording has to be applied there too (priceChartTitle).
+  let priceChartShowsQuarters = false;
   let energyView = "overview";
   // Which utility the page is showing. Electricity is the default because
   // it is the one every install has; the others appear only when set up.
@@ -135,15 +138,38 @@
     return hourLabel({ start: entry.end || new Date(new Date(entry.start).getTime() + 3600000).toISOString() });
   }
 
-  // Quarters or whole hours (panels.energy.priceResolution, e.g. EV Ledger's price resolution select): quarter prices
-  // stay quarters only when it says "quarter"; otherwise whole hours with the mean price of their quarters.
-  function priceResolution() {
-    const id = energyConfig().priceResolution;
-    const state = id ? BeastHaSocket.getState(id) : null;
-    return String(state?.attributes?.price_resolution || state?.state || "hour");
+  // Quarters or whole hours. Which one is shown is decided in this order:
+  //   1. the choice made on this device (the "1 time | 15 min" switch in the price graphs, BeastLocalSettings),
+  //   2. the optional HA helper in panels.energy.priceResolution (e.g. EV Ledger's price resolution select),
+  //   3. whole hours.
+  // Quarter prices stay quarters only when the answer is "quarter"; otherwise they become whole hours with the
+  // duration-weighted mean of their quarters. Sources that only have whole hours are unaffected either way.
+  const PRICE_RESOLUTION_SETTING = "priceResolution";
+
+  function devicePriceResolution() {
+    const value = typeof BeastLocalSettings !== "undefined" ? BeastLocalSettings.get(PRICE_RESOLUTION_SETTING, null) : null;
+    return value === "quarter" || value === "hour" ? value : null;
   }
 
-  function shapePrices(entries) {
+  function helperPriceResolution() {
+    const id = energyConfig().priceResolution;
+    const state = id ? BeastHaSocket.getState(id) : null;
+    return String(state?.attributes?.price_resolution || state?.state || "hour") === "quarter" ? "quarter" : "hour";
+  }
+
+  function priceResolution() {
+    return devicePriceResolution() || helperPriceResolution();
+  }
+
+  function setPriceResolution(value) {
+    if (value !== "quarter" && value !== "hour") return;
+    if (devicePriceResolution() === value) return;
+    BeastLocalSettings.set(PRICE_RESOLUTION_SETTING, value);
+  }
+
+  // Dedupes, sorts and gives every entry an end (its own, or the gap to the next entry when that is at most an hour).
+  // The result keeps every slot's own length, so it is also what tells whether a source has sub-hour prices at all.
+  function priceSlots(entries) {
     const seen = new Set();
     const sorted = entries
       .filter((entry) => { const key = new Date(entry.start).getTime(); if (seen.has(key)) return false; seen.add(key); return true; })
@@ -152,12 +178,25 @@
       const start = new Date(entry.start).getTime();
       const end = Date.parse(entry.end || "");
       const next = sorted[index + 1] ? new Date(sorted[index + 1].start).getTime() : null;
-      const ms = Number.isFinite(end) && end > start ? end - start : next && next - start <= 3600000 ? next - start : 3600000;
+      const previous = index > 0 ? start - new Date(sorted[index - 1].start).getTime() : null;
+      // The last slot of a series has no neighbour after it, so it takes the length of the one before it.
+      const ms = Number.isFinite(end) && end > start ? end - start
+        : next && next - start <= 3600000 ? next - start
+        : !next && previous && previous < 3600000 ? previous
+        : 3600000;
       entry.end = new Date(start + ms).toISOString();
     });
-    if (priceResolution() === "quarter" || sorted.every((entry) => new Date(entry.end) - new Date(entry.start) >= 3600000)) return sorted;
+    return sorted;
+  }
+
+  function slotsHaveQuarters(slots) {
+    return Array.isArray(slots) && slots.some((entry) => new Date(entry.end) - new Date(entry.start) < 3600000);
+  }
+
+  function shapeSlots(slots, resolution = priceResolution()) {
+    if (resolution === "quarter" || !slotsHaveQuarters(slots)) return slots;
     const hours = new Map();
-    sorted.forEach((entry) => {
+    slots.forEach((entry) => {
       const hour = new Date(entry.start); hour.setMinutes(0, 0, 0);
       const ms = new Date(entry.end) - new Date(entry.start);
       const bucket = hours.get(hour.getTime()) || { start: hour.toISOString(), end: new Date(hour.getTime() + 3600000).toISOString(), sum: 0, ms: 0 };
@@ -167,10 +206,60 @@
     return Array.from(hours.values()).map((bucket) => ({ start: bucket.start, end: bucket.end, price: bucket.sum / bucket.ms }));
   }
 
+  function shapePrices(entries, resolution) {
+    return shapeSlots(priceSlots(entries), resolution);
+  }
+
+  // The default panel title follows what the chart shows; a title the user has renamed is left alone.
+  function priceChartTitle(label) {
+    const text = label || "Elpris time for time";
+    return text === "Elpris time for time" && priceChartShowsQuarters ? "Elpris kvarter for kvarter" : text;
+  }
+
   function perHour(prices) {
     const first = prices[0];
     return first && first.end && new Date(first.end) - new Date(first.start) < 3600000 ? 4 : 1;
   }
+
+  // The "1 time | 15 min" switch. Empty when the source has no sub-hour prices: there is nothing to choose between,
+  // and a dead button would only look broken. Every price graph in the app uses this one control; clicks are
+  // handled once, below, so the markup can be redrawn freely.
+  function priceResolutionToggleMarkup(available, extraClass = "") {
+    if (!available) return "";
+    const current = priceResolution();
+    const button = (value, label, title) => `<button type="button" data-price-resolution="${value}" class="${current === value ? "is-active" : ""}" aria-pressed="${current === value}" title="${title}">${label}</button>`;
+    return `<div class="beast-price-resolution${extraClass ? ` ${extraClass}` : ""}" role="group" aria-label="Prisopløsning">
+      ${button("hour", "1 time", "Vis priserne time for time")}${button("quarter", "15 min", "Vis priserne kvarter for kvarter")}
+    </div>`;
+  }
+
+  // Capture phase so the press never reaches a card that navigates on click or a draggable card in edit mode.
+  document.addEventListener("click", (event) => {
+    const button = event.target.closest?.("[data-price-resolution]");
+    if (!button) return;
+    event.preventDefault();
+    event.stopPropagation();
+    setPriceResolution(button.dataset.priceResolution);
+  }, true);
+
+  // Used by the overview card and the "Elpris" card template, so they follow the same rules as the Energy page.
+  window.BeastEnergyPrices = {
+    resolution: priceResolution,
+    setResolution: setPriceResolution,
+    slots: priceSlots,
+    hasQuarters: slotsHaveQuarters,
+    shapeSlots,
+    shape: shapePrices,
+    normalize: (entries) => normalizePrices(entries),
+    toggleMarkup: priceResolutionToggleMarkup,
+    // Re-render callbacks fire when this device's choice changes (also from another tab) -- the helper entity is
+    // followed through its own state subscription by whoever draws.
+    onChange(callback) {
+      document.addEventListener("beast:local-settings-changed", (event) => {
+        if (event.detail?.path === PRICE_RESOLUTION_SETTING || event.detail?.path === "*") callback();
+      });
+    }
+  };
 
   function isCurrent(entry, now) {
     return new Date(entry.start) <= now && now < new Date(entry.end || new Date(entry.start).getTime() + 3600000);
@@ -205,11 +294,13 @@
 
     return Array.from(buckets.entries()).map(([key, entries]) => {
       const date = new Date(`${key}T12:00:00`);
+      const slots = priceSlots(entries);
       return {
         key,
         date,
         label: localDateKey(new Date()) === key ? "I dag" : date.toLocaleDateString(window.HASmartdashI18n?.locale || "da-DK", { weekday: "short", day: "numeric" }),
-        prices: shapePrices(entries)
+        hasQuarters: slotsHaveQuarters(slots),
+        prices: shapeSlots(slots)
       };
     }).filter((day) => day.prices.length).sort((a, b) => a.key.localeCompare(b.key));
   }
@@ -320,7 +411,7 @@
       const isMin = p.price === min;
       const isMax = p.price === max;
       return `
-        <button type="button" class="beast-energy-hour${isActive ? " is-current" : ""}${isMin ? " is-min" : ""}${isMax ? " is-max" : ""}" style="--bar-height:${Math.max(8, (p.price / max) * 100)}%" aria-label="${hourLabel(p)}, ${p.price.toFixed(2)} kroner pr. kilowatttime">
+        <button type="button" class="beast-energy-hour${isActive ? " is-current" : ""}${isMin ? " is-min" : ""}${isMax ? " is-max" : ""}" style="--bar-height:${Math.max(8, (p.price / max) * 100)}%" title="${hourLabel(p)}–${endLabel(p)} · ${p.price.toFixed(2)} kr/kWh" aria-label="${hourLabel(p)}, ${p.price.toFixed(2)} kroner pr. kilowatttime">
           <span class="beast-energy-hour-value">${p.price.toFixed(2)}</span>
           <i style="height:${Math.max(8, (p.price / max) * 100)}%;--bar-color:${BeastCore.chartColorSettings().mode === "usage" ? BeastCore.chartColorForRatio((p.price - min) / ((max - min) || 1)) : priceColor(p.price)}"></i>
           <small>${index % (2 * perHour(prices)) === 0 ? String(start.getHours()).padStart(2, "0") : ""}</small>
@@ -597,7 +688,7 @@
       element.style.setProperty("--energy-native-x", String(Math.max(1, Math.min(12, Number(desktop?.x) || 1))));
       element.style.setProperty("--energy-native-y", String(Math.max(2, Number(desktop?.y) || 2)));
       element.classList.toggle("is-layout-hidden", !runtimeCard);
-      const title = element.querySelector(".beast-panel-title"); if (title && card.label) title.textContent = card.label;
+      const title = element.querySelector(".beast-panel-title"); if (title && card.label) title.textContent = kind === "energy-price-chart" ? priceChartTitle(card.label) : card.label;
     });
   }
 
@@ -1031,9 +1122,13 @@
     const powerKw = powerNowWatts !== null ? (powerNowWatts / 1000).toFixed(2) : "–";
     const price = priceState && Number.isFinite(Number(priceState.state)) ? Number(priceState.state) : null;
 
-    const todayPrices = shapePrices(normalizePrices(priceState?.attributes?.prices || priceState?.attributes?.raw_today || priceState?.attributes?.today));
-    const tomorrowPrices = shapePrices(normalizePrices(tomorrowState?.attributes?.prices || priceState?.attributes?.raw_tomorrow || priceState?.attributes?.tomorrow));
+    const todaySlots = priceSlots(normalizePrices(priceState?.attributes?.prices || priceState?.attributes?.raw_today || priceState?.attributes?.today));
+    const tomorrowSlots = priceSlots(normalizePrices(tomorrowState?.attributes?.prices || priceState?.attributes?.raw_tomorrow || priceState?.attributes?.tomorrow));
+    const todayPrices = shapeSlots(todaySlots);
+    const tomorrowPrices = shapeSlots(tomorrowSlots);
     let priceDays = collectPriceDays(priceState, tomorrowState, forecastState);
+    // Whether the source has sub-hour prices at all, whatever is shown right now (a day on 1 time still counts).
+    const quarterAvailable = priceDays.some((day) => day.hasQuarters) || slotsHaveQuarters(todaySlots) || slotsHaveQuarters(tomorrowSlots);
     const todayKey = localDateKey(new Date());
     if (!priceDays.some((day) => day.key === todayKey) && todayPrices.length) {
       priceDays.unshift({ key: todayKey, date: new Date(), label: "I dag", prices: todayPrices });
@@ -1051,6 +1146,7 @@
     if (!priceDays.some((day) => day.key === priceView)) priceView = priceDays[0]?.key || todayKey;
     const activeDay = priceDays.find((day) => day.key === priceView);
     const activePrices = activeDay?.prices || [];
+    priceChartShowsQuarters = perHour(activePrices) > 1;
     const activeValues = activePrices.map((p) => p.price);
     const rangeMax = activeValues.length ? Math.max(...activeValues) : null;
     const rangeMin = activeValues.length ? Math.min(...activeValues) : null;
@@ -1086,7 +1182,10 @@
       <div class="beast-energy-chart-wrap beast-energy-chart-price">
         <div class="beast-energy-chart-head">
           ${BeastCore.chartTypeToggleMarkup(PRICE_CHART_KEY, "")}
-          <span class="beast-panel-title">${escapeHtml(((label) => (label === "Elpris time for time" && perHour(activePrices) > 1 ? "Elpris kvarter for kvarter" : label))(nativeCard("energy-price-chart")?.label || "Elpris time for time"))}</span>
+          <div class="beast-energy-chart-titlegroup">
+            <span class="beast-panel-title">${escapeHtml(priceChartTitle(nativeCard("energy-price-chart")?.label))}</span>
+            ${priceResolutionToggleMarkup(quarterAvailable)}
+          </div>
           <div class="beast-content-toggle beast-energy-day-toggle beast-energy-chart-head-stats">
             ${priceDays.map((day) => `<button type="button" class="beast-content-toggle-btn${priceView === day.key ? " is-active" : ""}" data-view="${day.key}">${day.label}</button>`).join("")}
           </div>
@@ -1172,7 +1271,7 @@
       }
     });
 
-    [POWER_ENTITY_ID(), PRICE_ENTITY_ID(), PRICE_FORECAST_ENTITY_ID(), TOMORROW_ENTITY_ID(), TOTAL_ENERGY_ID(), TOTAL_COST_ID(), ...NOW_SUMMARY_IDS(), ...NOW_GROUPS().flatMap((group) => group.ids)].filter(Boolean).forEach((id) => {
+    [POWER_ENTITY_ID(), PRICE_ENTITY_ID(), PRICE_FORECAST_ENTITY_ID(), TOMORROW_ENTITY_ID(), energyConfig().priceResolution, TOTAL_ENERGY_ID(), TOTAL_COST_ID(), ...NOW_SUMMARY_IDS(), ...NOW_GROUPS().flatMap((group) => group.ids)].filter(Boolean).forEach((id) => {
       BeastHaSocket.subscribeEntity(id, stableRender);
     });
     [TOTAL_ENERGY_ID(), TOTAL_COST_ID()].filter(Boolean).forEach((id) => BeastHaSocket.subscribeEntity(id, refreshTodayTotals));
@@ -1182,6 +1281,8 @@
     const key = event.detail?.key;
     if (key === "*" || key === USAGE_CHART_KEY || key === PRICE_CHART_KEY) render();
   });
+  // The 1 time / 15 min choice, from this page, the front page or another tab: redraw straight away.
+  window.BeastEnergyPrices.onChange(() => render());
   document.addEventListener("beast:config-changed", () => render());
 
   BeastCore.registerPanel("energy", "beastEnergyZone", init);

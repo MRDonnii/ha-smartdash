@@ -1678,6 +1678,9 @@
 .beast-ov-price-head small { display: block; margin-top: 3px; color: var(--ink-faint); font-size: 11px; line-height: 1.15; }
 .beast-ov-price-head .beast-ov-energy-price { line-height: 1.15; }
 
+/* The 1 time | 15 min switch (only when the prices have quarters) sits above the day toggle. */
+.beast-ov-price-controls { flex-shrink: 0; display: flex; flex-direction: column; align-items: flex-end; gap: 4px; }
+
 .beast-ov-price-toggle {
   flex-shrink: 0;
   display: inline-flex;
@@ -1731,6 +1734,10 @@
   transform-origin: center bottom;
   transition: background-color .9s ease, filter .15s, transform .15s;
 }
+
+/* Quarter prices: 96 thin bars. */
+.beast-ov-price-chart.is-dense { gap: 1px; }
+.beast-ov-price-chart.is-dense span { min-width: 1px; border-radius: 2px 2px 1px 1px; box-shadow: none; }
 
 .beast-ov-price-chart span.price-alert {
   animation: beast-price-pulse var(--price-pulse-duration, 3.2s) ease-in-out infinite;

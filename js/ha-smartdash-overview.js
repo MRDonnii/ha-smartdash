@@ -10,6 +10,7 @@
   let POWER_ENTITY_ID = null;
   let PRICE_ENTITY_ID = null;
   let PRICE_FORECAST_ENTITY_ID = null;
+  let PRICE_RESOLUTION_ID = null;
   let PRICE_TOMORROW_ID = null;
   let MAIL_PRESENT_ID = null;
   let MAIL_COUNT_ID = null;
@@ -281,6 +282,7 @@
     POWER_ENTITY_ID = energy.powerSensor;
     PRICE_ENTITY_ID = energy.priceSensor;
     PRICE_FORECAST_ENTITY_ID = energy.priceForecastSensor;
+    PRICE_RESOLUTION_ID = energy.priceResolution;
     PRICE_TOMORROW_ID = energy.tomorrowAvailableSensor;
     MAIL_PRESENT_ID = app.mailPresent;
     MAIL_COUNT_ID = app.mailCount;
@@ -2383,23 +2385,65 @@
 
   function energyAdvice(priceSeries, currentPrice, power) {
     if (!priceSeries.length || !Number.isFinite(currentPrice)) return { icon: "bolt", title: "Afventer prisdata", detail: "Anbefalingen opdateres automatisk" };
+    // The best three hours are 3 entries on 1 time and 12 on 15 min.
+    const quarters = priceSeries.some((item) => item.quarter);
+    const length = quarters ? 12 : 3;
     let best = null;
-    for (let index = 0; index <= priceSeries.length - 3; index += 1) {
-      const slice = priceSeries.slice(index, index + 3);
-      const average = slice.reduce((sum, item) => sum + item.value, 0) / 3;
+    for (let index = 0; index <= priceSeries.length - length; index += 1) {
+      const slice = priceSeries.slice(index, index + length);
+      const average = slice.reduce((sum, item) => sum + item.value, 0) / length;
       if (!best || average < best.average) best = { index, average };
     }
     if (!best) best = { index: 0, average: priceSeries.reduce((sum, item) => sum + item.value, 0) / priceSeries.length };
-    const bestStart = best ? String(priceSeries[best.index]?.label || best.index).padStart(2, "0").slice(0, 2) : "–";
-    const bestEnd = best ? String((Number(bestStart) + 3) % 24).padStart(2, "0") : "–";
+    let bestStart = best ? String(priceSeries[best.index]?.label || best.index).padStart(2, "0").slice(0, 2) : "–";
+    let bestEnd = best ? String((Number(bestStart) + 3) % 24).padStart(2, "0") : "–";
+    if (quarters && best && priceSeries[best.index]?.time) {
+      const first = priceSeries[best.index];
+      const last = priceSeries[Math.min(priceSeries.length - 1, best.index + length - 1)];
+      const end = new Date(last.end || new Date(first.start).getTime() + 3 * 3600000);
+      bestStart = first.time;
+      bestEnd = `${String(end.getHours()).padStart(2, "0")}:${String(end.getMinutes()).padStart(2, "0")}`;
+    }
     if (Number.isFinite(power) && power >= 5000) return { icon: "bolt", title: "Forbruget er højt lige nu", detail: `${(power / 1000).toFixed(1)} kW · flyt om muligt forbrug til kl. ${bestStart}–${bestEnd}` };
     if (currentPrice >= 3) return { icon: "bolt", title: "Vent med større forbrug", detail: `Bedste tretimers vindue er kl. ${bestStart}–${bestEnd} · ca. ${best.average.toFixed(2)} kr/kWh` };
     if (best && currentPrice <= best.average * 1.12) return { icon: "check", title: "Et godt tidspunkt at bruge strøm", detail: `${currentPrice.toFixed(2)} kr/kWh lige nu` };
     return { icon: "bolt", title: `Billigst kl. ${bestStart}–${bestEnd}`, detail: `Ca. ${best.average.toFixed(2)} kr/kWh i gennemsnit` };
   }
 
+  function priceEntryTime(entry) {
+    const rawTime = entry?.start || entry?.time || entry?.timestamp || entry?.hour;
+    const date = rawTime ? new Date(rawTime) : null;
+    return date && !Number.isNaN(date.getTime()) ? date : null;
+  }
+
+  // Entries with a real timestamp as slots (BeastEnergyPrices.slots gives each its length), so quarters can be told
+  // from hours. Entries without a timestamp cannot be placed on a clock and always fall back to whole hours.
+  function timedPriceSlots(list) {
+    if (!Array.isArray(list) || !window.BeastEnergyPrices) return [];
+    const entries = [];
+    list.forEach((entry) => {
+      const value = Number(typeof entry === "number" ? entry : (entry?.price ?? entry?.value));
+      const date = priceEntryTime(entry);
+      if (!Number.isFinite(value) || !date) return;
+      const end = entry?.end ? new Date(entry.end) : null;
+      entries.push({ start: date.toISOString(), end: end && !Number.isNaN(end.getTime()) ? end.toISOString() : undefined, price: value });
+    });
+    return window.BeastEnergyPrices.slots(entries);
+  }
+
   function normalizePriceEntries(list) {
     if (!Array.isArray(list)) return [];
+    // 15 min chosen (this device, or the optional HA helper) and the source really has quarters: one entry per quarter.
+    if (window.BeastEnergyPrices?.resolution() === "quarter") {
+      const slots = timedPriceSlots(list);
+      if (window.BeastEnergyPrices.hasQuarters(slots)) {
+        return slots.map((slot) => {
+          const start = new Date(slot.start);
+          const hour = String(start.getHours()).padStart(2, "0");
+          return { label: hour, time: `${hour}:${String(start.getMinutes()).padStart(2, "0")}`, value: slot.price, start: slot.start, end: slot.end, quarter: true };
+        });
+      }
+    }
     const buckets = new Map();
     list.forEach((entry, index) => {
       const value = Number(typeof entry === "number" ? entry : (entry?.price ?? entry?.value));
@@ -2414,19 +2458,22 @@
     });
     return Array.from(buckets.entries()).sort((a, b) => a[0] - b[0]).map(([hour, values]) => ({
       label: String(hour).padStart(2, "0"),
+      time: `${String(hour).padStart(2, "0")}:00`,
+      hour,
       value: values.reduce((sum, value) => sum + value, 0) / values.length
     }));
   }
 
-  function getOverviewPriceSeries(view) {
+  // The raw list behind each of the three views (today / tomorrow / the first day after tomorrow).
+  function getOverviewPriceEntries(view) {
     const priceState = BeastHaSocket.getState(PRICE_ENTITY_ID);
     const tomorrowState = BeastHaSocket.getState(PRICE_TOMORROW_ID);
     const forecastState = BeastHaSocket.getState(PRICE_FORECAST_ENTITY_ID);
     if (view === "today") {
-      return normalizePriceEntries(priceState?.attributes?.prices || priceState?.attributes?.raw_today || priceState?.attributes?.today);
+      return priceState?.attributes?.prices || priceState?.attributes?.raw_today || priceState?.attributes?.today;
     }
     if (view === "tomorrow") {
-      return normalizePriceEntries(tomorrowState?.attributes?.prices || priceState?.attributes?.raw_tomorrow || priceState?.attributes?.tomorrow);
+      return tomorrowState?.attributes?.prices || priceState?.attributes?.raw_tomorrow || priceState?.attributes?.tomorrow;
     }
     const tomorrow = new Date();
     tomorrow.setHours(23, 59, 59, 999);
@@ -2444,10 +2491,19 @@
     });
     if (!candidates.length) return [];
     const firstDate = new Date(candidates[0].start || candidates[0].time || candidates[0].timestamp || candidates[0].hour);
-    return normalizePriceEntries(candidates.filter((entry) => {
+    return candidates.filter((entry) => {
       const date = new Date(entry.start || entry.time || entry.timestamp || entry.hour);
       return date.toDateString() === firstDate.toDateString();
-    }));
+    });
+  }
+
+  function getOverviewPriceSeries(view) {
+    return normalizePriceEntries(getOverviewPriceEntries(view));
+  }
+
+  // The "1 time | 15 min" switch is only offered when some day really has quarter prices.
+  function overviewQuarterAvailable() {
+    return ["today", "tomorrow", "future"].some((view) => window.BeastEnergyPrices?.hasQuarters(timedPriceSlots(getOverviewPriceEntries(view))));
   }
 
   // Use the same current-day window as the detailed Energy graph: local
@@ -2622,19 +2678,23 @@
             <span class="beast-ov-energy-price ${level.cls}${pricePulseNow > 0 ? " price-alert" : ""}" style="--price-color:${price !== null ? priceColor(price) : "var(--ink-muted)"};--price-pulse-duration:${(3.2 - pricePulseNow * 2).toFixed(2)}s;--price-pulse-brightness:${(1.08 + pricePulseNow * 0.82).toFixed(2)};--price-pulse-glow:${(3 + pricePulseNow * 15).toFixed(1)}px">${price !== null ? price.toFixed(2) : "–"} kr/kWh · ${level.label}</span>
             <small>${minPrice !== null ? `Lav ${minPrice.toFixed(2)} · Høj ${highPrice.toFixed(2)}` : "Ingen priser tilgængelige"}</small>
           </div>
-          <div class="beast-ov-price-toggle">
-            <button type="button" data-price-view="today" class="${overviewPriceView === "today" ? "is-active" : ""}">I dag</button>
-            <button type="button" data-price-view="tomorrow" class="${overviewPriceView === "tomorrow" ? "is-active" : ""}">I morgen</button>
-            <button type="button" data-price-view="future" class="${overviewPriceView === "future" ? "is-active" : ""}">Frem</button>
+          <div class="beast-ov-price-controls">
+            ${window.BeastEnergyPrices && overviewQuarterAvailable() ? window.BeastEnergyPrices.toggleMarkup(true, "is-compact") : ""}
+            <div class="beast-ov-price-toggle">
+              <button type="button" data-price-view="today" class="${overviewPriceView === "today" ? "is-active" : ""}">I dag</button>
+              <button type="button" data-price-view="tomorrow" class="${overviewPriceView === "tomorrow" ? "is-active" : ""}">I morgen</button>
+              <button type="button" data-price-view="future" class="${overviewPriceView === "future" ? "is-active" : ""}">Frem</button>
+            </div>
           </div>
         </div>
-        <div class="beast-ov-price-chart">
+        <div class="beast-ov-price-chart${priceSeries.some((item) => item.quarter) ? " is-dense" : ""}">
           ${priceSeries.length ? priceSeries.map((item, index) => {
-            const active = overviewPriceView === "today" && index === new Date().getHours();
+            const nowTime = Date.now();
+            const active = overviewPriceView === "today" && (item.quarter ? new Date(item.start).getTime() <= nowTime && nowTime < new Date(item.end).getTime() : index === new Date().getHours());
             const isMin = item.value === minPrice;
             const isMax = item.value === highPrice;
             const pulse = pricePulse(item.value);
-            return `<span class="${active ? "is-current " : ""}${isMin ? "is-min " : ""}${isMax ? "is-max " : ""}${pulse > 0 ? "price-alert" : ""}" style="height:${Math.max(7, (item.value / maxPrice) * 100)}%;--delay:${index * 18}ms;--price-color:${priceColor(item.value)};--price-pulse-duration:${(3.2 - pulse * 2).toFixed(2)}s;--price-pulse-scale:${(0.96 - pulse * 0.24).toFixed(2)};--price-pulse-opacity:${(0.88 - pulse * 0.3).toFixed(2)};--price-pulse-brightness:${(1.08 + pulse * 0.82).toFixed(2)};--price-pulse-glow:${(3 + pulse * 15).toFixed(1)}px" title="${item.label}:00 · ${item.value.toFixed(2)} kr/kWh"></span>`;
+            return `<span class="${active ? "is-current " : ""}${isMin ? "is-min " : ""}${isMax ? "is-max " : ""}${pulse > 0 ? "price-alert" : ""}" style="height:${Math.max(7, (item.value / maxPrice) * 100)}%;--delay:${index * 18}ms;--price-color:${priceColor(item.value)};--price-pulse-duration:${(3.2 - pulse * 2).toFixed(2)}s;--price-pulse-scale:${(0.96 - pulse * 0.24).toFixed(2)};--price-pulse-opacity:${(0.88 - pulse * 0.3).toFixed(2)};--price-pulse-brightness:${(1.08 + pulse * 0.82).toFixed(2)};--price-pulse-glow:${(3 + pulse * 15).toFixed(1)}px" title="${item.quarter ? item.time : `${item.label}:00`} · ${item.value.toFixed(2)} kr/kWh"></span>`;
           }).join("") : `<i>Ingen prisdata for valgt dag</i>`}
         </div>
         <div class="beast-ov-chart-axis"><span>00</span><span>06</span><span>12</span><span>18</span><span>23</span></div>
@@ -3009,6 +3069,11 @@
     const key = String(event.detail?.key || "");
     if (key === "*" || key.startsWith("overview.utility.")) renderEnergy();
   });
+  // The 1 time / 15 min choice of this device (also set from another tab or the Energy page).
+  document.addEventListener("beast:local-settings-changed", (event) => {
+    const path = event.detail?.path;
+    if (path === "priceResolution" || path === "*") renderEnergy();
+  });
   // Colours are a global setting rather than a per-graph one, so any config
   // change may have altered them -- redraw so the change is visible without
   // a reload.
@@ -3114,7 +3179,7 @@
       if (config.current) BeastHaSocket.subscribeEntity(config.current, () => { renderEnergy(); applyOverviewLayout(); });
       if (config.today) BeastHaSocket.subscribeEntity(config.today, renderEnergy);
     });
-    [PRICE_ENTITY_ID, PRICE_FORECAST_ENTITY_ID, PRICE_TOMORROW_ID].filter(Boolean).forEach((id) => BeastHaSocket.subscribeEntity(id, () => { renderEnergy(); applyOverviewLayout(); }));
+    [PRICE_ENTITY_ID, PRICE_FORECAST_ENTITY_ID, PRICE_TOMORROW_ID, PRICE_RESOLUTION_ID].filter(Boolean).forEach((id) => BeastHaSocket.subscribeEntity(id, () => { renderEnergy(); applyOverviewLayout(); }));
     [...LOCK_IDS, ...DOOR_IDS, ...ALARM_IDS].forEach((id) => BeastHaSocket.subscribeEntity(id, () => { renderSecurity(); applyOverviewLayout(); renderBanners(); }));
     ROBOT_IDS.forEach((robot) => BeastHaSocket.subscribeEntity(robot.id, renderSecurity));
     [PRINTER_STATUS_ID, PRINTER_PROGRESS_ID, PRINTER_REMAINING_ID, PRINTER_TASK_ID, PRINTER_CAMERA_IMAGE_ID, PRINTER_BANNER_CAMERA_ID].filter(Boolean).forEach((id) => BeastHaSocket.subscribeEntity(id, () => { renderBanners(); renderSecurity(); }));

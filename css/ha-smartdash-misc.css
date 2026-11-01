@@ -765,6 +765,15 @@
 .beast-energy-chart-type button { min-height: 30px; padding: 0 12px; border: 0; border-radius: 999px; background: transparent; color: var(--ink-muted); font: 800 11px/1 var(--font-sans); cursor: pointer; touch-action: manipulation; transition: background .16s ease, color .16s ease; }
 .beast-energy-chart-type button:hover { color: var(--ink); }
 .beast-energy-chart-type button.is-active { background: var(--accent-gradient); color: var(--accent-ink); }
+/* "1 time | 15 min" -- same segmented look, but per device and always visible (the bars/line switch above is an
+   edit-mode tool). Shared by the Energy page, the front page price card and the "Elpris" card template. */
+.beast-price-resolution { flex: 0 0 auto; display: inline-flex; gap: 2px; padding: 2px; border: 1px solid var(--border); border-radius: 999px; background: var(--surface-2); }
+.beast-price-resolution button { min-height: 30px; padding: 0 12px; border: 0; border-radius: 999px; background: transparent; color: var(--ink-muted); font: 800 11px/1 var(--font-sans); white-space: nowrap; cursor: pointer; touch-action: manipulation; transition: background .16s ease, color .16s ease; }
+.beast-price-resolution button:hover { color: var(--ink); }
+.beast-price-resolution button.is-active { background: var(--accent-gradient); color: var(--accent-ink); }
+/* Title and resolution switch stay together; the group wraps as one when the head is narrow. */
+.beast-price-resolution.is-compact button { min-height: 24px; padding: 0 9px; font-size: 10px; }
+.beast-energy-chart-titlegroup { display: flex; align-items: center; flex-wrap: wrap; gap: var(--space-2) var(--space-3); min-width: 0; }
 .beast-energy-bars .beast-energy-bar { fill: var(--accent-b, #4fb8ff); opacity: .85; }
 .beast-energy-recommendation { min-height:64px; display:flex; align-items:center; gap:12px; padding:10px 16px; border:1px solid var(--accent-border); border-radius:var(--radius-md); background:var(--accent-soft); color:var(--accent-a); }
 .beast-energy-recommendation div { min-width:0; }
@@ -3374,6 +3383,8 @@
 .beast-template-energy-price header b { color: var(--warning); font-size: clamp(0.85rem, 8cqb, var(--text-lg)); white-space: nowrap; }
 .beast-template-energy-bars { flex: 1; min-height: 40px; display: flex; align-items: end; gap: 4px; padding-top: 8px; border-bottom: 1px solid var(--border); }
 .beast-template-energy-bars i { flex: 1 1 0; min-width: 3px; height: var(--h); border-radius: 5px 5px 1px 1px; background: var(--c); box-shadow: 0 0 12px color-mix(in srgb, var(--c), transparent 65%); }
+.beast-template-energy-bars.is-dense { gap: 1px; }
+.beast-template-energy-bars.is-dense i { min-width: 1px; border-radius: 2px 2px 0 0; box-shadow: none; }
 .beast-template-energy-price > em { margin: auto; color: var(--ink-muted); font-style: normal; font-size: clamp(0.65rem, 5.5cqb, var(--text-sm)); }
 .beast-template-energy-usage header span { color: var(--ink-muted); white-space: nowrap; font-size: clamp(0.6rem, 5cqb, var(--text-sm)); }
 .beast-template-energy-usage header span b { color: var(--accent-b); font-size: clamp(0.85rem, 8cqb, var(--text-lg)); }

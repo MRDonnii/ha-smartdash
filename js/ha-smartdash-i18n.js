@@ -473,6 +473,34 @@
     "Morgen, Dag, Aften og Nat skifter efter klokken og viser hver sine kort. Kan også justeres på enheden under Menu → Tilstande.": "Morning, Day, Evening and Night change with the clock and each show their own cards. Can also be adjusted on the device under Menu → Modes."
   });
 
+  // "1 time | 15 min" switch in the price graphs, and the matching admin field.
+  Object.assign(en, {
+    "1 time": "1 hour", "Prisopløsning": "Price resolution",
+    "Vis priserne time for time": "Show the prices hour by hour", "Vis priserne kvarter for kvarter": "Show the prices every 15 minutes",
+    "Prisopløsning – standard for enheder (valgfri, fx EV Ledgers)": "Price resolution – default for devices (optional, e.g. EV Ledger's)",
+    "Valgfri standard for de enheder, der ikke selv har valgt. Har prisdata kvarterpriser, kan hver enhed selv vælge \"1 time\" eller \"15 min\" i prisgraferne – det valg gælder først og huskes på enheden. Uden et valg og uden denne entity vises priserne time for time.": "Optional default for devices that have not chosen themselves. When the price data has quarter-hour prices, each device can pick \"1 hour\" or \"15 min\" in the price graphs -- that choice comes first and is remembered on the device. With no choice and no entity here, prices are shown hour by hour."
+  });
+
+  // First-run connect screen: Home Assistant discovery.
+  Object.assign(en, {
+    "Vælg den Home Assistant, denne skærm skal logge ind på.": "Choose the Home Assistant this screen should sign in to.",
+    "Søger efter Home Assistant på netværket…": "Looking for Home Assistant on the network…",
+    "Fundet på netværket:": "Found on the network:", "Fundet på netværket – vælg én:": "Found on the network – choose one:",
+    "Jeg kunne ikke finde nogen Home Assistant automatisk.": "I couldn't find a Home Assistant automatically.",
+    "Kører Home Assistant på et andet netværk, eller bruger den en anden port end 8123, kan du indtaste adressen selv.": "If Home Assistant runs on another network or uses a port other than 8123, enter the address yourself.",
+    "Søg igen": "Search again", "Indtast adresse manuelt": "Enter address manually",
+    "Bruges af Smartdash": "Used by Smartdash", "Denne Home Assistant": "This Home Assistant",
+    "Serveren er sat til en anden Home Assistant": "The server is set to a different Home Assistant",
+    "Kontrollerer forbindelse…": "Checking the connection…", "Kontrollerer token…": "Checking the token…",
+    "Home Assistant-adresse": "Home Assistant address", "Log ind": "Sign in", "Log ind med token": "Sign in with a token",
+    "Indsæt token fra din Home Assistant-profil": "Paste the token from your Home Assistant profile",
+    "Tokenet gemmes kun i denne browser og medtages aldrig i fejlloggen.": "The token is only stored in this browser and is never included in the error log.",
+    "Kontrollér token og log ind": "Check the token and sign in",
+    "Fejllog og forbindelsesdetaljer": "Error log and connection details",
+    "Ingen loginfejl registreret i denne browserfane.": "No sign-in errors recorded in this browser tab.",
+    "Kopiér fejllog": "Copy error log", "Ryd log": "Clear log"
+  });
+
   function currentLanguage() {
     const stored = typeof BeastLocalSettings !== "undefined" ? BeastLocalSettings.get("language", "en") : "en";
     return stored === "da" ? "da" : "en";
@@ -501,7 +529,9 @@
       [/^Normal · (\d+)% under snit$/, "Normal · $1% below average"],
       [/^Billigst kl\. (.+)$/, "Cheapest at $1"], [/^Dyrest kl\. (.+)$/, "Most expensive at $1"],
       [/^Snit (.+)$/, "Average $1"], [/^Bund (.+)$/, "Low $1"], [/^(\d+) % fugt · (.+) drift$/, "$1% humidity · $2 runtime"],
-      [/^Rediger (.+)$/, "Edit $1"], [/^Redigerer (.+)$/, "Editing $1"]
+      [/^Rediger (.+)$/, "Edit $1"], [/^Redigerer (.+)$/, "Editing $1"],
+      [/^version (.+)$/, "version $1"],
+      [/^Søgte på (.+)\. Kører Home Assistant på et andet netværk, eller bruger den en anden port end 8123, kan du indtaste adressen selv\.$/, "Searched $1. If Home Assistant runs on another network or uses a port other than 8123, enter the address yourself."]
     ];
     for (const [pattern, replacement] of patterns) if (pattern.test(core)) return `${leading}${core.replace(pattern, replacement)}${trailing}`;
     return value;
