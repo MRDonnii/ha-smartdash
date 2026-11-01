@@ -1,5 +1,16 @@
 [
   {
+    "version": "20261101-4",
+    "tag": "v0.8.86",
+    "date": "2026-11-01",
+    "changes": [
+      {
+        "da": "Automatisk pauseskærm kan nu slås til og fra pr. enhed, og ventetiden kan sættes fra 10 sekunder til 60 minutter, både i soveværelsesmenuen under Skærm og i Administration → Denne enhed. (Claude AI)",
+        "en": "The automatic screensaver can now be switched on and off per device, with a delay from 10 seconds to 60 minutes, both in the bedroom menu under Screen and in Administration → This device."
+      }
+    ]
+  },
+  {
     "version": "20261101-3",
     "tag": "v0.8.85",
     "date": "2026-11-01",
