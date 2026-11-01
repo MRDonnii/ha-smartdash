@@ -1,5 +1,16 @@
 [
   {
+    "version": "20261101-7",
+    "tag": "v0.8.89",
+    "date": "2026-11-01",
+    "changes": [
+      {
+        "da": "Opdateringssiden i administrationen forstår nu, når Smartdash kører som Home Assistant-app, Docker eller Unraid: i stedet for en \"Installer ny version\"-knap, der kun gav en fejl, står der nu, hvor opdateringen tages (Indstillinger → Apps → HA Smartdash → Opdater). (Claude AI)",
+        "en": "The Update page in Administration now understands when Smartdash runs as a Home Assistant app, Docker or Unraid: instead of an \"Install new version\" button that could only fail, it shows where to update (Settings → Apps → HA Smartdash → Update). (Claude AI)"
+      }
+    ]
+  },
+  {
     "version": "20261101-6",
     "tag": "v0.8.88",
     "date": "2026-11-01",

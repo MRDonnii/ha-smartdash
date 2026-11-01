@@ -1,3 +1,7 @@
+## 0.8.89
+
+- Opdateringssiden i administrationen forstår nu, når Smartdash kører som Home Assistant-app, Docker eller Unraid: i stedet for en "Installer ny version"-knap, der kun gav en fejl, står der nu, hvor opdateringen tages (Indstillinger → Apps → HA Smartdash → Opdater). (Claude AI)
+
 ## 0.8.88
 
 - Overblikket og de øvrige sider ser nu pæne ud på en stående skærm bredere end 1100 px (fx en roteret 1440p-skærm): kortene bruger de to-kolonne tablet-størrelser i stedet for at blive strakt over hele højden som lange strimler, kameraer vises tre ved siden af hinanden, og ventilationskortet får fuld bredde og plads til tegningen. Kameraer, Energi, Sikkerhed og Varme holder landskabets proportioner i stedet for at strække rækkerne over skærmens fulde højde. Liggende skærme og telefoner er uændrede. (Claude AI)

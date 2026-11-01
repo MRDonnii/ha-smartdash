@@ -1529,7 +1529,16 @@
             : "";
           const latestLabel = github.tag ? `HA Smartdash ${github.tag}` : formatVersionLabel(latestVersion);
           const betaBadge = github?.prerelease ? ` · Beta` : "";
-          installLatestEl.innerHTML = `<div class="admin-install-latest"><div><strong>${t("Ny version klar", "New version ready")}${betaBadge}</strong><span>${escapeHtml(latestLabel)}</span></div><button type="button" class="beast-btn beast-btn-primary" data-rollback-version="${escapeHtml(latestVersion)}" data-is-newer="true" data-is-latest="true" data-install-source="github" data-install-tag="${escapeHtml(github.tag || "")}">${t("Installer ny version", "Install new version")}</button>${changesHtml}</div>`;
+          // Container installs (Home Assistant app, Docker, Unraid) are immutable
+          // images: update.php refuses to install into them, so point at the
+          // platform's own updater instead of offering a button that can only fail.
+          const installAction = github.containerManaged
+            ? `<p class="admin-install-latest-notes">${t("Denne installation kører som container/app og opdateres udefra. I Home Assistant: Indstillinger → Apps → HA Smartdash → Opdater (vises den ikke, så vælg Søg efter opdateringer i ⋮-menuen i appbutikken). Med Docker eller Unraid hentes det nye image. Dine data bevares.", "This installation runs as a container/app and is updated from outside. In Home Assistant: Settings → Apps → HA Smartdash → Update (if it is not listed, choose Check for updates in the app store's ⋮ menu). With Docker or Unraid, pull the new image. Your data is kept.")}</p>`
+            : "";
+          const installButton = github.containerManaged
+            ? ""
+            : `<button type="button" class="beast-btn beast-btn-primary" data-rollback-version="${escapeHtml(latestVersion)}" data-is-newer="true" data-is-latest="true" data-install-source="github" data-install-tag="${escapeHtml(github.tag || "")}">${t("Installer ny version", "Install new version")}</button>`;
+          installLatestEl.innerHTML = `<div class="admin-install-latest"><div><strong>${t("Ny version klar", "New version ready")}${betaBadge}</strong><span>${escapeHtml(latestLabel)}</span>${installAction}</div>${installButton}${changesHtml}</div>`;
         } else {
           installLatestEl.innerHTML = `<p class="admin-empty">${t("Du kører den nyeste version.", "You're on the latest version.")}</p>`;
         }
