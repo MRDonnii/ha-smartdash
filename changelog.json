@@ -1,5 +1,16 @@
 [
   {
+    "version": "20261101-8",
+    "tag": "v0.8.90",
+    "date": "2026-11-01",
+    "changes": [
+      {
+        "da": "Grafen over elpriser er bygget om, så den ser ud og opfører sig som i Home Assistant-kortet for elpriser: samme søjler eller linje med glød, og de samme animationer (søjlerne vokser ind, væske og bobler i de billigste timer, pulser og gnister når det er meget dyrt, rolig lysbevægelse på linjen), BILLIGST og MEGET/EKSTREMT DYRT-mærker, nu-linje og tooltip. Farverne følger nu fem prisniveauer (billig, normal pris, dyrt, meget dyrt, ekstremt dyrt), og grænserne for niveauerne kan sættes i Administration → Energi (standard 1,5 · 3 · 3,75 · 5 kr/kWh). Det gælder alle tre grafer: Energisiden (søjler og linje, i dag, i morgen og prognose), forsidens energikort og skabelonkortet Elpris. Prognosedage vises dæmpet, og animationerne er slået fra ved reduceret bevægelse. (Claude AI)",
+        "en": "The electricity price graph has been rebuilt to look and behave like the Home Assistant electricity price card: the same bars or glowing line and the same animations (bars growing in, liquid and bubbles in the cheapest hours, pulses and sparks when it is very dear, a calm light travelling along the line), CHEAPEST and VERY/EXTREMELY DEAR labels, a now line and a tooltip. The colours now follow five price levels (cheap, normal price, dear, very dear, extremely dear), and the limits for the levels can be set under Administration → Energy (default 1.5 · 3 · 3.75 · 5 DKK/kWh). This applies to all three graphs: the Energy page (bars and line, today, tomorrow and forecast), the overview energy card and the Electricity price template card. Forecast days are shown dimmed, and the animations are turned off when reduced motion is requested. (Claude AI)"
+      }
+    ]
+  },
+  {
     "version": "20261101-7",
     "tag": "v0.8.89",
     "date": "2026-11-01",

@@ -114,12 +114,6 @@
     }
   }
 
-  function priceColor(price) {
-    if (price < 1.5) return "var(--success)";
-    if (price < 3) return "var(--warning)";
-    return "var(--danger)";
-  }
-
   function normalizePrices(entries) {
     if (!Array.isArray(entries)) return [];
     return entries.map((entry, index) => {
@@ -261,10 +255,6 @@
     }
   };
 
-  function isCurrent(entry, now) {
-    return new Date(entry.start) <= now && now < new Date(entry.end || new Date(entry.start).getTime() + 3600000);
-  }
-
   function localDateKey(date) {
     return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
   }
@@ -305,14 +295,10 @@
     }).filter((day) => day.prices.length).sort((a, b) => a.key.localeCompare(b.key));
   }
 
-  function priceLevel(price, average) {
-    if (!Number.isFinite(price)) return { label: "Ukendt", cls: "" };
-    if (Number.isFinite(average)) {
-      if (price <= average * .78) return { label: "Meget billig", cls: "is-cheap" };
-      if (price <= average * .95) return { label: "Billig", cls: "is-cheap" };
-      if (price >= average * 1.25) return { label: "Dyr", cls: "is-expensive" };
-    }
-    return { label: "Normal", cls: "is-normal" };
+  // Same fixed levels as the graph (Admin -> Energi): billig, normal pris, dyrt, meget dyrt, ekstremt dyrt.
+  function priceLevel(price) {
+    const info = BeastPriceChart.info(price);
+    return { label: info.name, index: info.index };
   }
 
   function cheapestWindow(prices, length = 3) {
@@ -327,98 +313,23 @@
   }
 
 
-  function buildPriceLineChart(prices, highlightNow, min, max) {
-    const width = 960;
-    const height = 190;
-    const left = 40;
-    const right = 10;
-    const top = 12;
-    const bottom = 26;
-    const plotWidth = width - left - right;
-    const plotHeight = height - top - bottom;
-    const values = prices.map((p) => p.price);
-    const yMax = max * 1.05 || 1;
-    const yMin = Math.min(0, min);
-    const range = yMax - yMin || 1;
-    const coordinates = prices.map((p, index) => [
-      left + (index / Math.max(1, prices.length - 1)) * plotWidth,
-      top + plotHeight - ((p.price - yMin) / range) * plotHeight
-    ]);
-    const line = BeastCore.linearPath(coordinates);
-    // The colour bands span the day's actual price range, not the axis: the
-    // axis starts at 0, so with prices sitting between (say) 1.50 and 2.70
-    // every hour -- including the cheapest -- would land in the top, red
-    // part of the scale. Anchoring green to the cheapest hour and red to
-    // the dearest also makes the line agree with the hour dots, which are
-    // coloured that way already.
-    const yForPrice = (price) => top + plotHeight - ((price - yMin) / range) * plotHeight;
-    const stroke = BeastCore.chartLineStroke(coordinates, values, {
-      width, height, top: yForPrice(max), bottom: yForPrice(min)
-    });
-    const yGrid = Array.from({ length: 5 }, (_, index) => {
-      const ratio = index / 4;
-      const y = top + plotHeight * ratio;
-      const value = yMin + range * (1 - ratio);
-      return `<line x1="${left}" y1="${y}" x2="${left + plotWidth}" y2="${y}"></line><text x="${left - 7}" y="${y + 4}" text-anchor="end">${value.toFixed(1)}</text>`;
-    }).join("");
-    const now = new Date();
-    // A dot per hour, not just on the extremes: the data really is hourly,
-    // so every hour should be readable as its own point (and hoverable for
-    // its exact price). Cheapest/dearest/now stay bigger so they still
-    // stand out among them.
-    const colorSettings = BeastCore.chartColorSettings();
-    const priceRange = (max - min) || 1;
-    const marks = prices.map((p, index) => {
-      const start = new Date(p.start);
-      const isNow = highlightNow && isCurrent(p, now);
-      const isMin = p.price === min;
-      const isMax = p.price === max;
-      const [x, y] = coordinates[index];
-      const cls = isNow ? " is-now" : isMin ? " is-min" : isMax ? " is-max" : "";
-      const radius = isNow ? 5.5 : (isMin || isMax) ? 4.5 : 2.6;
-      // Plain hours take the value's own colour so the dots read as part of
-      // the line rather than as separate markers.
-      const fill = cls ? "" : ` style="fill:${colorSettings.mode === "usage" ? BeastCore.chartColorForRatio((p.price - min) / priceRange, colorSettings) : colorSettings.static}"`;
-      return `<circle class="beast-energy-price-dot${cls}" cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="${radius}"${fill}><title>${hourLabel(p)} · ${p.price.toFixed(2)} kr/kWh</title></circle>`;
-    }).join("");
-    const xLabels = prices.map((p, index) => {
-      const hour = new Date(p.start).getHours();
-      if (hour % 6 || new Date(p.start).getMinutes() || prices.length < 6) return "";
-      const x = coordinates[index][0];
-      return `<line class="beast-energy-price-hourline" x1="${x}" y1="${top}" x2="${x}" y2="${top + plotHeight}"></line><text x="${x}" y="${height - 6}" text-anchor="middle">${String(hour).padStart(2, "0")}</text>`;
-    }).join("");
-    return `<div class="beast-energy-price-line">
-      <svg viewBox="0 0 ${width} ${height}" preserveAspectRatio="none" role="img" aria-label="${perHour(prices) > 1 ? "Elpris kvarter for kvarter" : "Elpris time for time"}">
-        <defs>${stroke.defs}</defs>
-        <g class="beast-energy-line-grid">${yGrid}${xLabels}</g>
-        <text class="beast-energy-line-unit" x="${left}" y="8">kr/kWh</text>
-        <path class="beast-energy-price-path" d="${line}" style="stroke:${stroke.stroke}"></path>
-        ${marks}
-      </svg>
-    </div>`;
-  }
-
-  function buildPriceChart(prices, highlightNow) {
-    if (!Array.isArray(prices) || !prices.length) return "";
-    const now = new Date();
-    const values = prices.map((p) => p.price);
-    const max = Math.max(...values);
-    const min = Math.min(...values);
-    if (BeastCore.chartType(PRICE_CHART_KEY) === "line") return buildPriceLineChart(prices, highlightNow, min, max);
-    const bars = prices.map((p, index) => {
-      const start = new Date(p.start);
-      const isActive = highlightNow && isCurrent(p, now);
-      const isMin = p.price === min;
-      const isMax = p.price === max;
-      return `
-        <button type="button" class="beast-energy-hour${isActive ? " is-current" : ""}${isMin ? " is-min" : ""}${isMax ? " is-max" : ""}" style="--bar-height:${Math.max(8, (p.price / max) * 100)}%" title="${hourLabel(p)}–${endLabel(p)} · ${p.price.toFixed(2)} kr/kWh" aria-label="${hourLabel(p)}, ${p.price.toFixed(2)} kroner pr. kilowatttime">
-          <span class="beast-energy-hour-value">${p.price.toFixed(2)}</span>
-          <i style="height:${Math.max(8, (p.price / max) * 100)}%;--bar-color:${BeastCore.chartColorSettings().mode === "usage" ? BeastCore.chartColorForRatio((p.price - min) / ((max - min) || 1)) : priceColor(p.price)}"></i>
-          <small>${index % (2 * perHour(prices)) === 0 ? String(start.getHours()).padStart(2, "0") : ""}</small>
-        </button>
-      `;
-    }).join("");
-    return `<div class="beast-energy-hour-chart${prices.length > 30 ? " is-dense" : ""}" style="grid-template-columns:repeat(${prices.length},minmax(0,1fr))">${bars}</div>`;
+  // One shared renderer (js/ha-smartdash-price-chart.js) draws both the bars and the line; the day shown is the window,
+  // every day is passed along so a stretch of dear hours that crosses midnight can still be recognised.
+  function buildPriceChart(day, days, forecastFrom) {
+    if (!day || !day.prices.length) return "";
+    const start = new Date(`${day.key}T00:00:00`);
+    const end = new Date(start);
+    end.setDate(end.getDate() + 1);
+    const slots = days.flatMap((d) => d.prices.map((p) => ({ start: p.start, end: p.end, price: p.price, forecast: d.key > forecastFrom })));
+    const quarters = perHour(day.prices) > 1;
+    return `<div class="beast-energy-price-pchart">${BeastPriceChart.html({
+      id: "energy-price",
+      slots,
+      t0: start.getTime(),
+      t1: end.getTime(),
+      type: BeastCore.chartType(PRICE_CHART_KEY) === "line" ? "line" : "bar",
+      label: quarters ? "Elpris kvarter for kvarter" : "Elpris time for time"
+    })}</div>`;
   }
 
   // Averaging per bucket keeps the point count sane for today's series without
@@ -1154,7 +1065,7 @@
     const cheapest = activePrices.length ? activePrices.reduce((best, item) => item.price < best.price ? item : best) : null;
     const dearest = activePrices.length ? activePrices.reduce((best, item) => item.price > best.price ? item : best) : null;
     const bestWindow = cheapestWindow(activePrices, 3 * perHour(activePrices));
-    const currentLevel = priceLevel(price, todayPrices.length ? todayPrices.reduce((sum, item) => sum + item.price, 0) / todayPrices.length : null);
+    const currentLevel = priceLevel(price);
     const priceDifference = price !== null && rangeAverage !== null ? ((price / rangeAverage) - 1) * 100 : null;
     const historyMin = cachedHistoryPoints.length ? Math.min(...cachedHistoryPoints) / 1000 : null;
     const historyMax = cachedHistoryPoints.length ? Math.max(...cachedHistoryPoints) / 1000 : null;
@@ -1166,8 +1077,8 @@
     const todayAveragePrice = todayCostKr !== null && todayEnergyKwh > 0 ? todayCostKr / todayEnergyKwh : null;
     const recommendation = price === null ? { cls: "", icon: "bolt", title: "Afventer aktuelle priser", detail: "Anbefalingen kommer automatisk" }
       : powerNumber !== null && powerNumber >= 5 ? { cls: "is-warning", icon: "bolt", title: "Højt forbrug lige nu", detail: bestWindow ? `${powerNumber.toFixed(1)} kW · flyt om muligt større forbrug til ${hourLabel(bestWindow.start)}–${endLabel(bestWindow.end)}` : `${powerNumber.toFixed(1)} kW lige nu` }
-      : price >= 3 ? { cls: "is-warning", icon: "bolt", title: "Vent med større strømforbrug", detail: bestWindow ? `Bedste tretimers vindue er ${hourLabel(bestWindow.start)}–${endLabel(bestWindow.end)}` : "Prisen er høj lige nu" }
-      : currentLevel.label === "Billig" ? { cls: "is-good", icon: "check", title: "Godt tidspunkt at bruge strøm", detail: `${price.toFixed(2)} kr/kWh lige nu` }
+      : price >= BeastPriceChart.levels().dear ? { cls: "is-warning", icon: "bolt", title: "Vent med større strømforbrug", detail: bestWindow ? `Bedste tretimers vindue er ${hourLabel(bestWindow.start)}–${endLabel(bestWindow.end)}` : "Prisen er høj lige nu" }
+      : currentLevel.index === 0 ? { cls: "is-good", icon: "check", title: "Godt tidspunkt at bruge strøm", detail: `${price.toFixed(2)} kr/kWh lige nu` }
       : { cls: "", icon: "bolt", title: bestWindow ? `Planlæg større forbrug fra ${hourLabel(bestWindow.start)}` : "Normalt prisniveau", detail: bestWindow ? `Tre timer til ca. ${bestWindow.average.toFixed(2)} kr/kWh` : `${price.toFixed(2)} kr/kWh lige nu` };
 
     containerEl.innerHTML = `
@@ -1181,7 +1092,7 @@
       </div>
       <div class="beast-energy-chart-wrap beast-energy-chart-price">
         <div class="beast-energy-chart-head">
-          ${BeastCore.chartTypeToggleMarkup(PRICE_CHART_KEY, "")}
+          ${BeastCore.chartTypeToggleMarkup(PRICE_CHART_KEY, "", { colors: false })}
           <div class="beast-energy-chart-titlegroup">
             <span class="beast-panel-title">${escapeHtml(priceChartTitle(nativeCard("energy-price-chart")?.label))}</span>
             ${priceResolutionToggleMarkup(quarterAvailable)}
@@ -1198,7 +1109,7 @@
             ${bestWindow ? `<div class="is-best-time"><small>Bedste 3 timer</small><strong>${hourLabel(bestWindow.start)}–${endLabel(bestWindow.end)} <em>· ${bestWindow.average.toFixed(2)} kr</em></strong></div>` : ""}
           ` : ""}
         </div>
-        ${activeValues.length ? buildPriceChart(activePrices, priceView === todayKey) : `<p class="beast-music-empty">Ingen prisdata for den valgte dag.</p>`}
+        ${activeValues.length ? buildPriceChart(activeDay, priceDays, tomorrowKey) : `<p class="beast-music-empty">Ingen prisdata for den valgte dag.</p>`}
       </div>
       <div class="beast-energy-chart-wrap beast-energy-chart-usage">
         <div class="beast-energy-chart-head">
@@ -1211,6 +1122,7 @@
         ${cachedHistoryPoints.length ? buildUsageChart(cachedHistoryPoints) : '<p class="beast-music-empty">Henter historik…</p>'}
       </div>
     `;
+    BeastPriceChart.mountAll(containerEl);
     wireEnergyLayout();
     wireUtilityTabs();
 

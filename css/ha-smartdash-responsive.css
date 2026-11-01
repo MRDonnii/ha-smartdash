@@ -132,8 +132,9 @@ html, body, .beast-app { width: 100%; height: 100%; height: 100dvh; }
     grid-template-rows: minmax(150px, auto);
   }
   .beast-energy-chart-wrap { min-height: 430px; }
-  .beast-energy-hour-chart, .beast-energy-usage-chart, .beast-energy-line-chart-wrap { min-height: 260px; }
-  .beast-energy-hour-chart, .beast-energy-usage-chart { gap: clamp(2px, .35vw, 5px); }
+  .beast-energy-usage-chart, .beast-energy-line-chart-wrap { min-height: 260px; }
+  .beast-energy-price-pchart { min-height: 260px; }
+  .beast-energy-usage-chart { gap: clamp(2px, .35vw, 5px); }
   .beast-pool-dashboard { grid-template-rows: auto !important; align-content: start; }
   .beast-pool-hero, .beast-pool-live, .beast-pool-insights { grid-column: 1 !important; grid-row: auto !important; width: 100%; }
   .beast-pool-live { min-height: 0; }
@@ -295,9 +296,8 @@ html, body, .beast-app { width: 100%; height: 100%; height: 100dvh; }
   .beast-energy-panel:not(.is-now) > .beast-stat-grid .beast-stat-tile { padding: 12px; }
   .beast-energy-panel:not(.is-now) > .beast-stat-grid .beast-stat-tile-value { font-size: clamp(1.55rem, 7vw, 2.15rem); }
   .beast-energy-chart-wrap { min-height: 360px; }
-  .beast-energy-hour-chart, .beast-energy-usage-chart, .beast-energy-line-chart-wrap { min-height: 230px; }
-  .beast-energy-hour small { font-size: 8px; }
-  .beast-energy-hour:nth-child(even) small { opacity: .35; }
+  .beast-energy-usage-chart, .beast-energy-line-chart-wrap { min-height: 230px; }
+  .beast-energy-price-pchart { min-height: 230px; }
   .beast-heating-room-grid, .beast-heating-sidebar { grid-template-columns: minmax(0, 1fr); }
   .beast-heating-auto { width: 100%; min-width: 0; }
   .beast-heating-hero h2 { font-size: clamp(1.65rem, 8vw, 2.25rem); }

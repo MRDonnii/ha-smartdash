@@ -36,7 +36,7 @@ if (!/^\d{8}-\d+$/.test(latest.version || "")) throw new Error("Latest changelog
 for (const html of [index, beast]) {
   if (meta(html, "beast-release-tag") !== latest.tag) throw new Error("HTML release tag does not match the latest changelog tag.");
   if (meta(html, "beast-build") !== latest.version) throw new Error("HTML build ID does not match the latest changelog version.");
-  const releaseAssets = ["ha-smartdash-misc.css", "ha-smartdash-overview.css", "ha-smartdash-card-editor.js", "ha-smartdash-overview.js", "ha-smartdash-power.js", "ha-smartdash-cameras.js", "ha-smartdash-app.js"];
+  const releaseAssets = ["ha-smartdash-misc.css", "ha-smartdash-overview.css", "ha-smartdash-card-editor.js", "ha-smartdash-overview.js", "ha-smartdash-power.js", "ha-smartdash-cameras.js", "ha-smartdash-app.js", "ha-smartdash-price-chart.js"];
   for (const asset of releaseAssets) {
     const escaped = asset.replaceAll(".", "\\.");
     const cacheId = html.match(new RegExp(`${escaped}\\?v=([^\"']+)`))?.[1];
@@ -70,6 +70,7 @@ for (const asset of ["admin.css", "admin.js", "ha-smartdash-cameras.js"]) if (!a
 if (meta(adminHtml, "beast-release-tag") !== latest.tag || meta(adminHtml, "beast-build") !== latest.version) throw new Error("Admin release metadata must match the latest release.");
 for (const html of [index, beast]) {
   if (html.indexOf("ha-smartdash-power.js") > html.indexOf("ha-smartdash-cameras.js")) throw new Error("Power bridge must load before camera components.");
+  for (const consumer of ["ha-smartdash-standard-cards.js", "ha-smartdash-energy.js", "ha-smartdash-overview.js"]) if (html.indexOf("ha-smartdash-price-chart.js") < 0 || html.indexOf("ha-smartdash-price-chart.js") > html.indexOf(consumer)) throw new Error(`Price chart module must load before ${consumer}.`);
 }
 console.log(`Release metadata OK: ${latest.tag} (${latest.version})`);
 NODE

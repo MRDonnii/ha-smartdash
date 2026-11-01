@@ -61,6 +61,12 @@
   --warning-soft: rgba(255, 200, 87, 0.15);
   --danger: #ff5d7a;
   --danger-soft: rgba(255, 93, 122, 0.15);
+  --price-cheap: var(--success);
+  --price-normal: #c9d66b;
+  --price-dear: var(--warning);
+  --price-very-dear: #ff935f;
+  --price-extreme: #ff4d8d;
+  --price-cheapest: #2ee6d6;
 
   /* Per-section signature accents (used sparingly — small glows/icons, not whole panels) */
   --accent-music: #ff5cb3;
@@ -238,6 +244,10 @@
   --warning-soft: rgba(167, 101, 0, 0.13);
   --danger: #c92f50;
   --danger-soft: rgba(201, 47, 80, 0.12);
+  --price-normal: #6f8a12;
+  --price-very-dear: #c4501c;
+  --price-extreme: #c2185b;
+  --price-cheapest: #0a9a90;
   --accent-energy: #a76500;
   --accent-weather: #0878bb;
   --accent-rooms: #087f61;

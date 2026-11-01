@@ -909,69 +909,6 @@
 }
 .beast-energy-price-summary .is-best-time strong { color: var(--accent-energy); }
 
-.beast-energy-hour-chart {
-  flex: 1;
-  min-height: 140px;
-  display: grid;
-  grid-template-columns: repeat(24, minmax(0, 1fr));
-  align-items: end;
-  gap: 5px;
-  padding-top: 30px;
-  border-bottom: 1px solid var(--border-strong);
-  background: repeating-linear-gradient(to bottom, transparent 0, transparent calc(33.33% - 1px), var(--border) 33.33%);
-}
-
-.beast-energy-hour {
-  appearance: none;
-  height: 100%;
-  min-width: 0;
-  padding: 0;
-  display: flex;
-  flex-direction: column;
-  justify-content: flex-end;
-  align-items: stretch;
-  border: 0;
-  background: transparent;
-  color: var(--ink-muted);
-  position: relative;
-}
-
-.beast-energy-hour i {
-  display: block;
-  min-height: 8px;
-  border-radius: 12px 12px 5px 5px;
-  background: linear-gradient(180deg, color-mix(in srgb, var(--bar-color), white 18%), color-mix(in srgb, var(--bar-color), #111 16%));
-  box-shadow: 0 10px 20px color-mix(in srgb, var(--bar-color), transparent 78%);
-}
-
-.beast-energy-hour small { height: 24px; padding-top: 5px; font-size: 10px; }
-.beast-energy-hour-value {
-  position: absolute;
-  left: 50%;
-  bottom: calc(var(--bar-height, 100%) + 4px);
-  transform: translateX(-50%);
-  display: none;
-  padding: 5px 7px;
-  border-radius: 6px;
-  background: #080a0f;
-  color: #fff;
-  font-size: 10px;
-  z-index: 3;
-}
-.beast-energy-hour:is(:hover, :focus-visible) .beast-energy-hour-value,
-.beast-energy-hour.is-current .beast-energy-hour-value { display: block; }
-.beast-energy-hour.is-current i {
-  outline: 2px solid rgba(255,179,64,.62);
-  background: linear-gradient(180deg, #ffd36e, #f08a24);
-  box-shadow: 0 0 14px rgba(255,211,110,.42), 0 10px 22px rgba(240,112,28,.28);
-}
-.beast-energy-hour.is-min i { box-shadow: 0 0 18px rgba(47,224,168,.42); }
-/* Quarter prices: 96 thin bars. */
-.beast-energy-hour-chart.is-dense { gap: 1px; }
-.beast-energy-hour-chart.is-dense .beast-energy-hour i { border-radius: 3px 3px 1px 1px; min-height: 4px; box-shadow: none; }
-.beast-energy-hour-chart.is-dense .beast-energy-hour small { overflow: visible; white-space: nowrap; }
-.beast-energy-hour.is-max i { box-shadow: 0 0 18px rgba(255,93,122,.42); }
-
 .beast-sparkline {
   width: 100%;
   height: 100%;
@@ -3381,10 +3318,6 @@
 .beast-template-energy-price header small, .beast-template-energy-usage header small { color: var(--ink-muted); font-size: clamp(0.55rem, 4.5cqb, var(--text-xs)); text-transform: uppercase; letter-spacing: .06em; }
 .beast-template-energy-price header strong, .beast-template-energy-usage header strong { margin-top: 3px; font-size: clamp(0.8rem, 7cqb, var(--text-md)); }
 .beast-template-energy-price header b { color: var(--warning); font-size: clamp(0.85rem, 8cqb, var(--text-lg)); white-space: nowrap; }
-.beast-template-energy-bars { flex: 1; min-height: 40px; display: flex; align-items: end; gap: 4px; padding-top: 8px; border-bottom: 1px solid var(--border); }
-.beast-template-energy-bars i { flex: 1 1 0; min-width: 3px; height: var(--h); border-radius: 5px 5px 1px 1px; background: var(--c); box-shadow: 0 0 12px color-mix(in srgb, var(--c), transparent 65%); }
-.beast-template-energy-bars.is-dense { gap: 1px; }
-.beast-template-energy-bars.is-dense i { min-width: 1px; border-radius: 2px 2px 0 0; box-shadow: none; }
 .beast-template-energy-price > em { margin: auto; color: var(--ink-muted); font-style: normal; font-size: clamp(0.65rem, 5.5cqb, var(--text-sm)); }
 .beast-template-energy-usage header span { color: var(--ink-muted); white-space: nowrap; font-size: clamp(0.6rem, 5cqb, var(--text-sm)); }
 .beast-template-energy-usage header span b { color: var(--accent-b); font-size: clamp(0.85rem, 8cqb, var(--text-lg)); }
@@ -3643,18 +3576,6 @@
 .beast-chart-color-steps { display: grid; gap: 4px; }
 .beast-chart-color-steps > div { display: grid; grid-template-columns: repeat(4, 1fr); gap: 5px; }
 .beast-chart-colors small { color: var(--ink-faint); font-size: 10.5px; }
-/* Line variant of the hour-by-hour price chart -- same box the bars use,
-   and it keeps the bars' key markers (cheapest, dearest, current hour)
-   because spotting those at a glance is the point of this chart. */
-.beast-energy-price-line { width: 100%; height: 190px; }
-.beast-energy-price-line svg { width: 100%; height: 100%; display: block; overflow: visible; }
-.beast-energy-price-path { fill: none; stroke-width: 2.5; stroke-linecap: round; stroke-linejoin: round; vector-effect: non-scaling-stroke; }
-.beast-energy-price-dot { stroke: var(--surface-solid); stroke-width: 2; vector-effect: non-scaling-stroke; }
-.beast-energy-price-dot.is-now { fill: var(--accent-a); }
-.beast-energy-price-dot.is-min { fill: var(--success); }
-.beast-energy-price-dot.is-max { fill: var(--danger); }
-.beast-energy-price-hourline { opacity: .5; }
-
 /* Heat/water view. .beast-energy-panel is always display:grid (2 columns x
    4 rows, see the base rule above) even outside the native-layout system,
    so this wrapper needs its own explicit placement -- left unset, it
@@ -3736,3 +3657,44 @@ html[data-power-profile="low"] *::after {
 .beast-car-smart-actions .is-default::after { content: "★"; margin-left: 6px; color: var(--warning, #f59e0b); font-size: .85em; }
 .beast-car-smart-default { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 6px; font-size: var(--text-sm, .85rem); color: var(--text-muted, #94a3b8); }
 .beast-car-smart-default strong { color: var(--text, #e2e8f0); font-weight: 600; }
+
+/* Shared electricity price graph (js/ha-smartdash-price-chart.js): bars or a line coloured by price level, with the
+   cheapest-three-hours liquid, "very dear" pulses and a live now marker. */
+.beast-pchart { position: absolute; inset: 0; }
+.beast-pchart-in { --gb: 18px; position: absolute; inset: 0; touch-action: pan-y; }
+.beast-pchart-svg { position: absolute; inset: 0 0 var(--gb) 0; width: 100%; height: calc(100% - var(--gb)); overflow: visible; display: block; }
+.beast-pchart-svg .draw { stroke-dasharray: 3000; stroke-dashoffset: 3000; animation: bpcDraw 2s cubic-bezier(.4, 0, .2, 1) forwards; }
+.beast-pchart-svg .fadein { opacity: 0; animation: bpcFade .8s ease 1.1s forwards; }
+.beast-pchart-svg.still * { animation: none !important; }
+.beast-pchart-svg.still .draw { stroke-dashoffset: 0; }
+.beast-pchart-svg.still .fadein { opacity: 1; }
+.beast-pchart-ov { position: absolute; inset: 0; pointer-events: none; font-size: 10px; color: var(--ink-muted); }
+.beast-pchart-ov .hl { position: absolute; bottom: 1px; transform: translateX(-50%); font-variant-numeric: tabular-nums; line-height: 1; opacity: .85; }
+.beast-pchart-ov .now { position: absolute; top: 0; bottom: var(--gb); width: 1px; background: color-mix(in srgb, var(--ink) 55%, transparent); }
+.beast-pchart-ov .nd { position: absolute; width: 10px; height: 10px; margin: -5px 0 0 -5px; border-radius: 50%; background: var(--ink); box-shadow: 0 0 0 2px color-mix(in srgb, var(--ink) 25%, transparent); animation: bpcPulse 2s ease-out infinite; }
+.beast-pchart-ov .band { position: absolute; top: 0; bottom: var(--gb); }
+.beast-pchart-ov .band > span { position: absolute; top: 2px; left: 50%; transform: translateX(-50%); padding: 2px 7px; border-radius: 999px; font-size: 9px; font-weight: 800; letter-spacing: .06em; white-space: nowrap; color: #04120d; background: var(--price-cheapest); box-shadow: 0 0 10px color-mix(in srgb, var(--price-cheapest) 55%, transparent); }
+.beast-pchart-ov .band.hot { background: linear-gradient(180deg, color-mix(in srgb, var(--price-very-dear) 22%, transparent), transparent 70%); }
+.beast-pchart-ov .band.hot > span { color: #fff; background: var(--price-very-dear); box-shadow: 0 0 10px color-mix(in srgb, var(--price-very-dear) 60%, transparent); animation: bpcHot 1.4s ease-in-out infinite; }
+.beast-pchart-ov .band.hot.xt { background: linear-gradient(180deg, color-mix(in srgb, var(--price-extreme) 24%, transparent), transparent 70%); }
+.beast-pchart-ov .band.hot.xt > span { background: var(--price-extreme); box-shadow: 0 0 10px color-mix(in srgb, var(--price-extreme) 60%, transparent); }
+.beast-pchart-tip { position: absolute; left: 0; top: 0; z-index: 4; opacity: 0; pointer-events: none; transform: translate(-50%, calc(-100% - 8px)); padding: 5px 8px; border-radius: 8px; background: #080a0f; color: #fff; font-size: 11px; line-height: 1.35; white-space: nowrap; box-shadow: 0 6px 16px rgba(0, 0, 0, .35); transition: opacity .12s; }
+.beast-pchart-tip b { font-weight: 800; }
+@keyframes bpcBarIn { from { transform: scaleY(0); } to { transform: scaleY(1); } }
+@keyframes bpcDraw { to { stroke-dashoffset: 0; } }
+@keyframes bpcFade { to { opacity: 1; } }
+@keyframes bpcPulse { 0% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--ink) 45%, transparent); } 100% { box-shadow: 0 0 0 10px transparent; } }
+@keyframes bpcHot { 0%, 100% { transform: translateX(-50%) scale(1); } 50% { transform: translateX(-50%) scale(1.08); } }
+@media (prefers-reduced-motion: reduce) {
+  .beast-pchart-svg * { animation: none !important; }
+  .beast-pchart-svg .draw { stroke-dashoffset: 0; }
+  .beast-pchart-svg .fadein { opacity: 1; }
+  .beast-pchart-ov .nd, .beast-pchart-ov .band.hot > span { animation: none; }
+}
+
+/* The three places that carry the graph size it. */
+.beast-energy-price-pchart { position: relative; flex: 1; min-height: 190px; margin-top: 6px; }
+.beast-ov-price-pchart { position: relative; flex: 1 1 96px; min-height: 76px; max-height: 130px; }
+.beast-template-energy-pchart { position: relative; flex: 1; min-height: 50px; }
+.beast-ov-price-empty { position: absolute; inset: 0; display: grid; place-items: center; color: var(--ink-faint); font-size: 10px; }
+.beast-ov-price-empty i { font-style: normal; }

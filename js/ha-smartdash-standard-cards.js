@@ -77,10 +77,12 @@ window.BeastStandardCards = (function () {
           const limit = new Date(shaped[0].start).getTime() + 24 * 3600000;
           result = shaped.filter((slot) => new Date(slot.start).getTime() < limit).map((slot) => {
             const start = new Date(slot.start);
-            return { price: slot.price, start, label: `${String(start.getHours()).padStart(2, "0")}:${String(start.getMinutes()).padStart(2, "0")}` };
+            return { price: slot.price, start, end: new Date(slot.end), label: `${String(start.getHours()).padStart(2, "0")}:${String(start.getMinutes()).padStart(2, "0")}` };
           });
         } else {
-          result = values.slice(0, 24).map((price, index) => ({ price, label: `${index}:00` }));
+          // No timestamps to place the prices on a clock: one per hour from midnight.
+          const midnight = new Date(); midnight.setHours(0, 0, 0, 0);
+          result = values.slice(0, 24).map((price, index) => ({ price, start: new Date(midnight.getTime() + index * 3600000), end: new Date(midnight.getTime() + (index + 1) * 3600000), label: `${index}:00` }));
         }
       }
       if (result) break;
@@ -101,21 +103,31 @@ window.BeastStandardCards = (function () {
     return window.BeastEnergyPrices.slots(entries);
   }
 
+  const priceChartIds = new WeakMap();
+  let priceChartCount = 0;
+
   function renderPriceTemplate(host, card, bindings) {
     const current = BeastHaSocket.getState(bindings.price);
     const { entries, quarterAvailable } = templatePriceEntries(bindings);
     const currentValue = Number(current?.state);
-    const max = Math.max(...entries.map((entry) => entry.price), 1);
-    const bars = entries.map((entry) => {
-      const price = entry.price;
-      return `<i style="--h:${Math.max(8, price / max * 100)}%;--c:${price < 1.5 ? "var(--success)" : price < 3 ? "var(--warning)" : "var(--danger)"}" title="${entry.label} · ${price.toFixed(2)} kr/kWh"></i>`;
-    }).join("");
+    if (!priceChartIds.has(card)) priceChartIds.set(card, `template-price-${++priceChartCount}`);
     const toggle = window.BeastEnergyPrices && quarterAvailable ? window.BeastEnergyPrices.toggleMarkup(true, "is-compact") : "";
     // The default title follows what is shown; a renamed card keeps its own name.
     const showsQuarters = entries.length > 1 && entries[0].start && entries[1].start && new Date(entries[1].start) - new Date(entries[0].start) < 3600000;
     const baseTitle = card.dataset.label || "Elpris time for time";
     const priceTitle = baseTitle === "Elpris time for time" && showsQuarters ? "Elpris kvarter for kvarter" : baseTitle;
-    host.innerHTML = `<div class="beast-template-energy-price"><header><div><small>Energi</small><strong>${escape(priceTitle)}</strong></div>${toggle}<b>${Number.isFinite(currentValue) ? `${currentValue.toFixed(2)} kr/kWh` : "–"}</b></header>${entries.length ? `<div class="beast-template-energy-bars${entries.length > 30 ? " is-dense" : ""}">${bars}</div>` : `<em>Ingen prisprognose på den valgte entity</em>`}</div>`;
+    const t0 = entries.length ? entries[0].start.getTime() : 0;
+    const chart = entries.length ? BeastPriceChart.html({
+      id: priceChartIds.get(card),
+      slots: entries.map((entry) => ({ start: entry.start.toISOString(), end: entry.end.toISOString(), price: entry.price })),
+      t0,
+      t1: t0 + 24 * 3600000,
+      type: "bar",
+      label: priceTitle
+    }) : "";
+    const tone = Number.isFinite(currentValue) ? BeastPriceChart.info(currentValue).tone : "";
+    host.innerHTML = `<div class="beast-template-energy-price"><header><div><small>Energi</small><strong>${escape(priceTitle)}</strong></div>${toggle}<b${tone ? ` style="color:${tone}"` : ""}>${Number.isFinite(currentValue) ? `${currentValue.toFixed(2)} kr/kWh` : "–"}</b></header>${entries.length ? `<div class="beast-template-energy-pchart">${chart}</div>` : `<em>Ingen prisprognose på den valgte entity</em>`}</div>`;
+    BeastPriceChart.mountAll(host);
   }
 
   // Redraws only the price cards when the choice changes, instead of re-wiring every standard card on the page.

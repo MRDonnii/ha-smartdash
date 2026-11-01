@@ -1712,61 +1712,6 @@
   background: var(--accent-gradient);
 }
 
-.beast-ov-price-chart {
-  flex: 1 1 78px;
-  min-height: 58px;
-  max-height: 100px;
-  display: flex;
-  align-items: flex-end;
-  gap: 2px;
-  padding-top: 4px;
-  border-bottom: 1px solid var(--border);
-  background: repeating-linear-gradient(to top, transparent 0 32%, rgba(255,255,255,.035) 33%);
-}
-
-.beast-ov-price-chart span {
-  position: relative;
-  flex: 1;
-  min-width: 2px;
-  border-radius: 8px 8px 3px 3px;
-  background: linear-gradient(180deg, color-mix(in oklab, var(--price-color, var(--ink-faint)) 86%, white 14%), color-mix(in oklab, var(--price-color, var(--ink-faint)) 74%, black 26%));
-  box-shadow: 0 7px 14px color-mix(in srgb, var(--price-color, var(--ink-faint)) 22%, transparent);
-  transform-origin: center bottom;
-  transition: background-color .9s ease, filter .15s, transform .15s;
-}
-
-/* Quarter prices: 96 thin bars. */
-.beast-ov-price-chart.is-dense { gap: 1px; }
-.beast-ov-price-chart.is-dense span { min-width: 1px; border-radius: 2px 2px 1px 1px; box-shadow: none; }
-
-.beast-ov-price-chart span.price-alert {
-  animation: beast-price-pulse var(--price-pulse-duration, 3.2s) ease-in-out infinite;
-}
-
-@keyframes beast-price-pulse {
-  0%, 100% { transform: scaleY(1); opacity: .9; filter: brightness(1) drop-shadow(0 0 2px var(--price-color, var(--ink-faint))); }
-  50% { transform: scaleY(var(--price-pulse-scale, .96)); opacity: var(--price-pulse-opacity, .88); filter: brightness(var(--price-pulse-brightness, 1.08)) drop-shadow(0 0 var(--price-pulse-glow, 3px) var(--price-color, var(--ink-faint))); }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .beast-ov-price-chart span.price-alert { animation: none; }
-}
-
-.beast-ov-price-chart span.is-min { box-shadow: 0 8px 18px rgba(40,214,122,.24); }
-.beast-ov-price-chart span.is-max { box-shadow: 0 8px 18px rgba(255,112,76,.26); }
-.beast-ov-price-chart span.is-current {
-  z-index: 2;
-  background: linear-gradient(180deg, #ffd36e, #f08a24);
-  box-shadow: 0 0 0 2px rgba(255,179,64,.5), 0 0 12px rgba(255,211,110,.4), 0 8px 18px rgba(240,112,28,.25);
-}
-
-.beast-ov-price-chart i {
-  align-self: center;
-  margin: auto;
-  color: var(--ink-faint);
-  font-size: 10px;
-  font-style: normal;
-}
 
 .beast-ov-chart-axis {
   display: flex;
@@ -1860,7 +1805,7 @@
 @media (min-width: 1400px) and (min-height: 950px) {
   .beast-ov-energy-shell { gap: 5px; }
   .beast-ov-utility-chart { flex-basis: 122px; min-height: 82px; max-height: 145px; }
-  .beast-ov-price-chart { flex-basis: 132px; min-height: 88px; max-height: 155px; }
+  .beast-ov-price-pchart { flex-basis: 132px; min-height: 88px; max-height: 155px; }
 }
 
 .beast-ov-security-center {

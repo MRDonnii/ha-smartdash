@@ -2351,36 +2351,22 @@
 
   }
 
+  // The fixed price levels (Admin -> Energi) are shared with the Energy page and the "Elpris" card, see ha-smartdash-price-chart.js.
   function priceLevel(price) {
-    if (price < 1.5) return { label: "Billig", cls: "is-cheap" };
-    if (price < 3) return { label: "Normal", cls: "is-normal" };
-    return { label: "Dyr", cls: "is-expensive" };
+    const info = BeastPriceChart.info(price);
+    return { label: info.name, cls: info.index <= 0 ? "is-cheap" : info.index === 1 ? "is-normal" : "is-expensive" };
   }
 
-  // 5-stop price gradient ported from the HA electricity price card
-  // (green -> yellow -> orange -> red -> dark red), blended in oklab.
   function priceColor(price) {
-    if (!Number.isFinite(price)) return "var(--ink-faint)";
-    const stops = [
-      [1, "var(--success)"],
-      [2, "var(--warning)"],
-      [4, "var(--warning-strong, var(--warning))"],
-      [5, "var(--danger)"],
-      [6, "var(--danger-strong, var(--danger))"],
-    ];
-    const value = Math.max(stops[0][0], Math.min(stops[stops.length - 1][0], price));
-    let a = stops[0];
-    let b = stops[stops.length - 1];
-    for (let i = 0; i < stops.length - 1; i += 1) {
-      if (value >= stops[i][0] && value <= stops[i + 1][0]) { a = stops[i]; b = stops[i + 1]; break; }
-    }
-    const pct = Math.round(((value - a[0]) / Math.max(0.0001, b[0] - a[0])) * 1000) / 10;
-    return `color-mix(in oklab, ${a[1]} ${100 - pct}%, ${b[1]} ${pct}%)`;
+    return BeastPriceChart.info(price).tone;
   }
 
-  // Above 6 kr/kWh the bars pulse, like the HA card's priceDangerPulse.
+  // From "very dear" the badge pulses faster and brighter the closer the price gets to "extreme".
   function pricePulse(price) {
-    return Number.isFinite(price) && price > 6 ? Math.min(1, (price - 6) / 6) : 0;
+    if (!Number.isFinite(price)) return 0;
+    const lv = BeastPriceChart.levels();
+    if (price < lv.very_dear) return 0;
+    return Math.min(1, 0.2 + 0.8 * (price - lv.very_dear) / Math.max(0.01, lv.extreme - lv.very_dear));
   }
 
   function energyAdvice(priceSeries, currentPrice, power) {
@@ -2405,7 +2391,7 @@
       bestEnd = `${String(end.getHours()).padStart(2, "0")}:${String(end.getMinutes()).padStart(2, "0")}`;
     }
     if (Number.isFinite(power) && power >= 5000) return { icon: "bolt", title: "Forbruget er højt lige nu", detail: `${(power / 1000).toFixed(1)} kW · flyt om muligt forbrug til kl. ${bestStart}–${bestEnd}` };
-    if (currentPrice >= 3) return { icon: "bolt", title: "Vent med større forbrug", detail: `Bedste tretimers vindue er kl. ${bestStart}–${bestEnd} · ca. ${best.average.toFixed(2)} kr/kWh` };
+    if (currentPrice >= BeastPriceChart.levels().dear) return { icon: "bolt", title: "Vent med større forbrug", detail: `Bedste tretimers vindue er kl. ${bestStart}–${bestEnd} · ca. ${best.average.toFixed(2)} kr/kWh` };
     if (best && currentPrice <= best.average * 1.12) return { icon: "check", title: "Et godt tidspunkt at bruge strøm", detail: `${currentPrice.toFixed(2)} kr/kWh lige nu` };
     return { icon: "bolt", title: `Billigst kl. ${bestStart}–${bestEnd}`, detail: `Ca. ${best.average.toFixed(2)} kr/kWh i gennemsnit` };
   }
@@ -2495,6 +2481,38 @@
       const date = new Date(entry.start || entry.time || entry.timestamp || entry.hour);
       return date.toDateString() === firstDate.toDateString();
     });
+  }
+
+  // Slots for the shared graph: the real price slots of all three views (so a dear stretch that crosses midnight is
+  // recognised), and the window is the day of the view that is shown. Lists without timestamps are laid out from midnight.
+  function overviewPriceChart(view) {
+    const dayStart = (value) => { const d = new Date(value); d.setHours(0, 0, 0, 0); return d; };
+    const today0 = dayStart(new Date());
+    const bp = window.BeastEnergyPrices;
+    const slots = [];
+    const seen = new Set();
+    let shown = [];
+    ["today", "tomorrow", "future"].forEach((key, offset) => {
+      const raw = getOverviewPriceEntries(key);
+      let list = bp ? bp.shapeSlots(timedPriceSlots(raw)) : [];
+      if (!list.length && Array.isArray(raw)) {
+        const base = new Date(today0);
+        base.setDate(base.getDate() + offset);
+        list = raw.map((entry, index) => ({ price: Number(typeof entry === "number" ? entry : (entry?.price ?? entry?.value)), start: new Date(base.getTime() + index * 3600000).toISOString(), end: new Date(base.getTime() + (index + 1) * 3600000).toISOString() })).filter((item) => Number.isFinite(item.price));
+      }
+      if (key === view) shown = list;
+      list.forEach((item) => {
+        const t = Date.parse(item.start);
+        if (seen.has(t)) return;
+        seen.add(t);
+        slots.push({ start: item.start, end: item.end, price: item.price, forecast: key === "future" });
+      });
+    });
+    const offset = view === "tomorrow" ? 1 : view === "future" ? 2 : 0;
+    const t0 = shown.length ? dayStart(shown[0].start) : new Date(today0.getTime() + offset * 86400000);
+    const t1 = new Date(t0);
+    t1.setDate(t1.getDate() + 1);
+    return { slots, t0: t0.getTime(), t1: t1.getTime(), empty: !shown.length, quarters: shown.some((item) => Date.parse(item.end) - Date.parse(item.start) < 3600000) };
   }
 
   function getOverviewPriceSeries(view) {
@@ -2651,7 +2669,7 @@
     const todayValue = todayState && Number.isFinite(Number(todayState.state)) ? Number(todayState.state) : null;
     const todayDisplay = todayValue === null ? "–" : `${todayValue.toFixed(config.todayUnit === "m³" ? 3 : config.todayUnit === "L/h" ? 0 : 2)} ${config.todayUnit}`;
     const priceSeries = getOverviewPriceSeries(overviewPriceView);
-    const maxPrice = Math.max(...priceSeries.map((item) => item.value), 0.01);
+    const priceChart = overviewPriceChart(overviewPriceView);
     const minPrice = priceSeries.length ? Math.min(...priceSeries.map((item) => item.value)) : null;
     const highPrice = priceSeries.length ? Math.max(...priceSeries.map((item) => item.value)) : null;
     const advice = energyAdvice(priceSeries, price, utilityView === "electric" ? utilityValue : Number(BeastHaSocket.getState(POWER_ENTITY_ID)?.state));
@@ -2687,23 +2705,16 @@
             </div>
           </div>
         </div>
-        <div class="beast-ov-price-chart${priceSeries.some((item) => item.quarter) ? " is-dense" : ""}">
-          ${priceSeries.length ? priceSeries.map((item, index) => {
-            const nowTime = Date.now();
-            const active = overviewPriceView === "today" && (item.quarter ? new Date(item.start).getTime() <= nowTime && nowTime < new Date(item.end).getTime() : index === new Date().getHours());
-            const isMin = item.value === minPrice;
-            const isMax = item.value === highPrice;
-            const pulse = pricePulse(item.value);
-            return `<span class="${active ? "is-current " : ""}${isMin ? "is-min " : ""}${isMax ? "is-max " : ""}${pulse > 0 ? "price-alert" : ""}" style="height:${Math.max(7, (item.value / maxPrice) * 100)}%;--delay:${index * 18}ms;--price-color:${priceColor(item.value)};--price-pulse-duration:${(3.2 - pulse * 2).toFixed(2)}s;--price-pulse-scale:${(0.96 - pulse * 0.24).toFixed(2)};--price-pulse-opacity:${(0.88 - pulse * 0.3).toFixed(2)};--price-pulse-brightness:${(1.08 + pulse * 0.82).toFixed(2)};--price-pulse-glow:${(3 + pulse * 15).toFixed(1)}px" title="${item.quarter ? item.time : `${item.label}:00`} · ${item.value.toFixed(2)} kr/kWh"></span>`;
-          }).join("") : `<i>Ingen prisdata for valgt dag</i>`}
+        <div class="beast-ov-price-pchart">
+          ${priceChart.empty ? `<div class="beast-ov-price-empty"><i>Ingen prisdata for valgt dag</i></div>` : BeastPriceChart.html({ id: "overview-price", slots: priceChart.slots, t0: priceChart.t0, t1: priceChart.t1, type: "bar", label: priceChart.quarters ? "Elpris kvarter for kvarter" : "Elpris time for time" })}
         </div>
-        <div class="beast-ov-chart-axis"><span>00</span><span>06</span><span>12</span><span>18</span><span>23</span></div>
         <div class="beast-ov-energy-foot">
           <span class="beast-ov-energy-advice">${BeastCore.icon(advice.icon, { size: 16 })}<span><b>${escapeHtml(advice.title)}</b><small>${escapeHtml(advice.detail)}</small></span></span>
           <button type="button" class="beast-ov-energy-details">${BeastCore.icon("chevron-right", { size: 16 })} Fuld visning</button>
         </div>
       </div>
     `;
+    BeastPriceChart.mountAll(host);
     host.querySelectorAll("[data-utility]").forEach((button) => {
       button.addEventListener("click", (event) => {
         event.stopPropagation();

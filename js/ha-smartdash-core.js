@@ -498,7 +498,7 @@ const BeastCore = (() => {
   // Standard markup for the line/bars switch. Callers decide when to show
   // it (edit mode) and wire the clicks; keeping the markup here means every
   // one of them looks and behaves the same.
-  function chartTypeToggleMarkup(key, label) {
+  function chartTypeToggleMarkup(key, label, options = {}) {
     const current = chartType(key);
     const colors = chartColorSettings();
     // The colour panel is folded away behind its own button rather than
@@ -509,7 +509,7 @@ const BeastCore = (() => {
       ${label ? `<span>${String(label).replace(/[<>&]/g, "")}</span>` : ""}
       <button type="button" data-chart-type="line" class="${current === "line" ? "is-active" : ""}">Linje</button>
       <button type="button" data-chart-type="bars" class="${current === "bars" ? "is-active" : ""}">Søjler</button>
-      <button type="button" class="beast-chart-colors-btn" data-chart-colors aria-expanded="false" title="Farver">${icon("palette", { size: 15 })}</button>
+      ${options.colors === false ? "" : `<button type="button" class="beast-chart-colors-btn" data-chart-colors aria-expanded="false" title="Farver">${icon("palette", { size: 15 })}</button>
       <div class="beast-chart-colors" data-chart-colors-panel hidden>
         <label><span>Farvelægning</span>
           <select data-chart-color-mode>
@@ -523,7 +523,7 @@ const BeastCore = (() => {
           <div>${colors.steps.map((color, index) => `<input type="color" data-chart-color-step="${index}" value="${color}" title="Trin ${index + 1}">`).join("")}</div>
         </div>
         <small>Farverne gælder alle grafer.</small>
-      </div>
+      </div>`}
     </div>`;
   }
 

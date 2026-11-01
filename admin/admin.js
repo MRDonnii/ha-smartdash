@@ -160,6 +160,13 @@
       { key: "tomorrowAvailableSensor", label: "I morgen tilgængelig (valgfri)", type: "single", domain: "binary_sensor", hints: ["tomorrow", "morgen"] },
       { key: "priceResolution", label: "Prisopløsning – standard for enheder (valgfri, fx EV Ledgers)", type: "single", domain: "select", hints: ["price_resolution", "prisopløsning", "resolution"],
         hint: "Valgfri standard for de enheder, der ikke selv har valgt. Har prisdata kvarterpriser, kan hver enhed selv vælge \"1 time\" eller \"15 min\" i prisgraferne – det valg gælder først og huskes på enheden. Uden et valg og uden denne entity vises priserne time for time." },
+      { key: "priceLevelCheap", label: "Elpris · billig under (kr/kWh)", type: "number", step: 0.05, min: 0.05, max: 50, placeholder: "1.5",
+        hint: "Farverne i prisgraferne følger fire faste grænser: under denne pris er det billigt (grøn), derefter normal pris (gul-grøn)." },
+      { key: "priceLevelDear", label: "Elpris · dyrt fra (kr/kWh)", type: "number", step: 0.05, min: 0.05, max: 50, placeholder: "3" },
+      { key: "priceLevelVeryDear", label: "Elpris · meget dyrt fra (kr/kWh)", type: "number", step: 0.05, min: 0.05, max: 50, placeholder: "3.75",
+        hint: "Fra denne pris pulserer søjlerne, og grafen viser MEGET DYRT, når hele det dyre stræk er med." },
+      { key: "priceLevelExtreme", label: "Elpris · ekstremt dyrt fra (kr/kWh)", type: "number", step: 0.05, min: 0.05, max: 50, placeholder: "5",
+        hint: "Grænserne skal stige fra billig til ekstremt; ellers bruges standardværdierne (1,5 · 3 · 3,75 · 5)." },
       { key: "totalEnergySensor", label: "Energi i dag", type: "single", domain: "sensor", deviceClasses: ["energy"] },
       { key: "totalCostSensor", label: "Pris i dag", type: "single", domain: "sensor", deviceClasses: ["monetary"] },
       { key: "nowMeasuredSensor", label: "\"Nu\" · målt total (valgfri)", type: "single", domain: "sensor", hints: ["malt", "total", "measured"] },
@@ -577,7 +584,7 @@
       return `<input type="text" id="${fieldId(panel.id, field.key)}" value="${escapeHtml(selected || "")}" placeholder="${escapeHtml(field.placeholder || "")}">`;
     }
     if (field.type === "number") {
-      return `<input type="number" id="${fieldId(panel.id, field.key)}" value="${escapeHtml(selected ?? "")}"${field.min != null ? ` min="${field.min}"` : ""}${field.max != null ? ` max="${field.max}"` : ""} step="1" inputmode="numeric" placeholder="${escapeHtml(field.placeholder || "")}">`;
+      return `<input type="number" id="${fieldId(panel.id, field.key)}" value="${escapeHtml(selected ?? "")}"${field.min != null ? ` min="${field.min}"` : ""}${field.max != null ? ` max="${field.max}"` : ""} step="${field.step ?? 1}" inputmode="${field.step && field.step < 1 ? "decimal" : "numeric"}" placeholder="${escapeHtml(field.placeholder || "")}">`;
     }
     if (field.type === "boolean") {
       const checked = selected !== false;
@@ -2171,7 +2178,8 @@
         patch[field.key] = document.getElementById(id)?.value !== "0";
       } else if (field.type === "number") {
         const raw = document.getElementById(id)?.value.trim();
-        const value = Math.round(Number(raw));
+        const step = field.step || 1;
+        const value = Number((Math.round(Number(raw) / step) * step).toFixed(2));
         patch[field.key] = raw && Number.isFinite(value) ? Math.min(field.max ?? value, Math.max(field.min ?? value, value)) : null;
       } else {
         patch[field.key] = document.getElementById(id)?.value.trim() || null;
