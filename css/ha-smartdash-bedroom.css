@@ -875,6 +875,15 @@ html.beast-ha-offline .bd-tile .bd-tile-ring { border-color: var(--bd-hair-2); b
 .bd-row-sw::after { content: ""; position: absolute; top: 2px; left: 2px; width: 16px; height: 16px; border-radius: 50%; background: var(--bd-ink-4); transition: transform .16s, background-color .16s; }
 .bd-row.is-on .bd-row-sw { border-color: var(--bd-on-line); background: rgba(240, 162, 74, .18); }
 .bd-row.is-on .bd-row-sw::after { transform: translateX(16px); background: var(--bd-amber-hi); }
+/* Automatisk pauseskærm: the delay stepper under its switch row */
+.bd-autodelay { display: flex; align-items: center; gap: 12px; flex: none; min-width: 0; height: 58px; margin-top: -6px; padding: 0 0 8px 53px; transition: opacity .16s; }
+.bd-autodelay.is-disabled { opacity: .4; }
+.bd-autodelay-lbl { flex: 1 1 auto; min-width: 0; overflow: hidden; color: var(--bd-ink-2); font-size: 13px; text-overflow: ellipsis; white-space: nowrap; }
+.bd-autodelay-step { display: grid; flex: none; grid-template-columns: 48px 66px 48px; align-items: center; height: 48px; border: 1px solid var(--bd-hair-2); border-radius: 13px; background: var(--bd-well); }
+.bd-root .bd-autodelay-step button { height: 46px; color: var(--bd-ink-2); font-size: 20px; font-weight: 400; text-align: center; }
+.bd-root .bd-autodelay-step button:active { border-radius: 12px; background: var(--bd-surface-3); color: var(--bd-amber-hi); }
+.bd-root .bd-autodelay-step button:disabled { color: var(--bd-ink-4); }
+.bd-autodelay-step b { color: var(--bd-ink); font-size: 15px; font-weight: 500; text-align: center; white-space: nowrap; font-variant-numeric: tabular-nums; }
 .bd-rows.is-sheet { max-width: 720px; padding: 4px 20px; border: 1px solid var(--bd-hair); border-radius: 22px; background: var(--bd-panel); }
 
 .bd-root .bd-saver {

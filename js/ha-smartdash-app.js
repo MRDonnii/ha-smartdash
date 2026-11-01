@@ -136,7 +136,10 @@ const FULL_RECOVERY_COOLDOWN_MS = 10 * 60 * 1000;
 // that an ordinary few-second network blip never causes an unnecessary
 // reload.
 const CONNECTION_RECOVERY_RELOAD_AFTER_MS = 90 * 1000;
-const AMBIENT_MODE_AFTER_MS = 5 * 60 * 1000;
+// Idle delay before the screensaver starts by itself, and whether it does at
+// all, are per-device choices (BeastLocalSettings: screensaverAuto,
+// screensaverAfterSeconds; default on after 5 min). Manual starts ignore both.
+function ambientModeAfterMs() { return BeastLocalSettings.screensaverDelaySeconds() * 1000; }
 function screensaverConfig() {
   return BeastLocalSettings.get("screensaver", BeastConfig.get("screensaver")) || { enabled: true, schedule: "custom", startTime: "23:00", endTime: "05:30", offAfterMinutes: 5 };
 }
@@ -587,9 +590,42 @@ function showAmbientMode(force = false) {
 function scheduleAmbientMode() {
   window.clearTimeout(ambientModeTimerId);
   window.clearTimeout(screenOffTimerId);
-  if (!featureEnabled("idleMode") || !isNightScreenPeriod()) return;
+  if (!featureEnabled("idleMode") || !BeastLocalSettings.screensaverAutoStart() || !isNightScreenPeriod()) return;
   const idleFor = Date.now() - lastUserActivityAt;
-  ambientModeTimerId = window.setTimeout(showAmbientMode, Math.max(0, AMBIENT_MODE_AFTER_MS - idleFor));
+  ambientModeTimerId = window.setTimeout(startAmbientWhenIdle, Math.max(0, ambientModeAfterMs() - idleFor));
+}
+
+// With delays down to 10 s, a finger that is still on the glass (a long
+// press, a slow scroll or drag) must never count as idle: the timer waits for
+// the last pointer to lift and only then counts the full delay from there.
+const activePointers = new Set();
+// A pointer whose pointerup never arrived costs at most one extra delay.
+function startAmbientWhenIdle() {
+  if (activePointers.size) {
+    activePointers.clear();
+    lastUserActivityAt = Date.now();
+    scheduleAmbientMode();
+    return;
+  }
+  showAmbientMode();
+}
+function notePointerPresence(event) {
+  if (event.type === "pointerdown") {
+    // The primary pointer starts a fresh gesture: nothing else is down.
+    if (event.isPrimary) activePointers.clear();
+    activePointers.add(event.pointerId);
+  } else activePointers.delete(event.pointerId);
+  if (event.type === "pointerdown" || screensaverShowing()) return;
+  lastUserActivityAt = Date.now();
+  scheduleAmbientMode();
+}
+let lastMovePresenceAt = 0;
+function noteMovePresence() {
+  const now = Date.now();
+  if (now - lastMovePresenceAt < 1000 || screensaverShowing()) return;
+  lastMovePresenceAt = now;
+  lastUserActivityAt = now;
+  scheduleAmbientMode();
 }
 
 function currentBuildId() {
@@ -952,6 +988,15 @@ function startKioskWatchdogs() {
   scheduleAmbientMode();
   scheduleMorningWake();
   scheduleNightStart();
+  ["pointerdown", "pointerup", "pointercancel"].forEach((type) => document.addEventListener(type, notePointerPresence, { capture: true, passive: true }));
+  document.addEventListener("touchmove", noteMovePresence, { capture: true, passive: true });
+  document.addEventListener("beast:local-settings-changed", (event) => {
+    if (!["*", "screensaverAuto", "screensaverAfterSeconds"].includes(event.detail?.path)) return;
+    // Changing the setting here is itself activity on this screen: count
+    // the new delay from now.
+    if (!event.detail?.remote) lastUserActivityAt = Date.now();
+    scheduleAmbientMode();
+  });
   document.addEventListener("beast:config-changed", () => {
     scheduleAmbientMode();
     scheduleMorningWake();

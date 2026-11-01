@@ -70,5 +70,16 @@ const BeastLocalSettings = (() => {
     return DEVICE_TYPES.includes(value) ? value : "kiosk";
   }
   function isBedroomDevice() { return deviceType() === "bedroom"; }
-  return { get, set, getAll: read, replaceAll, deviceType, isBedroomDevice };
+  // Idle auto-start of the screensaver on this device: whether it starts by
+  // itself, and after how many idle seconds. Missing values keep the original
+  // behaviour (on, 5 minutes); an unknown delay falls back to the default.
+  // The screensaver object (schedule/times) still decides *when* it may show.
+  const SCREENSAVER_DELAYS = [10, 20, 30, 45, 60, 120, 300, 600, 900, 1800, 3600];
+  const SCREENSAVER_DEFAULT_DELAY = 300;
+  function screensaverAutoStart() { return readRaw().screensaverAuto !== false; }
+  function screensaverDelaySeconds() {
+    const value = Number(readRaw().screensaverAfterSeconds);
+    return SCREENSAVER_DELAYS.includes(value) ? value : SCREENSAVER_DEFAULT_DELAY;
+  }
+  return { get, set, getAll: read, replaceAll, deviceType, isBedroomDevice, SCREENSAVER_DELAYS, screensaverAutoStart, screensaverDelaySeconds };
 })();

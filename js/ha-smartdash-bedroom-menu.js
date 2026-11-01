@@ -264,6 +264,50 @@ window.BeastBedroom.menu = (() => {
     return { action: "dim", iconName: "dim", title: t("Nattilstand"), sub: on ? `<b>${esc(t("Til"))}</b> · ${esc(t("ekstra dæmpet skærm"))}` : esc(t("Ekstra dæmpet skærm")), on, trailing: "switch", attrs: ` role="switch" aria-checked="${on}"` };
   }
 
+  // Automatisk pauseskærm: idle auto-start on/off and its delay, saved on
+  // this device only (BeastLocalSettings); the app reschedules on change.
+  function delayLabel(seconds) {
+    return seconds < 60 ? t("{n} sek", { n: seconds }) : t("{n} min", { n: Math.round(seconds / 60) });
+  }
+
+  function autoSaverRow() {
+    const on = BeastLocalSettings.screensaverAutoStart();
+    const delay = delayLabel(BeastLocalSettings.screensaverDelaySeconds());
+    return { action: "autosaver", iconName: "timer", title: t("Automatisk pauseskærm"), sub: on ? `<b>${esc(t("Til"))}</b> · ${esc(t("efter {time} uden tryk", { time: delay }))}` : esc(t("Fra · kun manuelt")), on, trailing: "switch", attrs: ` role="switch" aria-checked="${on}"` };
+  }
+
+  function delayMarkup() {
+    const on = BeastLocalSettings.screensaverAutoStart();
+    const choices = BeastLocalSettings.SCREENSAVER_DELAYS;
+    const index = choices.indexOf(BeastLocalSettings.screensaverDelaySeconds());
+    const label = delayLabel(choices[index]);
+    return `<div class="bd-autodelay${on ? "" : " is-disabled"}" data-autodelay><span class="bd-autodelay-lbl">${esc(t("Start efter"))}</span><div class="bd-autodelay-step" role="group" aria-label="${esc(t("Start efter"))}"><button type="button" data-bd-menu="saver-delay" data-delta="-1" aria-label="${esc(t("Kortere"))}"${on && index > 0 ? "" : " disabled"}>−</button><b data-autodelay-value aria-live="polite">${esc(label)}</b><button type="button" data-bd-menu="saver-delay" data-delta="1" aria-label="${esc(t("Længere"))}"${on && index < choices.length - 1 ? "" : " disabled"}>+</button></div></div>`;
+  }
+
+  function stepDelay(delta) {
+    const choices = BeastLocalSettings.SCREENSAVER_DELAYS;
+    const index = choices.indexOf(BeastLocalSettings.screensaverDelaySeconds());
+    const next = choices[Math.max(0, Math.min(choices.length - 1, index + delta))];
+    if (next !== choices[index]) BeastLocalSettings.set("screensaverAfterSeconds", next);
+  }
+
+  function updateAutoSaver(menu) {
+    if (!menu) return;
+    updateRow(menu, autoSaverRow());
+    const line = menu?.querySelector("[data-autodelay]");
+    if (!line) return;
+    const on = BeastLocalSettings.screensaverAutoStart();
+    const choices = BeastLocalSettings.SCREENSAVER_DELAYS;
+    const index = choices.indexOf(BeastLocalSettings.screensaverDelaySeconds());
+    line.classList.toggle("is-disabled", !on);
+    const value = line.querySelector("[data-autodelay-value]");
+    const label = delayLabel(choices[index]);
+    if (value.textContent !== label) value.textContent = label;
+    line.querySelectorAll("[data-delta]").forEach((button) => {
+      button.disabled = !on || (Number(button.dataset.delta) < 0 ? index <= 0 : index >= choices.length - 1);
+    });
+  }
+
   function connectionInfo() {
     const dot = document.getElementById("beastStatusDot")?.dataset.state || "connecting";
     if (dot === "connected") return { state: "connected", text: t("Forbundet til Home Assistant") };
@@ -296,7 +340,7 @@ window.BeastBedroom.menu = (() => {
     const classes = ["bd-menu", bed.length ? "has-bed" : "", admin ? "has-settings" : "", tileCount ? "has-pages" : ""].filter(Boolean).join(" ");
     const screen = `<section class="bd-mpanel bd-mscreen" aria-label="${esc(t("Skærm"))}"><div class="bd-meyebrow">${esc(t("Skærm"))}</div>
         <button type="button" class="bd-saver" data-bd-menu="screensaver"><span class="bd-saver-pv"><b data-menu-preview>${esc(hm(now))}</b></span><span class="bd-saver-text"><span class="bd-saver-t1">${esc(t("Pauseskærm nu"))}</span><span class="bd-saver-t2">${esc(t("Dæmpet ur · tryk for at vække"))}</span></span></button>
-        <div class="bd-rows">${rowMarkup(dimRow())}${rowMarkup({ action: "reload", iconName: "reload", title: t("Genindlæs"), sub: esc(t("Henter siden igen")), trailing: "" })}</div>
+        <div class="bd-rows">${rowMarkup(dimRow())}${rowMarkup(autoSaverRow())}${delayMarkup()}${rowMarkup({ action: "reload", iconName: "reload", title: t("Genindlæs"), sub: esc(t("Henter siden igen")), trailing: "" })}</div>
         ${admin ? "" : footerMarkup()}</section>`;
     const settings = admin ? `<section class="bd-mpanel bd-msettings" aria-label="${esc(t("Indstillinger"))}"><div class="bd-meyebrow">${esc(t("Indstillinger"))}</div>
         <div class="bd-rows">${rowMarkup({ action: "admin-bedroom", iconName: "sliders", title: t("Tilpas soveværelset"), sub: esc(t("Kameraer, kalendere og lys")), tag: "a" })}${rowMarkup({ action: "admin", iconName: "gear", title: t("Administration"), sub: esc(t("Sider, enheder og udseende")), tag: "a" })}</div>
@@ -326,6 +370,7 @@ window.BeastBedroom.menu = (() => {
     });
     bedroomRows().forEach((row) => updateRow(menu, row));
     updateRow(menu, dimRow());
+    updateAutoSaver(menu);
     const conn = connectionInfo();
     const connEl = menu.querySelector(".bd-conn");
     if (connEl && connEl.dataset.state !== conn.state) { connEl.dataset.state = conn.state; connEl.textContent = conn.text; }
@@ -471,6 +516,8 @@ window.BeastBedroom.menu = (() => {
       case "modes": openModes(); break;
       case "screensaver": close(true); window.showAmbientMode?.(true); break;
       case "dim": B.setDim(!B.dimOn()); refresh(); break;
+      case "autosaver": BeastLocalSettings.set("screensaverAuto", !BeastLocalSettings.screensaverAutoStart()); updateAutoSaver(host()); break;
+      case "saver-delay": stepDelay(Number(target.dataset.delta) || 0); updateAutoSaver(host()); break;
       case "reload": reload(target); break;
       case "admin-bedroom": openAdmin("admin/#bedroom"); break;
       case "admin": openAdmin("admin/"); break;
