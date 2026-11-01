@@ -462,15 +462,11 @@ html.beast-chromeless .beast-offline-status { border-color: rgba(224, 99, 74, .4
   transition: border-color .12s, background-color .12s;
 }
 .bd-light.is-on { border-color: var(--bd-on-line); }
-/* The level: a warm wash behind the row, plus a rail and knob along the
-   bottom edge. Neither crosses the name. */
-.bd-light-fill { position: absolute; left: 0; top: 0; bottom: 0; width: var(--b); background: linear-gradient(90deg, rgba(240, 162, 74, .05) 0%, rgba(240, 162, 74, .2) 100%); pointer-events: none; transition: width .15s; }
-.bd-light-rail { position: absolute; left: 14px; right: 14px; bottom: 5px; height: 2px; border-radius: 1px; background: rgba(234, 223, 203, .07); pointer-events: none; }
-.bd-light-rail::before { content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: var(--b); border-radius: 1px; background: linear-gradient(90deg, #8a4a1a, var(--bd-amber)); transition: width .15s; }
-.bd-light-knob { position: absolute; top: 50%; left: var(--b); width: 8px; height: 8px; margin: -4px 0 0 -4px; border-radius: 50%; background: var(--bd-amber-hi); transition: left .15s; }
-.bd-light:not(.is-on) .bd-light-rail, .bd-light:not(.is-on) .bd-light-fill { opacity: 0; }
-.bd-light.is-dragging .bd-light-fill, .bd-light.is-dragging .bd-light-rail::before, .bd-light.is-dragging .bd-light-knob { transition: none; }
-.bd-light.is-dragging .bd-light-knob { transform: scale(1.4); }
+/* The level: a warm wash behind the row that grows with the brightness. No
+   separate line or knob: a sideways drag anywhere on the row moves it. */
+.bd-light-fill { position: absolute; left: 0; top: 0; bottom: 0; width: var(--b); background: linear-gradient(90deg, rgba(240, 162, 74, .08) 0%, rgba(240, 162, 74, .28) 100%); pointer-events: none; transition: width .15s; }
+.bd-light:not(.is-on) .bd-light-fill { opacity: 0; }
+.bd-light.is-dragging .bd-light-fill { transition: none; }
 .bd-root .bd-light-tap { position: absolute; inset: 0; display: flex; align-items: center; gap: 11px; padding: 0 14px 0 10px; }
 .bd-light-ic { display: grid; place-items: center; flex: none; width: 36px; height: 36px; border-radius: 11px; background: var(--bd-well); color: var(--bd-ink-3); transition: background-color .12s, color .12s; }
 .bd-light.is-on .bd-light-ic { background: radial-gradient(circle at 40% 35%, #ffd49a 0%, #f0a24a 55%, #c0621f 100%); color: #2a1406; }

@@ -1205,7 +1205,7 @@ window.BeastBedroom = (() => {
 
   // A row that is also the dimmer: tap toggles, a sideways drag anywhere on
   // the row sets the brightness. The warm fill behind the text shows the
-  // level; its handle runs along the bottom edge so it never crosses the name.
+  // level; there is no separate line or knob.
   function lightTileMarkup(model, sub = null) {
     const lamps = model.members && model.members.length > 1 ? t("{n} lamper", { n: model.members.length }) : "";
     if (model.unavailable) {
@@ -1217,7 +1217,7 @@ window.BeastBedroom = (() => {
     let subText = sub ? sub.text : "";
     if (!subText) subText = model.members && model.members.length > 1 ? (model.on ? model.stateText : lamps) : model.on ? t("Tændt") : t("Slukket");
     return `<div class="bd-light${model.on ? " is-on" : ""}${model.canDim ? " can-dim" : ""}${busy ? " is-busy" : ""}" data-light="${esc(model.id)}"${model.canDim ? ` data-bd-dimmer="${esc(model.id)}" role="group" aria-label="${esc(t("Lysstyrke {name}", { name: model.name }))}" aria-valuenow="${model.pct}"` : ""} style="--b:${model.pct}%">
-      ${model.canDim ? `<span class="bd-light-fill"></span><span class="bd-light-rail"><span class="bd-light-knob"></span></span>` : ""}
+      ${model.canDim ? `<span class="bd-light-fill"></span>` : ""}
       <button type="button" class="bd-light-tap" data-bd-action="light-toggle" data-entity="${esc(model.id)}" aria-pressed="${model.on}"><span class="bd-light-ic">${icon("bulb", 18)}</span><span class="bd-light-text"><span class="bd-light-name">${esc(model.name)}</span><span class="bd-light-sub${sub?.tone ? ` is-${sub.tone}` : ""}">${esc(subText)}</span></span><span class="bd-light-val">${esc(value)}</span></button>
     </div>`;
   }
