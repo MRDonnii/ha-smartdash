@@ -257,7 +257,7 @@ html.beast-bedroom-device .beast-ambient-time.is-size-large {
 }
 html.beast-bedroom-device .beast-ambient-time.is-size-small { font-size: min(20vw, 27vh); }
 html.beast-bedroom-device .beast-ambient-time.is-size-large { font-size: min(28vw, 38vh); }
-html.beast-bedroom-device .beast-ambient-date { color: rgba(216, 218, 221, .46); font-weight: 400; }
+html.beast-bedroom-device .beast-ambient-date { color: rgba(216, 218, 221, .56); font-weight: 400; letter-spacing: .01em; }
 html.beast-bedroom-device .beast-ambient-time,
 html.beast-bedroom-device .beast-ambient-date {
   position: relative;
@@ -302,19 +302,20 @@ html.beast-bedroom-device .bda-card {
 }
 
 /* ---------- screensaver shortcuts (bedroom devices) ----------
-   Four quiet ways in, always on the screensaver near the bottom: dark,
-   low-luminance pills (44 px+ targets) that read as part of the night
-   screen rather than buttons. Tapping anywhere else wakes to the bedroom
-   page. During a camera pop-up the row steps back. Opacity only. */
+   Four quiet ways in, always on the screensaver near the bottom: icon over
+   label, no frames, low luminance (a 66 px high target each) so they read
+   as part of the night screen rather than as buttons. Tapping anywhere else
+   wakes to the bedroom page. During a camera pop-up the row steps back.
+   Opacity only. */
 html.beast-bedroom-device .beast-bedroom-shortcuts {
   position: absolute;
   left: 50%;
-  bottom: max(24px, 4vh);
+  bottom: max(20px, 3.5vh);
   z-index: 4;
   display: flex;
-  gap: 12px;
+  gap: 6px;
   width: max-content;
-  max-width: calc(100vw - 32px);
+  max-width: calc(100vw - 24px);
   transform: translateX(-50%);
   color-scheme: dark;
   font-family: "Inter", -apple-system, "SF Pro Text", "Helvetica Neue", Arial, sans-serif;
@@ -326,57 +327,61 @@ html.beast-bedroom-device .bds-btn {
   -webkit-appearance: none;
   appearance: none;
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 10px;
-  min-width: 132px;
-  height: 52px;
+  gap: 7px;
+  min-width: 96px;
+  height: 66px;
   margin: 0;
-  padding: 0 18px 0 14px;
-  border: 1px solid rgba(216, 218, 221, .07);
-  border-radius: 26px;
-  background: rgba(11, 12, 13, .55);
-  color: rgba(216, 218, 221, .36);
+  padding: 0 8px;
+  border: 0;
+  border-radius: 18px;
+  background: transparent;
+  color: rgba(216, 218, 221, .52);
   font: inherit;
-  font-size: 15px;
+  font-size: 13px;
   font-weight: 500;
+  letter-spacing: .02em;
   cursor: pointer;
   touch-action: manipulation;
-  transition: background-color .12s, border-color .12s, color .12s;
+  transition: background-color .12s, color .12s;
 }
-html.beast-bedroom-device .bds-btn:active { border-color: rgba(143, 179, 230, .3); background: rgba(22, 24, 26, .8); color: rgba(216, 218, 221, .7); }
-html.beast-bedroom-device .bds-ic { display: grid; place-items: center; width: 22px; height: 22px; color: rgba(143, 179, 230, .5); }
-html.beast-bedroom-device .bds-lbl { max-width: 160px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-html.beast-bedroom-device .beast-bedroom-shortcuts .bda-i { display: block; fill: none; stroke: currentColor; stroke-linecap: round; stroke-linejoin: round; }
+html.beast-bedroom-device .bds-btn:active { background: rgba(216, 218, 221, .06); color: rgba(216, 218, 221, .86); }
+html.beast-bedroom-device .bds-ic { display: grid; place-items: center; width: 24px; height: 24px; }
+html.beast-bedroom-device .bds-lbl { max-width: 120px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+html.beast-bedroom-device .beast-bedroom-shortcuts .bda-i { display: block; fill: none; stroke: currentColor; stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; }
 /* The row replaces the "tap to open" hint. */
 html.beast-bedroom-device .has-bd-shortcuts .beast-ambient-bottom { opacity: 0; }
 @media (max-width: 700px) {
-  html.beast-bedroom-device .beast-bedroom-shortcuts { gap: 8px; }
-  html.beast-bedroom-device .bds-btn { min-width: 0; padding: 0 14px 0 12px; font-size: 14px; }
+  html.beast-bedroom-device .beast-bedroom-shortcuts { gap: 2px; }
+  html.beast-bedroom-device .bds-btn { min-width: 78px; }
 }
 
 /* ---------- screensaver content (bedroom devices) ----------
-   The bedside screen's Nat view lives on the screensaver: under the clock
-   a row of calm pills, a sand-coloured card when a door is unlocked and a line
-   per player that is on. What shows follows the time-of-day mode (see
+   What the screensaver says under the clock is two quiet lines of text:
+   a status line and an info line, with a hairline between the items and no
+   frames. Only something that needs attention (a disarmed alarm at night,
+   an open window) gets a small sand dot; an unlocked door gets a sand
+   card with its Lås button, and a player that is on gets a line with
+   Sluk / Pause. What shows follows the time-of-day mode (see
    ha-smartdash-bedroom-saver.js). Low luminance throughout, no bright
    surfaces; it fades (opacity only) while a camera pop-up shows. */
 html.beast-bedroom-device .has-bdv .beast-ambient-summary { display: none; }
 html.beast-bedroom-device .beast-bedroom-saverinfo {
-  --bdv-tx: rgba(216, 218, 221, .74);
-  --bdv-tx-2: rgba(216, 218, 221, .56);
-  --bdv-tx-3: rgba(216, 218, 221, .4);
-  --bdv-line: rgba(216, 218, 221, .07);
-  --bdv-amber: rgba(143, 179, 230, .78);
-  --bdv-caution: rgba(210, 178, 126, .8);
+  --bdv-tx: rgba(216, 218, 221, .8);
+  --bdv-tx-2: rgba(216, 218, 221, .6);
+  --bdv-tx-3: rgba(216, 218, 221, .44);
+  --bdv-line: rgba(216, 218, 221, .1);
+  --bdv-caution: rgba(210, 178, 126, .86);
   position: relative;
   z-index: 4;
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 14px;
+  gap: 12px;
   width: min(900px, 100%);
-  margin-top: 18px;
+  margin-top: 22px;
   color: var(--bdv-tx-2);
   color-scheme: dark;
   font-family: "Inter", -apple-system, "SF Pro Text", "Helvetica Neue", Arial, sans-serif;
@@ -388,50 +393,36 @@ html.beast-bedroom-device .beast-bedroom-saverinfo {
 }
 html.beast-bedroom-device .beast-bedroom-saverinfo:empty { display: none; }
 html.beast-bedroom-device .has-bd-alert .beast-bedroom-saverinfo { opacity: 0; pointer-events: none; }
-html.beast-bedroom-device .beast-bedroom-saverinfo .bd-i { display: block; flex: none; fill: none; stroke: currentColor; stroke-linecap: round; stroke-linejoin: round; }
+html.beast-bedroom-device .beast-bedroom-saverinfo .bd-i { display: block; flex: none; fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
 
-.bdv-pills { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; max-width: 100%; }
-html.beast-bedroom-device .bdv-pill {
-  display: inline-flex;
-  align-items: center;
-  gap: 9px;
-  max-width: 100%;
-  height: 44px;
-  padding: 0 16px 0 14px;
-  border: 1px solid var(--bdv-line);
-  border-radius: 22px;
-  background: rgba(11, 12, 13, .55);
-  color: var(--bdv-tx-2);
-  font-size: 15px;
-  white-space: nowrap;
-}
-.bdv-pill .bd-i { color: rgba(143, 179, 230, .42); }
-.bdv-pill-tx { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
-.bdv-pill b { color: var(--bdv-tx); font-weight: 600; }
-.bdv-pill em { color: var(--bdv-tx-3); font-style: normal; }
+.bdv-row { display: flex; flex-wrap: wrap; justify-content: center; align-items: center; row-gap: 6px; max-width: 100%; font-size: 19px; line-height: 1.3; }
+.bdv-it { display: inline-flex; align-items: center; gap: 9px; max-width: 100%; white-space: nowrap; }
+.bdv-it + .bdv-it::before { content: ""; flex: none; align-self: center; width: 1px; height: 16px; margin: 0 20px; background: var(--bdv-line); }
+.bdv-it-tx { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.bdv-it b { color: var(--bdv-tx); font-weight: 500; }
+.bdv-it em { color: var(--bdv-tx-3); font-style: normal; }
 .bdv-ev { color: var(--bdv-tx); }
-.bdv-pill .bdv-ev { display: inline-block; max-width: 300px; overflow: hidden; text-overflow: ellipsis; vertical-align: bottom; }
-.bdv-verdict { color: rgba(180, 205, 240, .62); }
-html.beast-bedroom-device .bdv-pill.is-quiet { color: var(--bdv-tx-3); }
-html.beast-bedroom-device .bdv-pill.is-warn { border-color: rgba(210, 178, 126, .2); background: rgba(19, 18, 15, .7); }
-.bdv-pill.is-warn .bd-i, .bdv-pill.is-warn b { color: var(--bdv-caution); }
+.bdv-it .bdv-ev { display: inline-block; max-width: 320px; overflow: hidden; text-overflow: ellipsis; vertical-align: bottom; }
+.bdv-dot { flex: none; width: 7px; height: 7px; border-radius: 50%; background: var(--bdv-caution); }
+.bdv-status { font-size: 20px; }
+.bdv-facts { color: var(--bdv-tx-2); }
 
-/* Unlocked doors (Aften, Nat): the one amber surface, still dark. */
+/* Unlocked doors (Aften, Nat): the one sand surface, still dark. */
 html.beast-bedroom-device .bdv-card {
   display: flex;
   align-items: center;
   gap: 14px;
-  width: min(640px, 100%);
+  width: min(580px, 100%);
   min-width: 0;
-  padding: 12px 12px 12px 14px;
-  border: 1px solid rgba(210, 178, 126, .22);
+  padding: 12px 12px 12px 18px;
+  border: 1px solid rgba(210, 178, 126, .26);
   border-radius: 22px;
-  background: linear-gradient(90deg, rgba(22, 21, 18, .82) 0%, rgba(11, 10, 9, .7) 100%);
+  background: rgba(16, 15, 13, .6);
 }
-.bdv-card-ic { display: grid; place-items: center; flex: none; width: 46px; height: 46px; border-radius: 13px; background: rgba(37, 35, 31, .7); color: var(--bdv-caution); }
+.bdv-card-ic { display: grid; place-items: center; flex: none; width: 24px; height: 24px; color: var(--bdv-caution); }
 .bdv-card-tx, .bdv-line-tx { display: flex; flex-direction: column; gap: 3px; flex: 1 1 auto; min-width: 0; }
-.bdv-card-tx b { overflow: hidden; color: rgba(216, 218, 221, .78); font-size: 18px; font-weight: 500; text-overflow: ellipsis; white-space: nowrap; }
-.bdv-card-tx small, .bdv-line-tx small { overflow: hidden; color: var(--bdv-tx-3); font-size: 13px; text-overflow: ellipsis; white-space: nowrap; }
+.bdv-card-tx b { overflow: hidden; color: rgba(216, 218, 221, .86); font-size: 19px; font-weight: 500; text-overflow: ellipsis; white-space: nowrap; }
+.bdv-card-tx small, .bdv-line-tx small { overflow: hidden; color: var(--bdv-tx-3); font-size: 14px; text-overflow: ellipsis; white-space: nowrap; }
 html.beast-bedroom-device .bdv-card-btn,
 html.beast-bedroom-device .bdv-line-btn {
   -webkit-appearance: none;
@@ -440,39 +431,36 @@ html.beast-bedroom-device .bdv-line-btn {
   align-items: center;
   gap: 8px;
   flex: none;
-  height: 52px;
+  height: 48px;
   margin: 0;
   padding: 0 20px;
-  border: 1px solid rgba(210, 178, 126, .4);
-  border-radius: 16px;
-  background: linear-gradient(180deg, rgba(42, 39, 34, .9) 0%, rgba(27, 25, 22, .9) 100%);
-  color: rgba(227, 204, 158, .9);
+  border: 1px solid rgba(210, 178, 126, .46);
+  border-radius: 24px;
+  background: transparent;
+  color: rgba(227, 204, 158, .94);
   font: inherit;
-  font-size: 15px;
-  font-weight: 600;
+  font-size: 16px;
+  font-weight: 500;
   white-space: nowrap;
   cursor: pointer;
   touch-action: manipulation;
 }
-html.beast-bedroom-device .bdv-card-btn:active { background: rgba(54, 51, 44, .95); }
+html.beast-bedroom-device .bdv-card-btn:active { background: rgba(210, 178, 126, .12); }
 html.beast-bedroom-device .bdv-card-btn.is-busy { opacity: .6; }
 
-/* A player that is on: one quiet line with Sluk / Pause. */
-.bdv-lines { display: flex; flex-direction: column; gap: 8px; width: min(560px, 100%); }
+/* A player that is on: one quiet line with Sluk / Pause, a hairline between. */
+.bdv-lines { display: flex; flex-direction: column; width: min(520px, 100%); margin-top: 4px; }
 html.beast-bedroom-device .bdv-line {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 14px;
   min-width: 0;
-  padding: 6px 6px 6px 12px;
-  border: 1px solid var(--bdv-line);
-  border-radius: 18px;
-  background: rgba(11, 12, 13, .55);
+  padding: 9px 0;
+  border-top: 1px solid var(--bdv-line);
 }
-.bdv-line-ic { display: grid; place-items: center; flex: none; width: 36px; height: 36px; border-radius: 11px; color: rgba(143, 179, 230, .42); }
-.bdv-line-tx b { overflow: hidden; color: var(--bdv-tx); font-size: 15px; font-weight: 500; text-overflow: ellipsis; white-space: nowrap; }
-html.beast-bedroom-device .bdv-line-btn { height: 44px; padding: 0 18px; border-color: rgba(216, 218, 221, .1); background: rgba(21, 22, 23, .8); color: var(--bdv-tx); font-size: 14px; font-weight: 500; }
-html.beast-bedroom-device .bdv-line-btn:active { background: rgba(22, 24, 26, .9); }
+.bdv-line-tx b { overflow: hidden; color: var(--bdv-tx); font-size: 17px; font-weight: 500; text-overflow: ellipsis; white-space: nowrap; }
+html.beast-bedroom-device .bdv-line-btn { height: 44px; padding: 0 20px; border-color: rgba(216, 218, 221, .18); color: var(--bdv-tx); font-size: 15px; }
+html.beast-bedroom-device .bdv-line-btn:active { background: rgba(216, 218, 221, .08); }
 
 /* With a door card in landscape the clock gives up some height, so the
    card and the shortcut row both fit. */
@@ -482,7 +470,9 @@ html.beast-bedroom-device .bdv-line-btn:active { background: rgba(22, 24, 26, .9
   html.beast-bedroom-device .has-bdv-card.has-bdv-lines .beast-ambient-time { font-size: min(18vw, 22vh); }
 }
 @media (max-width: 700px) {
-  html.beast-bedroom-device .bdv-pill { height: 40px; padding: 0 13px 0 12px; font-size: 14px; }
+  .bdv-row { font-size: 17px; }
+  .bdv-status { font-size: 18px; }
+  .bdv-it + .bdv-it::before { margin: 0 14px; }
   html.beast-bedroom-device .bdv-card { flex-wrap: wrap; }
   html.beast-bedroom-device .bdv-card-btn { width: 100%; justify-content: center; }
 }

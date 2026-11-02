@@ -1,13 +1,13 @@
 // Screensaver content on bedroom devices: the screensaver is the bedside
 // screen's Nat view, and what it shows under the clock follows the bedroom's
-// time-of-day mode (BeastBedroomModes, incl. Godnat -> Nat):
-//   Nat    calm pills (locks/alarm, first event of the day, room climate),
-//          an amber card with a Lås button for unlocked doors, a Sluk/Pause
-//          line for a player that is on
-//   Morgen last night's CPAP, the next event, the weather, the locks
-//   Dag    the weather and the next event
-//   Aften  locks/alarm (amber card when a door is unlocked), what is
-//          playing, the first event tomorrow
+// time-of-day mode (BeastBedroomModes, incl. Godnat -> Nat). It is two
+// quiet lines of text (a status line and an info line, no boxes; only
+// something that needs attention gets a sand dot), a sand card with a Lås
+// button for unlocked doors and a Sluk/Pause line per player that is on:
+//   Nat    status: locks/alarm, window. info: first event of the day, climate
+//   Morgen info: last night's CPAP, the next event, the weather. status: locks
+//   Dag    info: the weather and the next event
+//   Aften  status: locks/alarm. info: the first event tomorrow. what is playing
 // Buttons here act without waking the screen (see onSaverPointerDown in
 // ha-smartdash-bedroom-alerts.js); any other tap wakes to the bedroom page.
 // A mode's card switches (Tilstande) apply here too. Only opacity changes
@@ -38,35 +38,35 @@ window.BeastBedroomSaver = (() => {
   // ---------------------------------------------------------------------------
   // Content
   // ---------------------------------------------------------------------------
-  function pill({ iconName = "", html, tone = "" }) {
-    return `<span class="bdv-pill${tone ? ` is-${tone}` : ""}">${iconName ? icon(iconName, 16) : ""}<span class="bdv-pill-tx">${html}</span></span>`;
+  function item({ html, tone = "" }) {
+    return `<span class="bdv-it${tone ? ` is-${tone}` : ""}">${tone === "warn" ? `<i class="bdv-dot"></i>` : ""}<span class="bdv-it-tx">${html}</span></span>`;
   }
 
-  function weatherPill() {
+  function weatherItem() {
     const weather = typeof window.ambientWeather === "function" ? window.ambientWeather() : null;
     if (!weather || weather.temperature === "–") return "";
-    return pill({ iconName: "weather", html: `<b>${esc(weather.temperature)}</b> ${esc(t(weather.label))}` });
+    return item({ html: `<b>${esc(weather.temperature)}</b> ${esc(t(weather.label))}` });
   }
 
-  function eventPill(event) {
+  function eventItem(event) {
     if (!event) return "";
-    return pill({ iconName: "cal", html: `<em>${esc(event.day)} ·</em> <b>${esc(event.time)}</b> <span class="bdv-ev">${esc(event.title)}</span>` });
+    return item({ html: `<em>${esc(event.day)}</em> <b>${esc(event.time)}</b> <span class="bdv-ev">${esc(event.title)}</span>` });
   }
 
-  function climatePill() {
+  function climateItem() {
     const c = cfg();
     const temp = numberState(single(c.temperature));
     const humidity = numberState(single(c.humidity));
-    const text = [temp == null ? "" : `${fmt(temp, 1)}°`, humidity == null ? "" : `${fmt(humidity, 0)} %`].filter(Boolean).join(" · ");
-    return text ? pill({ iconName: "thermo", html: esc(text), tone: "quiet" }) : "";
+    const parts = [temp == null ? "" : `<b>${esc(fmt(temp, 1))}°</b>`, humidity == null ? "" : `<em>${esc(fmt(humidity, 0))} %</em>`].filter(Boolean);
+    return parts.length ? item({ html: parts.join(" ") }) : "";
   }
 
-  function windowPill() {
-    return state(single(cfg().window))?.state === "on" ? pill({ iconName: "unlock", tone: "warn", html: `<b>${esc(t("Vindue åbent"))}</b>` }) : "";
+  function windowItem() {
+    return state(single(cfg().window))?.state === "on" ? item({ tone: "warn", html: `<b>${esc(t("Vindue åbent"))}</b>` }) : "";
   }
 
   // "83 myAir · 5:19 t · Godt arbejde", only for last night's fresh data.
-  function cpapPill() {
+  function cpapItem() {
     const sleep = B.sleep;
     if (!sleep?.configured?.() || !api().sleepFresh() || !sleep.model) return "";
     const m = sleep.model();
@@ -78,7 +78,7 @@ window.BeastBedroomSaver = (() => {
       parts.push(`${Math.floor(minutes / 60)}:${pad2(minutes % 60)} ${esc(t("t"))}`);
     }
     if (m.title) parts.push(`<span class="bdv-verdict">${esc(m.title)}</span>`);
-    return parts.length ? pill({ iconName: "moon", html: parts.join(" · "), tone: "sleep" }) : "";
+    return parts.length ? item({ html: parts.join(" · ") }) : "";
   }
 
   function securityModel() {
@@ -91,22 +91,22 @@ window.BeastBedroomSaver = (() => {
   function alarmState(alarm) { return api().alarmLabel(alarm).toLocaleLowerCase(locale()); }
 
   // Everything locked: "Alt er låst · alarm nat". At night a disarmed alarm
-  // gets an amber pill of its own instead of the suffix.
-  function lockedPills(sec, mode) {
-    const pills = [];
-    if (!sec.locks.length && !sec.alarm) return pills;
+  // gets an item of its own, with the sand dot, instead of the suffix.
+  function lockedItems(sec, mode) {
+    const items = [];
+    if (!sec.locks.length && !sec.alarm) return items;
     const disarmedAtNight = mode === "nat" && sec.alarm?.status === "disarmed";
     const suffix = sec.alarm && !disarmedAtNight ? `<em> · ${esc(t("alarm {state}", { state: alarmState(sec.alarm) }))}</em>` : "";
-    if (sec.locks.length) pills.push(pill({ iconName: "check", html: `<b>${esc(t("Alt er låst"))}</b>${suffix}` }));
-    else if (!disarmedAtNight) pills.push(pill({ iconName: "shield", html: `<b>${esc(t("Alarm"))}</b>${suffix}` }));
-    if (disarmedAtNight) pills.push(pill({ iconName: "shield", tone: "warn", html: `<b>${esc(t("Alarm frakoblet"))}</b>` }));
-    return pills;
+    if (sec.locks.length) items.push(item({ html: `<b>${esc(t("Alt er låst"))}</b>${suffix}` }));
+    else if (!disarmedAtNight) items.push(item({ html: `<b>${esc(t("Alarm"))}</b>${suffix}` }));
+    if (disarmedAtNight) items.push(item({ tone: "warn", html: `<b>${esc(t("Alarm frakoblet"))}</b>` }));
+    return items;
   }
 
   // Morgen: unlocked doors are no alarm, just the state.
-  function openDoorsPill(open) {
+  function openDoorsItem(open) {
     const text = open.length === 1 ? t("{name} er ulåst", { name: displayName(open[0]) }) : t("{n} døre ulåst", { n: open.length });
-    return pill({ iconName: "unlock", html: `<b>${esc(text)}</b>` });
+    return item({ html: `<b>${esc(text)}</b>` });
   }
 
   function doorsCard(sec) {
@@ -132,7 +132,7 @@ window.BeastBedroomSaver = (() => {
       const line = model.title && (model.playing || model.paused) ? model.title : model.verb || t("Tændt");
       const service = model.isTv || !(model.playing || model.paused) ? "turn_off" : "media_play_pause";
       const label = service === "turn_off" ? t("Sluk") : model.paused ? t("Afspil") : t("Pause");
-      return `<div class="bdv-line"><span class="bdv-line-ic">${icon(model.isTv ? "tv" : "speaker", 18)}</span><span class="bdv-line-tx"><b>${esc(model.name)}</b><small>${esc(line)}</small></span><button type="button" class="bdv-line-btn" data-bdv="media" data-service="${service}" data-entity="${esc(id)}">${esc(label)}</button></div>`;
+      return `<div class="bdv-line"><span class="bdv-line-tx"><b>${esc(model.name)}</b><small>${esc(line)}</small></span><button type="button" class="bdv-line-btn" data-bdv="media" data-service="${service}" data-entity="${esc(id)}">${esc(label)}</button></div>`;
     }).join("");
   }
 
@@ -144,27 +144,29 @@ window.BeastBedroomSaver = (() => {
     const sec = on("sec") ? securityModel() : null;
     const hasSec = Boolean(sec && (sec.locks.length || sec.alarm));
     const cal = on("cal") && S.hasCalendars();
-    const pills = [];
+    const status = [];
+    const facts = [];
     let card = "";
     let lines = "";
     if (mode === "morgen") {
-      if (on("sleep")) pills.push(cpapPill());
-      if (cal) pills.push(eventPill(S.upcomingEvent()));
-      pills.push(weatherPill());
-      if (hasSec) pills.push(...(sec.open.length ? [openDoorsPill(sec.open)] : lockedPills(sec, mode)));
+      if (hasSec) status.push(...(sec.open.length ? [openDoorsItem(sec.open)] : lockedItems(sec, mode)));
+      if (on("sleep")) facts.push(cpapItem());
+      if (cal) facts.push(eventItem(S.upcomingEvent()));
+      facts.push(weatherItem());
     } else if (mode === "dag") {
-      pills.push(weatherPill());
-      if (cal) pills.push(eventPill(S.upcomingEvent()));
+      facts.push(weatherItem());
+      if (cal) facts.push(eventItem(S.upcomingEvent()));
     } else {
       if (hasSec) {
         if (sec.open.length) card = doorsCard(sec);
-        else pills.push(...lockedPills(sec, mode));
+        else status.push(...lockedItems(sec, mode));
       }
-      if (cal) pills.push(eventPill(S.comingDayEvent()));
-      if (mode === "nat") pills.push(climatePill(), windowPill());
+      if (mode === "nat") status.push(windowItem());
+      if (cal) facts.push(eventItem(S.comingDayEvent()));
+      if (mode === "nat") facts.push(climateItem());
       if (on("media")) lines = mediaLines();
     }
-    return { mode, pills: pills.filter(Boolean).join(""), card, lines };
+    return { mode, status: status.filter(Boolean).join(""), facts: facts.filter(Boolean).join(""), card, lines };
   }
 
   // ---------------------------------------------------------------------------
@@ -182,7 +184,8 @@ window.BeastBedroomSaver = (() => {
     if (next === signature) return;
     signature = next;
     host.dataset.mode = content.mode;
-    host.innerHTML = `${content.pills ? `<div class="bdv-pills">${content.pills}</div>` : ""}${content.card}${content.lines ? `<div class="bdv-lines">${content.lines}</div>` : ""}`;
+    const row = (name, items) => items ? `<div class="bdv-row ${name}">${items}</div>` : "";
+    host.innerHTML = `${content.card}${row("bdv-status", content.status)}${row("bdv-facts", content.facts)}${content.lines ? `<div class="bdv-lines">${content.lines}</div>` : ""}`;
     overlay.classList.toggle("has-bdv-card", Boolean(content.card));
     overlay.classList.toggle("has-bdv-lines", Boolean(content.lines));
   }

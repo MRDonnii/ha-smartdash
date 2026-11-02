@@ -1,5 +1,16 @@
 [
   {
+    "version": "20261102-7",
+    "tag": "v0.8.95",
+    "date": "2026-11-02",
+    "changes": [
+      {
+        "da": "Informationen på iPad-pauseskærmen omkring uret er gjort roligere og mere eksklusiv: de mange pille-bokse er erstattet af to linjer ren tekst (status og info) med en tynd streg imellem, og kun noget der kræver opmærksomhed (alarm frakoblet, åbent vindue) får en lille sandfarvet prik. Teksten er større og tydeligere, afspillere har fået én rolig linje med Sluk/Pause, og de fire genveje nederst er ramme-løse ikoner med tekst under i stedet for store pille-knapper. Ulåste døre vises stadig som ét sandfarvet kort med en Lås-knap. (Claude AI)",
+        "en": "The information around the clock on the iPad screensaver is calmer and more refined: the many pill boxes are replaced by two lines of plain text (status and info) with a hairline between the items, and only something that needs attention (alarm disarmed, window open) gets a small sand-coloured dot. The text is larger and clearer, players have one quiet line with Sluk/Pause, and the four shortcuts at the bottom are frameless icons with a label under them instead of big pill buttons. Unlocked doors still show as one sand-coloured card with a lock button. (Claude AI)"
+      }
+    ]
+  },
+  {
     "version": "20261102-6",
     "tag": "v0.8.94",
     "date": "2026-11-02",

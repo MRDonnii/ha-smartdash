@@ -1,3 +1,7 @@
+## 0.8.95
+
+- Informationen på iPad-pauseskærmen omkring uret er gjort roligere og mere eksklusiv: de mange pille-bokse er erstattet af to linjer ren tekst (status og info) med en tynd streg imellem, og kun noget der kræver opmærksomhed (alarm frakoblet, åbent vindue) får en lille sandfarvet prik. Teksten er større og tydeligere, afspillere har fået én rolig linje med Sluk/Pause, og de fire genveje nederst er ramme-løse ikoner med tekst under i stedet for store pille-knapper. Ulåste døre vises stadig som ét sandfarvet kort med en Lås-knap. (Claude AI)
+
 ## 0.8.94
 
 - Hele iPad-skærmen i soveværelset (hovedsiden, menuen, søvn og CPAP, kameravisning, låsekode og pauseskærmen) har fået et mere neutralt og eksklusivt farvetema: dyb grafit i stedet for de orange og ravgule toner, kølig sølvhvid tekst og én dæmpet blå accent. Orange er kun beholdt som sandfarvet advarsel (fx ulåste døre), og rød til alarmer. Tekst og klokken på pauseskærmen er løftet lidt i kontrast, så alt er lettere at læse. (Claude AI)
