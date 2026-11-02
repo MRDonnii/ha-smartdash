@@ -1,6 +1,6 @@
 [
   {
-    "version": "20261102-1",
+    "version": "20261102-2",
     "tag": "v0.8.90",
     "date": "2026-11-02",
     "changes": [
@@ -11,6 +11,10 @@
       {
         "da": "Soveværelsessiden på en iPad: den tynde streg med en lille prik nederst i hver lysrække er fjernet. Den var dimmeren, men den stod uforklaret og krydsede teksten. Lysstyrken vises nu kun af det varme felt bag rækken og procenttallet til højre, og man dimmer stadig ved at trække sidelæns hvor som helst på rækken. (Claude AI)",
         "en": "Bedroom page on an iPad: the thin line with a small dot along the bottom of each light row has been removed. It was the dimmer, but it was unexplained and ran through the text. The brightness is now shown only by the warm fill behind the row and the percentage on the right, and you still dim by dragging sideways anywhere on the row. (Claude AI)"
+      },
+      {
+        "da": "Elprisgrafen: den store mørkerøde firkant, der gik hele vejen op fra søjlerne under \"Meget dyrt\", er fjernet. Nu står kun mærket \"Meget dyrt\" over de dyre timer, mens søjlerne, gnisterne og den glødende linje viser, at det er dyrt.",
+        "en": "Electricity price graph: the large dark-red rectangle that ran all the way up from the bars under \"Very expensive\" has been removed. Only the \"Very expensive\" label now sits above the expensive hours, while the bars, sparks and glowing line show that it is expensive."
       }
     ]
   },

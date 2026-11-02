@@ -3674,9 +3674,7 @@ html[data-power-profile="low"] *::after {
 .beast-pchart-ov .nd { position: absolute; width: 10px; height: 10px; margin: -5px 0 0 -5px; border-radius: 50%; background: var(--ink); box-shadow: 0 0 0 2px color-mix(in srgb, var(--ink) 25%, transparent); animation: bpcPulse 2s ease-out infinite; }
 .beast-pchart-ov .band { position: absolute; top: 0; bottom: var(--gb); }
 .beast-pchart-ov .band > span { position: absolute; top: 2px; left: 50%; transform: translateX(-50%); padding: 2px 7px; border-radius: 999px; font-size: 9px; font-weight: 800; letter-spacing: .06em; white-space: nowrap; color: #04120d; background: var(--price-cheapest); box-shadow: 0 0 10px color-mix(in srgb, var(--price-cheapest) 55%, transparent); }
-.beast-pchart-ov .band.hot { background: linear-gradient(180deg, color-mix(in srgb, var(--price-very-dear) 22%, transparent), transparent 70%); }
 .beast-pchart-ov .band.hot > span { color: #fff; background: var(--price-very-dear); box-shadow: 0 0 10px color-mix(in srgb, var(--price-very-dear) 60%, transparent); animation: bpcHot 1.4s ease-in-out infinite; }
-.beast-pchart-ov .band.hot.xt { background: linear-gradient(180deg, color-mix(in srgb, var(--price-extreme) 24%, transparent), transparent 70%); }
 .beast-pchart-ov .band.hot.xt > span { background: var(--price-extreme); box-shadow: 0 0 10px color-mix(in srgb, var(--price-extreme) 60%, transparent); }
 .beast-pchart-tip { position: absolute; left: 0; top: 0; z-index: 4; opacity: 0; pointer-events: none; transform: translate(-50%, calc(-100% - 8px)); padding: 5px 8px; border-radius: 8px; background: #080a0f; color: #fff; font-size: 11px; line-height: 1.35; white-space: nowrap; box-shadow: 0 6px 16px rgba(0, 0, 0, .35); transition: opacity .12s; }
 .beast-pchart-tip b { font-weight: 800; }
