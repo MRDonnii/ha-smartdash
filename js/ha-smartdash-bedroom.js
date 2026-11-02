@@ -8,7 +8,7 @@ window.BeastBedroom = (() => {
   const SECTION_ID = "bedroom";
   const DEFAULT_TITLE = "Soveværelse";
   // Warm hues only (no blue light at night): one per configured calendar, in order.
-  const CALENDAR_COLORS = ["#E8A85A", "#D4795A", "#CDB38A", "#C98A8A", "#A8B07A", "#8C9A86"];
+  const CALENDAR_COLORS = ["#8FB3E6", "#DB7464", "#D2B27E", "#B79BC9", "#8CC5A6", "#9AA3AD"];
   const CALENDAR_REFRESH_MS = 5 * 60 * 1000;
   const CAMERA_VIEW_MAX_MS = 3 * 60 * 1000;
   const POSTER_REFRESH_MS = 10 * 60 * 1000;

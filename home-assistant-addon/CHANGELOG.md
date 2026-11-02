@@ -1,3 +1,7 @@
+## 0.8.94
+
+- Hele iPad-skærmen i soveværelset (hovedsiden, menuen, søvn og CPAP, kameravisning, låsekode og pauseskærmen) har fået et mere neutralt og eksklusivt farvetema: dyb grafit i stedet for de orange og ravgule toner, kølig sølvhvid tekst og én dæmpet blå accent. Orange er kun beholdt som sandfarvet advarsel (fx ulåste døre), og rød til alarmer. Tekst og klokken på pauseskærmen er løftet lidt i kontrast, så alt er lettere at læse. (Claude AI)
+
 ## 0.8.93
 
 - Rumknappernes placering på robotkortet er flyttet ud af den delte kode og ind i installationens lokale profil (data/local-profile.css), og eksemplerne i koden bruger nu opdigtede navne. Intet ændrer sig på skærmen for de eksisterende installationer. (Claude AI)

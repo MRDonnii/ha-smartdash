@@ -398,7 +398,7 @@ window.BeastBedroom.sleep = (() => {
     const gradient = `bdRingAmber${++gradientSeq}`;
     const dash = (length) => `${length.toFixed(1)} ${RING_CIRCUMFERENCE.toFixed(1)}`;
     const arc = fraction > 0 ? `<circle class="bd-ring-arc" style="stroke:url(#${gradient})" cx="60" cy="60" r="48" stroke-dasharray="${dash(Math.max(0.5, fraction * RING_SWEEP))}" transform="rotate(135 60 60)"/>` : "";
-    return `<span class="bd-ring${m.stale ? " is-stale" : ""}"><svg viewBox="0 0 120 120" aria-hidden="true" focusable="false"><defs><linearGradient id="${gradient}" x1="0" y1="1" x2="1" y2="0"><stop offset="0" stop-color="#9A4716"/><stop offset=".55" stop-color="#F0A24A"/><stop offset="1" stop-color="#FFD08F"/></linearGradient></defs><circle class="bd-ring-track" cx="60" cy="60" r="48" stroke-dasharray="${dash(RING_SWEEP)}" transform="rotate(135 60 60)"/>${arc}</svg><span class="bd-ring-val"><b>${esc(text)}</b><small>${esc(label)}</small></span></span>`;
+    return `<span class="bd-ring${m.stale ? " is-stale" : ""}"><svg viewBox="0 0 120 120" aria-hidden="true" focusable="false"><defs><linearGradient id="${gradient}" x1="0" y1="1" x2="1" y2="0"><stop offset="0" stop-color="#305380"/><stop offset=".55" stop-color="#8FB3E6"/><stop offset="1" stop-color="#B4CDF0"/></linearGradient></defs><circle class="bd-ring-track" cx="60" cy="60" r="48" stroke-dasharray="${dash(RING_SWEEP)}" transform="rotate(135 60 60)"/>${arc}</svg><span class="bd-ring-val"><b>${esc(text)}</b><small>${esc(label)}</small></span></span>`;
   }
 
   // On the page the freshness chip sits in the panel's eyebrow (which gives
@@ -551,7 +551,7 @@ window.BeastBedroom.sleep = (() => {
     const avg = average(points);
     const parts = [];
     const seq = ++gradientSeq;
-    parts.push(`<defs><linearGradient id="bdBarN${seq}" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#5C3415"/><stop offset="1" stop-color="#2E1B0D"/></linearGradient><linearGradient id="bdBarL${seq}" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#FFC27A"/><stop offset="1" stop-color="#D9732C"/></linearGradient><linearGradient id="bdBarB${seq}" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#8A3424"/><stop offset="1" stop-color="#3D1711"/></linearGradient></defs>`);
+    parts.push(`<defs><linearGradient id="bdBarN${seq}" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#34383D"/><stop offset="1" stop-color="#1B1D20"/></linearGradient><linearGradient id="bdBarL${seq}" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#B4CDF0"/><stop offset="1" stop-color="#4A7BBB"/></linearGradient><linearGradient id="bdBarB${seq}" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#7E3A30"/><stop offset="1" stop-color="#391A15"/></linearGradient></defs>`);
     points.forEach((point, index) => {
       const x = index * slot + Math.max(0, offset);
       const center = x + barW / 2;

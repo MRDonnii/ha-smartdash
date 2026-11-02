@@ -1,5 +1,16 @@
 [
   {
+    "version": "20261102-6",
+    "tag": "v0.8.94",
+    "date": "2026-11-02",
+    "changes": [
+      {
+        "da": "Hele iPad-skærmen i soveværelset (hovedsiden, menuen, søvn og CPAP, kameravisning, låsekode og pauseskærmen) har fået et mere neutralt og eksklusivt farvetema: dyb grafit i stedet for de orange og ravgule toner, kølig sølvhvid tekst og én dæmpet blå accent. Orange er kun beholdt som sandfarvet advarsel (fx ulåste døre), og rød til alarmer. Tekst og klokken på pauseskærmen er løftet lidt i kontrast, så alt er lettere at læse. (Claude AI)",
+        "en": "The whole iPad bedroom screen (main page, menu, sleep and CPAP, camera view, lock keypad and the screensaver) has a more neutral and refined colour theme: deep graphite instead of the orange and amber tones, cool silver-white text and a single muted blue accent. Orange is only kept as a sand-coloured warning (for example unlocked doors), and red for alarms. Text and the clock on the screensaver have a little more contrast so everything is easier to read. (Claude AI)"
+      }
+    ]
+  },
+  {
     "version": "20261102-5",
     "tag": "v0.8.93",
     "date": "2026-11-02",
