@@ -1,3 +1,7 @@
+## 0.8.92
+
+- Rettelse til v0.8.91: nattehimlen på iPad-pauseskærmen kom ikke frem, fordi browseren blev ved med at bruge de gamle filer. Alle ændrede filer har nu nye versionsnumre, så iPad'en henter den rigtige pauseskærm (stjerner, skyer, ingen glød bag uret) og de øvrige rettelser fra de seneste versioner.
+
 ## 0.8.91
 
 - Pauseskærmen på iPad og i soveværelset viser nu en rigtig nattehimmel: mange flere stjerner i forskellige størrelser og farver (de klareste med fine kryds-stråler, uden glød), og skyer, der driver forbi som måneoplyste banker, der også dækker stjernerne bag sig. Klar nat får kun få høje skyer, delvist skyet får nogle, og overskyet får flere og færre stjerner. Vejret er ikke længere dæmpet bag et mat lag, og der er hverken glød eller et udtyndet hul bag uret – baggrunden er ren sort med en dybblå himmel foroven.

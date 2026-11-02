@@ -1,5 +1,16 @@
 [
   {
+    "version": "20261102-4",
+    "tag": "v0.8.92",
+    "date": "2026-11-02",
+    "changes": [
+      {
+        "da": "Rettelse til v0.8.91: nattehimlen på iPad-pauseskærmen kom ikke frem, fordi browseren blev ved med at bruge de gamle filer. Alle ændrede filer har nu nye versionsnumre, så iPad'en henter den rigtige pauseskærm (stjerner, skyer, ingen glød bag uret) og de øvrige rettelser fra de seneste versioner.",
+        "en": "Fix for v0.8.91: the night sky on the iPad screensaver did not appear because the browser kept using the old files. Every changed file now has a new version number, so the iPad fetches the real screensaver (stars, clouds, no glow behind the clock) and the other fixes from the latest versions."
+      }
+    ]
+  },
+  {
     "version": "20261102-3",
     "tag": "v0.8.91",
     "date": "2026-11-02",
