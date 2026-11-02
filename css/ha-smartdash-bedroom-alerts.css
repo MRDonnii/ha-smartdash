@@ -238,6 +238,9 @@
    thin, warm ivory; it moves only by transform (set from JS) and the rest
    of the screensaver content only fades. */
 html.beast-bedroom-device .beast-ambient-mode { -webkit-backdrop-filter: none; backdrop-filter: none; }
+/* A plain black night: the regular screensaver's soft accent glow behind
+   the clock is left out so the stars and clouds are what you see. */
+html.beast-bedroom-device .beast-ambient-mode:not(.has-custom-background) { background: #000; }
 /* The weather behind the bedroom clock is drawn dim on purpose (see the
    "calm" layers in ha-smartdash-weatherfx.js), so the iPad rule that fades
    the canvas to a third does not apply here. */

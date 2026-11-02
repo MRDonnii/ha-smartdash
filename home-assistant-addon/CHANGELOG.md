@@ -1,3 +1,7 @@
+## 0.8.91
+
+- Pauseskærmen på iPad og i soveværelset viser nu en rigtig nattehimmel: mange flere stjerner i forskellige størrelser og farver (de klareste med fine kryds-stråler, uden glød), og skyer, der driver forbi som måneoplyste banker, der også dækker stjernerne bag sig. Klar nat får kun få høje skyer, delvist skyet får nogle, og overskyet får flere og færre stjerner. Vejret er ikke længere dæmpet bag et mat lag, og der er hverken glød eller et udtyndet hul bag uret – baggrunden er ren sort med en dybblå himmel foroven.
+
 ## 0.8.90
 
 - Grafen over elpriser er bygget om, så den ser ud og opfører sig som i Home Assistant-kortet for elpriser: samme søjler eller linje med glød, og de samme animationer (søjlerne vokser ind, væske og bobler i de billigste timer, pulser og gnister når det er meget dyrt, rolig lysbevægelse på linjen), BILLIGST og MEGET/EKSTREMT DYRT-mærker, nu-linje og tooltip. Farverne følger nu fem prisniveauer (billig, normal pris, dyrt, meget dyrt, ekstremt dyrt), og grænserne for niveauerne kan sættes i Administration → Energi (standard 1,5 · 3 · 3,75 · 5 kr/kWh). Det gælder alle tre grafer: Energisiden (søjler og linje, i dag, i morgen og prognose), forsidens energikort og skabelonkortet Elpris. Prognosedage vises dæmpet, og animationerne er slået fra ved reduceret bevægelse. (Claude AI)

@@ -33,6 +33,9 @@ const BeastWeatherFx = (() => {
   const TINTS = {
     day: null,
     night: (w, h) => { const g = mkGrad(0, 0, 0, h); g.addColorStop(0, "rgba(10,18,45,0.16)"); g.addColorStop(1, "rgba(10,18,45,0)"); return g; },
+    // The screensaver's night sky: deep blue at the top fading to black at
+    // the horizon, a real gradient (not a flat wash) and nothing near the clock.
+    nightSky: (w, h) => { const g = mkGrad(0, 0, 0, h); g.addColorStop(0, "rgba(20,34,74,0.62)"); g.addColorStop(0.45, "rgba(10,18,44,0.3)"); g.addColorStop(1, "rgba(0,0,0,0)"); return g; },
     sun: (w, h) => { const g = ctx.createRadialGradient(w * 0.82, h * 0.12, 0, w * 0.82, h * 0.12, Math.max(w, h) * 0.5); g.addColorStop(0, "rgba(255,214,140,0.14)"); g.addColorStop(1, "rgba(255,214,140,0)"); return g; },
     overcast: (w, h) => { const g = mkGrad(0, 0, 0, h); g.addColorStop(0, "rgba(140,150,165,0.10)"); g.addColorStop(1, "rgba(140,150,165,0.03)"); return g; },
     rain: (w, h) => { const g = mkGrad(0, 0, 0, h); g.addColorStop(0, "rgba(70,90,120,0.10)"); g.addColorStop(1, "rgba(70,90,120,0.04)"); return g; },
@@ -131,6 +134,12 @@ const BeastWeatherFx = (() => {
     return typeof BeastLocalSettings !== "undefined" && BeastLocalSettings.isBedroomDevice?.() === true;
   }
 
+  // Devices whose screensaver gets the quiet night sky: bedroom devices and
+  // iPads (other kiosks keep the regular overlay).
+  function skyDevice() {
+    return bedroomDevice() || document.documentElement.classList.contains("beast-ipad");
+  }
+
   function allowedHere() {
     // An idle kiosk (screen off) shows nothing, so nothing is drawn.
     if (window.BeastPower?.getState?.() === "idle") return false;
@@ -152,7 +161,7 @@ const BeastWeatherFx = (() => {
     if (canvas) { canvas.width = width; canvas.height = height; }
     // The bedroom screensaver draws a little sharper than CSS pixels (stars
     // and raindrops looked soft on a Retina iPad) but never at full 2x/3x.
-    ambientScale = bedroomDevice() ? Math.min(1.5, Math.max(1, window.devicePixelRatio || 1)) : 1;
+    ambientScale = skyDevice() ? Math.min(1.5, Math.max(1, window.devicePixelRatio || 1)) : 1;
     if (ambientCanvas) { ambientCanvas.width = Math.round(width * ambientScale); ambientCanvas.height = Math.round(height * ambientScale); }
     tintKey = "";
   }
@@ -208,8 +217,13 @@ const BeastWeatherFx = (() => {
     // ---- bedroom screensaver layers (calm) ----
     // Slowly breathing stars, thicker towards the top, a few warmer and a
     // few with a faint halo; a rare, faint shooting star.
-    calmStars: () => calmStars(density(6500, 150)),
-    calmStarsFew: () => calmStars(density(16000, 60)),
+    calmStars: () => calmStars(density(3800, 280)),
+    calmStarsFew: () => calmStars(density(6800, 170)),
+    // Night clouds: a far and a near layer of moonlit banks (parallax), so a
+    // clear sky only gets a few high wisps and an overcast one several banks.
+    nightWisps: () => nightClouds(2, 0, true),
+    nightCloudsSome: () => nightClouds(2, 3, false),
+    nightCloudsMany: () => nightClouds(5, 6, false),
     meteor: () => [{ kind: "meteor", next: performance.now() + 9000 + Math.random() * 20000, t: -1 }],
     // Soft light motes drifting upwards on a clear or partly clear day.
     motes: () => Array.from({ length: density(42000, 22) }, () => ({
@@ -238,16 +252,41 @@ const BeastWeatherFx = (() => {
 
 
 
+  const STAR_COLORS = ["232,238,255", "232,238,255", "232,238,255", "255,236,208", "188,208,255"];
   function calmStars(count) {
     return Array.from({ length: count }, () => {
-      const bright = Math.random() < 0.08;
+      const roll = Math.random();
+      const bright = roll < 0.05; const medium = roll < 0.3;
       return {
-        kind: "star", calm: true, x: Math.random() * width, y: Math.pow(Math.random(), 1.35) * height * 0.92,
-        r: bright ? 1.1 + Math.random() * 0.6 : 0.45 + Math.random() * 0.75, halo: bright,
-        base: bright ? 0.5 : 0.18 + Math.random() * 0.3, amp: 0.08 + Math.random() * 0.14,
-        warm: Math.random() < 0.3, phase: Math.random() * Math.PI * 2, speed: 0.004 + Math.random() * 0.012
+        kind: "star", calm: true, x: Math.random() * width, y: Math.pow(Math.random(), 1.2) * height * 0.95,
+        r: bright ? 1.25 + Math.random() * 0.6 : medium ? 0.8 + Math.random() * 0.5 : 0.45 + Math.random() * 0.4,
+        spike: bright, color: `rgb(${STAR_COLORS[Math.floor(Math.random() * STAR_COLORS.length)]})`,
+        base: bright ? 0.82 : medium ? 0.5 + Math.random() * 0.25 : 0.24 + Math.random() * 0.3,
+        amp: bright ? 0.12 : 0.08 + Math.random() * 0.2, phase: Math.random() * Math.PI * 2, speed: 0.006 + Math.random() * 0.02
       };
     });
+  }
+
+  // Moonlit cloud banks: cool blue-grey bodies with a paler upper rim, each
+  // also erasing the stars behind it so they really are covered.
+  function nightClouds(far, near, thin) {
+    const make = (layer) => {
+      const k = layer === "far" ? 0.62 : 1;
+      const w = (380 + Math.random() * 360) * k * (thin ? 1.25 : 1);
+      const h = (thin ? 34 : 62) * k * (0.8 + Math.random() * 0.5);
+      const count = thin ? 16 : 9 + Math.floor(Math.random() * 4);
+      const puffs = Array.from({ length: count }, (_, i) => {
+        const edge = Math.abs(i / (count - 1) - 0.5) * 2;
+        return { dx: (i / (count - 1) - 0.5) * w * 0.85 + (Math.random() - 0.5) * 30 * k, dy: (Math.random() - 0.5) * h * 0.45, r: h * (thin ? 1.9 : 1.05) * (1 - edge * 0.5 + Math.random() * 0.3) };
+      });
+      const top = layer === "far" ? 0.1 : 0.04;
+      return {
+        kind: "cloud", soft: true, night: true, x: Math.random() * (width + w) - w * 0.5, y: height * (top + Math.random() * (layer === "far" ? 0.5 : 0.66)), w, h, puffs,
+        speed: layer === "far" ? 0.02 + Math.random() * 0.03 : 0.05 + Math.random() * 0.06,
+        opacity: (thin ? 0.1 : layer === "far" ? 0.11 : 0.17) + Math.random() * 0.04, cover: thin ? 0.35 : layer === "far" ? 0.6 : 0.85
+      };
+    };
+    return [...Array.from({ length: far }, () => make("far")), ...Array.from({ length: near }, () => make("near"))];
   }
 
   // A long, flat bank of overlapping soft puffs (squashed vertically).
@@ -296,10 +335,14 @@ const BeastWeatherFx = (() => {
     if (p.kind === "star" && p.calm) {
       p.phase += p.speed * step;
       const a = Math.max(0, p.base + Math.sin(p.phase) * p.amp);
-      if (p.halo) { ctx.globalAlpha = a * 0.22; const s = p.r * 9; ctx.drawImage(glowSprite("255,236,210"), p.x - s / 2, p.y - s / 2, s, s); }
-      ctx.globalAlpha = a;
-      ctx.fillStyle = p.warm ? "rgb(255,232,200)" : "rgb(232,238,255)";
+      ctx.globalAlpha = Math.min(1, a);
+      ctx.fillStyle = p.color;
       ctx.beginPath(); ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2); ctx.fill();
+      if (p.spike) {
+        // Four hair-thin rays, like a bright star seen through a lens; no glow.
+        const l = p.r * 5.5; ctx.strokeStyle = p.color; ctx.lineWidth = 0.7; ctx.globalAlpha = Math.min(1, a * 0.7);
+        ctx.beginPath(); ctx.moveTo(p.x - l, p.y); ctx.lineTo(p.x + l, p.y); ctx.moveTo(p.x, p.y - l); ctx.lineTo(p.x, p.y + l); ctx.stroke();
+      }
       return;
     }
     if (p.kind === "mote") {
@@ -344,6 +387,11 @@ const BeastWeatherFx = (() => {
       // The same puffs, blurred and composited exactly as before, but once
       // into the cloud's own sprite; every frame then only moves the sprite.
       if (!p.sprite || p.spritePalette !== spritePalette) (p.soft ? softCloudSprite : cloudSprite)(p);
+      if (p.occ) {
+        ctx.globalCompositeOperation = "destination-out"; ctx.globalAlpha = p.cover;
+        ctx.drawImage(p.occ, p.x - p.ox, p.y - p.oy);
+        ctx.globalCompositeOperation = "source-over";
+      }
       ctx.globalAlpha = 1;
       ctx.drawImage(p.sprite, p.x - p.ox, p.y - p.oy);
       p.x += p.speed * step;
@@ -414,9 +462,9 @@ const BeastWeatherFx = (() => {
     sprite.width = Math.ceil(maxX - minX); sprite.height = Math.ceil(maxY - minY);
     const c = sprite.getContext("2d");
     c.clearRect(0, 0, sprite.width, sprite.height);
-    const rgb = String(spritePalette.cloud).match(/\d+,\s*\d+,\s*\d+/)?.[0] || "222,227,236";
+    const rgb = p.night ? "150,170,205" : String(spritePalette.cloud).match(/\d+,\s*\d+,\s*\d+/)?.[0] || "222,227,236";
     const a = p.opacity;
-    p.puffs.forEach((puff) => {
+    const puffsInto = (c, rgb, a) => p.puffs.forEach((puff) => {
       const x = puff.dx - minX; const y = (puff.dy - minY) / SQUASH;
       c.setTransform(1, 0, 0, SQUASH, 0, 0);
       // Close to a Gaussian falloff, so overlapping puffs blend into one bank.
@@ -425,7 +473,24 @@ const BeastWeatherFx = (() => {
       g.addColorStop(0.82, `rgba(${rgb},${a * 0.1})`); g.addColorStop(1, `rgba(${rgb},0)`);
       c.fillStyle = g; c.fillRect(x - puff.r, y - puff.r, puff.r * 2, puff.r * 2);
     });
+    puffsInto(c, rgb, a);
     c.setTransform(1, 0, 0, 1, 0, 0);
+    if (p.night) {
+      // Moonlit upper rim: paler on top, only where the cloud already is.
+      c.globalCompositeOperation = "source-atop";
+      const rim = c.createLinearGradient(0, 0, 0, sprite.height);
+      rim.addColorStop(0, "rgba(205,220,250,0.6)"); rim.addColorStop(0.5, "rgba(205,220,250,0)");
+      c.fillStyle = rim; c.fillRect(0, 0, sprite.width, sprite.height);
+      c.globalCompositeOperation = "source-over";
+      // The same bank, solid, for erasing the stars behind it.
+      const occ = p.occ || document.createElement("canvas");
+      occ.width = sprite.width; occ.height = sprite.height;
+      const o = occ.getContext("2d");
+      o.clearRect(0, 0, occ.width, occ.height);
+      puffsInto(o, "0,0,0", 1);
+      o.setTransform(1, 0, 0, 1, 0, 0);
+      p.occ = occ;
+    }
     p.sprite = sprite; p.spritePalette = spritePalette; p.ox = -minX; p.oy = -minY;
   }
 
@@ -456,26 +521,8 @@ const BeastWeatherFx = (() => {
       const grad = make(width, height); if (grad) { ctx.globalAlpha = 1; ctx.fillStyle = grad; ctx.fillRect(0, 0, width, height); }
       ctx = main; tintKey = key;
     }
-    // The bedroom screensaver keeps its black: only half the wash.
-    ctx.globalAlpha = calm ? 0.5 : 1; ctx.drawImage(tintLayer, 0, 0);
-  }
-
-  // Bedroom screensaver: the weather thins out behind the clock so the
-  // digits keep their contrast (a soft hole, not a visible shape).
-  let shieldGrad = null;
-  let shieldKey = "";
-  function drawClockShield() {
-    const key = `${width}x${height}`;
-    const cx = width / 2; const cy = height * 0.44; const r = Math.min(width, height * 1.25) * 0.5;
-    if (key !== shieldKey) {
-      shieldGrad = ctx.createRadialGradient(cx, cy, 0, cx, cy, r);
-      shieldGrad.addColorStop(0, "rgba(0,0,0,0.6)"); shieldGrad.addColorStop(0.55, "rgba(0,0,0,0.42)"); shieldGrad.addColorStop(1, "rgba(0,0,0,0)");
-      shieldKey = key;
-    }
-    ctx.save();
-    ctx.globalCompositeOperation = "destination-out"; ctx.globalAlpha = 1; ctx.fillStyle = shieldGrad;
-    ctx.fillRect(cx - r, cy - r, r * 2, r * 2);
-    ctx.restore();
+    // The bedroom screensaver keeps its black: other washes only at half.
+    ctx.globalAlpha = calm && activeConfig.tint !== "nightSky" ? 0.5 : 1; ctx.drawImage(tintLayer, 0, 0);
   }
 
   function drawGroundEffects() {
@@ -576,7 +623,7 @@ const BeastWeatherFx = (() => {
       ctx = target ? target.getContext("2d") : null;
       canvas?.classList.toggle("is-active", target === canvas);
       ambientCanvas?.classList.toggle("is-active", target === ambientCanvas);
-      calm = Boolean(target) && target === ambientCanvas && bedroomDevice();
+      calm = Boolean(target) && target === ambientCanvas && skyDevice();
       if (calm !== builtCalm) { rebuild(); return; }
     }
     if (!ctx || !target) return;
@@ -588,9 +635,7 @@ const BeastWeatherFx = (() => {
     particles.forEach(drawParticle);
     drawGroundEffects();
     if (calm) {
-      // The wash goes in behind the particles after the shield, so only the
-      // weather thins out behind the clock, not the colour of the sky.
-      drawClockShield();
+      // The wash goes in behind the particles (nothing is cut out behind the clock).
       ctx.save(); ctx.globalCompositeOperation = "destination-over"; drawTint(); ctx.restore();
     }
     maybeFlash(Date.now());
@@ -608,10 +653,10 @@ const BeastWeatherFx = (() => {
     const c = CONDITION_EFFECTS[condition];
     if (!c) return null;
     switch (condition) {
-      case "clear-night": return { tint: "night", layers: ["calmStars", "meteor"] };
-      case "sunny": return night ? { tint: "night", layers: ["calmStars", "meteor"] } : { tint: null, layers: ["motes"] };
-      case "partlycloudy": return night ? { tint: "night", layers: ["calmStarsFew", "calmClouds"] } : { tint: null, layers: ["motes", "calmClouds"] };
-      case "cloudy": return { tint: "overcast", layers: ["calmClouds", "calmClouds"] };
+      case "clear-night": return { tint: "nightSky", layers: ["calmStars", "meteor", "nightWisps"] };
+      case "sunny": return night ? { tint: "nightSky", layers: ["calmStars", "meteor", "nightWisps"] } : { tint: null, layers: ["motes"] };
+      case "partlycloudy": return night ? { tint: "nightSky", layers: ["calmStars", "meteor", "nightCloudsSome"] } : { tint: null, layers: ["motes", "calmClouds"] };
+      case "cloudy": return night ? { tint: "nightSky", layers: ["calmStarsFew", "meteor", "nightCloudsMany"] } : { tint: "overcast", layers: ["calmClouds", "calmClouds"] };
       case "fog": return { tint: "overcast", layers: ["calmFog"] };
       case "windy": case "windy-variant": return { tint: null, layers: ["calmClouds", "wind"] };
       case "rainy": return { tint: "rain", layers: ["calmRain"] };

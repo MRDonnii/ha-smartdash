@@ -42,6 +42,6 @@ html.beast-ipad .beast-ambient-summary > span {
 html.beast-ipad .beast-ambient-summary b { color: rgba(255, 255, 255, .4); }
 html.beast-ipad .beast-ambient-bottom small { color: rgba(255, 255, 255, .18); }
 html.beast-ipad .beast-ambient-brightness { display: none; }
-html.beast-ipad .beast-ambient-weather-fx { opacity: .35; }
+html.beast-ipad .beast-ambient-weather-fx { opacity: 1; }
 
 html.beast-ipad .beast-ambient-camera-tile { opacity: .75; }

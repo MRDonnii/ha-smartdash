@@ -1,5 +1,16 @@
 [
   {
+    "version": "20261102-3",
+    "tag": "v0.8.91",
+    "date": "2026-11-02",
+    "changes": [
+      {
+        "da": "Pauseskærmen på iPad og i soveværelset viser nu en rigtig nattehimmel: mange flere stjerner i forskellige størrelser og farver (de klareste med fine kryds-stråler, uden glød), og skyer, der driver forbi som måneoplyste banker, der også dækker stjernerne bag sig. Klar nat får kun få høje skyer, delvist skyet får nogle, og overskyet får flere og færre stjerner. Vejret er ikke længere dæmpet bag et mat lag, og der er hverken glød eller et udtyndet hul bag uret – baggrunden er ren sort med en dybblå himmel foroven.",
+        "en": "The iPad and bedroom screensaver now shows a proper night sky: many more stars in different sizes and colours (the brightest with fine cross-shaped rays, no glow) and clouds drifting past as moonlit banks that also cover the stars behind them. A clear night gets only a few high clouds, partly cloudy some, and overcast more clouds and fewer stars. The weather is no longer dimmed behind a matte layer, and there is neither a glow nor a thinned-out hole behind the clock; the background is plain black with a deep blue sky at the top."
+      }
+    ]
+  },
+  {
     "version": "20261102-2",
     "tag": "v0.8.90",
     "date": "2026-11-02",
