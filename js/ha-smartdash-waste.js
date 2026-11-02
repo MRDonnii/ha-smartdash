@@ -21,7 +21,7 @@
   }
 
   // The calendar's own friendly_name already carries the child's name (per
-  // the family's own naming convention, e.g. "Skoleskema Mads Thorn Halle")
+  // the family's own naming convention, e.g. "Skoleskema Emma Hansen")
   // -- stripping a leading "Skoleskema"/"Schedule" word gives a clean card
   // title without needing a separate label field in Admin.
   function scheduleCardLabel(entityId) {
@@ -29,8 +29,8 @@
     return name.replace(/^(skoleskema|schedule)\s+/i, "").trim() || name;
   }
 
-  // AULA-style summaries are "<FAGKODE>, <Lærernavn>" (e.g. "MAT, Tine Bach
-  // Christensen"), sometimes "KRI, VIKAR: Amar Jusic" for a substitute. Not
+  // AULA-style summaries are "<FAGKODE>, <Lærernavn>" (e.g. "MAT, Hanne
+  // Jensen"), sometimes "KRI, VIKAR: Peter Nielsen" for a substitute. Not
   // every calendar will follow this exact shape, so a summary without a
   // comma just becomes the subject with no teacher rather than failing.
   function parseScheduleSummary(summary) {

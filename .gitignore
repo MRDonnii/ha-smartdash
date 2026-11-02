@@ -5,3 +5,5 @@ data/backups/
 data/*.tmp
 
 data/ha-upstream
+
+data/local-profile.*

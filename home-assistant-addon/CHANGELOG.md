@@ -1,3 +1,7 @@
+## 0.8.93
+
+- Rumknappernes placering på robotkortet er flyttet ud af den delte kode og ind i installationens lokale profil (data/local-profile.css), og eksemplerne i koden bruger nu opdigtede navne. Intet ændrer sig på skærmen for de eksisterende installationer. (Claude AI)
+
 ## 0.8.92
 
 - Rettelse til v0.8.91: nattehimlen på iPad-pauseskærmen kom ikke frem, fordi browseren blev ved med at bruge de gamle filer. Alle ændrede filer har nu nye versionsnumre, så iPad'en henter den rigtige pauseskærm (stjerner, skyer, ingen glød bag uret) og de øvrige rettelser fra de seneste versioner.
@@ -75,7 +79,7 @@
 
 ## 0.8.76
 
-- Bilsidens dæktrykpanel viser bilens navn (fx EnerGitte) i stedet for "Elbil", også når enhedslisten hentes efter siden. (Claude AI)
+- Bilsidens dæktrykpanel viser bilens navn (fx Model Y) i stedet for "Elbil", også når enhedslisten hentes efter siden. (Claude AI)
 
 ## 0.8.75
 

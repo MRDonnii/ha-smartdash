@@ -1,5 +1,16 @@
 [
   {
+    "version": "20261102-5",
+    "tag": "v0.8.93",
+    "date": "2026-11-02",
+    "changes": [
+      {
+        "da": "Rumknappernes placering på robotkortet er flyttet ud af den delte kode og ind i installationens lokale profil (data/local-profile.css), og eksemplerne i koden bruger nu opdigtede navne. Intet ændrer sig på skærmen for de eksisterende installationer. (Claude AI)",
+        "en": "The room button positions on the robot map moved out of the shared code into the installation's local profile (data/local-profile.css), and the examples in the code now use made-up names. Nothing changes on screen for existing installations. (Claude AI)"
+      }
+    ]
+  },
+  {
     "version": "20261102-4",
     "tag": "v0.8.92",
     "date": "2026-11-02",
@@ -225,8 +236,8 @@
     "date": "2026-10-10",
     "changes": [
       {
-        "da": "Bilsidens dæktrykpanel viser bilens navn (fx EnerGitte) i stedet for \"Elbil\", også når enhedslisten hentes efter siden. (Claude AI)",
-        "en": "The car page's tyre panel shows the car's name (e.g. EnerGitte) instead of \"Elbil\", also when the device list loads after the page."
+        "da": "Bilsidens dæktrykpanel viser bilens navn (fx Model Y) i stedet for \"Elbil\", også når enhedslisten hentes efter siden. (Claude AI)",
+        "en": "The car page's tyre panel shows the car's name (e.g. Model Y) instead of \"Elbil\", also when the device list loads after the page."
       }
     ]
   },

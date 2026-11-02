@@ -1868,15 +1868,6 @@
 }
 .beast-robot-room-layer.is-editing .beast-map-room .beast-icon { color: var(--accent-b); }
 .beast-robot-room-layer.is-editing .beast-map-room:active { cursor: grabbing; }
-.beast-map-room--stuen { left: 25%; top: 32%; }
-.beast-map-room--sovevaerelse { left: 59%; top: 15%; }
-.beast-map-room--kontor { left: 81%; top: 11%; }
-.beast-map-room--badevaerelse { left: 87%; top: 28%; }
-.beast-map-room--spisestuen { left: 65%; top: 41%; }
-.beast-map-room--viggo { left: 57%; top: 61%; }
-.beast-map-room--kokken { left: 73%; top: 67%; }
-.beast-map-room--mads { left: 57%; top: 82%; }
-.beast-map-room--bryggers { left: 89%; top: 82%; }
 
 .beast-robot-map-stats {
   position: absolute;
