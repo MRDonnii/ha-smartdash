@@ -1,4 +1,4 @@
-const VERSION = "0.3.3";
+const VERSION = "0.3.4";
 
 const FIELDS = [
   ["primary_supply", "Fjernvarme fremløb"], ["primary_return", "Fjernvarme retur"], ["primary_valve", "Fjernvarme hovedventil"], ["summer_cutoff", "Sommerudkobling"],
@@ -138,6 +138,28 @@ class HAFjernvarmeHouseCard extends HTMLElement {
     if (!entityId || Array.isArray(entityId)) return;
     this.dispatchEvent(new CustomEvent("hass-more-info",{detail:{entityId},bubbles:true,composed:true}));
   }
+  _popupAction(event) {
+    const detail = event.detail || {}; const config = detail.config || {};
+    const action = config[`${detail.action || "tap"}_action`] || (detail.action === "tap" || !detail.action ? { action: "more-info" } : null);
+    if (!action || !this._hass) return;
+    event.stopImmediatePropagation();
+    const entity = action.entity || config.entity;
+    const kind = action.action;
+    if (kind === "perform-action" || kind === "call-service") {
+      const [domain, service] = String(action.perform_action || action.service || "").split(".");
+      if (domain && service) this._hass.callService(domain, service, { ...(action.data || action.service_data || {}) }, action.target)
+        .catch((error) => console.error("HA Fjernvarme House Card: popup action", error));
+    } else if (kind === "toggle" && entity) {
+      this._hass.callService("homeassistant", "toggle", { entity_id: entity });
+    } else if (kind === "more-info" && entity) {
+      document.querySelector("home-assistant")?.dispatchEvent(new CustomEvent("hass-more-info", { detail: { entityId: entity }, bubbles: true, composed: true }));
+    } else if (kind === "navigate" && action.navigation_path) {
+      this._closeDetailsPopup(); history.pushState(null, "", action.navigation_path); window.dispatchEvent(new CustomEvent("location-changed"));
+    } else if (kind === "url" && action.url_path) {
+      window.open(action.url_path, "_blank", "noopener");
+    }
+  }
+
   _openDetailsPopup() {
     if (!Object.keys(this._config.details_entities || {}).length) return;
     const { backdrop, host } = this._popupShell(this._config.details_title || "Detaljer");
@@ -174,6 +196,9 @@ class HAFjernvarmeHouseCard extends HTMLElement {
     panel.appendChild(host);
     backdrop.appendChild(panel);
     backdrop.addEventListener("click", event => { if (event.target === backdrop) this._closeDetailsPopup(); });
+    // The popup lives on document.body, outside Lovelace, so the cards inside it (button-card etc.) send their tap
+    // actions to nobody. Run them here (Claude AI, 2026-10-14; replaces a dashboard-specific fix on the brother's HA).
+    backdrop.addEventListener("hass-action", event => this._popupAction(event));
     this._escapeHandler = event => { if (event.key === "Escape") this._closeDetailsPopup(); };
     document.addEventListener("keydown", this._escapeHandler);
     this._bodyOverflow = document.body.style.overflow;
