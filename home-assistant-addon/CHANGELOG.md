@@ -1,3 +1,7 @@
+## 0.8.96
+
+- Elprisgrafen viser nu prisprognosen som én søjle pr. time. Strømligning laver kun prognoser time for time, men hvert punkt var mærket som et kvarter, så prognosen stod som tynde søjler med store huller imellem. Det gælder energisiden, oversigten og Elpris-kortet. (Claude AI)
+
 ## 0.8.95
 
 - Informationen på iPad-pauseskærmen omkring uret er gjort roligere og mere eksklusiv: de mange pille-bokse er erstattet af to linjer ren tekst (status og info) med en tynd streg imellem, og kun noget der kræver opmærksomhed (alarm frakoblet, åbent vindue) får en lille sandfarvet prik. Teksten er større og tydeligere, afspillere har fået én rolig linje med Sluk/Pause, og de fire genveje nederst er ramme-løse ikoner med tekst under i stedet for store pille-knapper. Ulåste døre vises stadig som ét sandfarvet kort med en Lås-knap. (Claude AI)

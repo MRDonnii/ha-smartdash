@@ -174,10 +174,15 @@
       const next = sorted[index + 1] ? new Date(sorted[index + 1].start).getTime() : null;
       const previous = index > 0 ? start - new Date(sorted[index - 1].start).getTime() : null;
       // The last slot of a series has no neighbour after it, so it takes the length of the one before it.
-      const ms = Number.isFinite(end) && end > start ? end - start
+      let ms = Number.isFinite(end) && end > start ? end - start
         : next && next - start <= 3600000 ? next - start
         : !next && previous && previous < 3600000 ? previous
         : 3600000;
+      // Strømligning's price forecast exists per hour only, but every point is labelled as a quarter (00:00-00:15), which
+      // drew thin bars with 45 minutes of gap. A slot shorter than the step to the next point is stretched to it (at most
+      // an hour), so the forecast shows one bar per hour (Claude AI, 2026-11-03).
+      const step = next ? next - start : previous;
+      if (step && step > ms && step <= 3600000) ms = step;
       entry.end = new Date(start + ms).toISOString();
     });
     return sorted;

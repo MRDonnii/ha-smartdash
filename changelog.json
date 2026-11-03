@@ -1,5 +1,16 @@
 [
   {
+    "version": "20261103-1",
+    "tag": "v0.8.96",
+    "date": "2026-11-03",
+    "changes": [
+      {
+        "da": "Elprisgrafen viser nu prisprognosen som én søjle pr. time. Strømligning laver kun prognoser time for time, men hvert punkt var mærket som et kvarter, så prognosen stod som tynde søjler med store huller imellem. Det gælder energisiden, oversigten og Elpris-kortet. (Claude AI)",
+        "en": "The price chart now shows the price forecast as one bar per hour. Strømligning only forecasts hourly but labels every point as a quarter, so the forecast showed thin bars with large gaps. Applies to the Energy page, the overview and the Electricity price card. (Claude AI)"
+      }
+    ]
+  },
+  {
     "version": "20261102-7",
     "tag": "v0.8.95",
     "date": "2026-11-02",
