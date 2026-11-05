@@ -1,3 +1,7 @@
+## 0.8.97
+
+- Siden på iPad'en i soveværelset kan nu fastholdes på Aftens side med kameraerne, så kameraerne ikke forsvinder om morgenen. Slå det til under Menu → Tilstande ("Vis altid Aftens side") eller i administrationen under Tilstande ("Siden viser"). Pauseskærmens tekst under uret følger stadig klokken, og "Skift tilstand nu" overstyrer den faste side. (Claude AI)
+
 ## 0.8.96
 
 - Elprisgrafen viser nu prisprognosen som én søjle pr. time. Strømligning laver kun prognoser time for time, men hvert punkt var mærket som et kvarter, så prognosen stod som tynde søjler med store huller imellem. Det gælder energisiden, oversigten og Elpris-kortet. (Claude AI)

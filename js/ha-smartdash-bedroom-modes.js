@@ -9,6 +9,8 @@ window.BeastBedroomModes = (() => {
   const CARDS = ["cams", "sec", "sleep", "cal", "lights", "scenes", "comfort", "media"];
   const CARD_LABELS = { cams: "Kameraer", sec: "Sikring", sleep: "Søvn", cal: "Kalender", lights: "Lys", scenes: "Stemninger", comfort: "Komfort", media: "Medier" };
   const DAY_TYPES = ["weekday", "weekend"];
+  // Pages the bedroom page can be pinned to ("" follows the schedule).
+  const FIXED_PAGES = ["morgen", "dag", "aften"];
   // Nat has no page of its own: it is the screensaver's night content, and a
   // screen woken at night shows the Aften page. So in Nat only the cards the
   // screensaver can show apply (and they apply to the screensaver in every
@@ -32,6 +34,7 @@ window.BeastBedroomModes = (() => {
     },
     showAllMinutes: 10,
     nightOnGoodnight: true,
+    fixedPage: "",
     fanWarmAt: 23.5
   });
 
@@ -66,6 +69,7 @@ window.BeastBedroomModes = (() => {
     const minutes = Number(source.showAllMinutes);
     if (Number.isFinite(minutes) && minutes >= 1) out.showAllMinutes = Math.min(120, Math.round(minutes));
     if (typeof source.nightOnGoodnight === "boolean") out.nightOnGoodnight = source.nightOnGoodnight;
+    if (FIXED_PAGES.includes(source.fixedPage)) out.fixedPage = source.fixedPage;
     const warm = Number(source.fanWarmAt);
     if (source.fanWarmAt !== null && source.fanWarmAt !== "" && Number.isFinite(warm)) out.fanWarmAt = warm;
     return out;
@@ -150,5 +154,5 @@ window.BeastBedroomModes = (() => {
     return result;
   }
 
-  return { MODES, LABELS, CARDS, CARD_LABELS, DAY_TYPES, SAVER_CARDS, cardApplies, defaults, normalize, validTime, scheduled, compute, isWeekend, dayType };
+  return { MODES, FIXED_PAGES, LABELS, CARDS, CARD_LABELS, DAY_TYPES, SAVER_CARDS, cardApplies, defaults, normalize, validTime, scheduled, compute, isWeekend, dayType };
 })();

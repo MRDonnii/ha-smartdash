@@ -287,3 +287,4 @@
 .bd-root .bd-ctrl.is-tightest { --bd-row: 44px; gap: 6px; }
 .bd-root .bd-ctrl.is-tightest .bd-block, .bd-root .bd-ctrl.is-tightest .bd-lights, .bd-root .bd-ctrl.is-tightest .bd-media { gap: 6px; }
 .bd-root .bd-ctrl.is-tightest .bd-mrow, .bd-root .bd-ctrl.is-tightest .bd-mrow.is-playing { height: 48px; }
+.bd-root .bd-ms-fixed.is-on { color: var(--bd-ink); border-color: var(--bd-on-line); background: var(--bd-gold-wash); }

@@ -546,7 +546,8 @@ window.BeastBedroom.menu = (() => {
     const now = `<section class="bd-ms-card bd-ms-now"><div class="bd-ms-k">${esc(t("Nu"))}</div>
       <div class="bd-ms-now-row"><strong>${esc(B.modeLabel(info.mode))}</strong><span>${esc([source, next ? t("derefter {next}", { next }) : ""].filter(Boolean).join(" · "))}</span></div>
       <div class="bd-ms-seg" role="group" aria-label="${esc(t("Skift tilstand nu"))}">${seg}</div>
-      ${info.source === "manual" ? `<button type="button" class="bd-ms-follow" data-ms="follow">${esc(t("Følg tidsplanen igen"))}</button>` : ""}</section>`;
+      ${info.source === "manual" ? `<button type="button" class="bd-ms-follow" data-ms="follow">${esc(t("Følg tidsplanen igen"))}</button>` : ""}
+      <button type="button" class="bd-ms-follow bd-ms-fixed${draft.fixedPage ? " is-on" : ""}" data-ms="fixed" role="switch" aria-checked="${Boolean(draft.fixedPage)}">${esc(draft.fixedPage ? t("Siden viser altid {mode} · slå fra", { mode: B.modeLabel(draft.fixedPage) }) : t("Vis altid Aftens side"))}</button></section>`;
     const showAll = `<button type="button" class="bd-ms-card bd-ms-all${info.showAll ? " is-on" : ""}" data-ms="showall" role="switch" aria-checked="${info.showAll}"><span class="bd-row-badge">${icon("grid", 20)}</span><span class="bd-row-text"><span class="bd-row-t1">${esc(t("Vis alt"))}</span><span class="bd-row-t2">${esc(info.showAll ? t("Til · {n} min tilbage", { n: info.showAllLeft }) : t("Alle kort i {n} min", { n: draft.showAllMinutes }))}</span></span><span class="bd-row-sw"></span></button>`;
     const stepper = (type, mode) => `<div class="bd-ms-step"><button type="button" data-ms="time" data-type="${type}" data-mode="${mode}" data-delta="-${STEP_MIN}" aria-label="${esc(t("{mode} tidligere", { mode: B.modeLabel(mode) }))}">−</button><b>${esc(draft.times[type][mode])}</b><button type="button" data-ms="time" data-type="${type}" data-mode="${mode}" data-delta="${STEP_MIN}" aria-label="${esc(t("{mode} senere", { mode: B.modeLabel(mode) }))}">+</button></div>`;
     const times = `<section class="bd-ms-card bd-ms-times"><div class="bd-ms-k">${esc(t("Starttider"))}</div>
@@ -614,6 +615,7 @@ window.BeastBedroom.menu = (() => {
       case "showall": B.setShowAll(!B.modeInfo().showAll); break;
       case "time": shiftTime(target.dataset.type, target.dataset.mode, Number(target.dataset.delta)); break;
       case "card": if (!Modes.cardApplies(target.dataset.mode, target.dataset.card)) return; draft.cards[target.dataset.mode][target.dataset.card] = !(draft.cards[target.dataset.mode][target.dataset.card] !== false); saveModes(); break;
+      case "fixed": draft.fixedPage = draft.fixedPage ? "" : "aften"; saveModes(); break;
       case "reset": draft = Modes.defaults(); saveModes(true); break;
       default: return;
     }

@@ -276,6 +276,8 @@ window.BeastBedroom = (() => {
 
   function modeLabel(mode) { return t(Modes.LABELS[mode] || mode); }
   function pageModeFor(mode) { return mode === "nat" ? "aften" : mode; }
+  // A page pinned in the settings holds until "Skift tilstand nu" overrides it.
+  function fixedPageOf(info) { return info.source === "manual" ? "" : info.settings.fixedPage || ""; }
   function goodnightRanTonight(info) {
     const at = goodnightAt();
     return info.mode === "nat" && at > 0 && Date.now() - at < 12 * 60 * 60 * 1000;
@@ -336,7 +338,8 @@ window.BeastBedroom = (() => {
     const info = modeInfo();
     // Nat lives on the screensaver; woken during Nat the page shows the
     // Aften composition (with Aften's cards).
-    const pageMode = pageModeFor(info.mode);
+    const fixedPage = fixedPageOf(info);
+    const pageMode = fixedPage || pageModeFor(info.mode);
     const mode = info.showAll ? "alle" : pageMode;
     const on = (card) => mode === "alle" || info.settings.cards[pageMode][card] !== false;
     const has = {
@@ -369,7 +372,7 @@ window.BeastBedroom = (() => {
       mediaPanel,
       ctrl: lights || scenes || comfort.length > 0 || mediaInCtrl,
       // Once Godnat has run tonight its button steps aside until the next Aften.
-      night: goodnightPlan().any && (mode === "aften" || mode === "alle") && !goodnightRanTonight(info),
+      night: goodnightPlan().any && (mode === "alle" || (mode === "aften" && (!fixedPage || ["aften", "nat"].includes(info.scheduledMode)))) && !goodnightRanTonight(info),
       sleepHero: mode === "morgen" && sleepFresh(),
       secHero: sec && mode === "aften" && unlocked > 0,
       secCompact: sec && (mode === "morgen" || (mode === "aften" && unlocked === 0)),
@@ -657,7 +660,7 @@ window.BeastBedroom = (() => {
     if (info.showAll) {
       return `<span class="bd-d2 bd-mode-line"><span>${esc(t("Vis alt · {n} min", { n: info.showAllLeft }))}</span><button type="button" class="bd-mode-back" data-bd-action="show-all-off">${esc(t("Tilbage"))}</button></span>`;
     }
-    return `<span class="bd-d2 bd-mode-line"><span>${esc(roomTitle())} · ${esc(modeLabel(info.mode))}</span></span>`;
+    return `<span class="bd-d2 bd-mode-line"><span>${esc(roomTitle())} · ${esc(modeLabel(fixedPageOf(info) || info.mode))}</span></span>`;
   }
 
   function renderHeader() {

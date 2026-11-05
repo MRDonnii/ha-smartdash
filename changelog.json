@@ -1,5 +1,16 @@
 [
   {
+    "version": "20261105-1",
+    "tag": "v0.8.97",
+    "date": "2026-11-05",
+    "changes": [
+      {
+        "da": "Siden på iPad'en i soveværelset kan nu fastholdes på Aftens side med kameraerne, så kameraerne ikke forsvinder om morgenen. Slå det til under Menu → Tilstande (\"Vis altid Aftens side\") eller i administrationen under Tilstande (\"Siden viser\"). Pauseskærmens tekst under uret følger stadig klokken, og \"Skift tilstand nu\" overstyrer den faste side. (Claude AI)",
+        "en": "The bedroom iPad page can now be pinned to the Evening page with the cameras, so the cameras no longer disappear in the morning. Turn it on under Menu → Modes (\"Always show the Evening page\") or in the administration under Modes (\"The page shows\"). The screensaver text under the clock still follows the clock, and \"Switch mode now\" overrides the pinned page. (Claude AI)"
+      }
+    ]
+  },
+  {
     "version": "20261103-1",
     "tag": "v0.8.96",
     "date": "2026-11-03",

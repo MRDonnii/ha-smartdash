@@ -662,6 +662,7 @@
       <div class="admin-modes-extra">
         <label class="admin-field"><span>${escapeHtml(t("\"Vis alt\" varer (minutter)", "\"Show all\" lasts (minutes)"))}</span><input type="number" min="1" max="120" step="1" data-modes-number="showAllMinutes" value="${value.showAllMinutes}"></label>
         <label class="admin-field"><span>${escapeHtml(t("Godnat skifter til Nat", "Goodnight switches to Night"))}</span><select data-modes-bool="nightOnGoodnight"><option value="1"${value.nightOnGoodnight ? " selected" : ""}>${escapeHtml(t("Ja, med det samme", "Yes, right away"))}</option><option value="0"${value.nightOnGoodnight ? "" : " selected"}>${escapeHtml(t("Nej, kun efter klokken", "No, only by the clock"))}</option></select></label>
+        <label class="admin-field"><span>${escapeHtml(t("Siden viser", "The page shows"))}</span><select data-modes-page="fixedPage"><option value=""${value.fixedPage ? "" : " selected"}>${escapeHtml(t("Efter tidsplanen", "By the schedule"))}</option>${M.FIXED_PAGES.map((mode) => `<option value="${mode}"${value.fixedPage === mode ? " selected" : ""}>${escapeHtml(t("Altid ", "Always ") + modeLabel(mode))}</option>`).join("")}</select></label>
         <label class="admin-field"><span>${escapeHtml(t("Vis blæseren fra (°C)", "Show the fan from (°C)"))}</span><input type="number" min="15" max="35" step="0.5" data-modes-number="fanWarmAt" value="${value.fanWarmAt}"></label>
       </div>
       <div class="admin-actions"><button type="button" class="beast-btn" data-modes-reset="${id}">${escapeHtml(t("Nulstil til standard", "Reset to defaults"))}</button></div>
@@ -687,6 +688,7 @@
       if (input.value !== "" && Number.isFinite(number)) out[input.dataset.modesNumber] = number;
     });
     host.querySelectorAll("[data-modes-bool]").forEach((select) => { out[select.dataset.modesBool] = select.value !== "0"; });
+    host.querySelectorAll("[data-modes-page]").forEach((select) => { out[select.dataset.modesPage] = select.value; });
     return M.normalize(out);
   }
 

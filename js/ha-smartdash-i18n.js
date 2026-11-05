@@ -473,6 +473,7 @@
     "Weekend": "Weekend", "Godnat skifter til Nat med det samme. Weekend er lørdag og søndag.": "Goodnight switches to Night right away. The weekend is Saturday and Sunday.",
     "Kort pr. tilstand": "Cards per mode", "Nulstil til standard": "Reset to defaults", "Kunne ikke gemme": "Could not save", "Gemt": "Saved",
     "Genveje": "Shortcuts", "Klart": "Clear",
+    "Vis altid Aftens side": "Always show the Evening page", "Siden viser altid {mode} · slå fra": "The page always shows {mode} · switch off",
     "Nat vises på pauseskærmen. Vækker du skærmen om natten, vises Aftens kort. Kortene gælder også pauseskærmen.": "Night is shown on the screensaver. Wake the screen at night and Evening's cards are shown. The cards also apply to the screensaver.",
     "Tidstilstande": "Time-of-day modes", "Starttider og kort": "Start times and cards",
     "Morgen, Dag, Aften og Nat skifter efter klokken og viser hver sine kort. Kan også justeres på enheden under Menu → Tilstande.": "Morning, Day, Evening and Night change with the clock and each show their own cards. Can also be adjusted on the device under Menu → Modes."
