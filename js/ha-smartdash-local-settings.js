@@ -19,7 +19,8 @@ const BeastLocalSettings = (() => {
   const DEVICE_TYPES = ["kiosk", "bedroom"];
   // Older builds wrote the whole default screensaver (23:00-05:30) into the
   // device on every unrelated save, which then overrode the server schedule.
-  // A stored block that is exactly the default is that leftover: drop it.
+  // A stored block that is exactly the default is that leftover: drop it (on
+  // bedroom devices only; other devices keep their behaviour unchanged).
   function isDefaultSaverLeftover(saver) {
     const keys = saver && typeof saver === "object" ? Object.keys(saver) : [];
     const defaults = DEFAULTS.screensaver;
@@ -28,12 +29,12 @@ const BeastLocalSettings = (() => {
   function migrate(stored) {
     if (!stored || typeof stored !== "object") return {};
     const legacyView = "bedroomView" in stored;
-    const leftover = isDefaultSaverLeftover(stored.screensaver);
-    if (!legacyView && !leftover) return stored;
     if (legacyView) {
       if (!DEVICE_TYPES.includes(stored.deviceType)) stored.deviceType = stored.bedroomView === true ? "bedroom" : "kiosk";
       delete stored.bedroomView;
     }
+    const leftover = stored.deviceType === "bedroom" && isDefaultSaverLeftover(stored.screensaver);
+    if (!legacyView && !leftover) return stored;
     if (leftover) delete stored.screensaver;
     try { localStorage.setItem(STORAGE_KEY, JSON.stringify(stored)); } catch (_) {}
     return stored;
@@ -50,10 +51,11 @@ const BeastLocalSettings = (() => {
     const value = path.split(".").reduce((node, key) => node == null ? undefined : node[key], readRaw());
     return value === undefined || value === null ? fallback : value;
   }
-  // Writes only what was stored plus this one value: merging the defaults in
-  // here would pin the default screensaver schedule over the server's.
+  // On a bedroom device only what was stored plus this one value is written:
+  // merging the defaults in would pin the default screensaver schedule over
+  // the configured one. Other devices keep the old behaviour.
   function set(path, value) {
-    const next = readRaw();
+    const next = isBedroomDevice() ? readRaw() : read();
     const keys = path.split(".");
     let node = next;
     for (let index = 0; index < keys.length - 1; index += 1) {
@@ -74,7 +76,7 @@ const BeastLocalSettings = (() => {
     }
     const stored = { ...DEFAULTS, ...value };
     if (value.screensaver && typeof value.screensaver === "object") stored.screensaver = { ...DEFAULTS.screensaver, ...value.screensaver };
-    else delete stored.screensaver;
+    else if (value.deviceType === "bedroom") delete stored.screensaver;
     localStorage.setItem(STORAGE_KEY, JSON.stringify(stored));
     document.dispatchEvent(new CustomEvent("beast:local-settings-changed", { detail: { path: "*", value } }));
     return { success: true };

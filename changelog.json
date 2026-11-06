@@ -1,12 +1,12 @@
 [
   {
-    "version": "20261106-1",
-    "tag": "v0.8.98",
+    "version": "20261106-2",
+    "tag": "v0.8.99",
     "date": "2026-11-06",
     "changes": [
       {
-        "da": "iPad'ens pauseskærm følger nu serverens tidsplan igen. Hver gang en enhed gemte en lokal indstilling (fx Godnat eller dæmpning på soveværelses-iPad'en), blev en standard-pauseskærm på 23:00–05:30 skrevet ind på enheden og overstyrede tidsplanen under Pauseskærm, så den ikke gik i pauseskærm om aftenen før 23 og ikke efter 05:30. Det gemmer nu kun det, der faktisk er ændret, og en tidligere indskrevet standard fjernes af sig selv ved næste indlæsning. Pauseskærmen står nu på 21:00–08:00. (Claude AI)",
-        "en": "The iPad screensaver follows the server schedule again. Every time a device saved a local setting (for example Goodnight or dimming on the bedroom iPad), a default 23:00–05:30 screensaver was written onto the device and overrode the schedule under Screensaver, so it did not start in the evening before 23:00 and stopped after 05:30. Only what was actually changed is stored now, and a default written earlier is removed on the next load. The screensaver is now set to 21:00–08:00. (Claude AI)"
+        "da": "iPad'en i soveværelset har nu sin egen pauseskærm-tid, så den kan gå i pauseskærm om aftenen og vende tilbage til forsiden om morgenen uden at røre ved de andre skærme. Sæt tiderne under Soveværelse → Pauseskærmens tider (fra og til; tomt følger den fælles Pauseskærm). Samtidig skriver iPad'en ikke længere en standard-pauseskærm på 23:00–05:30 ind på sig selv, hver gang den gemmer en lokal indstilling (fx Godnat eller dæmpning), for den overstyrede tiderne; en allerede indskrevet standard fjernes af sig selv. Andre enheder er uændrede. (Claude AI)",
+        "en": "The bedroom iPad now has its own screensaver times, so it can go into the screensaver in the evening and return to the front page in the morning without touching the other screens. Set the times under Bedroom → Screensaver times (from and until; empty follows the shared Screensaver). The iPad also no longer writes a default 23:00–05:30 screensaver onto itself every time it saves a local setting (for example Goodnight or dimming), which overrode the times; a default written earlier is removed on its own. Other devices are unchanged. (Claude AI)"
       }
     ]
   },

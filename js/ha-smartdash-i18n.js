@@ -475,7 +475,7 @@
     "Genveje": "Shortcuts", "Klart": "Clear",
     "Vis altid Aftens side": "Always show the Evening page", "Siden viser altid {mode} · slå fra": "The page always shows {mode} · switch off",
     "Nat vises på pauseskærmen. Vækker du skærmen om natten, vises Aftens kort. Kortene gælder også pauseskærmen.": "Night is shown on the screensaver. Wake the screen at night and Evening's cards are shown. The cards also apply to the screensaver.",
-    "Tidstilstande": "Time-of-day modes", "Starttider og kort": "Start times and cards",
+    "Pauseskærmens tider": "Screensaver times", "Gælder kun enheder med enhedstypen Soveværelse (iPad'en). Et tomt felt følger den fælles Pauseskærm. Pauseskærmen slukker ved sluttidspunktet og viser forsiden igen.": "Only for devices with the Bedroom device type (the iPad). An empty field follows the shared Screensaver. The screensaver ends at the end time and shows the front page again.", "Pauseskærm fra": "Screensaver from", "Pauseskærm til": "Screensaver until", "Klokkeslæt, fx 21:00.": "A time, for example 21:00.", "Klokkeslæt, fx 07:00. Her vender iPad'en tilbage til forsiden.": "A time, for example 07:00. The iPad returns to the front page then.", "Tidstilstande": "Time-of-day modes", "Starttider og kort": "Start times and cards",
     "Morgen, Dag, Aften og Nat skifter efter klokken og viser hver sine kort. Kan også justeres på enheden under Menu → Tilstande.": "Morning, Day, Evening and Night change with the clock and each show their own cards. Can also be adjusted on the device under Menu → Modes."
   });
 

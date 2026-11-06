@@ -141,7 +141,14 @@ const CONNECTION_RECOVERY_RELOAD_AFTER_MS = 90 * 1000;
 // screensaverAfterSeconds; default on after 5 min). Manual starts ignore both.
 function ambientModeAfterMs() { return BeastLocalSettings.screensaverDelaySeconds() * 1000; }
 function screensaverConfig() {
-  return BeastLocalSettings.get("screensaver", BeastConfig.get("screensaver")) || { enabled: true, schedule: "custom", startTime: "23:00", endTime: "05:30", offAfterMinutes: 5 };
+  const base = BeastLocalSettings.get("screensaver", BeastConfig.get("screensaver")) || { enabled: true, schedule: "custom", startTime: "23:00", endTime: "05:30", offAfterMinutes: 5 };
+  if (!isBedroomDevice() || BeastLocalSettings.get("screensaver", null)) return base;
+  // The bedside iPad has its own window (panels.bedroom.saverStart/saverEnd);
+  // every other device keeps following the shared Pauseskærm schedule.
+  const start = parseTimeToMinutes(BeastConfig.get("panels.bedroom.saverStart"), -1) >= 0 ? String(BeastConfig.get("panels.bedroom.saverStart")).trim() : "";
+  const end = parseTimeToMinutes(BeastConfig.get("panels.bedroom.saverEnd"), -1) >= 0 ? String(BeastConfig.get("panels.bedroom.saverEnd")).trim() : "";
+  if (!start && !end) return base;
+  return { ...base, schedule: "custom", ...(start ? { startTime: start } : {}), ...(end ? { endTime: end } : {}) };
 }
 function parseTimeToMinutes(value, fallbackMinutes) {
   const match = /^(\d{1,2}):(\d{2})$/.exec(String(value || "").trim());

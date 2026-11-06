@@ -189,6 +189,7 @@
         security: ["Sikkerhed og godnat", "Lås op og frakobling kræver altid pinkode. Godnat låser dørene og kører derefter de valgte trin."],
         alerts: ["Kamera på pauseskærmen", "Når pauseskærmen er tændt, popper kameraet op ved aktivitet i alarmzonerne. Kun på enheder med enhedstypen Soveværelse."],
         sleep: ["Søvn og CPAP", "Fra ResMed myAir-integrationen (AirSense). Listerne viser kun CPAP-sensorer, og søvnkortet skjules, hvis intet er valgt."],
+        saver: ["Pauseskærmens tider", "Gælder kun enheder med enhedstypen Soveværelse (iPad'en). Et tomt felt følger den fælles Pauseskærm. Pauseskærmen slukker ved sluttidspunktet og viser forsiden igen."],
         modes: ["Tidstilstande", "Morgen, Dag, Aften og Nat skifter efter klokken og viser hver sine kort. Kan også justeres på enheden under Menu → Tilstande."],
         names: ["Navne", "Rummets navn vises øverst på siden og fjernes fra navnene fra Home Assistant, så \"Soveværelse loft\" bliver til \"Loft\"."]
       },
@@ -230,6 +231,8 @@
         { key: "cpapMaskEvents", section: "sleep", label: "Maske af/på (antal pr. nat)", type: "single", domain: "sensor", hints: CPAP_HINTS, filterHints: true, rankHints: ["mask_on_off", "mask on/off"], hint: "Et antal pr. nat, ikke om masken er på lige nu." },
         { key: "cpapDataDate", section: "sleep", label: "Dataenes dato", type: "single", domain: "sensor", hints: CPAP_HINTS, filterHints: true, rankHints: ["current_data_date", "data_date", "data date"] },
         { key: "cpapLastCollected", section: "sleep", label: "Senest hentet", type: "single", domain: "sensor", hints: CPAP_HINTS, filterHints: true, rankHints: ["last_collected", "last collected"] },
+        { key: "saverStart", section: "saver", label: "Pauseskærm fra", type: "text", placeholder: "21:00", hint: "Klokkeslæt, fx 21:00." },
+        { key: "saverEnd", section: "saver", label: "Pauseskærm til", type: "text", placeholder: "07:00", hint: "Klokkeslæt, fx 07:00. Her vender iPad'en tilbage til forsiden." },
         { key: "modes", section: "modes", label: "Starttider og kort", type: "bedroomModes", wide: true },
         { key: "title", section: "names", label: "Rummets navn", type: "text", placeholder: "Soveværelse" },
         { key: "displayNames", section: "names", label: "Egne visningsnavne (valgfri)", type: "text", multiline: true, wide: true, placeholder: "light.eksempel=Loft\nmedia_player.eksempel=TV", hint: "Én pr. linje eller adskilt med semikolon: entity_id=Navn." }

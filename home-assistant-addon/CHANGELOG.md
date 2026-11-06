@@ -1,6 +1,6 @@
-## 0.8.98
+## 0.8.99
 
-- iPad'ens pauseskærm følger nu serverens tidsplan igen. Hver gang en enhed gemte en lokal indstilling (fx Godnat eller dæmpning på soveværelses-iPad'en), blev en standard-pauseskærm på 23:00–05:30 skrevet ind på enheden og overstyrede tidsplanen under Pauseskærm, så den ikke gik i pauseskærm om aftenen før 23 og ikke efter 05:30. Det gemmer nu kun det, der faktisk er ændret, og en tidligere indskrevet standard fjernes af sig selv ved næste indlæsning. Pauseskærmen står nu på 21:00–08:00. (Claude AI)
+- iPad'en i soveværelset har nu sin egen pauseskærm-tid, så den kan gå i pauseskærm om aftenen og vende tilbage til forsiden om morgenen uden at røre ved de andre skærme. Sæt tiderne under Soveværelse → Pauseskærmens tider (fra og til; tomt følger den fælles Pauseskærm). Samtidig skriver iPad'en ikke længere en standard-pauseskærm på 23:00–05:30 ind på sig selv, hver gang den gemmer en lokal indstilling (fx Godnat eller dæmpning), for den overstyrede tiderne; en allerede indskrevet standard fjernes af sig selv. Andre enheder er uændrede. (Claude AI)
 
 ## 0.8.97
 
