@@ -1,5 +1,16 @@
 [
   {
+    "version": "20261106-1",
+    "tag": "v0.8.98",
+    "date": "2026-11-06",
+    "changes": [
+      {
+        "da": "iPad'ens pauseskærm følger nu serverens tidsplan igen. Hver gang en enhed gemte en lokal indstilling (fx Godnat eller dæmpning på soveværelses-iPad'en), blev en standard-pauseskærm på 23:00–05:30 skrevet ind på enheden og overstyrede tidsplanen under Pauseskærm, så den ikke gik i pauseskærm om aftenen før 23 og ikke efter 05:30. Det gemmer nu kun det, der faktisk er ændret, og en tidligere indskrevet standard fjernes af sig selv ved næste indlæsning. Pauseskærmen står nu på 21:00–08:00. (Claude AI)",
+        "en": "The iPad screensaver follows the server schedule again. Every time a device saved a local setting (for example Goodnight or dimming on the bedroom iPad), a default 23:00–05:30 screensaver was written onto the device and overrode the schedule under Screensaver, so it did not start in the evening before 23:00 and stopped after 05:30. Only what was actually changed is stored now, and a default written earlier is removed on the next load. The screensaver is now set to 21:00–08:00. (Claude AI)"
+      }
+    ]
+  },
+  {
     "version": "20261105-1",
     "tag": "v0.8.97",
     "date": "2026-11-05",

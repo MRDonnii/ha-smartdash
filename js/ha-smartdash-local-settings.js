@@ -17,11 +17,24 @@ const BeastLocalSettings = (() => {
   // bedside page). Older builds stored a bedroomView toggle; it is migrated
   // once to deviceType so every reader only needs isBedroomDevice().
   const DEVICE_TYPES = ["kiosk", "bedroom"];
+  // Older builds wrote the whole default screensaver (23:00-05:30) into the
+  // device on every unrelated save, which then overrode the server schedule.
+  // A stored block that is exactly the default is that leftover: drop it.
+  function isDefaultSaverLeftover(saver) {
+    const keys = saver && typeof saver === "object" ? Object.keys(saver) : [];
+    const defaults = DEFAULTS.screensaver;
+    return keys.length === Object.keys(defaults).length && keys.every((key) => saver[key] === defaults[key]);
+  }
   function migrate(stored) {
     if (!stored || typeof stored !== "object") return {};
-    if (!("bedroomView" in stored)) return stored;
-    if (!DEVICE_TYPES.includes(stored.deviceType)) stored.deviceType = stored.bedroomView === true ? "bedroom" : "kiosk";
-    delete stored.bedroomView;
+    const legacyView = "bedroomView" in stored;
+    const leftover = isDefaultSaverLeftover(stored.screensaver);
+    if (!legacyView && !leftover) return stored;
+    if (legacyView) {
+      if (!DEVICE_TYPES.includes(stored.deviceType)) stored.deviceType = stored.bedroomView === true ? "bedroom" : "kiosk";
+      delete stored.bedroomView;
+    }
+    if (leftover) delete stored.screensaver;
     try { localStorage.setItem(STORAGE_KEY, JSON.stringify(stored)); } catch (_) {}
     return stored;
   }
@@ -37,8 +50,10 @@ const BeastLocalSettings = (() => {
     const value = path.split(".").reduce((node, key) => node == null ? undefined : node[key], readRaw());
     return value === undefined || value === null ? fallback : value;
   }
+  // Writes only what was stored plus this one value: merging the defaults in
+  // here would pin the default screensaver schedule over the server's.
   function set(path, value) {
-    const next = read();
+    const next = readRaw();
     const keys = path.split(".");
     let node = next;
     for (let index = 0; index < keys.length - 1; index += 1) {
@@ -57,7 +72,10 @@ const BeastLocalSettings = (() => {
       if (!DEVICE_TYPES.includes(value.deviceType)) value.deviceType = value.bedroomView === true ? "bedroom" : "kiosk";
       delete value.bedroomView;
     }
-    localStorage.setItem(STORAGE_KEY, JSON.stringify({ ...DEFAULTS, ...value, screensaver: { ...DEFAULTS.screensaver, ...(value.screensaver || {}) } }));
+    const stored = { ...DEFAULTS, ...value };
+    if (value.screensaver && typeof value.screensaver === "object") stored.screensaver = { ...DEFAULTS.screensaver, ...value.screensaver };
+    else delete stored.screensaver;
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(stored));
     document.dispatchEvent(new CustomEvent("beast:local-settings-changed", { detail: { path: "*", value } }));
     return { success: true };
   }

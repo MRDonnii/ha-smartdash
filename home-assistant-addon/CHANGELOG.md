@@ -1,3 +1,7 @@
+## 0.8.98
+
+- iPad'ens pauseskærm følger nu serverens tidsplan igen. Hver gang en enhed gemte en lokal indstilling (fx Godnat eller dæmpning på soveværelses-iPad'en), blev en standard-pauseskærm på 23:00–05:30 skrevet ind på enheden og overstyrede tidsplanen under Pauseskærm, så den ikke gik i pauseskærm om aftenen før 23 og ikke efter 05:30. Det gemmer nu kun det, der faktisk er ændret, og en tidligere indskrevet standard fjernes af sig selv ved næste indlæsning. Pauseskærmen står nu på 21:00–08:00. (Claude AI)
+
 ## 0.8.97
 
 - Siden på iPad'en i soveværelset kan nu fastholdes på Aftens side med kameraerne, så kameraerne ikke forsvinder om morgenen. Slå det til under Menu → Tilstande ("Vis altid Aftens side") eller i administrationen under Tilstande ("Siden viser"). Pauseskærmens tekst under uret følger stadig klokken, og "Skift tilstand nu" overstyrer den faste side. (Claude AI)
