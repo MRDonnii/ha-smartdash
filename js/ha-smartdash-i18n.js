@@ -21,7 +21,7 @@
     "Vælg en enhed": "Select a device", "Aktiv": "Active", "Inaktiv": "Inactive",
     "Tænd": "Turn on", "Sluk": "Turn off", "Låst": "Locked", "Ulåst": "Unlocked",
     "Åben": "Open", "Lukket": "Closed", "Oplader": "Charging", "Tilsluttet": "Connected",
-    "Ikke tilsluttet": "Disconnected", "Utilgængelig": "Unavailable", "I dag": "Today",
+    "Ikke tilsluttet": "Disconnected", "Utilgængelig": "Unavailable", "I dag": "Today", "Intet i dag": "Nothing today",
     "I morgen": "Tomorrow", "Næste": "Next", "Hjem": "Home", "Start": "Start", "Stop": "Stop",
     "Pause": "Pause", "Genoptag": "Resume", "Rengør": "Clean", "Klip": "Mow",
     "Temperatur": "Temperature", "Luftfugtighed": "Humidity", "Forbrug": "Usage",

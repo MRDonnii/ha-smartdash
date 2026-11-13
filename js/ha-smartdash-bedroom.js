@@ -511,34 +511,37 @@ window.BeastBedroom = (() => {
       if (f.mode === "morgen") {
         if (!f.sleep) return gridFromColumns([col(726, ["cal", "sec"]), col(286, ["ctrl", "ctrl"])], [fr, "auto"]);
         if (f.sleepHero) return gridFromColumns(f.cal ? [col(440, ["sleep", "sleep"]), col(286, ["cal", "sec"]), col(286, ["ctrl", "ctrl"])] : [col(726, ["sleep", "sec"]), col(286, ["ctrl", "ctrl"])], [fr, "auto"]);
-        return gridFromColumns([f.cal ? col(440, ["cal", "cal"]) : null, col(f.cal ? 286 : 440, ["sleep", "sec"]), col(286, ["ctrl", "ctrl"])], [fr, "auto"]);
+        // Change by Claude AI (v0.8.101): the calendar is today only, so the
+        // wide column goes to the sleep card here too.
+        return gridFromColumns(f.cal ? [col(440, ["sleep", "sleep"]), col(286, ["cal", "sec"]), col(286, ["ctrl", "ctrl"])] : [col(440, ["sleep", "sec"]), col(286, ["ctrl", "ctrl"])], [fr, "auto"]);
       }
       if (f.mode === "dag") {
         // A player that is on or a fan joins the controls: they get the
         // whole column and the sleep card moves under the calendar.
-        if (f.ctrl && (f.media || f.comfort)) return gridFromColumns([col(440, ["cams", "cams", "sec"]), col(286, ["cal", "cal", "sleep"]), col(286, ["ctrl", "ctrl", "ctrl"])], ["auto", fr, "auto"]);
-        return gridFromColumns([col(440, ["cams", "cams", "sec"]), col(286, ["cal", "cal", "cal"]), col(286, ["ctrl", "sleep", "sleep"])], ["auto", fr, "auto"]);
+        // Today-only calendar on top, the sleep card takes the rest of the column.
+        if (f.ctrl && (f.media || f.comfort)) return gridFromColumns([col(440, ["cams", "cams", "sec"]), col(286, ["cal", "sleep", "sleep"]), col(286, ["ctrl", "ctrl", "ctrl"])], ["auto", fr, "auto"]);
+        return gridFromColumns([col(440, ["cams", "cams", "sec"]), col(286, ["cal", "sleep", "sleep"]), col(286, ["ctrl", "ctrl", "ctrl"])], ["auto", fr, "auto"]);
       }
       if (f.mode === "aften") {
         if (f.secHero) {
           const middle = f.cal || f.sleep;
           return gridFromColumns([
             f.cams ? col(middle ? 440 : 726, ["sec", "cams", "cams"]) : null,
-            middle ? col(f.cams ? 286 : 726, ["sec", "cal", "sleep"]) : null,
+            middle ? col(f.cams ? 286 : 726, ["sec", "sleep", "cal"]) : null,
             col(286, ["media", "ctrl", "ctrl"])
           ], ["auto", fr, "auto"]);
         }
-        return gridFromColumns([col(440, ["cams", "cams", "cams", "cams"]), col(286, ["cal", "cal", "sec", "sleep"]), col(286, ["media", "ctrl", "ctrl", "ctrl"])], ["auto", fr, "auto", "auto"]);
+        return gridFromColumns([col(440, ["cams", "cams", "cams", "cams"]), col(286, ["cal", "sleep", "sleep", "sec"]), col(286, ["media", "ctrl", "ctrl", "ctrl"])], ["auto", fr, "auto", "auto"]);
       }
       return null;
     }
     if (f.mode === "morgen") {
-      return gridFromColumns([col(1, ["sleep", "cal", "sec"]), col(1, [f.sleepHero ? "sleep" : "ctrl", "ctrl", "ctrl"])], ["auto", fr, "auto"]);
+      return gridFromColumns([col(1, ["cal", "sleep", "sec"]), col(1, ["ctrl", "ctrl", "ctrl"])], ["auto", fr, "auto"]);
     }
-    if (f.mode === "dag") return gridFromColumns([col(1, ["cams", "cal", "sec"]), col(1, ["cams", "ctrl", "sleep"])], ["auto", fr, "auto"]);
+    if (f.mode === "dag") return gridFromColumns([col(1, ["cams", "sleep", "cal"]), col(1, ["cams", "ctrl", "sec"])], ["auto", fr, "auto"]);
     if (f.mode === "aften") {
-      if (f.secHero) return gridFromColumns([col(1, ["sec", "cams", "media", "cal", "sleep"]), col(1, ["sec", "cams", "ctrl", "ctrl", "ctrl"])], ["auto", "auto", "auto", fr, "auto"]);
-      return gridFromColumns([col(1, ["cams", "media", "cal", "sec", "sleep"]), col(1, ["cams", "ctrl", "ctrl", "ctrl", "ctrl"])], ["auto", "auto", fr, "auto", "auto"]);
+      if (f.secHero) return gridFromColumns([col(1, ["sec", "cams", "media", "sleep", "cal"]), col(1, ["sec", "cams", "ctrl", "ctrl", "ctrl"])], ["auto", "auto", "auto", fr, "auto"]);
+      return gridFromColumns([col(1, ["cams", "media", "sleep", "cal", "sec"]), col(1, ["cams", "ctrl", "ctrl", "ctrl", "ctrl"])], ["auto", "auto", fr, "auto", "auto"]);
     }
     return null;
   }
@@ -579,7 +582,7 @@ window.BeastBedroom = (() => {
     if (f.cal) parts.push(panelMarkup("cal", `<div class="bd-eyebrow"><b>${esc(t("Kalender"))}</b><span class="bd-meta" data-bd-cal-meta></span></div><div class="bd-cal-list" data-bd-cal-list></div>`));
     if (f.sec) parts.push(panelMarkup("sec", ""));
     const shape = [f.cams && "cams", f.sec && "sec", f.sleep && "sleep", f.cal && "cal", f.ctrl && "ctrl", f.mediaPanel && "media"].filter(Boolean).join(" ");
-    const classes = ["bd-page", any ? "" : "is-empty", f.sleepHero ? "is-sleep-hero" : f.sleep && f.mode !== "alle" ? "is-sleep-compact" : "", f.secHero ? "is-sec-hero" : "", f.secCompact ? "is-sec-compact" : "", f.secCalm ? "is-sec-calm" : "", entering ? "is-mode-in" : ""].filter(Boolean).join(" ");
+    const classes = ["bd-page", any ? "" : "is-empty", f.sleepHero ? "is-sleep-hero" : f.sleep && f.mode !== "alle" ? "is-sleep-roomy" : "", f.secHero ? "is-sec-hero" : "", f.secCompact ? "is-sec-compact" : "", f.secCalm ? "is-sec-calm" : "", entering ? "is-mode-in" : ""].filter(Boolean).join(" ");
     return `<div class="${classes}" data-shape="${shape}"${style}>${parts.join("")}</div>`;
   }
 
@@ -1076,7 +1079,13 @@ window.BeastBedroom = (() => {
     // day to look ahead to is today, so the list is not cut to tomorrow.
     const mode = flags.mode === "aften" && new Date(now).getHours() < 12 ? "dag" : flags.mode;
     const next = mode === "morgen" ? nextTodayEvent(now) : null;
-    const { groups, tomorrowKey } = calendarRows(now, { fromTomorrow: mode === "aften", skip: next });
+    // Today only (Change by Claude AI, v0.8.101): all-day first, ended events
+    // drop off; an empty day shows one line with the first event tomorrow.
+    const all = calendarRows(now, { skip: next });
+    const { tomorrowKey } = all;
+    const todayKey = dateKey(startOfDay(new Date(now)));
+    const groups = all.groups.filter((group) => group.key === todayKey).map((group) => ({ ...group, rows: group.rows.slice().sort((a, b) => (b.allDay - a.allDay) || (a.ongoing && !a.allDay ? 0 : 1) - (b.ongoing && !b.allDay ? 0 : 1) || a.start - b.start) }));
+    const tomorrowFirst = all.groups.find((group) => group.key === tomorrowKey)?.rows.slice().sort((a, b) => (b.allDay - a.allDay) || a.start - b.start)[0] || null;
     const boundary = groups.flatMap((group) => group.rows).map((row) => (row.ongoing ? row.end : row.start)).concat(next ? [next.start] : []).filter((at) => at > now).sort((a, b) => a - b)[0] || 0;
     const minuteBucket = next && next.start - now < 3600000 ? Math.floor(now / 60000) : Math.floor(now / 3600000);
     const signature = JSON.stringify([calendarFetchedAt, mode, host.clientHeight, host.clientWidth, new Date(now).getHours() >= 17, dateKey(new Date(now)), boundary > now ? boundary : 0, minuteBucket]);
@@ -1089,8 +1098,9 @@ window.BeastBedroom = (() => {
       return;
     }
     if (!groups.length && !next) {
-      host.innerHTML = `<p class="bd-quiet">${esc(mode === "aften" ? t("Ingen aftaler i morgen") : t("Intet i kalenderen de næste dage"))}</p>`;
-      if (meta) meta.textContent = mode === "aften" ? t("I morgen") : t("I dag og i morgen");
+      const tomorrowLine = tomorrowFirst ? `<div class="bd-cal-tomorrow" style="--c:${tomorrowFirst.color}"><span class="bd-cal-next-k">${esc(t("I morgen"))}</span><span class="bd-cal-next-v">${tomorrowFirst.allDay ? `<b>${esc(t("Heldag"))}</b>` : `<b>${hm(new Date(tomorrowFirst.start))}</b>`}<span>${esc(tomorrowFirst.title)}</span></span></div>` : "";
+      host.innerHTML = `<p class="bd-quiet">${esc(t("Intet i dag"))}</p>${tomorrowLine}`;
+      if (meta) meta.textContent = t("I dag");
       return;
     }
     let lead = "";
@@ -1099,14 +1109,9 @@ window.BeastBedroom = (() => {
       const when = minutes < 60 ? t("Næste · om {n} min", { n: minutes }) : t("Næste");
       lead = `<div class="bd-cal-next" style="--c:${next.color}"><span class="bd-cal-next-k">${esc(when)}</span><span class="bd-cal-next-v"><b>${hm(new Date(next.start))}</b><span>${esc(next.title)}</span></span></div>`;
     }
-    host.innerHTML = lead + groups.map((group) => `<div class="bd-day" data-bd-day>${esc(group.label)}</div>${group.rows.map((row) => eventRowMarkup(row, now)).join("")}`).join("") + `<div class="bd-more" data-bd-more hidden></div>`;
+    host.innerHTML = lead + groups.map((group) => group.rows.map((row) => eventRowMarkup(row, now)).join("")).join("") + `<div class="bd-more" data-bd-more hidden></div>`;
     fitCalendar(host);
-    const shownDays = [...host.querySelectorAll("[data-bd-day]")].length;
-    const lastShown = groups[Math.max(0, shownDays - 1)]?.key || "";
-    if (!meta) return;
-    if (mode === "morgen") meta.textContent = t("I dag");
-    else if (mode === "aften") meta.textContent = lastShown && lastShown > tomorrowKey ? t("De næste dage") : t("I morgen");
-    else meta.textContent = lastShown && lastShown > tomorrowKey ? t("De næste dage") : t("I dag og i morgen");
+    if (meta) meta.textContent = t("I dag");
   }
 
   // Screensaver (Aften/Nat): the first timed event of the coming day.

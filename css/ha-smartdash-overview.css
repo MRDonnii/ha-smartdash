@@ -2137,3 +2137,6 @@
 .beast-ov-today-section .beast-ov-calendar-item.is-tomorrow { grid-template-columns: max-content minmax(0, 1fr); border-top: 0; padding-top: 2px; opacity: .8; }
 .beast-ov-clock-planner:not(.has-single-section) .beast-ov-waste-section .beast-ov-waste-next { align-items: flex-start; }
 .beast-ov-clock-planner:not(.has-single-section) .beast-ov-waste-section .beast-ov-waste-next span { display: none; }
+/* The card's height comes from the shared grid row (it can't shrink alone):
+   the tiles sit at the bottom so the free space reads as air, not a gap. -- Claude AI (v0.8.101) */
+.beast-ov-card--clock .beast-ov-home-quick:not([hidden]) { margin-top: auto; }

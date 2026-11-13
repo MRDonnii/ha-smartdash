@@ -288,3 +288,13 @@
 .bd-root .bd-ctrl.is-tightest .bd-block, .bd-root .bd-ctrl.is-tightest .bd-lights, .bd-root .bd-ctrl.is-tightest .bd-media { gap: 6px; }
 .bd-root .bd-ctrl.is-tightest .bd-mrow, .bd-root .bd-ctrl.is-tightest .bd-mrow.is-playing { height: 48px; }
 .bd-root .bd-ms-fixed.is-on { color: var(--bd-ink); border-color: var(--bd-on-line); background: var(--bd-gold-wash); }
+
+/* Today-only calendar + roomier sleep card -- Change by Claude AI (v0.8.101) */
+.bd-cal-tomorrow { display: flex; flex-direction: column; gap: 3px; margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--bd-hair); }
+.bd-cal-tomorrow .bd-cal-next-k { color: var(--bd-ink-3); }
+.bd-cal-tomorrow .bd-cal-next-v b { color: var(--bd-ink-2); font-size: 18px; font-weight: 400; }
+.bd-cal-tomorrow .bd-cal-next-v span { font-size: 14px; }
+.bd-cal .bd-cal-list > .bd-quiet { margin: 0; }
+/* The today-only calendar takes its own height (capped) and the sleep card the rest. */
+.is-sleep-roomy .bd-cal { contain: none; }
+.is-sleep-roomy .bd-cal-list { flex: 0 1 auto; max-height: 34vh; }

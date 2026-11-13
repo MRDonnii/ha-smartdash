@@ -1,5 +1,16 @@
 [
   {
+    "version": "20261113-2",
+    "tag": "v0.8.101",
+    "date": "2026-11-13",
+    "changes": [
+      {
+        "da": "iPad'en i soveværelset: kalenderen viser nu kun i dag i alle tilstande (heldag først, overståede aftaler forsvinder; er dagen tom, står der \"Intet i dag\" og første aftale i morgen). Den frigjorte plads går til Søvnterapi-kortet, som nu vises i fuld størrelse med score, vurdering, brug, AHI, lækage, maske af/på og 14 nætters udvikling. På forsiden står Bil/Pool-felterne nu nederst i urkortet, så den frie plads ikke ligner et hul. (Claude AI)",
+        "en": "Bedroom iPad: the calendar now shows today only in every mode (all-day first, past events drop off; on an empty day \"Nothing today\" and the first event tomorrow). The freed space goes to the Sleep therapy card, now shown full size with score, verdict, usage, AHI, leak, mask on/off and the 14-night trend. On the front page the Car/Pool tiles now sit at the bottom of the clock card, so the free space no longer looks like a gap. (Claude AI)"
+      }
+    ]
+  },
+  {
     "version": "20261113-1",
     "tag": "v0.8.100",
     "date": "2026-11-13",

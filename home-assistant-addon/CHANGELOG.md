@@ -1,3 +1,7 @@
+## 0.8.101
+
+- iPad'en i soveværelset: kalenderen viser nu kun i dag i alle tilstande (heldag først, overståede aftaler forsvinder; er dagen tom, står der "Intet i dag" og første aftale i morgen). Den frigjorte plads går til Søvnterapi-kortet, som nu vises i fuld størrelse med score, vurdering, brug, AHI, lækage, maske af/på og 14 nætters udvikling. På forsiden står Bil/Pool-felterne nu nederst i urkortet, så den frie plads ikke ligner et hul. (Claude AI)
+
 ## 0.8.100
 
 - Pauseskærmen har nu en tidsplan med to selvstændige tidsur i skærmens egen menu: "Tænd pauseskærm" kl. … og "Sluk pauseskærm" kl. …, hver med sin egen kontakt. På iPad'en i soveværelset ligger de i Menu → Skærm (gemmes i soveværelsets indstillinger, standard 21:00 og 07:00); på vægskærmen og andre skærme i sidemenuen (gitter-knappen) under Pauseskærm (gemmes i den fælles Pauseskærm). Tænd fra: pauseskærmen starter aldrig af sig selv, men kan stadig startes i hånden. Sluk fra: pauseskærmen bliver, til nogen trykker på skærmen. Tidligere tider gemt på selve enheden kan ikke længere overstyre tidsplanen i det stille; iPad-tilstand starter stadig pauseskærmen hele dagen, så længe Tænd er slået til. "Automatisk pauseskærm" hedder nu "Ved inaktivitet". Kalenderen på forsiden viser nu kun i dag (hele dagen først, derefter efter klokken; er dagen tom, vises det første i morgen) og står ved siden af Affald, så kortet får mere plads. (Claude AI)
