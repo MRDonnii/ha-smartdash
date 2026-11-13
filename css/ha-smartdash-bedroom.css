@@ -1012,3 +1012,8 @@ html.beast-chromeless .beast-lock-overlay:not(.is-ambient) .beast-lock-forgot { 
   .bd-menu.has-bed:not(.has-pages):not(.has-settings) { grid-template-areas: "head head" ". ." "bed bed" "screen screen" ". ."; }
   .bd-menu:not(.has-pages):not(.has-bed):not(.has-settings) { grid-template-columns: minmax(0, 1fr); grid-template-rows: var(--bd-head-h) minmax(0, .7fr) auto minmax(0, 1fr); grid-template-areas: "head" "." "screen" "."; }
 }
+/* Tidsplan rows in the menu's Skærm column -- Change by Claude AI (v0.8.100).
+   The column scrolls if a short screen can't hold every row. */
+.bd-mscreen .bd-rows { min-height: 0; overflow-y: auto; overscroll-behavior: contain; scrollbar-width: none; }
+.bd-mscreen .bd-rows::-webkit-scrollbar { display: none; }
+.bd-timerstep b { font-variant-numeric: tabular-nums; }

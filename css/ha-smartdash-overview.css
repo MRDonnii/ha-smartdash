@@ -2126,3 +2126,14 @@
    and must remain usable. */
 .beast-overview-grid.is-editing .beast-ov-card .beast-chart-type,
 .beast-overview-grid.is-editing .beast-ov-card .beast-chart-type * { pointer-events: auto; }
+
+/* "I dag" in the clock card -- Change by Claude AI (v0.8.100): today only,
+   beside Affald instead of above it, so the card keeps room for the rest. */
+.beast-ov-clock-planner:not(.has-single-section) { grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr); align-items: start; }
+.beast-ov-today-section .beast-ov-planner-title em { margin-left: auto; padding: 0 6px; border-radius: 8px; color: var(--accent-b); background: var(--accent-soft); font-style: normal; font-size: 10px; letter-spacing: 0; }
+.beast-ov-today-section .beast-ov-calendar-item { grid-template-columns: 3.3em minmax(0, 1fr); min-height: 20px; }
+.beast-ov-today-section .beast-ov-calendar-item b { text-align: left; font-size: 12.5px; }
+.beast-ov-today-section .beast-ov-calendar-item.is-all-day span { font-size: 9.5px; letter-spacing: -.01em; white-space: normal; line-height: 1.05; }
+.beast-ov-today-section .beast-ov-calendar-item.is-tomorrow { grid-template-columns: max-content minmax(0, 1fr); border-top: 0; padding-top: 2px; opacity: .8; }
+.beast-ov-clock-planner:not(.has-single-section) .beast-ov-waste-section .beast-ov-waste-next { align-items: flex-start; }
+.beast-ov-clock-planner:not(.has-single-section) .beast-ov-waste-section .beast-ov-waste-next span { display: none; }

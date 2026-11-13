@@ -56,6 +56,9 @@ const BeastLocalSettings = (() => {
   // the configured one. Other devices keep the old behaviour.
   function set(path, value) {
     const next = isBedroomDevice() ? readRaw() : read();
+    // Never pin the default screensaver block on any device: only a block the
+    // device really stored is kept. -- Change by Claude AI (v0.8.100)
+    if (!isBedroomDevice()) { const raw = readRaw(); if (raw.screensaver) next.screensaver = raw.screensaver; else delete next.screensaver; }
     const keys = path.split(".");
     let node = next;
     for (let index = 0; index < keys.length - 1; index += 1) {
@@ -65,6 +68,17 @@ const BeastLocalSettings = (() => {
     node[keys[keys.length - 1]] = value;
     localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
     document.dispatchEvent(new CustomEvent("beast:local-settings-changed", { detail: { path, value } }));
+    return { success: true };
+  }
+  // Drops stored keys (top level) so the shared value applies again. Used by
+  // the bedroom menu's Pauseskærm section. -- Change by Claude AI (v0.8.100)
+  function remove(...paths) {
+    const next = readRaw();
+    const gone = paths.filter((key) => key in next);
+    if (!gone.length) return { success: true };
+    gone.forEach((key) => delete next[key]);
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
+    gone.forEach((key) => document.dispatchEvent(new CustomEvent("beast:local-settings-changed", { detail: { path: key, value: undefined } })));
     return { success: true };
   }
   function replaceAll(value) {
@@ -101,5 +115,5 @@ const BeastLocalSettings = (() => {
     const value = Number(readRaw().screensaverAfterSeconds);
     return SCREENSAVER_DELAYS.includes(value) ? value : SCREENSAVER_DEFAULT_DELAY;
   }
-  return { get, set, getAll: read, replaceAll, deviceType, isBedroomDevice, SCREENSAVER_DELAYS, screensaverAutoStart, screensaverDelaySeconds };
+  return { get, set, remove, getAll: read, replaceAll, deviceType, isBedroomDevice, SCREENSAVER_DELAYS, screensaverAutoStart, screensaverDelaySeconds };
 })();

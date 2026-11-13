@@ -576,6 +576,82 @@
     host.addEventListener("pointercancel", finishDrag);
   }
 
+  // "I dag" in the clock card (Change by Claude AI, v0.8.100): only today's
+  // events (all-day first, then by time, ended ones dropped) and, when the
+  // day is empty, a single line with the first event tomorrow. Events come
+  // from the calendar API for today + tomorrow (cached, refreshed every 10
+  // minutes and at midnight); until the first answer the calendar states'
+  // next events are used.
+  const todayAgenda = { day: "", checkedAt: 0, key: "", events: null, loading: false };
+  const TODAY_AGENDA_REFRESH_MS = 10 * 60 * 1000;
+
+  function agendaTime(value) {
+    if (!value) return null;
+    if (typeof value === "object") {
+      if (value.date && !value.dateTime) { const [y, m, d] = String(value.date).split("-").map(Number); return { at: new Date(y, m - 1, d).getTime(), allDay: true }; }
+      value = value.dateTime;
+    }
+    if (/^\d{4}-\d{2}-\d{2}$/.test(String(value))) { const [y, m, d] = String(value).split("-").map(Number); return { at: new Date(y, m - 1, d).getTime(), allDay: true }; }
+    const at = Date.parse(String(value).replace(" ", "T"));
+    return Number.isFinite(at) ? { at, allDay: false } : null;
+  }
+
+  async function refreshTodayAgenda(calendarIds) {
+    const now = new Date();
+    const day = now.toDateString();
+    if (todayAgenda.loading || (todayAgenda.day === day && Date.now() - todayAgenda.checkedAt < TODAY_AGENDA_REFRESH_MS)) return;
+    if (typeof BeastAuth === "undefined" || !BeastAuth.haFetch || !calendarIds.length) return;
+    todayAgenda.loading = true;
+    const start = new Date(now); start.setHours(0, 0, 0, 0);
+    const end = new Date(start); end.setDate(end.getDate() + 2);
+    try {
+      const results = await Promise.all(calendarIds.map((id) => BeastAuth.haFetch(`/api/calendars/${encodeURIComponent(id)}?start=${encodeURIComponent(start.toISOString())}&end=${encodeURIComponent(end.toISOString())}`)
+        .then((events) => (Array.isArray(events) ? events : []).map((event) => {
+          const from = agendaTime(event.start);
+          const to = agendaTime(event.end);
+          return from ? { label: String(event.summary || "").trim() || "Uden titel", start: from.at, end: to ? to.at : from.at + 3600000, allDay: from.allDay } : null;
+        }).filter(Boolean))
+        .catch(() => null)));
+      if (results.every((list) => list === null)) return;
+      const seen = new Set();
+      const events = results.flat().filter((event) => {
+        if (!event) return false;
+        const key = `${event.label}|${event.start}|${event.end}`;
+        if (seen.has(key)) return false;
+        seen.add(key);
+        return true;
+      });
+      const key = JSON.stringify(events);
+      todayAgenda.day = day;
+      todayAgenda.checkedAt = Date.now();
+      if (key !== todayAgenda.key) {
+        todayAgenda.key = key;
+        todayAgenda.events = events;
+        renderClock();
+      }
+    } finally {
+      todayAgenda.loading = false;
+    }
+  }
+
+  function todayAgendaItems(calendarIds, stateItems) {
+    refreshTodayAgenda(calendarIds);
+    const now = Date.now();
+    const startToday = new Date(); startToday.setHours(0, 0, 0, 0);
+    const startTomorrow = new Date(startToday); startTomorrow.setDate(startTomorrow.getDate() + 1);
+    const startAfter = new Date(startTomorrow); startAfter.setDate(startAfter.getDate() + 1);
+    const fresh = todayAgenda.day === new Date().toDateString() && todayAgenda.events;
+    const events = fresh ? todayAgenda.events : stateItems;
+    const byTime = (a, b) => (b.allDay - a.allDay) || (a.start - b.start) || a.label.localeCompare(b.label, "da");
+    const today = events.filter((event) => event.start < startTomorrow.getTime() && event.end > (event.allDay ? startToday.getTime() : now)).sort(byTime);
+    const tomorrow = events.filter((event) => event.start >= startTomorrow.getTime() && event.start < startAfter.getTime()).sort(byTime)[0] || null;
+    return { today, tomorrow };
+  }
+
+  function agendaClock(ms) {
+    return new Date(ms).toLocaleTimeString(window.HASmartdashI18n?.locale || "da-DK", { hour: "2-digit", minute: "2-digit" });
+  }
+
   function renderClock() {
     const host = document.getElementById("beastOvClock");
     if (!host) return;
@@ -590,7 +666,13 @@
     const calendarItems = Array.from(BeastHaSocket.getAllStates().values())
       .filter((state) => state.entity_id.startsWith("calendar.") && state.attributes.start_time && state.attributes.message)
       .filter((state) => !configuredCalendarIds.length || configuredCalendarIds.includes(state.entity_id))
-      .map((state) => ({ label: state.attributes.message, date: new Date(state.attributes.start_time) }))
+      .map((state) => {
+        const allDay = state.attributes.all_day === true;
+        const parse = (value) => { const text = String(value || ""); if (allDay && /^\d{4}-\d{2}-\d{2}/.test(text)) { const [y, m, d] = text.slice(0, 10).split("-").map(Number); return new Date(y, m - 1, d); } return new Date(text.replace(" ", "T")); };
+        const date = parse(state.attributes.start_time);
+        const end = parse(state.attributes.end_time).getTime();
+        return { entityId: state.entity_id, label: state.attributes.message, date, end: Number.isFinite(end) ? end : date.getTime() + 3600000, allDay };
+      })
       .filter((item) => !Number.isNaN(item.date.getTime()) && item.date.getTime() >= Date.now() - 3600000)
       .sort((a, b) => a.date - b.date);
     const wasteItems = getWasteItems();
@@ -622,16 +704,18 @@
     const showCalendarCard = wasteConfig.showCalendarCard !== false;
     const showWasteCard = wasteConfig.showWasteCard !== false;
     const visibleSectionCount = (showCalendarCard ? 1 : 0) + (showWasteCard ? 1 : 0);
+    const agendaCalendarIds = configuredCalendarIds.length ? configuredCalendarIds : calendarItems.map((item) => item.entityId);
+    const agenda = showCalendarCard ? todayAgendaItems(agendaCalendarIds, calendarItems.map((item) => ({ label: item.label, start: item.date.getTime(), end: item.end, allDay: item.allDay }))) : null;
     const calendarSectionHtml = showCalendarCard ? `
-          <section class="beast-ov-planner-section">
-            <div class="beast-ov-planner-title">${BeastCore.icon("calendar", { size: 14 })}<span>Næste aftaler</span></div>
+          <section class="beast-ov-planner-section beast-ov-today-section">
+            <div class="beast-ov-planner-title">${BeastCore.icon("calendar", { size: 14 })}<span>I dag</span>${agenda.today.length ? `<em>${agenda.today.length}</em>` : ""}</div>
             <div class="beast-ov-calendar-list">
-              ${calendarItems.slice(0, 4).map((item) => `
-                <div class="beast-ov-calendar-item">
-                  <span>${escapeHtml(formatCompactDate(item.date))}</span>
+              ${agenda.today.map((item) => `
+                <div class="beast-ov-calendar-item${item.allDay ? " is-all-day" : ""}">
+                  <span>${item.allDay ? "Hele dagen" : escapeHtml(agendaClock(item.start))}</span>
                   <b>${escapeHtml(item.label)}</b>
                 </div>
-              `).join("") || `<div class="beast-ov-planner-empty">Ingen kommende aftaler</div>`}
+              `).join("") || `<div class="beast-ov-planner-empty">Intet i dag</div>${agenda.tomorrow ? `<div class="beast-ov-calendar-item is-tomorrow"><span>I morgen${agenda.tomorrow.allDay ? "" : ` ${escapeHtml(agendaClock(agenda.tomorrow.start))}`}</span><b>${escapeHtml(agenda.tomorrow.label)}</b></div>` : ""}`}
             </div>
           </section>` : "";
     const wasteSectionHtml = showWasteCard ? `

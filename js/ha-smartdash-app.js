@@ -141,14 +141,34 @@ const CONNECTION_RECOVERY_RELOAD_AFTER_MS = 90 * 1000;
 // screensaverAfterSeconds; default on after 5 min). Manual starts ignore both.
 function ambientModeAfterMs() { return BeastLocalSettings.screensaverDelaySeconds() * 1000; }
 function screensaverConfig() {
-  const base = BeastLocalSettings.get("screensaver", BeastConfig.get("screensaver")) || { enabled: true, schedule: "custom", startTime: "23:00", endTime: "05:30", offAfterMinutes: 5 };
-  if (!isBedroomDevice() || BeastLocalSettings.get("screensaver", null)) return base;
+  const fallback = { enabled: true, schedule: "custom", startTime: "23:00", endTime: "05:30", offAfterMinutes: 5 };
+  // Other screens (the wall kiosk): the shared schedule with whatever this
+  // device stores on top (a full local block still wins as before; the
+  // kiosk's menu drops its local times when it saves its own timers).
+  if (!isBedroomDevice()) {
+    const local = BeastLocalSettings.get("screensaver", null);
+    const server = BeastConfig.get("screensaver");
+    if (!local && !server) return fallback;
+    return { ...fallback, ...(server || {}), ...(local || {}) };
+  }
+  // Bedroom device: the shared look (camera row, clock, brightness ...) with
+  // anything stored on the device on top, but the times always come from
+  // panels.bedroom when set there, so a stale local override can no longer
+  // pin an old window. -- Change by Claude AI (v0.8.100)
+  const base = { ...fallback, ...(BeastConfig.get("screensaver") || {}), ...(BeastLocalSettings.get("screensaver", null) || {}) };
   // The bedside iPad has its own window (panels.bedroom.saverStart/saverEnd);
   // every other device keeps following the shared Pauseskærm schedule.
   const start = parseTimeToMinutes(BeastConfig.get("panels.bedroom.saverStart"), -1) >= 0 ? String(BeastConfig.get("panels.bedroom.saverStart")).trim() : "";
   const end = parseTimeToMinutes(BeastConfig.get("panels.bedroom.saverEnd"), -1) >= 0 ? String(BeastConfig.get("panels.bedroom.saverEnd")).trim() : "";
-  if (!start && !end) return base;
-  return { ...base, schedule: "custom", ...(start ? { startTime: start } : {}), ...(end ? { endTime: end } : {}) };
+  // Each end has its own switch (panels.bedroom.saverStartAuto/saverEndAuto,
+  // default on). Start off: the saver never starts by itself (manual start
+  // still works). End off: a running saver stays until someone touches the
+  // screen (no morning wake at saverEnd); the end time still closes the
+  // window for idle starts. -- Change by Claude AI (v0.8.100)
+  const startAuto = BeastConfig.get("panels.bedroom.saverStartAuto") !== false;
+  const endAuto = BeastConfig.get("panels.bedroom.saverEndAuto") !== false;
+  if (!start && !end) return { ...base, startAuto, endAuto };
+  return { ...base, schedule: "custom", ...(start ? { startTime: start } : {}), ...(end ? { endTime: end } : {}), startAuto, endAuto };
 }
 function parseTimeToMinutes(value, fallbackMinutes) {
   const match = /^(\d{1,2}):(\d{2})$/.exec(String(value || "").trim());
@@ -492,7 +512,8 @@ function wireAmbientBrightness(overlay) {
     const pct = Number(event.target.value);
     window.clearTimeout(ambientBrightnessDebounceId);
     ambientBrightnessDebounceId = window.setTimeout(() => {
-      BeastLocalSettings.set("screensaver", { ...screensaverConfig(), brightnessPercent: pct });
+      if (isBedroomDevice()) BeastLocalSettings.set("screensaver.brightnessPercent", pct);
+      else BeastLocalSettings.set("screensaver", { ...screensaverConfig(), brightnessPercent: pct });
       const kioskLight = KIOSK_SCREEN_ENTITY_ID();
       if (!kioskLight || !window.BeastAuth?.haFetch) return;
       BeastAuth.haFetch("/api/services/light/turn_on", {
@@ -506,7 +527,7 @@ function wireAmbientBrightness(overlay) {
 
 function isNightScreenPeriod(date = new Date()) {
   const config = screensaverConfig();
-  if (!config.enabled) return false;
+  if (!config.enabled || config.startAuto === false) return false;
   if (config.schedule === "always" || document.documentElement.classList.contains("beast-ipad")) return true;
   const minutes = date.getHours() * 60 + date.getMinutes();
   const start = parseTimeToMinutes(config.startTime, 23 * 60);
@@ -519,7 +540,7 @@ function isNightScreenPeriod(date = new Date()) {
 function scheduleMorningWake() {
   window.clearTimeout(morningWakeTimerId);
   const config = screensaverConfig();
-  if (!config.enabled || config.schedule === "always") return;
+  if (!config.enabled || config.schedule === "always" || config.endAuto === false) return;
   const now = new Date();
   const end = parseTimeToMinutes(config.endTime, 5 * 60 + 30);
   const wake = new Date(now);
@@ -538,7 +559,7 @@ function scheduleMorningWake() {
 function scheduleNightStart() {
   window.clearTimeout(nightStartTimerId);
   const config = screensaverConfig();
-  if (!config.enabled || config.schedule === "always") return;
+  if (!config.enabled || config.schedule === "always" || config.startAuto === false) return;
   const now = new Date();
   const start = parseTimeToMinutes(config.startTime, 23 * 60);
   const night = new Date(now);
@@ -1675,6 +1696,65 @@ function reconnectVisibleCameraPlayers() {
   });
 }
 
+// Pauseskærm in the screen's own menu (Change by Claude AI, v0.8.100): two
+// independent timers, "Tænd pauseskærm" and "Sluk pauseskærm", each with its
+// own switch and time. Saved for this kind of screen through BeastSaverTimers
+// (wall kiosk and other screens: the shared screensaver block).
+function pageMenuSaverTimersMarkup(draft) {
+  const timers = window.BeastSaverTimers;
+  if (!timers) return "";
+  const value = draft || timers.get(timers.thisTarget());
+  const status = timers.status(timers.thisTarget());
+  const who = isBedroomDevice() ? "denne iPad" : "vægskærmen";
+  const row = (kind) => {
+    const on = kind === "start" ? value.startAuto : value.endAuto;
+    const time = kind === "start" ? value.start : value.end;
+    const title = kind === "start" ? "Tænd pauseskærm" : "Sluk pauseskærm";
+    const sub = on ? `Kl. ${time}` : (kind === "start" ? "Fra · starter ikke af sig selv" : "Fra · bliver til du trykker");
+    return `<div class="beast-saver-timer${on ? " is-on" : ""}" data-saver-timer="${kind}"><button type="button" class="beast-saver-timer-toggle" data-saver-toggle="${kind}" role="switch" aria-checked="${on}"><span><strong>${title}</strong><small>${sub}</small></span><span class="beast-saver-timer-sw"></span></button><div class="beast-saver-timer-step" role="group" aria-label="${title} kl."><button type="button" data-saver-step="${kind}" data-delta="-${timers.STEP}" aria-label="Tidligere"${on ? "" : " disabled"}>−</button><b>${time}</b><button type="button" data-saver-step="${kind}" data-delta="${timers.STEP}" aria-label="Senere"${on ? "" : " disabled"}>+</button></div></div>`;
+  };
+  return `<section class="beast-saver-timers" data-saver-timers><div class="beast-saver-timers-head"><i>${BeastCore.icon("moon",{size:21})}</i><span><strong>Pauseskærm · ${who}</strong><small data-saver-status>${status.text}</small></span></div>${row("start")}${row("end")}</section>`;
+}
+
+function wirePageMenuSaverTimers(menu) {
+  const timers = window.BeastSaverTimers;
+  const box = menu.querySelector("[data-saver-timers]");
+  if (!timers || !box) return;
+  let draft = null;
+  let saveId = null;
+  const rerender = (note) => {
+    const next = document.createElement("div");
+    next.innerHTML = pageMenuSaverTimersMarkup(draft);
+    const fresh = next.firstElementChild;
+    if (note) fresh.querySelector("[data-saver-status]").textContent = note;
+    box.replaceChildren(...fresh.childNodes);
+  };
+  box.addEventListener("click", (event) => {
+    const toggle = event.target.closest("[data-saver-toggle]");
+    const step = event.target.closest("[data-saver-step]");
+    if (!toggle && !step) return;
+    event.preventDefault();
+    event.stopPropagation();
+    const current = draft || timers.get(timers.thisTarget());
+    if (toggle) {
+      const key = toggle.dataset.saverToggle === "start" ? "startAuto" : "endAuto";
+      draft = { ...current, [key]: !current[key] };
+    } else {
+      const key = step.dataset.saverStep === "start" ? "start" : "end";
+      draft = { ...current, [key]: timers.step(current[key], Number(step.dataset.delta) || 0) };
+    }
+    rerender();
+    window.clearTimeout(saveId);
+    const payload = { ...draft };
+    saveId = window.setTimeout(() => {
+      Promise.resolve(timers.save(timers.thisTarget(), payload)).then((result) => {
+        draft = null;
+        if (box.isConnected) rerender(result?.success === false ? "Kunne ikke gemme" : "Gemt");
+      });
+    }, 600);
+  });
+}
+
 function mountPageActionMenus() {
   if (document.documentElement.dataset.pageActionMenus === "true") return;
   document.documentElement.dataset.pageActionMenus = "true";
@@ -1697,7 +1777,7 @@ function mountPageActionMenus() {
       : trigger;
     const menu = document.createElement("div"); menu.id = "beastPageActionMenu"; menu.className = "beast-page-action-menu";
     const isOverview = section.dataset.section === "overview";
-    menu.innerHTML = `<button type="button" data-page-action="edit"><i>${BeastCore.icon("settings",{size:21})}</i><span><strong>Rediger side</strong><small>Flyt, ændr og tilføj kort</small></span></button><button type="button" data-page-action="fit"><i>${BeastCore.icon("grid",{size:21})}</i><span><strong>Tilpas side</strong><small>Fordel kortene til denne skærm</small></span></button>${isOverview ? `<button type="button" data-page-action="cameras"><i>${BeastCore.icon("camera",{size:21})}</i><span><strong>Vælg kameraer</strong><small>Vælg hvilke kameraer der vises på forsiden</small></span></button><button type="button" data-page-action="screensaver"><i>${BeastCore.icon("moon",{size:21})}</i><span><strong>Start pauseskærm</strong><small>Vis nattens pauseskærm med det samme</small></span></button>` : ""}<button type="button" data-page-action="reload"><i>${BeastCore.icon("refresh",{size:21})}</i><span><strong>Genindlæs dashboard</strong><small>Genstart siden og alle forbindelser</small></span></button>`;
+    menu.innerHTML = `<button type="button" data-page-action="edit"><i>${BeastCore.icon("settings",{size:21})}</i><span><strong>Rediger side</strong><small>Flyt, ændr og tilføj kort</small></span></button><button type="button" data-page-action="fit"><i>${BeastCore.icon("grid",{size:21})}</i><span><strong>Tilpas side</strong><small>Fordel kortene til denne skærm</small></span></button>${isOverview ? `<button type="button" data-page-action="cameras"><i>${BeastCore.icon("camera",{size:21})}</i><span><strong>Vælg kameraer</strong><small>Vælg hvilke kameraer der vises på forsiden</small></span></button><button type="button" data-page-action="screensaver"><i>${BeastCore.icon("moon",{size:21})}</i><span><strong>Start pauseskærm</strong><small>Vis nattens pauseskærm med det samme</small></span></button>` : ""}<button type="button" data-page-action="reload"><i>${BeastCore.icon("refresh",{size:21})}</i><span><strong>Genindlæs dashboard</strong><small>Genstart siden og alle forbindelser</small></span></button>${pageMenuSaverTimersMarkup()}`;
     document.body.appendChild(menu);
     const triggerRect = trigger.getBoundingClientRect();
     const menuRect = menu.getBoundingClientRect();
@@ -1713,6 +1793,7 @@ function mountPageActionMenus() {
     menu.querySelector('[data-page-action="fit"]').addEventListener("click", async (actionEvent) => { const button=actionEvent.currentTarget; button.disabled=true; button.classList.add("is-busy"); await window.BeastPageEditor?.fit?.(section.dataset.section); close(); });
     menu.querySelector('[data-page-action="cameras"]')?.addEventListener("click", () => { close(); document.getElementById("beastOvCameraPicker")?.click(); });
     menu.querySelector('[data-page-action="screensaver"]')?.addEventListener("click", () => { close(); document.getElementById("beastOvStartScreensaver")?.click(); });
+    wirePageMenuSaverTimers(menu);
     menu.querySelector('[data-page-action="reload"]').addEventListener("click", () => {
       close();
       const nextUrl = new URL(window.location.href);

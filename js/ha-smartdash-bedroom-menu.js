@@ -273,7 +273,7 @@ window.BeastBedroom.menu = (() => {
   function autoSaverRow() {
     const on = BeastLocalSettings.screensaverAutoStart();
     const delay = delayLabel(BeastLocalSettings.screensaverDelaySeconds());
-    return { action: "autosaver", iconName: "timer", title: t("Automatisk pauseskærm"), sub: on ? `<b>${esc(t("Til"))}</b> · ${esc(t("efter {time} uden tryk", { time: delay }))}` : esc(t("Fra · kun manuelt")), on, trailing: "switch", attrs: ` role="switch" aria-checked="${on}"` };
+    return { action: "autosaver", iconName: "timer", title: t("Ved inaktivitet"), sub: on ? `<b>${esc(t("Til"))}</b> · ${esc(t("efter {time} uden tryk", { time: delay }))}` : esc(t("Fra · kun manuelt")), on, trailing: "switch", attrs: ` role="switch" aria-checked="${on}"` };
   }
 
   function delayMarkup() {
@@ -308,6 +308,74 @@ window.BeastBedroom.menu = (() => {
     });
   }
 
+  // Tidsplan (Change by Claude AI, v0.8.100): "Tænd pauseskærm kl." and
+  // "Sluk pauseskærm kl." are two independent timers with their own switch,
+  // saved centrally for this kind of screen (iPad: panels.bedroom, other
+  // screens: the shared screensaver block) via BeastSaverTimers.
+  const Timers = window.BeastSaverTimers;
+  let timerDraft = null;
+  let timerSaveId = null;
+  let timerNote = "";
+  let timerNoteId = null;
+
+  function timers() { return timerDraft || Timers.get(Timers.thisTarget()); }
+
+  function timerRow(kind) {
+    const value = timers();
+    const on = kind === "start" ? value.startAuto : value.endAuto;
+    const time = kind === "start" ? value.start : value.end;
+    const status = Timers.status(Timers.thisTarget());
+    const ipad = kind === "start" && on && document.documentElement.classList.contains("beast-ipad");
+    let sub;
+    if (!on) sub = esc(kind === "start" ? t("Fra · starter ikke af sig selv") : t("Fra · bliver til du trykker"));
+    else if (ipad) sub = `<b>${esc(t("Til"))}</b> · ${esc(t("hele dagen (iPad-tilstand)"))}`;
+    else if (kind === "start") sub = `<b>${esc(t("Kl. {time}", { time }))}</b>${status.active ? ` · ${esc(t("aktiv nu"))}` : ""}`;
+    else sub = `<b>${esc(t("Kl. {time}", { time }))}</b> · ${esc(t("tilbage til forsiden"))}`;
+    if (timerNote && kind === "end") sub += ` · ${esc(timerNote)}`;
+    return { action: `timer-${kind}`, iconName: kind === "start" ? "moon" : "sun", title: kind === "start" ? t("Tænd pauseskærm") : t("Sluk pauseskærm"), sub, on, trailing: "switch", attrs: ` role="switch" aria-checked="${on}"` };
+  }
+
+  function timerStepMarkup(kind) {
+    const value = timers();
+    const on = kind === "start" ? value.startAuto : value.endAuto;
+    const time = kind === "start" ? value.start : value.end;
+    const label = kind === "start" ? t("Tænd kl.") : t("Sluk kl.");
+    return `<div class="bd-autodelay bd-timerstep${on ? "" : " is-disabled"}" data-timerstep="${kind}"><span class="bd-autodelay-lbl">${esc(label)}</span><div class="bd-autodelay-step" role="group" aria-label="${esc(label)}"><button type="button" data-bd-menu="timer-time" data-kind="${kind}" data-delta="-${Timers.STEP}" aria-label="${esc(t("Tidligere"))}"${on ? "" : " disabled"}>−</button><b data-timer-value aria-live="polite">${esc(time)}</b><button type="button" data-bd-menu="timer-time" data-kind="${kind}" data-delta="${Timers.STEP}" aria-label="${esc(t("Senere"))}"${on ? "" : " disabled"}>+</button></div></div>`;
+  }
+
+  function updateTimers(menu) {
+    if (!menu) return;
+    ["start", "end"].forEach((kind) => {
+      updateRow(menu, timerRow(kind));
+      const line = menu.querySelector(`[data-timerstep="${kind}"]`);
+      if (!line) return;
+      const value = timers();
+      const on = kind === "start" ? value.startAuto : value.endAuto;
+      const time = kind === "start" ? value.start : value.end;
+      line.classList.toggle("is-disabled", !on);
+      const shown = line.querySelector("[data-timer-value]");
+      if (shown.textContent !== time) shown.textContent = time;
+      line.querySelectorAll("[data-delta]").forEach((button) => { button.disabled = !on; });
+    });
+  }
+
+  function changeTimers(patch) {
+    timerDraft = { ...timers(), ...patch };
+    timerNote = "";
+    updateTimers(host());
+    window.clearTimeout(timerSaveId);
+    const payload = { ...timerDraft };
+    timerSaveId = window.setTimeout(() => {
+      Promise.resolve(Timers.save(Timers.thisTarget(), payload)).then((result) => {
+        timerDraft = null;
+        timerNote = result?.success === false ? t("Kunne ikke gemme") : t("Gemt");
+        updateTimers(host());
+        window.clearTimeout(timerNoteId);
+        timerNoteId = window.setTimeout(() => { timerNote = ""; updateTimers(host()); }, 2200);
+      });
+    }, 600);
+  }
+
   function connectionInfo() {
     const dot = document.getElementById("beastStatusDot")?.dataset.state || "connecting";
     if (dot === "connected") return { state: "connected", text: t("Forbundet til Home Assistant") };
@@ -340,7 +408,7 @@ window.BeastBedroom.menu = (() => {
     const classes = ["bd-menu", bed.length ? "has-bed" : "", admin ? "has-settings" : "", tileCount ? "has-pages" : ""].filter(Boolean).join(" ");
     const screen = `<section class="bd-mpanel bd-mscreen" aria-label="${esc(t("Skærm"))}"><div class="bd-meyebrow">${esc(t("Skærm"))}</div>
         <button type="button" class="bd-saver" data-bd-menu="screensaver"><span class="bd-saver-pv"><b data-menu-preview>${esc(hm(now))}</b></span><span class="bd-saver-text"><span class="bd-saver-t1">${esc(t("Pauseskærm nu"))}</span><span class="bd-saver-t2">${esc(t("Dæmpet ur · tryk for at vække"))}</span></span></button>
-        <div class="bd-rows">${rowMarkup(dimRow())}${rowMarkup(autoSaverRow())}${delayMarkup()}${rowMarkup({ action: "reload", iconName: "reload", title: t("Genindlæs"), sub: esc(t("Henter siden igen")), trailing: "" })}</div>
+        <div class="bd-rows">${rowMarkup(dimRow())}${rowMarkup(autoSaverRow())}${delayMarkup()}${Timers ? `${rowMarkup(timerRow("start"))}${timerStepMarkup("start")}${rowMarkup(timerRow("end"))}${timerStepMarkup("end")}` : ""}${rowMarkup({ action: "reload", iconName: "reload", title: t("Genindlæs"), sub: esc(t("Henter siden igen")), trailing: "" })}</div>
         ${admin ? "" : footerMarkup()}</section>`;
     const settings = admin ? `<section class="bd-mpanel bd-msettings" aria-label="${esc(t("Indstillinger"))}"><div class="bd-meyebrow">${esc(t("Indstillinger"))}</div>
         <div class="bd-rows">${rowMarkup({ action: "admin-bedroom", iconName: "sliders", title: t("Tilpas soveværelset"), sub: esc(t("Kameraer, kalendere og lys")), tag: "a" })}${rowMarkup({ action: "admin", iconName: "gear", title: t("Administration"), sub: esc(t("Sider, enheder og udseende")), tag: "a" })}</div>
@@ -371,6 +439,7 @@ window.BeastBedroom.menu = (() => {
     bedroomRows().forEach((row) => updateRow(menu, row));
     updateRow(menu, dimRow());
     updateAutoSaver(menu);
+    if (Timers) updateTimers(menu);
     const conn = connectionInfo();
     const connEl = menu.querySelector(".bd-conn");
     if (connEl && connEl.dataset.state !== conn.state) { connEl.dataset.state = conn.state; connEl.textContent = conn.text; }
@@ -517,6 +586,9 @@ window.BeastBedroom.menu = (() => {
       case "screensaver": close(true); window.showAmbientMode?.(true); break;
       case "dim": B.setDim(!B.dimOn()); refresh(); break;
       case "autosaver": BeastLocalSettings.set("screensaverAuto", !BeastLocalSettings.screensaverAutoStart()); updateAutoSaver(host()); break;
+      case "timer-start": changeTimers({ startAuto: !timers().startAuto }); break;
+      case "timer-end": changeTimers({ endAuto: !timers().endAuto }); break;
+      case "timer-time": { const kind = target.dataset.kind; const key = kind === "start" ? "start" : "end"; changeTimers({ [key]: Timers.step(timers()[key], Number(target.dataset.delta) || 0) }); break; }
       case "saver-delay": stepDelay(Number(target.dataset.delta) || 0); updateAutoSaver(host()); break;
       case "reload": reload(target); break;
       case "admin-bedroom": openAdmin("admin/#bedroom"); break;

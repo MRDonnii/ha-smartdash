@@ -435,7 +435,7 @@
     "Pauseskærm nu": "Screensaver now", "Dæmpet ur · tryk for at vække": "Dimmed clock · tap to wake", "Nattilstand": "Night mode",
     "Ekstra dæmpet skærm": "Extra dimmed screen",
     "Automatisk pauseskærm": "Automatic screensaver", "efter {time} uden tryk": "after {time} without a touch",
-    "Fra · kun manuelt": "Off · manual only", "Start efter": "Start after", "Kortere": "Shorter", "Længere": "Longer",
+    "Fra · kun manuelt": "Off · manual only", "Ved inaktivitet": "When idle", "Tænd pauseskærm": "Start screensaver", "Sluk pauseskærm": "End screensaver", "Fra · starter ikke af sig selv": "Off · never starts by itself", "Fra · bliver til du trykker": "Off · stays until you touch", "hele dagen (iPad-tilstand)": "all day (iPad mode)", "Kl. {time}": "At {time}", "aktiv nu": "active now", "tilbage til forsiden": "back to the front page", "Tænd kl.": "Start at", "Sluk kl.": "End at", "Tidligere": "Earlier", "Senere": "Later", "Start efter": "Start after", "Kortere": "Shorter", "Længere": "Longer",
     "{n} sek": "{n} s", "{n} min": "{n} min", "ekstra dæmpet skærm": "extra dimmed screen", "Genindlæs": "Reload",
     "Henter siden igen": "Loads the page again", "Genindlæser …": "Reloading …", "Tilpas soveværelset": "Customise the bedroom",
     "Kameraer, kalendere og lys": "Cameras, calendars and lights", "Sider, enheder og udseende": "Pages, devices and appearance",

@@ -1,5 +1,16 @@
 [
   {
+    "version": "20261113-1",
+    "tag": "v0.8.100",
+    "date": "2026-11-13",
+    "changes": [
+      {
+        "da": "Pauseskærmen har nu en tidsplan med to selvstændige tidsur i skærmens egen menu: \"Tænd pauseskærm\" kl. … og \"Sluk pauseskærm\" kl. …, hver med sin egen kontakt. På iPad'en i soveværelset ligger de i Menu → Skærm (gemmes i soveværelsets indstillinger, standard 21:00 og 07:00); på vægskærmen og andre skærme i sidemenuen (gitter-knappen) under Pauseskærm (gemmes i den fælles Pauseskærm). Tænd fra: pauseskærmen starter aldrig af sig selv, men kan stadig startes i hånden. Sluk fra: pauseskærmen bliver, til nogen trykker på skærmen. Tidligere tider gemt på selve enheden kan ikke længere overstyre tidsplanen i det stille; iPad-tilstand starter stadig pauseskærmen hele dagen, så længe Tænd er slået til. \"Automatisk pauseskærm\" hedder nu \"Ved inaktivitet\". Kalenderen på forsiden viser nu kun i dag (hele dagen først, derefter efter klokken; er dagen tom, vises det første i morgen) og står ved siden af Affald, så kortet får mere plads. (Claude AI)",
+        "en": "The screensaver now has a schedule with two independent timers in the screen's own menu: \"Start screensaver\" at … and \"End screensaver\" at …, each with its own switch. On the bedroom iPad they are in Menu → Screen (saved in the bedroom settings, default 21:00 and 07:00); on the wall kiosk and other screens in the page menu (grid button) under Screensaver (saved in the shared Screensaver). Start off: the screensaver never starts by itself but can still be started by hand. End off: the screensaver stays until someone touches the screen. Times stored on the device itself can no longer silently override the schedule; iPad mode still starts the screensaver all day while Start is on. \"Automatic screensaver\" is now called \"When idle\". The calendar on the front page now shows today only (all-day first, then by time; on an empty day the first event tomorrow) beside Waste, so the card has more room. (Claude AI)"
+      }
+    ]
+  },
+  {
     "version": "20261106-2",
     "tag": "v0.8.99",
     "date": "2026-11-06",

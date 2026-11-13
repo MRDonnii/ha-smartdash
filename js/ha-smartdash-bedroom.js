@@ -63,6 +63,7 @@ window.BeastBedroom = (() => {
     scene: '<path d="m11 3.5 1.7 4.8 4.8 1.7-4.8 1.7L11 16.5l-1.7-4.8L4.5 10l4.8-1.7Z"/><path d="m18 14.5.8 1.9 1.9.8-1.9.8-.8 1.9-.8-1.9-1.9-.8 1.9-.8Z"/>',
     timer: '<circle cx="12" cy="13.5" r="7"/><path d="M12 10v3.5l2.25 1.5M9.5 3.25h5M12 3.25V6.5"/>',
     moon: '<path d="M19.5 14.6A7.8 7.8 0 0 1 9.4 4.5a7.8 7.8 0 1 0 10.1 10.1Z"/>',
+    sun: '<circle cx="12" cy="12" r="4"/><path d="M12 2.75v2M12 19.25v2M2.75 12h2M19.25 12h2M5.5 5.5l1.4 1.4M17.1 17.1l1.4 1.4M5.5 18.5l1.4-1.4M17.1 6.9l1.4-1.4"/>',
     dim: '<circle cx="12" cy="12" r="3.75"/><path d="M12 4.5v.01M12 19.5v.01M4.5 12h.01M19.5 12h.01M6.7 6.7h.01M17.3 17.3h.01M6.7 17.3h.01M17.3 6.7h.01"/>',
     reload: '<path d="M19.5 12a7.5 7.5 0 1 1-2.3-5.4"/><path d="M19.5 4v4h-4"/>',
     sliders: '<path d="M4 7.5h9M17 7.5h3M4 16.5h3M11 16.5h9"/><circle cx="15" cy="7.5" r="2"/><circle cx="9" cy="16.5" r="2"/>',
@@ -2264,8 +2265,14 @@ window.BeastBedroom = (() => {
       const next = JSON.stringify(cfg());
       if (next === configSignature) return;
       const withoutModes = (text) => { const value = JSON.parse(text || "{}"); delete value.modes; return JSON.stringify(value); };
+      // The screensaver timers (saved from the menu) don't change the page:
+      // keep the menu open. -- Change by Claude AI (v0.8.100)
+      const SAVER_KEYS = ["saverStart", "saverEnd", "saverStartAuto", "saverEndAuto"];
+      const withoutSaver = (text) => { const value = JSON.parse(text || "{}"); SAVER_KEYS.forEach((key) => delete value[key]); return JSON.stringify(value); };
+      const onlySaver = withoutSaver(next) === withoutSaver(configSignature);
       const onlyModes = withoutModes(next) === withoutModes(configSignature);
       configSignature = next;
+      if (onlySaver) { window.BeastBedroom.menu?.refresh?.(); return; }
       // Mode settings (from the Tilstande sheet) apply live and keep the
       // sheet open; anything else rebuilds the page from scratch.
       if (onlyModes) { relayoutIfNeeded(true); return; }

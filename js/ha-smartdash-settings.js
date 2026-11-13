@@ -283,6 +283,7 @@
     });
     document.getElementById("beastScreensaverSave")?.addEventListener("click", () => {
       BeastConfig.set("screensaver", {
+        ...(BeastConfig.get("screensaver") || {}),
         enabled: document.getElementById("beastScreensaverEnabled").value === "1",
         schedule: document.getElementById("beastScreensaverSchedule").value,
         startTime: document.getElementById("beastScreensaverStart").value || "23:00",

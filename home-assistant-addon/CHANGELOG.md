@@ -1,3 +1,7 @@
+## 0.8.100
+
+- Pauseskærmen har nu en tidsplan med to selvstændige tidsur i skærmens egen menu: "Tænd pauseskærm" kl. … og "Sluk pauseskærm" kl. …, hver med sin egen kontakt. På iPad'en i soveværelset ligger de i Menu → Skærm (gemmes i soveværelsets indstillinger, standard 21:00 og 07:00); på vægskærmen og andre skærme i sidemenuen (gitter-knappen) under Pauseskærm (gemmes i den fælles Pauseskærm). Tænd fra: pauseskærmen starter aldrig af sig selv, men kan stadig startes i hånden. Sluk fra: pauseskærmen bliver, til nogen trykker på skærmen. Tidligere tider gemt på selve enheden kan ikke længere overstyre tidsplanen i det stille; iPad-tilstand starter stadig pauseskærmen hele dagen, så længe Tænd er slået til. "Automatisk pauseskærm" hedder nu "Ved inaktivitet". Kalenderen på forsiden viser nu kun i dag (hele dagen først, derefter efter klokken; er dagen tom, vises det første i morgen) og står ved siden af Affald, så kortet får mere plads. (Claude AI)
+
 ## 0.8.99
 
 - iPad'en i soveværelset har nu sin egen pauseskærm-tid, så den kan gå i pauseskærm om aftenen og vende tilbage til forsiden om morgenen uden at røre ved de andre skærme. Sæt tiderne under Soveværelse → Pauseskærmens tider (fra og til; tomt følger den fælles Pauseskærm). Samtidig skriver iPad'en ikke længere en standard-pauseskærm på 23:00–05:30 ind på sig selv, hver gang den gemmer en lokal indstilling (fx Godnat eller dæmpning), for den overstyrede tiderne; en allerede indskrevet standard fjernes af sig selv. Andre enheder er uændrede. (Claude AI)
