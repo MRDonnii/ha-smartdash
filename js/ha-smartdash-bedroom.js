@@ -664,7 +664,9 @@ window.BeastBedroom = (() => {
     if (info.showAll) {
       return `<span class="bd-d2 bd-mode-line"><span>${esc(t("Vis alt · {n} min", { n: info.showAllLeft }))}</span><button type="button" class="bd-mode-back" data-bd-action="show-all-off">${esc(t("Tilbage"))}</button></span>`;
     }
-    return `<span class="bd-d2 bd-mode-line"><span>${esc(roomTitle())} · ${esc(modeLabel(fixedPageOf(info) || info.mode))}</span></span>`;
+    // The label is the time of day (schedule, or a manual switch), also when
+    // the page composition is pinned (fixedPage). -- Change by Claude AI (v0.8.102)
+    return `<span class="bd-d2 bd-mode-line"><span>${esc(roomTitle())} · ${esc(modeLabel(info.mode))}</span></span>`;
   }
 
   function renderHeader() {

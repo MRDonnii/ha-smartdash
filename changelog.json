@@ -1,5 +1,16 @@
 [
   {
+    "version": "20261114-1",
+    "tag": "v0.8.102",
+    "date": "2026-11-14",
+    "changes": [
+      {
+        "da": "Overskriften på iPad'en i soveværelset viser nu tidspunktet på dagen (Morgen, Dag, Aften eller Nat efter tidsplanen), også når siden er låst til Aftens side. Siden selv er stadig Aftens side med kameraerne. (Claude AI)",
+        "en": "The bedroom iPad header now shows the time of day (Morning, Day, Evening or Night from the schedule), also when the page is pinned to the Evening page. The page itself is still the Evening page with the cameras. (Claude AI)"
+      }
+    ]
+  },
+  {
     "version": "20261113-2",
     "tag": "v0.8.101",
     "date": "2026-11-13",

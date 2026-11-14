@@ -1,3 +1,7 @@
+## 0.8.102
+
+- Overskriften på iPad'en i soveværelset viser nu tidspunktet på dagen (Morgen, Dag, Aften eller Nat efter tidsplanen), også når siden er låst til Aftens side. Siden selv er stadig Aftens side med kameraerne. (Claude AI)
+
 ## 0.8.101
 
 - iPad'en i soveværelset: kalenderen viser nu kun i dag i alle tilstande (heldag først, overståede aftaler forsvinder; er dagen tom, står der "Intet i dag" og første aftale i morgen). Den frigjorte plads går til Søvnterapi-kortet, som nu vises i fuld størrelse med score, vurdering, brug, AHI, lækage, maske af/på og 14 nætters udvikling. På forsiden står Bil/Pool-felterne nu nederst i urkortet, så den frie plads ikke ligner et hul. (Claude AI)
