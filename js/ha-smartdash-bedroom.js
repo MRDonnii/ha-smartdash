@@ -245,7 +245,6 @@ window.BeastBedroom = (() => {
   // changes composition, visibility and emphasis; every card keeps its logic.
   // ---------------------------------------------------------------------------
   const Modes = window.BeastBedroomModes;
-  const FAN_RECENT_MS = 2 * 60 * 60 * 1000;
   // "Vis alt" and "Skift tilstand nu" belong to this screen and this moment,
   // so they live in memory; Godnat is remembered across a reload.
   let showAll = null;
@@ -296,32 +295,19 @@ window.BeastBedroom = (() => {
   }
   function mediaIds() { return list(cfg().media).slice(0, 2); }
 
-  // Fan: shown when it runs, when the room is warm, or when it ran lately.
-  function fanShown(id, settings, strict = false) {
-    const st = state(id);
-    if (unavailable(st)) return false;
-    if ((pendingFor(id)?.on ?? st.state === "on")) return true;
-    if (strict) return false;
-    const temp = numberState(single(cfg().temperature));
-    if (temp != null && temp >= settings.fanWarmAt) return true;
-    const changed = Date.parse(st.last_changed || "");
-    const since = Date.now() - changed;
-    return Number.isFinite(changed) && since >= 0 && since < FAN_RECENT_MS;
-  }
-
   // Which comfort toggles a mode shows: the sleep-mode switches (comfort),
   // the helpers such as a night-light toggle (comfortBooleans) and fans.
-  function comfortIdsFor(mode, settings) {
+  function comfortIdsFor(mode) {
     const c = cfg();
     const switches = list(c.comfort);
     const helpers = list(c.comfortBooleans);
     const fans = list(c.fans);
     const isOn = (id) => (pendingFor(id)?.on ?? state(id)?.state === "on");
     if (mode === "alle") return [...switches, ...helpers, ...fans];
-    const shownFans = fans.filter((id) => fanShown(id, settings));
-    if (mode === "morgen") return [...switches.filter(isOn), ...shownFans];
-    if (mode === "dag") return shownFans;
-    return [...switches, ...helpers, ...shownFans];
+    // The fan is always within reach, in every mode.
+    if (mode === "morgen") return [...switches.filter(isOn), ...fans];
+    if (mode === "dag") return fans;
+    return [...switches, ...helpers, ...fans];
   }
 
   // CPAP data of last night (the night ending today) counts as fresh.
@@ -352,7 +338,7 @@ window.BeastBedroom = (() => {
       scenes: sceneIds().length > 0,
       media: mediaIds().length > 0
     };
-    const comfort = on("comfort") ? comfortIdsFor(mode, info.settings) : [];
+    const comfort = on("comfort") ? comfortIdsFor(mode) : [];
     const anyMediaOn = mediaIds().some(mediaIsOn);
     const mediaPanel = mode === "aften" && has.media && on("media");
     const mediaInCtrl = has.media && on("media") && (mode === "alle" || ((mode === "morgen" || mode === "dag") && anyMediaOn));
@@ -2336,6 +2322,11 @@ window.BeastBedroom = (() => {
       comingDayEvent, upcomingEvent, ensureCalendar, hasCalendars: () => list(cfg().calendars).length > 0,
       lockDoors: (ids) => ids.forEach((id) => lockDoor(id, { noCode: true })),
       lockPending: (id) => Boolean(pendingFor(id)?.lock)
+    },
+    // For the screensaver pop-ups (ha-smartdash-bedroom-quick.js).
+    popupApi: {
+      cameraSpec, streamMarkup, cameraLabel, toggleLight, commitBrightness, allLightsOff, activateScene, toggleEntity, pendingFor,
+      fanIds: () => list(cfg().fans)
     },
     setShowAll,
     setManualMode,

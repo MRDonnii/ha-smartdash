@@ -1,3 +1,7 @@
+## 0.8.103
+
+- iPad'en i soveværelset: Kameraer, Lys og den nye Blæser nederst på pauseskærmen åbner nu en popup oven på pauseskærmen med store knapper. Kameraer viser ét stort live-billede med et lille galleri under. Blæseren vises desuden altid i Komfort på siden; "Vis blæseren fra (°C)" er fjernet. (Claude AI)
+
 ## 0.8.102
 
 - Overskriften på iPad'en i soveværelset viser nu tidspunktet på dagen (Morgen, Dag, Aften eller Nat efter tidsplanen), også når siden er låst til Aftens side. Siden selv er stadig Aftens side med kameraerne. (Claude AI)

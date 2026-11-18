@@ -20,7 +20,8 @@ window.BeastBedroomAlerts = (() => {
     bed: '<path d="M3 18.5v-12"/><path d="M3 14.5h18v4"/><path d="M21 14.5v-2a3 3 0 0 0-3-3h-7v5"/><circle cx="7" cy="11.5" r="1.75"/>',
     camera: '<rect x="2.75" y="6.5" width="13.5" height="11" rx="2.5"/><path d="m16.25 10.5 4.75-2.6v8.2l-4.75-2.6"/>',
     bulb: '<path d="M9.25 17.5h5.5M10 20.5h4"/><path d="M12 3.5a6 6 0 0 0-3.6 10.8c.7.5 1.1 1.3 1.1 2.1v1.1h5v-1.1c0-.8.4-1.6 1.1-2.1A6 6 0 0 0 12 3.5Z"/>',
-    moon: '<path d="M19.5 14.6A7.8 7.8 0 0 1 9.4 4.5a7.8 7.8 0 1 0 10.1 10.1Z"/>'
+    moon: '<path d="M19.5 14.6A7.8 7.8 0 0 1 9.4 4.5a7.8 7.8 0 1 0 10.1 10.1Z"/>',
+    fan: '<circle cx="12" cy="12" r="1.6"/><path d="M12 10.4c-.6-2.6.2-5.9 2.6-6.4 2.2-.4 3.2 2.4 1.4 4.1-1 .9-2.4 1.6-4 2.3Z"/><path d="M13.4 12.8c2.5.8 4.9 3.2 4.1 5.5-.7 2.1-3.6 1.6-4-.8-.2-1.3 0-2.9-.1-4.7Z"/><path d="M10.6 12.8c-1.9 1.8-5.2 2.7-6.8.9-1.4-1.7.5-4 2.8-3.2 1.3.4 2.6 1.4 4 2.3Z"/>'
   };
   // A tap that lands just as the screensaver (and with it the row) appears
   // must not also press the button that appears under the finger.
@@ -225,6 +226,7 @@ window.BeastBedroomAlerts = (() => {
   }
 
   function show(overlay, event, camera) {
+    window.BeastBedroom?.quick?.close?.();
     const now = Date.now();
     const windowMs = alertMs();
     if (!alert) {
@@ -486,6 +488,7 @@ window.BeastBedroomAlerts = (() => {
       { id: "bedroom", icon: "bed", label: bedroom.util?.roomTitle?.() || t("Soveværelse") },
       (bedroom.allCameraIds?.() || []).length ? { id: "cameras", icon: "camera", label: t("Kameraer") } : null,
       (bedroom.lightIds?.() || []).length ? { id: "lights", icon: "bulb", label: t("Lys") } : null,
+      (bedroom.popupApi?.fanIds?.() || []).length ? { id: "fan", icon: "fan", label: t("Blæser") } : null,
       bedroom.sleep?.configured?.() ? { id: "sleep", icon: "moon", label: t("Søvn") } : null
     ].filter(Boolean);
   }
@@ -519,7 +522,10 @@ window.BeastBedroomAlerts = (() => {
     element.remove();
   }
 
+  // Kameraer, Lys and Blæser open a pop-up on top of the screensaver (see
+  // ha-smartdash-bedroom-quick.js); Soveværelse and Søvn wake to their page.
   function openShortcut(id) {
+    if (window.BeastBedroom?.quick?.open?.(id)) return;
     hideShortcuts();
     // Waking lands on the device's home page, the bedroom.
     if (typeof window.noteUserActivity === "function") window.noteUserActivity();
@@ -548,9 +554,9 @@ window.BeastBedroomAlerts = (() => {
     const overlay = ambientOverlay();
     if (!overlay || !overlay.contains(event.target)) return;
     if (event.target.closest(".bda-card")) return;
-    // Shortcuts and the content's own buttons (Lås, Sluk/Pause) keep the
-    // screensaver up; their click does the work.
-    if (!alert && event.target.closest("[data-bds], [data-bdv]")) { event.stopPropagation(); return; }
+    // Shortcuts, the pop-ups and the content's own buttons (Lås, Sluk/Pause)
+    // keep the screensaver up; their click does the work.
+    if (!alert && event.target.closest("[data-bds], [data-bdv], .bdq")) { event.stopPropagation(); return; }
     swallowClickUntil = Date.now() + WAKE_CLICK_GUARD_MS;
   }
 

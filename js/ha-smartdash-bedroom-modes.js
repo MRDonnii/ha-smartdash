@@ -34,8 +34,7 @@ window.BeastBedroomModes = (() => {
     },
     showAllMinutes: 10,
     nightOnGoodnight: true,
-    fixedPage: "",
-    fanWarmAt: 23.5
+    fixedPage: ""
   });
 
   function clone(value) { return JSON.parse(JSON.stringify(value)); }
@@ -70,8 +69,6 @@ window.BeastBedroomModes = (() => {
     if (Number.isFinite(minutes) && minutes >= 1) out.showAllMinutes = Math.min(120, Math.round(minutes));
     if (typeof source.nightOnGoodnight === "boolean") out.nightOnGoodnight = source.nightOnGoodnight;
     if (FIXED_PAGES.includes(source.fixedPage)) out.fixedPage = source.fixedPage;
-    const warm = Number(source.fanWarmAt);
-    if (source.fanWarmAt !== null && source.fanWarmAt !== "" && Number.isFinite(warm)) out.fanWarmAt = warm;
     return out;
   }
 

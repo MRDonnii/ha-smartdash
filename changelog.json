@@ -1,5 +1,20 @@
 [
   {
+    "version": "20261119-1",
+    "tag": "v0.8.103",
+    "date": "2026-11-19",
+    "changes": [
+      {
+        "da": "iPad'en i soveværelset: genvejene nederst på pauseskærmen (Kameraer, Lys og den nye Blæser) åbner nu en popup oven på pauseskærmen med store knapper, der er nemme at ramme. Lys har store felter pr. lampe med lysstyrke i fire trin og stemningerne under. Blæseren har to kæmpeknapper, Tænd og Sluk. Kameraer viser ét stort live-billede med et lille galleri under, hvor man skifter kamera. (Claude AI)",
+        "en": "Bedroom iPad: the shortcuts at the bottom of the screensaver (Cameras, Lights and the new Fan) now open a pop-up on top of the screensaver with large, easy-to-hit buttons. Lights has a big tile per lamp with brightness in four steps and the scenes below. The fan has two huge buttons, On and Off. Cameras shows one big live picture with a small gallery under it for switching camera. (Claude AI)"
+      },
+      {
+        "da": "Blæseren i soveværelset vises nu altid i Komfort på siden, ikke kun når den kører eller rummet er varmt. Indstillingen \"Vis blæseren fra (°C)\" er fjernet. (Claude AI)",
+        "en": "The bedroom fan is now always shown under Comfort on the page, not only when it runs or the room is warm. The \"Show the fan from (°C)\" setting is removed. (Claude AI)"
+      }
+    ]
+  },
+  {
     "version": "20261114-1",
     "tag": "v0.8.102",
     "date": "2026-11-14",
