@@ -355,7 +355,7 @@ function showDoorbellView() {
   const camera = doorbellCameraStream();
   const useStream = camera && window.BeastCameras?.hasGo2rtc?.() && (camera.resolvedStreamName || camera.streamName);
   const cameraMarkup = useStream
-    ? `<iframe src="./camera-player.html?v=19&base=${encodeURIComponent(BeastConfig.get("panels.cameras.go2rtcBaseUrl") || "")}&transport=webrtc&src=${encodeURIComponent(camera.resolvedStreamName || camera.streamName)}" title="Fordør livekamera" frameborder="0" allow="autoplay"></iframe>`
+    ? `<iframe src="./camera-player.html?v=22&base=${encodeURIComponent(BeastConfig.get("panels.cameras.go2rtcBaseUrl") || "")}&transport=webrtc&src=${encodeURIComponent(camera.resolvedStreamName || camera.streamName)}" title="Fordør livekamera" frameborder="0" allow="autoplay"></iframe>`
     : camera?.haStreamUrl
       ? `<img class="beast-doorbell-ha-camera" src="${camera.haStreamUrl}" data-doorbell-picture="${camera.entityPicture || ""}" alt="Fordør livekamera">`
       : `<img class="beast-doorbell-ha-camera" data-doorbell-picture="${camera?.entityPicture || ""}" alt="Fordør kamera">`;
@@ -486,7 +486,7 @@ function ambientCameraMarkup(config) {
       // The tiles are small: the camera's low-resolution (sub) stream when it has one, instead of the main stream
       // (often 4K, which kept a kiosk's CPU busy just decoding three of them).
       const tileStream = camera.qualityOptions?.find((option) => option.quality === "low" && option.streamName)?.streamName || camera.resolvedStreamName || camera.streamName;
-      const src = `./camera-player.html?v=19&base=${encodeURIComponent(BeastConfig.get("panels.cameras.go2rtcBaseUrl") || "")}&transport=webrtc&src=${encodeURIComponent(tileStream)}`;
+      const src = `./camera-player.html?v=22&base=${encodeURIComponent(BeastConfig.get("panels.cameras.go2rtcBaseUrl") || "")}&transport=webrtc&src=${encodeURIComponent(tileStream)}`;
       return `<div class="beast-ambient-camera-tile"><iframe class="beast-ambient-camera-tile-frame" src="${src}" allow="autoplay"></iframe></div>`;
     }
     if (camera.haStreamUrl) {
@@ -966,7 +966,9 @@ function visibleCameraFrames() {
 }
 
 function runCameraHealthCheck() {
-  if (document.hidden) return;
+  // Screen off: every player is paused on purpose, so "no live data" is not a
+  // failure to recover from (it used to reload the frames and restart them).
+  if (document.hidden || window.BeastPower?.getState?.() === "idle") return;
   const now = Date.now();
   visibleCameraFrames().forEach((frame) => {
     const health = cameraHealth.get(frame) || { lastProgressAt: now, lastReconnectAt: 0 };
@@ -1690,6 +1692,7 @@ function syncCameraPlayers() {
 }
 
 function reconnectVisibleCameraPlayers() {
+  if (window.BeastPower?.getState?.() === "idle") return;
   document.querySelectorAll('iframe[src*="camera-player.html"]').forEach((frame) => {
     if (!frame.closest(".beast-section.is-active") && frame.closest(".beast-section")) return;
     try { frame.contentWindow?.postMessage({ type: "camera-player-reconnect" }, window.location.origin); } catch (_) {}

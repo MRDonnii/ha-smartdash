@@ -1,5 +1,38 @@
 [
   {
+    "version": "20261120-3",
+    "tag": "v0.8.106",
+    "date": "2026-11-20",
+    "changes": [
+      {
+        "da": "Kameraer, der vises inde i andre kort og visninger, stopper nu også, når skærmen slukker. Før nåede pausen ikke ind i dem, og et kamera, der blev oprettet, mens skærmen var slukket, kunne streame hele natten. Hver kameraafspiller holder nu selv øje med skærmen og streamer kun, når skærmen er tændt, og den faktisk bliver vist; den starter igen med det samme, når skærmen tænder eller kameraet bliver vist. (Claude AI)",
+        "en": "Cameras shown inside other cards and views now stop too when the screen turns off. Before, the pause never reached them, and a camera created while the screen was off could stream all night. Every camera player now watches the screen itself and only streams while the screen is on and it is actually shown; it starts again at once when the screen turns on or the camera is shown. (Claude AI)"
+      }
+    ]
+  },
+  {
+    "version": "20261120-1",
+    "tag": "v0.8.105",
+    "date": "2026-11-20",
+    "changes": [
+      {
+        "da": "Kameraerne stopper nu helt, når skærmen er slukket. Før kunne kamera-vagthunden starte dem igen i baggrunden, så to kameraer i fuld opløsning kørte hele natten og gjorde skærmen langsom. (Claude AI)",
+        "en": "Cameras now stop completely while the screen is off. Before, the camera watchdog could restart them in the background, so two full-resolution streams kept running all night and slowed the screen down. (Claude AI)"
+      }
+    ]
+  },
+  {
+    "version": "20261119-2",
+    "tag": "v0.8.104",
+    "date": "2026-11-19",
+    "changes": [
+      {
+        "da": "iPad'en i soveværelset: knapperne nederst på pauseskærmen er gjort meget større, så de er lettere at ramme. Blæser åbner ikke længere en popup: et tryk tænder eller slukker blæseren med det samme, og knappen lyser, mens blæseren kører. Kan kommandoen ikke sendes, står der \"Ingen forbindelse\" eller \"Mislykkedes\" på knappen i et par sekunder. (Claude AI)",
+        "en": "Bedroom iPad: the buttons at the bottom of the screensaver are much bigger and easier to hit. Fan no longer opens a pop-up: one tap turns the fan on or off straight away, and the button lights up while the fan runs. If the command cannot be sent, the button says \"No connection\" or \"Failed\" for a couple of seconds. (Claude AI)"
+      }
+    ]
+  },
+  {
     "version": "20261119-1",
     "tag": "v0.8.103",
     "date": "2026-11-19",

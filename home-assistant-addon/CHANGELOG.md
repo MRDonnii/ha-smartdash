@@ -1,3 +1,15 @@
+## 0.8.106
+
+- Kameraer, der vises inde i andre kort og visninger, stopper nu også, når skærmen slukker, og streamer kun, når de faktisk bliver vist. De starter igen med det samme, når skærmen tænder.
+
+## 0.8.105
+
+- Kameraerne stopper nu helt, når skærmen er slukket. Før kunne kamera-vagthunden starte dem igen i baggrunden.
+
+## 0.8.104
+
+- iPad'en i soveværelset: knapperne nederst på pauseskærmen er gjort meget større. Blæser åbner ikke længere en popup: et tryk tænder eller slukker blæseren med det samme, og knappen lyser, mens blæseren kører. Kan kommandoen ikke sendes, står der "Ingen forbindelse" eller "Mislykkedes" på knappen i et par sekunder.
+
 ## 0.8.103
 
 - iPad'en i soveværelset: Kameraer, Lys og den nye Blæser nederst på pauseskærmen åbner nu en popup oven på pauseskærmen med store knapper. Kameraer viser ét stort live-billede med et lille galleri under. Blæseren vises desuden altid i Komfort på siden; "Vis blæseren fra (°C)" er fjernet. (Claude AI)

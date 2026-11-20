@@ -1484,17 +1484,20 @@ window.BeastBedroom = (() => {
 
   function toggleEntity(id) {
     const st = state(id);
-    if (unavailable(st)) return;
+    if (unavailable(st)) return Promise.resolve(false);
     const domain = id.split(".")[0];
     const next = !(pendingFor(id)?.on ?? st.state === "on");
     setPending(id, { on: next }, 5000);
     blockSignatures.delete("comfort");
     renderComfort();
-    callService(domain, next ? "turn_on" : "turn_off", id).catch((error) => {
+    // Resolves true when Home Assistant took the command, false when it failed
+    // (the screensaver's Blæser button shows that to the person pressing it).
+    return callService(domain, next ? "turn_on" : "turn_off", id).then(() => true, (error) => {
       pending.delete(id);
       BeastCore.log(`Soveværelse: kontakt fejlede (${error.message}).`);
       blockSignatures.delete("comfort");
       renderComfort();
+      return false;
     });
   }
 

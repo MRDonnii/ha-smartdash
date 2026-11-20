@@ -106,8 +106,15 @@ function refreshPoster() {
   preload.src = nextUrl;
 }
 
+// The parent decides whether this player may stream (its section is open and
+// the screen is on). A pause must win over every later automatic restart:
+// a pending reconnect timer, a stall recovery, "online" or a visibility
+// change. Change by Claude AI (v0.8.105): with the screen off two hidden
+// 2688x1512 WebRTC streams kept running and used ~80 % CPU on the kiosk.
+let wanted = shouldStartImmediately();
+
 function connect() {
-  if (!resolvedSrc || connected || document.hidden) return;
+  if (!wanted || !resolvedSrc || connected || document.hidden || hostIdle() || !frameShown()) return;
   connected = true;
   streamReady = false;
   document.body.classList.remove("ready");
@@ -131,8 +138,19 @@ function disconnect() {
   postHealth("paused");
 }
 
+function pause() {
+  wanted = false;
+  if (reconnectTimer) { window.clearTimeout(reconnectTimer); reconnectTimer = null; }
+  disconnect();
+}
+
+function resume() {
+  wanted = true;
+  connect();
+}
+
 function reconnect() {
-  if (reconnectTimer || document.hidden) return;
+  if (!wanted || reconnectTimer || document.hidden) return;
   disconnect();
   const delay = Math.min(2500, 180 + reconnectAttempts * 320);
   reconnectAttempts += 1;
@@ -150,6 +168,7 @@ function recoverStalledStream() {
 
 function shouldStartImmediately() {
   try {
+    if (window.parent?.BeastPower?.getState?.() === "idle") return false;
     const section = window.frameElement?.closest(".beast-section");
     return !section || section.classList.contains("is-active");
   } catch (_) {
@@ -157,10 +176,45 @@ function shouldStartImmediately() {
   }
 }
 
+// The player also follows the host page itself (Change by Claude AI, v0.8.106). The parent's pause message never
+// reached players inside another element's shadow DOM (the 3D house's cameras on the kiosk's main screen), and a
+// player created while the screen was already off never heard of it: both streamed all night behind the dark screen.
+// Now no player streams while the host page is idle (screen off) or while its frame is not drawn at all (display:none,
+// e.g. a hidden screen), and it starts again at once when the host wakes.
+function hostIdle() {
+  try { return window.parent !== window && window.parent?.BeastPower?.getState?.() === "idle"; } catch (_) { return false; }
+}
+
+function frameShown() {
+  try { const frame = window.frameElement; return !frame || frame.getClientRects().length > 0; } catch (_) { return true; }
+}
+
+function followHost() {
+  if (hostIdle() || !frameShown()) { disconnect(); return; }
+  if (!wanted && shouldStartImmediately()) wanted = true;
+  if (!reconnectTimer) connect();
+}
+
+try {
+  const hostDocument = window.parent !== window ? window.parent.document : null;
+  if (hostDocument) {
+    hostDocument.addEventListener("beast:powerstatechange", followHost);
+    // Shown or hidden (display:none <-> drawn) changes the frame's size: react at once instead of at the next check.
+    const frame = window.frameElement;
+    const Observer = window.parent.ResizeObserver;
+    const sizeWatch = frame && Observer ? new Observer(() => followHost()) : null;
+    sizeWatch?.observe(frame);
+    window.addEventListener("pagehide", () => {
+      hostDocument.removeEventListener("beast:powerstatechange", followHost);
+      sizeWatch?.disconnect();
+    });
+  }
+} catch (_) { /* another origin: the parent's messages still work */ }
+
 window.addEventListener("message", (event) => {
   if (event.origin !== window.location.origin) return;
-  if (event.data?.type === "camera-player-pause") disconnect();
-  if (event.data?.type === "camera-player-resume") connect();
+  if (event.data?.type === "camera-player-pause") pause();
+  if (event.data?.type === "camera-player-resume") resume();
   if (event.data?.type === "camera-player-reconnect") reconnect();
   if (allowAudio && event.data?.type === "camera-player-audio") {
     audioMuted = event.data.muted !== false;
@@ -195,6 +249,9 @@ async function initPlayer() {
   if (!GO2RTC_BASE_URL || !resolvedSrc) { postHealth("unavailable"); return; }
   refreshPoster();
   heartbeatTimer = window.setInterval(() => {
+    // Screen off or frame hidden: stop; shown again (and wanted): start (see followHost()).
+    if (hostIdle() || !frameShown()) { if (connected) disconnect(); return; }
+    if (!connected && wanted && !reconnectTimer) { connect(); return; }
     if (!connected || !streamReady) return;
     const current = Number(stream.video?.currentTime);
     if (Number.isFinite(current) && current > lastVideoTime + 0.02) {

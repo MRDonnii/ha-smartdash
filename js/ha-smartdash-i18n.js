@@ -382,7 +382,7 @@
   // Bedroom page and its menu (Claude AI, 2026-10-30). {name} placeholders
   // are filled in after the lookup, so one key covers every value.
   Object.assign(en, {
-    "Soveværelse": "Bedroom", "Soveværelset": "Bedroom", "Vis menu": "Show menu", "Menu": "Menu", "Alt lys fra": "All lights off", "Blæser": "Fan", "Kører": "Running",
+    "Soveværelse": "Bedroom", "Soveværelset": "Bedroom", "Vis menu": "Show menu", "Menu": "Menu", "Alt lys fra": "All lights off", "Blæser": "Fan", "Mislykkedes": "Failed", "Ingen forbindelse": "No connection", "Kører": "Running",
     "Ingen data": "No data", "Bevægelse nu": "Motion now", "Ingen bevægelse": "No motion", "{name} tændt": "{name} on", "{name} slukket": "{name} off",
     "Stemninger": "Moods", "Hastighed {pct} %": "Speed {pct} %", "Sikring": "Security", "tryk for at låse": "tap to lock", "alarm {state}": "alarm {state}",
     "Fejl": "Error", "Søvnterapi": "Sleep therapy", "Ingen data i nat": "No data last night", "{n} nætter": "{n} nights", "Brug": "Usage", "Læk": "Leak", "Score": "Score",

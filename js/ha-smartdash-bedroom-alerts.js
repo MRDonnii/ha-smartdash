@@ -28,6 +28,7 @@ window.BeastBedroomAlerts = (() => {
   const SHORTCUT_GUARD_MS = 400;
 
   let wiredSignature = "";
+  let socketStatus = "";
   let unsubscribers = [];
   let lastZoneEntryAt = 0;
   const sensorStates = new Map();
@@ -488,7 +489,7 @@ window.BeastBedroomAlerts = (() => {
       { id: "bedroom", icon: "bed", label: bedroom.util?.roomTitle?.() || t("Soveværelse") },
       (bedroom.allCameraIds?.() || []).length ? { id: "cameras", icon: "camera", label: t("Kameraer") } : null,
       (bedroom.lightIds?.() || []).length ? { id: "lights", icon: "bulb", label: t("Lys") } : null,
-      (bedroom.popupApi?.fanIds?.() || []).length ? { id: "fan", icon: "fan", label: t("Blæser") } : null,
+      (bedroom.popupApi?.fanIds?.() || []).length ? { id: "fan", icon: "fan", label: t("Blæser"), toggle: true } : null,
       bedroom.sleep?.configured?.() ? { id: "sleep", icon: "moon", label: t("Søvn") } : null
     ].filter(Boolean);
   }
@@ -501,22 +502,89 @@ window.BeastBedroomAlerts = (() => {
     element.className = "beast-bedroom-shortcuts";
     element.setAttribute("role", "group");
     element.setAttribute("aria-label", t("Genveje"));
-    element.innerHTML = items.map((item) => `<button type="button" class="bds-btn" data-bds="${item.id}"><span class="bds-ic">${icon(item.icon, 22)}</span><span class="bds-lbl">${esc(item.label)}</span></button>`).join("");
+    element.innerHTML = items.map((item) => {
+      const on = item.toggle && item.id === "fan" && fanShortcutState().on;
+      const pressed = item.toggle ? ` aria-pressed="${on ? "true" : "false"}"` : "";
+      return `<button type="button" class="bds-btn${on ? " is-on" : ""}${item.toggle ? " is-toggle" : ""}" data-bds="${item.id}"${pressed}><span class="bds-ic">${icon(item.icon, 22)}</span><span class="bds-lbl">${esc(item.label)}</span></button>`;
+    }).join("");
     element.addEventListener("click", (event) => {
       const button = event.target.closest("[data-bds]");
       if (!button || !shortcuts || Date.now() - shortcuts.shownAt < SHORTCUT_GUARD_MS) return;
       event.stopPropagation();
+      if (button.dataset.bds === "fan") { toggleFanShortcut(button); return; }
       openShortcut(button.dataset.bds);
     });
     overlay.appendChild(element);
     overlay.classList.add("has-bd-shortcuts");
-    shortcuts = { element, shownAt: Date.now() };
+    shortcuts = { element, shownAt: Date.now(), unsubscribers: [], timers: [] };
+    const fanButton = element.querySelector('[data-bds="fan"]');
+    if (fanButton) {
+      const refresh = () => refreshFanShortcut(fanButton);
+      shortcuts.unsubscribers = fanShortcutState().ids.map((id) => BeastHaSocket.subscribeEntity(id, refresh));
+    }
     return true;
+  }
+
+  // The Blæser button is a switch, not a pop-up: one tap turns the fan(s) on or
+  // off, the button lights up while they run, and a failed command says so on the
+  // button itself (a night-time tap that silently did nothing was the old problem).
+  function fanShortcutOn(id) {
+    const st = state(id);
+    const pend = window.BeastBedroom?.popupApi?.pendingFor?.(id);
+    return Boolean(pend && "on" in pend ? pend.on : st?.state === "on");
+  }
+
+  function fanShortcutState() {
+    const ids = window.BeastBedroom?.popupApi?.fanIds?.() || [];
+    const usable = ids.filter((id) => {
+      const st = state(id);
+      return st && !["unavailable", "unknown"].includes(st.state);
+    });
+    return { ids, usable, on: usable.some(fanShortcutOn) };
+  }
+
+  function refreshFanShortcut(button) {
+    if (!button?.isConnected) return;
+    const { on } = fanShortcutState();
+    button.classList.toggle("is-on", on);
+    button.setAttribute("aria-pressed", on ? "true" : "false");
+  }
+
+  function flashShortcut(button, text) {
+    const label = button?.querySelector(".bds-lbl");
+    if (!label) return;
+    if (!button.dataset.label) button.dataset.label = label.textContent;
+    label.textContent = text;
+    button.classList.add("is-flash");
+    window.clearTimeout(Number(button.dataset.flashTimer) || 0);
+    button.dataset.flashTimer = String(window.setTimeout(() => {
+      label.textContent = button.dataset.label || label.textContent;
+      button.classList.remove("is-flash");
+    }, 2200));
+  }
+
+  function toggleFanShortcut(button) {
+    const P = window.BeastBedroom?.popupApi;
+    const { usable, on } = fanShortcutState();
+    if (!P || !usable.length) { flashShortcut(button, t("Utilgængelig")); return; }
+    const next = !on;
+    const sends = usable.filter((id) => fanShortcutOn(id) !== next).map((id) => P.toggleEntity(id));
+    refreshFanShortcut(button);
+    // The optimistic state lasts a few seconds; look again once it has expired.
+    if (shortcuts) shortcuts.timers.push(window.setTimeout(() => refreshFanShortcut(button), 5300));
+    Promise.all(sends).then((results) => {
+      if (!results.includes(false)) return;
+      refreshFanShortcut(button);
+      flashShortcut(button, socketStatus && socketStatus !== "connected" ? t("Ingen forbindelse") : t("Mislykkedes"));
+    });
   }
 
   function hideShortcuts() {
     if (!shortcuts) return;
-    const { element } = shortcuts;
+    const { element, unsubscribers: offs = [], timers = [] } = shortcuts;
+    offs.forEach((unsubscribe) => unsubscribe());
+    timers.forEach((id) => window.clearTimeout(id));
+    element.querySelectorAll("[data-flash-timer]").forEach((b) => window.clearTimeout(Number(b.dataset.flashTimer) || 0));
     shortcuts = null;
     element.parentElement?.classList.remove("has-bd-shortcuts");
     element.remove();
@@ -600,7 +668,7 @@ window.BeastBedroomAlerts = (() => {
     sensors.forEach((id) => onSensor(id, state(id)));
   }
 
-  BeastHaSocket.onStatusChange((status) => { if (status === "connected") sync(); });
+  BeastHaSocket.onStatusChange((status) => { socketStatus = status; if (status === "connected") sync(); });
   document.addEventListener("beast:config-changed", sync);
   document.addEventListener("beast:local-settings-changed", sync);
   document.addEventListener("pointerdown", onSaverPointerDown, true);
