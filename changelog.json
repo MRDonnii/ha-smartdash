@@ -1,5 +1,16 @@
 [
   {
+    "version": "20261122-3",
+    "tag": "v0.8.108",
+    "date": "2026-11-22",
+    "changes": [
+      {
+        "da": "Vedligeholdelse: test af opdatering efter flytning af repo. Ingen funktionsændringer.",
+        "en": "Maintenance: update test after the repository move. No functional changes."
+      }
+    ]
+  },
+  {
     "version": "20261122-2",
     "tag": "v0.8.107",
     "date": "2026-11-22",

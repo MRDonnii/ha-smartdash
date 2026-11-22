@@ -1,3 +1,7 @@
+## 0.8.108
+
+- Vedligeholdelse: test af opdatering efter flytning af repo. Ingen funktionsændringer.
+
 ## 0.8.107
 
 - Oprydning: personlige eksempler er fjernet fra koden, og de indbyggede robotskabeloner har fået neutrale navne. Gemte robotkort og indstillinger virker som før. Ingen funktionsændringer.
