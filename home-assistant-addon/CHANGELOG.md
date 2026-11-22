@@ -1,0 +1,626 @@
+## 0.8.97
+
+- Oprydning: personlige eksempler er fjernet fra koden, og de indbyggede robotskabeloner har fået neutrale navne. Gemte robotkort og indstillinger virker som før. Ingen funktionsændringer.
+
+## 0.8.96
+
+- Elprisgrafen viser nu prisprognosen som én søjle pr. time. Strømligning laver kun prognoser time for time, men hvert punkt var mærket som et kvarter, så prognosen stod som tynde søjler med store huller imellem. Det gælder energisiden, oversigten og Elpris-kortet. (Claude AI)
+
+## 0.8.95
+
+- Informationen på iPad-pauseskærmen omkring uret er gjort roligere og mere eksklusiv: de mange pille-bokse er erstattet af to linjer ren tekst (status og info) med en tynd streg imellem, og kun noget der kræver opmærksomhed (alarm frakoblet, åbent vindue) får en lille sandfarvet prik. Teksten er større og tydeligere, afspillere har fået én rolig linje med Sluk/Pause, og de fire genveje nederst er ramme-løse ikoner med tekst under i stedet for store pille-knapper. Ulåste døre vises stadig som ét sandfarvet kort med en Lås-knap. (Claude AI)
+
+## 0.8.94
+
+- Hele iPad-skærmen i soveværelset (hovedsiden, menuen, søvn og CPAP, kameravisning, låsekode og pauseskærmen) har fået et mere neutralt og eksklusivt farvetema: dyb grafit i stedet for de orange og ravgule toner, kølig sølvhvid tekst og én dæmpet blå accent. Orange er kun beholdt som sandfarvet advarsel (fx ulåste døre), og rød til alarmer. Tekst og klokken på pauseskærmen er løftet lidt i kontrast, så alt er lettere at læse. (Claude AI)
+
+## 0.8.93
+
+- Rumknappernes placering på robotkortet er flyttet ud af den delte kode og ind i installationens lokale profil (data/local-profile.css), og eksemplerne i koden bruger nu opdigtede navne. Intet ændrer sig på skærmen for de eksisterende installationer. (Claude AI)
+
+## 0.8.92
+
+- Rettelse til v0.8.91: nattehimlen på iPad-pauseskærmen kom ikke frem, fordi browseren blev ved med at bruge de gamle filer. Alle ændrede filer har nu nye versionsnumre, så iPad'en henter den rigtige pauseskærm (stjerner, skyer, ingen glød bag uret) og de øvrige rettelser fra de seneste versioner.
+
+## 0.8.91
+
+- Pauseskærmen på iPad og i soveværelset viser nu en rigtig nattehimmel: mange flere stjerner i forskellige størrelser og farver (de klareste med fine kryds-stråler, uden glød), og skyer, der driver forbi som måneoplyste banker, der også dækker stjernerne bag sig. Klar nat får kun få høje skyer, delvist skyet får nogle, og overskyet får flere og færre stjerner. Vejret er ikke længere dæmpet bag et mat lag, og der er hverken glød eller et udtyndet hul bag uret – baggrunden er ren sort med en dybblå himmel foroven.
+
+## 0.8.90
+
+- Grafen over elpriser er bygget om, så den ser ud og opfører sig som i Home Assistant-kortet for elpriser: samme søjler eller linje med glød, og de samme animationer (søjlerne vokser ind, væske og bobler i de billigste timer, pulser og gnister når det er meget dyrt, rolig lysbevægelse på linjen), BILLIGST og MEGET/EKSTREMT DYRT-mærker, nu-linje og tooltip. Farverne følger nu fem prisniveauer (billig, normal pris, dyrt, meget dyrt, ekstremt dyrt), og grænserne for niveauerne kan sættes i Administration → Energi (standard 1,5 · 3 · 3,75 · 5 kr/kWh). Det gælder alle tre grafer: Energisiden (søjler og linje, i dag, i morgen og prognose), forsidens energikort og skabelonkortet Elpris. Prognosedage vises dæmpet, og animationerne er slået fra ved reduceret bevægelse. (Claude AI)
+
+- Soveværelsessiden på en iPad: den tynde streg med en lille prik nederst i hver lysrække er fjernet. Den var dimmeren, men den stod uforklaret og krydsede teksten. Lysstyrken vises nu kun af det varme felt bag rækken og procenttallet til højre, og man dimmer stadig ved at trække sidelæns hvor som helst på rækken. (Claude AI)
+
+## 0.8.89
+
+- Opdateringssiden i administrationen forstår nu, når Smartdash kører som Home Assistant-app, Docker eller Unraid: i stedet for en "Installer ny version"-knap, der kun gav en fejl, står der nu, hvor opdateringen tages (Indstillinger → Apps → HA Smartdash → Opdater). (Claude AI)
+
+## 0.8.88
+
+- Overblikket og de øvrige sider ser nu pæne ud på en stående skærm bredere end 1100 px (fx en roteret 1440p-skærm): kortene bruger de to-kolonne tablet-størrelser i stedet for at blive strakt over hele højden som lange strimler, kameraer vises tre ved siden af hinanden, og ventilationskortet får fuld bredde og plads til tegningen. Kameraer, Energi, Sikkerhed og Varme holder landskabets proportioner i stedet for at strække rækkerne over skærmens fulde højde. Liggende skærme og telefoner er uændrede. (Claude AI)
+
+## 0.8.87
+
+- Første opsætning finder nu selv Home Assistant på netværket: loginskærmen og administrationen viser de installationer, der blev fundet (mDNS og en scanning af port 8123), og du vælger din i stedet for at taste en IP-adresse. Docker, Unraid og tilføjelsen kan startes uden HA_URL, og serveren husker valget; uden for Docker viser installationsscriptet en nummereret liste. Manuel indtastning findes stadig, og loginskærmen er oversat til engelsk. (Claude AI)
+- I graferne med elpriser kan du nu vælge mellem 1 time og 15 min med en knap i grafen: Energisiden, forsidens energikort og skabelonkortet Elpris viser enten 24 timesøjler eller 96 kvartersøjler, og de bedste tre timer følger valget. Valget gemmes pr. enhed og går forud for HA-hjælperen for prisopløsning; knappen vises kun, når kilden har kvarterspriser. Grafens titel viser nu også rigtigt "kvarter for kvarter". (Claude AI)
+- Dantherm-kortet er opdateret til den nyeste version (v0.5.241) fra Smart Home Cards: dele uden entiteter (klima, eftervarme og målinger) udelades, og layoutet lukker hullet, og en direkte tilsluttet MK2 viser alle sine driftstilstande. Smartdash sender kun de entiteter videre, du selv har sat op, så et almindeligt Dantherm-anlæg ikke tegnes med HAC1-eftervarme. (Claude AI)
+
+## 0.8.86
+
+- Automatisk pauseskærm kan nu slås til og fra pr. enhed, og ventetiden kan sættes fra 10 sekunder til 60 minutter, både i soveværelsesmenuen under Skærm og i Administration → Denne enhed. (Claude AI)
+
+## 0.8.85
+
+- Soveværelsesenhedens pauseskærm afløser nattilstanden og viser forskelligt efter tidspunktet: om natten døre, alarm og temperatur med en Lås-knap ved ulåste døre, om morgenen nattens søvnscore, næste aftale og vejret, om dagen vejr og næste aftale og om aftenen døre og hvad der spiller. Knapperne virker direkte, og et tryk et andet sted åbner hele siden. Den gamle nat-side er fjernet. (Claude AI)
+
+## 0.8.84
+
+- Om natten åbner et tryk på soveværelsessidens ur nu hele siden med alt i 10 minutter, og en lille tekst viser, at man kan trykke. (Claude AI)
+
+## 0.8.83
+
+- Soveværelsesenhedens pauseskærm viser nu en rolig vejranimation efter det aktuelle vejr (stjerner, sol, skyer, regn, sne, tåge), et tryk åbner soveværelsessiden direkte, og genvejene står altid diskret nederst. (Claude AI)
+- Åbne skærme genindlæser nu automatisk den nyeste version, når serveren er opdateret, men kun når pauseskærmen er på, eller ingen har rørt skærmen i to minutter. (Claude AI)
+
+## 0.8.82
+
+- Soveværelsessiden skifter nu mellem Morgen, Dag, Aften og Nat og viser kun det, der er brug for: nattens søvndata om morgenen, kameraer og kalender om dagen, medier, Sikring og Godnat om aftenen og et roligt ur med dørstatus om natten. Ulåste døre, åbne vinduer og tændte afspillere bliver fremhævet, når det er relevant. Godnat skifter straks til Nat. (Claude AI)
+- Tidstilstandene kan justeres i soveværelsesmenuen under Tilstande og i Administration: tider for hverdag og weekend, hvilke kort der vises i hver tilstand og Vis alt i 10 minutter. (Claude AI)
+- På soveværelsesenheden viser et tryk på pauseskærmen genveje til Soveværelse, Kameraer, Lys og Søvn, og kameravisningen viser nu alle husets kameraer med tryk for stort livebillede. (Claude AI)
+
+## 0.8.81
+
+- Hver enhed har nu en enhedstype under Administration → Denne enhed: Kiosk (standard) eller Soveværelse. En soveværelsesenhed viser kun soveværelsessiden uden menulinje, og en kiosk kan ikke vise den. Skift kræver pinkoden. (Claude AI)
+- Godnat er nu en indbygget rutine: den låser de valgte døre (som standard alle soveværelsessidens låse), slukker kun lys, hvis det er valgt, og kan til sidst aktivere en scene. Den rører aldrig alarmen, og undertitlen viser, hvad der sker. (Claude AI)
+- Komfort på soveværelsessiden kan også vise til/fra-hjælpere (input_boolean). (Claude AI)
+
+## 0.8.80
+
+- Soveværelsessiden har fået et nyt, varmt ravfarvet design med kameraerne i fokus, og menusiden, PIN-tastaturet og søvnkortet følger med. På soveværelses-iPad'en er pauseskærmens ur større, og når et kamera popper op ved aktivitet i alarmzonerne, glider uret op i hjørnet, så kameraet kan fylde det meste af skærmen. (Claude AI)
+
+## 0.8.79
+
+- Ny valgfri soveværelsesside til en sengekants-iPad (Administration → Denne enhed → Soveværelse på denne enhed): to livekameraer, kalender, indeklima, lys med dæmper, scener, komfort, medier, låse og alarm (lås op og frakobling kræver altid pinkode), en Godnat-knap med nedtælling og et søvnkort til ResMed myAir/CPAP med score, brugstid, AHI, lækage og 14 nætters udvikling. Menuen skjules på siden, og en egen fuldskærmsmenu giver adgang til de andre sider. Slået fra som standard og kun for den enhed, den slås til på. (Claude AI)
+- Soveværelsessiden kan vise et livekamera oven på pauseskærmen, når der er aktivitet i alarmzonerne (zonelog fra UniFi Protect Alarm Manager eller personsensorer); vælges under Administration → Soveværelse. (Claude AI)
+- Administration er gjort brugbar på små iPads: menu-knap og vej tilbage til dashboardet i portræt, sidemenuen holder den aktive side synlig, felter og vælgere flyder ikke længere ud over kortene, større berøringsflader og ingen zoom i inputfelter. (Claude AI)
+
+## 0.8.78
+
+- Ny valgfri iPad-tilstand (Administration → Denne enhed): ingen sløringseffekter og ingen pinch-zoom, skærmen holdes tændt hvor browseren tillader det, og pauseskærmen med dæmpet ur starter altid efter inaktivitet, ikke kun om natten. Kameraerne er stadig live. Slået fra som standard og kun for den enhed, den slås til på. (Claude AI)
+
+## 0.8.77
+
+- Energisiden viser elpriser i kvarterer eller hele timer: med "Prisopløsning" (Administration → Energi, fx EV Ledgers vælger) på kvarter vises en søjle pr. kvarter; ellers bliver kvarterpriser til timer med timens gennemsnit. "Nu", billigst/dyrest og "Bedste 3 timer" følger med. (Claude AI)
+
+## 0.8.76
+
+- Bilsidens dæktrykpanel viser bilens navn (fx Model Y) i stedet for "Elbil", også når enhedslisten hentes efter siden. (Claude AI)
+
+## 0.8.75
+
+- Bilsidens dæktryk vises i bar (omregnet fra sensorens egen enhed) ligesom på Home Assistants Tesla-side, og bilens navn bruger enhedens eget navn, når det er ændret. (Claude AI)
+
+## 0.8.74
+
+- Varmesiden bruger den nyeste udgave af fjernvarme-husets kort (0.3.3, samme som i Home Assistant), så Smartdash og Home Assistant ser ens ud. (Claude AI)
+
+## 0.8.73
+
+- Bilsiden viser låsens tilstand (Låst / Ulåst) i stedet for en knap: bilens egne styringer (lås, klima osv.) hører til i Home Assistants egen bilside. Ladeplanerne kan stadig vælges med et ekstra tryk. (Claude AI)
+
+## 0.8.72
+
+- Bilsiden viser standardplanen fra EV Ledger (den plan der kører, når kablet sættes i): den første knap er standardplanen (fx Fast tid) markeret med en stjerne, og en linje viser standardplanen og hvilken midlertidig plan der kører, før den går tilbage. (Claude AI)
+
+## 0.8.71
+
+- Bilsiden kan vise og styre smart opladning: vælg en ladeplan-entitet (fx EV Ledgers "Ladeplan") under Administration → Bil, så viser siden status, næste ladeperiode og pris og knapperne Billigst, Lad nu og Pause. Et skift kræver et ekstra tryk at bekræfte, så man ikke starter opladning ved en fejl. Oversigten viser bilens eget navn. (Claude AI)
+
+## 0.8.70
+
+- Vejrsiden kan vise et radarbillede fra en billed-entitet (fx en national radar med lyn) i stedet for webkortene for nedbør og lyn, vejrvarsler øverst i "Aktuelt vejr" og et nyt kort "Målinger" med faner for målt nu, nedbør og lyn, risiko, i dag og vand og hav. Alt vælges under Administration → Vejr; uden valg er siden uændret. (Claude AI)
+
+## 0.8.69
+
+- Postkassens billede vises igen i postbanneret på forsiden og i dets popup med alle tre kameraer. Billedfeltet kan nu være en URL, en kamera- eller billed-entitet eller et tekstfelt, der peger på en, også i formen "camera.x|version", som postkasse-automationen skriver; billedet hentes gennem Home Assistant med dashboardets eget login og hentes igen ved et nyt snapshot eller en ny levering. (Claude AI)
+
+## 0.8.68
+
+- HCH5-kortet er opdateret til den nyeste udgave fra Smart Home Cards (v0.4.77): blandt andet temperatur-farvet luft, vand der løber, Bål ved Pejsefunktion, Frikøling med Køl nederst, og indstillingen controls: false, der viser den kompakte tegning uden styringsrækker. (Claude AI)
+
+## 0.8.67
+
+- Dashboardet bruger langt færre kræfter: den bløde baggrundsglød står stille (den bevæger sig kun med strømprofilen Ydelse), så grafikkortet ikke skal tegne baggrunden og alle de matte kort om i hvert billede. Målt på en kiosk faldt GPU-forbruget på Rum-siden fra over 80 % til få procent. (Claude AI)
+- En kiosk med slukket skærm tegner nu slet intet og stopper alle kameraafspillere, også pauseskærmens; ændringer fra Home Assistant samles og vises, når skærmen tændes igen. (Claude AI)
+- Pauseskærmens kameraer lukkes helt ned, når pauseskærmen lukker (før kunne de streame videre usynligt), og de små kamerafelter bruger kameraets lette stream. (Claude AI)
+- Rettet: på en travl installation med mange hurtigt skiftende sensorer kunne Rum-siden og andre sider vente meget længe med at opdatere. Nu opdateres de senest efter få sekunder, og Rum-siden reagerer kun på de sensorer, den viser. (Claude AI)
+- Hurtigere håndtering af tilstande fra Home Assistant: listen over alle tilstande kopieres ikke længere ved hver opdatering, og kameraernes smart-detektion findes én gang i stedet for at gennemsøge alle tilstande for hvert kamera. (Claude AI)
+
+## 0.8.66
+
+- Pauseskærmen bruger omtrent det halve: forsidens live-kameraer stopper og dens animationer og den bevægelige baggrund står stille bag den, så pauseskærmens slør ikke skal tegnes om i hvert billede. Pauseskærmens eget ur, vejr-animation og kameraer kører som før. (Claude AI)
+- En kiosk med slukket skærm (strømspare) stopper nu også vejr-overlayet, og strømsparetilstanden overlever en genindlæsning af siden, så en baggrundsopdatering ikke starter kameraer og animationer igen bag den mørke skærm. (Claude AI)
+- Nyt: en visning lagt over dashboardet kan sende hændelsen beast:dashboard-cover; så stopper dashboardets live-kameraer og vejr-overlayet, mens den dækker. (Claude AI)
+
+## 0.8.65
+
+- Vejr-overlayet bruger langt færre kræfter med samme udseende: hver sky sløres én gang i stedet for i hvert billede, farvetonen tegnes én gang, rolige vejrtyper tegnes med 30 billeder i sekundet, og et klart vejr uden bevægelse tegnes kun, når noget ændrer sig. Under Admin → Tema og design kan man vælge, hvilke sider overlayet vises på (som standard forsiden og pauseskærmen); andre steder kører det slet ikke. Fuldskærmsvisninger kan sætte det på pause med hændelsen beast:weatherfx-suppress. (Claude AI)
+
+## 0.8.64
+
+- HCH5-tegningen farver luften efter temperatur: den koldeste luft er blå og den varmeste rød, og farverne glider gennem veksleren og varmefladen, så den varme side af veksleren altid er rødere end den kolde. I vandvarmefladen strømmer vandet fra rødt fremløb til blå retur, mens eftervarmen er aktiv. Veksleren vises massiv; tryk på den for at se luften indeni i et minut. Tryk på genvindingsværdien viser dens historik. (Claude AI)
+
+## 0.8.63
+
+- HCH5-kortets trinknapper viser nu det trin, anlægget faktisk kører på. I Auto og Smart Auto markerer en stiplet ramme normaltrinnet, som et klik ændrer. (Claude AI)
+
+## 0.8.62
+
+- HCH5-tegningen viser et "Styring nu"-felt under T4 med det, der aktuelt styrer anlægget: kilde, trin og årsag. Vælg entiteterne Styring: kilde og Styring: årsag i ventilationskortets editor. De upålidelige målepunkter T2 før varmefladen, HRC2 T5 og den lille T2AH-pin er fjernet. (Claude AI)
+
+## 0.8.61
+
+- HCH5-tegningen kan vise en vandbåren varmeflade, hvor kobberslangen og frem- og returrørene farves efter vandtemperaturen, og vandet kun løber, mens eftervarmen er aktiv. Vælges under Varmeflade i ventilationskortets editor. HAC1-styringen sidder nu for sig selv på RS485-bussen. (Claude AI)
+
+## 0.8.60
+
+- HCH5-tegningens ekstra bypass-infoboks ved Raspberry Pi er fjernet; hovedstatus og betjening er bevaret.
+
+## 0.8.59
+
+- HCH5 animationernes hastighed følger ventilatortrin 1–6 og forbliver glidende ved nye temperaturer og RPM; dyre bevægelige slørings- og blend-effekter er forenklet. Gridmålene er uændrede.
+
+# Changelog
+
+## 0.8.58
+
+- The animated HCH5 unit is narrower and taller inside its original overview grid slot.
+
+## 0.8.57
+
+- The HCH5 overview card has clearer controls and fireplace mode within its existing grid size.
+
+## 0.8.56
+
+- The animated HCH5 unit now expands to use the front-page card's available space.
+
+## 0.8.55
+
+- The Smartdash front page now shows the animated HCH5 unit with compact HA controls and a scroll-free mobile layout.
+
+## 0.8.54
+
+- The Cameras tab Edit button now opens one complete settings popup directly,
+  without entering the shared bottom-bar layout editor.
+
+## 0.8.53
+
+- Added a safe support diagnostics export with health checks, runtime errors,
+  browser details, logs and automatically redacted configuration.
+
+## 0.8.52
+
+- Added per-screen edit-mode controls for live or snapshot camera-picker
+  previews and the snapshot refresh interval.
+
+## 0.8.51
+
+- Ported the electricity price card's colour gradient and high-price pulse
+  animation to the overview energy card.
+- Kiosk displays now recover the desktop overview automatically after a
+  screen power-cycle instead of remaining in the mobile layout.
+
+## 0.8.50
+
+- Reissued the camera-switch optimization under a fresh release identity so
+  standalone installations cannot receive a stale GitHub source archive.
+
+## 0.8.49
+
+- Preloaded authenticated camera posters for instant motion-driven switches
+  without keeping hidden live streams open.
+- Reconciled desktop overview camera tiles individually, so changing one view
+  no longer restarts the unchanged WebRTC players.
+
+## 0.8.48
+
+- Made the notification popup nearly opaque with high-contrast text and a
+  subtle backdrop blur in both light and dark themes.
+
+## 0.8.47
+
+- Completed notification history with category, time, navigation, snooze,
+  acknowledge and dismiss actions.
+
+## 0.8.46
+
+- Preserved control focus while Health Center retests update in place.
+
+## 0.8.45
+
+- Fixed power-profile and multi-alarm initialization against the real global
+  Smartdash configuration objects.
+
+## 0.8.44
+
+- Added calm offline/last-known-data status, per-device power profiles,
+  multi-alarm any-armed kiosk locking and a local notification center.
+
+## 0.8.43
+
+- Added a Health Center in Administration with on-demand checks for Home
+  Assistant, MQTT, go2rtc, cameras and Kiosk Warden, plus recent local events.
+
+## 0.8.42
+
+- Kept overview WebRTC players isolated from the eight-second snapshot refresh
+  and the outer iframe-reload watchdog. Each player now remains responsible for
+  showing its last good poster frame and reconnecting without visible flashing.
+
+## 0.8.41
+
+- Made detection-driven camera views the default overview camera experience.
+  Automatic mode discovers smart, audio and motion events on each camera's
+  Home Assistant device, focuses the newest event and returns to the starred
+  fallback after the hold time. One to three views, fixed choices and the
+  existing compact setup menu remain available without changing Cameras.
+
+## 0.8.40
+
+- Simplified each overview camera row to a fixed-camera choice, compact Auto
+  toggle and a small star for favourite/fallback, matching HA Home Camera Card.
+
+## 0.8.39
+
+- Each overview camera tile now has its own automatic-rotation camera list and
+  fallback/favourite camera, while every camera remains available as a fixed choice.
+
+## 0.8.38
+
+- Every overview camera tile can now select any camera available in Smartdash,
+  rather than being limited to a predefined subset for that group.
+- Removed the per-group live allowlist from the overview editor while retaining
+  Automatic mode, fixed choices, group visibility and stable live streams.
+
+## 0.8.37
+
+- Saving an unchanged overview camera configuration now preserves the existing
+  live player elements instead of restarting all streams.
+
+## 0.8.36
+
+- Added a lightweight Kiosk Warden power-state bridge. In idle mode Smartdash
+  pauses CSS motion and closes active camera WebRTC sessions; active mode
+  reconnects only the camera components that are still visible.
+- Power-state changes update existing elements without rebuilding the dashboard,
+  preserving navigation, dialogs and editor state across screen sleep/wake.
+
+## 0.8.35
+
+- Each Home Camera Card-style overview group can now be shown or hidden from
+  Edit -> Choose cameras, allowing each display to show one, two, or three
+  camera tiles while retaining its automatic or fixed selection.
+- Cameras can be included or excluded per group; automatic selection only
+  uses allowed cameras and safely falls back when HA selects an excluded one.
+
+## 0.8.34
+
+- The overview camera editor can now mirror HA Home Camera Card groups: each
+  tile either follows its Home Assistant selector automatically or stays on a
+  fixed camera selected from the existing overview edit menu.
+- Camera selection controls no longer cover the video tiles, and opening the
+  editor does not rebuild or restart live streams.
+
+## 0.8.33
+
+- Overview camera tiles now use the medium-resolution Home Assistant WebRTC
+  feed behind an immediate snapshot, while the Cameras page remains on its
+  independently selected high-resolution stream.
+- Inactive overview feeds disconnect cleanly and unsupported HA WebRTC camera
+  platforms fall back to the existing go2rtc player.
+
+## 0.8.32
+
+- Administration's login screen now automatically searches the local
+  network for Home Assistant instances.
+- The Cameras page's featured view can now show a genuine live stream for
+  cameras without a go2rtc stream (e.g. some UniFi Protect or built-in
+  cameras), as a default or per camera.
+
+## 0.8.31
+
+- Reverted v0.8.30: the overview page's 3 cameras are back to live
+  video, as requested. Note this also brings back the bandwidth/decode
+  cost that was causing the reported slowdown -- if it recurs, worth
+  revisiting (e.g. fewer live cameras or a lower default quality on
+  the overview page specifically) rather than dropping live view.
+
+## 0.8.30
+
+- Found and fixed the real cause of broad kiosk slowness reported
+  alongside the camera investigation: the overview page's 3-camera
+  strip was opening a full live go2rtc video connection for *every*
+  camera shown there (not just one), all running continuously
+  whenever the overview page is on screen -- typically the page a
+  kiosk idles on most of the time. That's a real, ongoing bandwidth
+  and decode cost per camera per second connected, unlike the
+  dedicated Cameras page (which already only opens one live stream,
+  for the camera actually selected). The overview strip now shows the
+  same kind of lightweight, periodically-refreshed snapshot the
+  Cameras page's own thumbnails use; tapping a camera still opens a
+  real live view on the Cameras page.
+
+## 0.8.29
+
+- Fixed camera switching for go2rtc setups showing a picture, then
+  going black, then finally the live feed. camera-player.html already
+  shows its own snapshot instantly and crossfades smoothly to live
+  video on its own -- the featured-camera code was waiting on the
+  iframe's generic page-load event before revealing it at all, which
+  fires long before that internal snapshot has even loaded, so it
+  revealed the iframe's blank pre-snapshot state as an extra flash.
+  The iframe now swaps in immediately and manages its own loading
+  state, same as it always did.
+- The instant placeholder shown while switching cameras no longer
+  reuses a go2rtc tile's live snapshot URL as-is (a fresh network
+  request with no fallback if it fails) -- it's preloaded and verified
+  first, matching the safe pattern the periodic tile refresh already
+  used, so a failed request can no longer show up as a missing picture.
+
+## 0.8.28
+
+- Fixed the real cause of the featured camera taking a long time to
+  load even after the instant placeholder appeared: without go2rtc,
+  it was preferring Home Assistant's own continuously-proxied (often
+  transcoded) MJPEG stream over a plain snapshot whenever the camera
+  exposed an access_token, which is common -- a much heavier
+  connection to establish on the Home Assistant host than the single-
+  frame snapshot the thumbnail strip already used successfully. The
+  featured view now always uses the same fast, periodically-refreshed
+  snapshot as the thumbnails when go2rtc isn't configured.
+
+## 0.8.27
+
+- Clicking a camera now shows that camera's own last-known thumbnail
+  immediately as a placeholder, reusing the picture already sitting in
+  the camera strip -- no waiting, no black frame -- while the real
+  live stream or full-resolution picture loads in behind it, then
+  swaps in automatically once that's ready. The placeholder is shown
+  slightly dimmed so it reads as "still loading" without looking
+  broken.
+
+## 0.8.26
+
+- Fixed a real regression from v0.8.23's camera click-switch fix: a
+  single transient picture-fetch failure (Home Assistant briefly busy)
+  swapped in a blank/black picture immediately instead of keeping the
+  previous camera's picture on screen and trying again. It now retries
+  a couple of times with a short backoff before giving up.
+- Authenticated images (camera pictures, printer snapshots, banner
+  photos) across the whole app no longer go blank on one failed
+  refresh -- the last-known-good picture now stays on screen until a
+  refresh actually succeeds.
+- The camera strip's periodic thumbnail refresh now uses the same
+  entity-picture fallback as everything else, instead of a raw
+  attribute read -- cameras whose integration doesn't expose an
+  entity_picture attribute at all were never refreshed again after
+  their first load.
+
+## 0.8.25
+
+- Hardened the ventilation card's diagram-fitting: it re-samples close
+  to 500 SVG point positions whenever the card's own size changes, and
+  was previously gated by an exact fractional-pixel size match, which
+  sub-pixel layout jitter could defeat and cause to re-run needlessly.
+  It's now gated to whole pixels and coalesced to at most once per
+  animation frame, avoiding needless CPU work on a wall display left
+  running for many hours.
+- Investigated a report of the Admin button becoming briefly
+  unresponsive in kiosk mode: traced the click handler and confirmed
+  it does not block native navigation when no PIN is configured, so
+  this was not a broken Admin link. The report's own diagnosis (a
+  stalled renderer/main thread, not specific to this button, also seen
+  on earlier builds) matches what the code shows.
+
+## 0.8.24
+
+- The ventilation card's heat exchanger now shows the heat recovery
+  percentage in the middle of the rotor, matching the real Home
+  Assistant card, and hides it (shows "--") while bypass is open. The
+  value was already being read from the correct Dantherm sensor
+  (temperature efficiency) but was never actually displayed anywhere.
+
+## 0.8.23
+
+- Fixed a bug where switching the featured camera on the Cameras page
+  rebuilt the entire panel and refetched every thumbnail, turning both
+  the featured picture and all thumbnails black for several seconds --
+  worst on setups without go2rtc, using Home Assistant's own camera
+  proxy with large snapshots. Clicking a camera now only fetches that
+  one camera's picture, keeps the previous picture on screen until the
+  new one has actually loaded, and no longer touches the other
+  thumbnails at all.
+
+## 0.8.22
+
+- Text, icons and buttons on the Security page's own status, systems and
+  entry cards now scale proportionally with the card's own size instead
+  of clipping or overflowing when it is made smaller in the layout
+  editor, matching every other card type.
+
+## 0.8.21
+
+- Text, icons and buttons on the climate, security, room, media player,
+  pool, car, tyre pressure, robot, printer, weather and energy template
+  cards now scale proportionally with the card's own size instead of
+  clipping or overflowing when the card is made smaller, extending the
+  0.8.20 scaling to the rest of the card types.
+
+## 0.8.20
+
+- Text and icons on the touch-button, graph, media player, calendar,
+  and composite template cards now scale proportionally with the
+  card's own size instead of clipping or overflowing when the card is
+  made smaller.
+
+## 0.8.19
+
+- The heating coil in the ventilation card now sits nearly invisible
+  behind the duct when inactive, and becomes solid with a pulse again
+  once it switches on -- matching the real Home Assistant card.
+
+## 0.8.18
+
+- Fixed a bug where the ventilation card showed a double frame (a card
+  inside a card), because the card's own background/border from when
+  it shared space with the cameras was still there after it became
+  its own independent card. The card now fills its whole area with a
+  single frame, like every other card.
+
+## 0.8.17
+
+- The ventilation card's auto-detect now also finds the heating coil's
+  active status, air after the coil, and flow/return temperatures
+  from the associated Dantherm device.
+
+## 0.8.16
+
+- The ventilation card's auto-detect now also finds filter-change and
+  afterheat sensors on the unit itself, combines up to 5 separate
+  fault sensors (from several sub-devices) into the alarm field with
+  no Home Assistant helper required, and fills room temperature,
+  humidity and heat transfer from other Dantherm-linked devices when
+  exactly one unambiguous candidate exists.
+
+## 0.8.15
+
+- The ventilation card's editor can now auto-detect a Dantherm HCH
+  PassivLink device from its sensors and fill in the 13 fields it
+  covers with a single click, instead of typing them in one at a time.
+
+## 0.8.14
+
+- Cards on the overview and other pages can now be resized in
+  quarter-unit steps (4 levels per unit) instead of only half, both by
+  dragging the corner handle and from the card's own settings dialog,
+  which now has a number field instead of a dropdown.
+- The factor card sizes are multiplied by in the CSS is now a single
+  shared constant in one place, not a repeated literal across six
+  files -- the exact class of bug behind the v0.8.11-v0.8.13 issue
+  can't happen the same way again.
+
+## 0.8.13
+
+- Fixed a serious bug where a card on the overview or other pages
+  doubled in size every single time Save was pressed in edit mode --
+  including cards that were never touched that session. The size grew
+  exponentially with each save, making the layout impossible to
+  properly edit into shape.
+
+## 0.8.12
+
+- Fixed a serious bug from the last release where every card on the
+  overview and other pages rendered at double its intended height, with
+  large empty gaps.
+- An already-migrated ventilation card whose setup was missing a cameras
+  card now automatically gets one back, so the cameras no longer
+  disappear.
+- The migrated ventilation card now defaults to the same height as the
+  cameras card, so it lands in the same row and resembles the old
+  shared view.
+
+## 0.8.11
+
+- Cards on the overview and every other page can now be resized in
+  half-unit steps, not just whole ones, both by dragging the corner
+  handle and from the card's own settings dialog.
+
+## 0.8.10
+
+- Migrating an already-enabled ventilation card now places it right
+  after the cameras card in the layout, landing in the same area as
+  before, and automatically caps a saved camera selection of more than
+  2 down to 2 -- the same balance the old shared view had.
+
+## 0.8.9
+
+- The ventilation card is now a real, independent overview card that can
+  be added, removed and configured the same way as every other card --
+  with the same gear-icon editor and searchable entity fields. It is no
+  longer a hidden setting inside "Choose cameras".
+- An already-enabled ventilation card is migrated automatically to the
+  new card format, so existing entity choices are preserved.
+
+## 0.8.8
+
+- The overview ventilation card now shows more vivid blue and red duct
+  colors for cold and warm airflow, matching the real Home Assistant card.
+
+## 0.8.7
+
+- Removed redundant arrow markers from the overview ventilation card's ducts;
+  the animated airflow already conveys direction.
+
+## 0.8.6
+
+- The overview ventilation card now matches the real Home Assistant card
+  during bypass: straight ducts instead of crossing ones, correctly swapped
+  supply/extract readings, and the heating coil panel is hidden while bypass
+  is open.
+- The overview ventilation card no longer shows heat recovery twice; the
+  right-hand panel now has four fields instead of five, matching the real
+  card.
+- Reduced excess space above the house roof and the "INDE" title on the
+  overview ventilation card.
+
+## 0.8.5
+
+- Fixed a navigation bug where tapping the ventilation card on the overview
+  incorrectly opened the cameras page instead of the heating page.
+
+## 0.8.4
+
+- Fixed a rendering glitch where the district-heating card's rounded corners
+  could show small crescent artifacts outside real Home Assistant, including
+  on the Smartdash overview.
+- The district-heating card's house outline now shows a constant, subtle warm
+  tint instead of being fully transparent.
+- The ventilation card gained a new left-side metrics panel (bypass, air
+  quality, heat transfer, alarm) mirroring the existing right panel, the same
+  warm tint, and a full GUI configuration editor.
+
+## 0.8.3
+
+- Added an optional, configurable heat-recovery ventilation card beside the
+  overview cameras, including temperature-aware airflow, bypass and
+  afterheating status.
+- Added the responsive Wavin Calefa district-heating house card to the heating
+  page with live temperatures, flow and CH/DHW valve positions.
+- Improved primary valve selection and added a clear summer-cutoff state while
+  retaining domestic hot-water status.
+
+## 0.8.2
+
+- First Stable release of the Docker, Unraid, and Home Assistant App
+  distributions -- Docker Compose and the Unraid template now track the
+  `latest` image tag instead of `beta`.
+- Alert popup drag/resize handles are now large enough to use reliably on a
+  touchscreen.
+
+## 0.8.1
+
+- Home Assistant's Open Web UI button now opens the stable direct host and
+  configured port instead of a nested Ingress path, preventing invalid OAuth
+  redirect URI errors.
+
+## 0.8.0
+
+- Added the first Beta package for Home Assistant OS/Supervised with Ingress,
+  optional direct kiosk port, persistent App data and platform-owned updates.
+- Added matching Docker Compose and Unraid distribution from the same image.
+
+## 0.7.123
+
+- Initial Home Assistant App package with Ingress, optional direct port,
+  persistent data, health monitoring and the shared HA Smartdash image.

@@ -1,0 +1,26 @@
+name: HA Smartdash
+version: "0.8.97"
+slug: ha_smartdash
+description: Touch-first, editable dashboard for Home Assistant wall displays and tablets
+url: https://github.com/MRDonnii/ha-smartdash
+arch:
+  - amd64
+  - aarch64
+stage: experimental
+startup: application
+boot: auto
+init: false
+image: ghcr.io/mrdonnii/ha-smartdash
+webui: http://[HOST]:[PORT:8099]/
+watchdog: http://[HOST]:[PORT:8099]/healthz
+backup: hot
+ports:
+  8099/tcp: 8099
+ports_description:
+  8099/tcp: Smartdash web interface
+options:
+  home_assistant_url: http://homeassistant:8123
+  timezone: Europe/Copenhagen
+schema:
+  home_assistant_url: url
+  timezone: str

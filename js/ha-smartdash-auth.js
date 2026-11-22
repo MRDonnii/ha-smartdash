@@ -1,0 +1,539 @@
+const BeastAuth = (() => {
+  const AUTH_SCRIPT_URL = document.currentScript?.src || window.location.href;
+  const APP_ROOT_URL = new URL("../", AUTH_SCRIPT_URL);
+  // Keep the Home Assistant proxy beneath the current application base. This
+  // is /ha on a normal Docker host and /api/hassio_ingress/<token>/ha when the
+  // same files are opened through Home Assistant Ingress.
+  const HA_PROXY_PATH = new URL("ha", APP_ROOT_URL).pathname.replace(/\/$/, "");
+  const DISCOVERY_URL = new URL("api/discover-ha.php", APP_ROOT_URL).pathname;
+  const OAUTH_STORAGE_KEY = "beast_panel_ha_oauth_v1";
+  const AUTH_PENDING_KEY = "beast_panel_ha_auth_pending_v1";
+  const AUTH_DIAGNOSTICS_KEY = "beast_panel_ha_auth_diagnostics_v1";
+  // Kept separate from BeastConfig on purpose: login has to work before any
+  // HA connection exists to load registries/entities from, so this can't
+  // depend on anything that itself needs a live HA session.
+  const HA_BASE_URL_KEY = "beast_panel_ha_base_url_v1";
+  // This install already had a working HA connection before the Opsætning
+  // (Setup) flow existed, so an unset override falls back to that fixed
+  // address instead of showing the first-run "connect" screen.
+  const DEFAULT_HA_BASE_URL = "";
+
+  let oauthConfig = loadOAuthConfig();
+
+  function getHaBaseUrl() {
+    return (localStorage.getItem(HA_BASE_URL_KEY) || "").trim() || DEFAULT_HA_BASE_URL;
+  }
+
+  function setHaBaseUrl(url) {
+    const normalized = String(url || "").trim().replace(/\/+$/, "");
+    localStorage.setItem(HA_BASE_URL_KEY, normalized);
+    return normalized;
+  }
+
+  function loadOAuthConfig() {
+    try {
+      const raw = localStorage.getItem(OAUTH_STORAGE_KEY);
+      if (!raw) return { accessToken: "", refreshToken: "", expiresAt: 0, clientId: "" };
+      return JSON.parse(raw);
+    } catch (error) {
+      return { accessToken: "", refreshToken: "", expiresAt: 0, clientId: "" };
+    }
+  }
+
+  function saveOAuthConfig(config) {
+    localStorage.setItem(OAUTH_STORAGE_KEY, JSON.stringify(config));
+  }
+
+  function loadDiagnostics() {
+    try {
+      const entries = JSON.parse(sessionStorage.getItem(AUTH_DIAGNOSTICS_KEY) || "[]");
+      return Array.isArray(entries) ? entries.slice(-20) : [];
+    } catch (error) {
+      return [];
+    }
+  }
+
+  function recordDiagnostic(entry) {
+    const safe = {
+      time: new Date().toISOString(),
+      phase: String(entry.phase || "login"),
+      code: String(entry.code || "unknown"),
+      status: Number(entry.status || 0),
+      proxyPath: `${window.location.origin}${HA_PROXY_PATH}`,
+      haAddress: getHaBaseUrl()
+    };
+    const entries = [...loadDiagnostics(), safe].slice(-20);
+    sessionStorage.setItem(AUTH_DIAGNOSTICS_KEY, JSON.stringify(entries));
+    window.dispatchEvent(new CustomEvent("beast:authdiagnostic", { detail: safe }));
+    return safe;
+  }
+
+  function clearDiagnostics() {
+    sessionStorage.removeItem(AUTH_DIAGNOSTICS_KEY);
+  }
+
+  function clearOAuthConfig() {
+    localStorage.removeItem(OAUTH_STORAGE_KEY);
+    oauthConfig = { accessToken: "", refreshToken: "", expiresAt: 0, clientId: "" };
+  }
+
+  function hasSession() {
+    return Boolean(oauthConfig && String(oauthConfig.refreshToken || oauthConfig.accessToken || "").trim());
+  }
+
+  function proxyErrorMessage(result) {
+    if (result.code === "ha-rejected-proxy") {
+      return "Home Assistant afviste Nginx-proxyen (HTTP 400). Tilføj Nginx-serverens eller container-netværkets IP under http.trusted_proxies i Home Assistant configuration.yaml, aktivér use_x_forwarded_for, og genstart Home Assistant.";
+    }
+    if (result.code === "route-missing") {
+      return `Home Assistant-proxyen /ha/ er ikke aktiv i Nginx (HTTP ${result.status}). Kontrollér at location /ha/ findes i den aktive serverblok.`;
+    }
+    if (result.code === "upstream-unavailable") {
+      return `Nginx kan ikke nå Home Assistant gennem /ha/ (HTTP ${result.status}). Kontrollér Home Assistant-IP, port 8123 og proxy_pass.`;
+    }
+    if (result.code === "invalid-response") {
+      return "Adressen /ha/ returnerer Smartdash/HTML i stedet for Home Assistant. Nginx location /ha/ mangler eller bliver tilsidesat af location /.";
+    }
+    if (result.code === "network-error") {
+      return "Smartdash kunne ikke kontrollere Home Assistant-proxyen. Kontrollér Nginx og netværksforbindelsen til serveren.";
+    }
+    return `Home Assistant-proxyen svarede ikke korrekt${result.status ? ` (HTTP ${result.status})` : ""}.`;
+  }
+
+  async function checkProxy() {
+    let response;
+    try {
+      response = await fetch(`${HA_PROXY_PATH}/auth/providers`, {
+        method: "GET",
+        headers: { Accept: "application/json" },
+        cache: "no-store"
+      });
+    } catch (error) {
+      const result = { ok: false, code: "network-error", status: 0 };
+      recordDiagnostic({ phase: "proxy-check", ...result });
+      return result;
+    }
+
+    let failure = null;
+    if (response.status === 400) failure = { ok: false, code: "ha-rejected-proxy", status: response.status };
+    else if ([404, 405].includes(response.status)) failure = { ok: false, code: "route-missing", status: response.status };
+    else if ([502, 503, 504].includes(response.status)) failure = { ok: false, code: "upstream-unavailable", status: response.status };
+    else if (!response.ok) failure = { ok: false, code: "proxy-error", status: response.status };
+    if (failure) {
+      recordDiagnostic({ phase: "proxy-check", ...failure });
+      return failure;
+    }
+
+    const contentType = String(response.headers.get("content-type") || "").toLowerCase();
+    if (!contentType.includes("application/json")) {
+      const result = { ok: false, code: "invalid-response", status: response.status };
+      recordDiagnostic({ phase: "proxy-check", ...result });
+      return result;
+    }
+    try {
+      const payload = await response.json();
+      if (!Array.isArray(payload?.providers)) {
+        const result = { ok: false, code: "invalid-response", status: response.status };
+        recordDiagnostic({ phase: "proxy-check", ...result });
+        return result;
+      }
+      return { ok: true, code: "ok", status: response.status };
+    } catch (error) {
+      const result = { ok: false, code: "invalid-response", status: response.status };
+      recordDiagnostic({ phase: "proxy-check", ...result });
+      return result;
+    }
+  }
+
+  async function loginWithToken(token) {
+    const accessToken = String(token || "").trim();
+    if (!accessToken) throw Object.assign(new Error("HA_TOKEN_MISSING"), { userMessage: "Indsæt et Home Assistant Long-Lived Access Token." });
+    let response;
+    try {
+      response = await fetch(`${HA_PROXY_PATH}/api/`, {
+        method: "GET",
+        headers: { Accept: "application/json", Authorization: `Bearer ${accessToken}` },
+        cache: "no-store"
+      });
+    } catch (error) {
+      recordDiagnostic({ phase: "token-login", code: "network-error", status: 0 });
+      throw Object.assign(new Error("HA_TOKEN_NETWORK"), { userMessage: "Kunne ikke nå Home Assistant gennem /ha/-proxyen." });
+    }
+    if (!response.ok) {
+      const code = response.status === 401 ? "token-rejected" : response.status === 400 ? "ha-rejected-proxy" : "token-validation-failed";
+      recordDiagnostic({ phase: "token-login", code, status: response.status });
+      const message = response.status === 401
+        ? "Home Assistant afviste tokenet (HTTP 401). Opret et nyt Long-Lived Access Token og prøv igen."
+        : proxyErrorMessage({ code, status: response.status });
+      throw Object.assign(new Error(`HA_TOKEN_${response.status}`), { userMessage: message });
+    }
+    oauthConfig = { accessToken, refreshToken: "", expiresAt: 0, clientId: "", mode: "token" };
+    saveOAuthConfig(oauthConfig);
+    return true;
+  }
+
+  function buildClientId() {
+    return `${window.location.origin}${window.location.pathname}`;
+  }
+
+  function buildRedirectUri() {
+    return `${window.location.origin}${window.location.pathname}`;
+  }
+
+  function startLogin(options = {}) {
+    const baseUrl = getHaBaseUrl();
+    if (!baseUrl) throw new Error("HA_BASE_URL_MISSING");
+
+    const authState = `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+    sessionStorage.setItem(AUTH_PENDING_KEY, JSON.stringify({ state: authState }));
+
+    const redirectUri = buildRedirectUri();
+    const clientId = buildClientId();
+    const prompt = options.forceLogin ? "&prompt=login" : "";
+    const authorizeUrl = `${baseUrl}/auth/authorize?client_id=${encodeURIComponent(clientId)}&redirect_uri=${encodeURIComponent(redirectUri)}&state=${encodeURIComponent(authState)}&response_type=code${prompt}`;
+    window.location.assign(authorizeUrl);
+  }
+
+  async function prepareLogin(options = {}) {
+    const result = await checkProxy();
+    if (!result.ok) {
+      const error = new Error(`HA_PROXY_${result.code.toUpperCase().replace(/-/g, "_")}`);
+      error.userMessage = proxyErrorMessage(result);
+      error.proxyResult = result;
+      throw error;
+    }
+    startLogin(options);
+  }
+
+  function userError(code, message) {
+    const error = new Error(code);
+    error.userMessage = message;
+    return error;
+  }
+
+  // --- Finding Home Assistant on the network --------------------------------
+
+  // The last answer from api/discover-ha.php. connectToHa() reads it to know
+  // whether the server's proxy may be re-pointed at the address being used.
+  let lastDiscovery = null;
+
+  // Opened through Home Assistant Ingress, the page itself is served by the
+  // Home Assistant to connect to, so that is the one address the browser is
+  // known to reach -- the server-side scan only sees add-on-internal ones.
+  async function ownOriginCandidate() {
+    if (!HA_PROXY_PATH.includes("/hassio_ingress/")) return null;
+    try {
+      const response = await fetch(`${window.location.origin}/auth/providers`, { cache: "no-store", headers: { Accept: "application/json" } });
+      const payload = response.ok ? await response.json() : null;
+      if (!Array.isArray(payload?.providers)) return null;
+    } catch (_) {
+      return null;
+    }
+    return { url: window.location.origin, host: window.location.host, name: null, version: null, label: window.location.host, source: "ingress", current: true };
+  }
+
+  async function discoverHa(options = {}) {
+    let payload;
+    try {
+      const response = await fetch(`${DISCOVERY_URL}${options.refresh ? "?refresh=1" : ""}`, { cache: "no-store", headers: { Accept: "application/json" } });
+      if (!response.ok) return null;
+      payload = await response.json();
+    } catch (_) {
+      return null;
+    }
+    if (!Array.isArray(payload?.candidates)) return null;
+    const own = await ownOriginCandidate();
+    const candidates = own
+      ? [own]
+      : payload.candidates.filter((candidate) => candidate && typeof candidate.url === "string" && !candidate.internal);
+    lastDiscovery = { ...payload, candidates, canSwitch: own ? false : Boolean(payload.canSwitch) };
+    return lastDiscovery;
+  }
+
+  async function proxyReachesHa() {
+    try {
+      const response = await fetch(`${HA_PROXY_PATH}/auth/providers`, { cache: "no-store", headers: { Accept: "application/json" } });
+      if (!response.ok) return false;
+      return Array.isArray((await response.json())?.providers);
+    } catch (_) {
+      return false;
+    }
+  }
+
+  const SWITCH_ERRORS = {
+    switch_not_allowed: "Smartdash-serveren er sat fast til en bestemt Home Assistant (HA_URL eller tilføjelsens indstilling). Ret den dér, eller fjern HA_URL for at vælge her.",
+    not_home_assistant: "Det valgte svarede ikke som en Home Assistant. Kontrollér adressen og prøv igen.",
+    invalid_url: "Adressen kan ikke bruges til at forbinde serveren. Brug en lokal adresse som http://192.168.1.10:8123.",
+    cross_origin: "Skiftet blev afvist, fordi siden er åbnet fra en anden adresse end serveren.",
+    write_failed: "Smartdash kunne ikke gemme valget på serveren. Kontrollér at datamappen kan skrives."
+  };
+
+  // Points the server's /ha/ proxy at the chosen Home Assistant (Docker/Unraid
+  // before anything is configured) and waits for nginx to pick it up.
+  async function switchServerUpstream(url) {
+    let response;
+    try {
+      response = await fetch(DISCOVERY_URL, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "X-Smartdash-Setup": "1" },
+        body: JSON.stringify({ url })
+      });
+    } catch (_) {
+      throw userError("HA_SWITCH_NETWORK", "Smartdash kunne ikke kontakte serveren for at skifte Home Assistant.");
+    }
+    if (!response.ok) {
+      let code = "";
+      try { code = (await response.json())?.error || ""; } catch (_) { /* keep generic message */ }
+      recordDiagnostic({ phase: "switch-upstream", status: response.status, code });
+      throw userError("HA_SWITCH_REFUSED", SWITCH_ERRORS[code] || `Serveren afviste skiftet (HTTP ${response.status}).`);
+    }
+    const deadline = Date.now() + 25000;
+    while (Date.now() < deadline) {
+      if (await proxyReachesHa()) return;
+      await new Promise((resolve) => setTimeout(resolve, 1000));
+    }
+    recordDiagnostic({ phase: "switch-upstream", code: "timeout" });
+    throw userError("HA_SWITCH_TIMEOUT", "Serveren nåede ikke at skifte til den valgte Home Assistant. Vent lidt og prøv igen.");
+  }
+
+  function sameService(left, right) {
+    try {
+      return new URL(left).origin === new URL(right).origin;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  // Saves the address. If the server hasn't got a working Home Assistant yet
+  // and may be pointed at the one chosen, that happens first so the proxy and
+  // the login agree.
+  async function useHaAddress(url) {
+    const baseUrl = setHaBaseUrl(url);
+    const state = lastDiscovery;
+    if (state?.canSwitch && !state.candidates.some((candidate) => candidate.current && sameService(candidate.url, baseUrl))) {
+      let parsed = null;
+      try { parsed = new URL(baseUrl); } catch (_) { /* leave the proxy check to report it */ }
+      if (parsed && (parsed.pathname === "/" || parsed.pathname === "") && /^\d{1,3}(\.\d{1,3}){3}$/.test(parsed.hostname)) {
+        await switchServerUpstream(parsed.origin);
+      }
+    }
+    return baseUrl;
+  }
+
+  async function connectToHa(url) {
+    await useHaAddress(url);
+    await prepareLogin();
+  }
+
+  function clearAuthQueryParams() {
+    const url = new URL(window.location.href);
+    ["code", "state", "error", "error_description"].forEach((key) => url.searchParams.delete(key));
+    window.history.replaceState({}, document.title, `${url.pathname}${url.search}${url.hash}`);
+  }
+
+  async function exchangeAuthorizationCodeForToken(code) {
+    const response = await fetch(`${HA_PROXY_PATH}/auth/token`, {
+      method: "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      body: new URLSearchParams({
+        grant_type: "authorization_code",
+        code,
+        client_id: buildClientId(),
+        redirect_uri: buildRedirectUri()
+      }).toString()
+    });
+    if (!response.ok) throw new Error(`HA_AUTH_${response.status}`);
+    return response.json();
+  }
+
+  async function handleAuthCallback() {
+    const params = new URLSearchParams(window.location.search);
+    if (!params.has("code") && !params.has("error")) return null;
+
+    const pendingRaw = sessionStorage.getItem(AUTH_PENDING_KEY);
+    sessionStorage.removeItem(AUTH_PENDING_KEY);
+    clearAuthQueryParams();
+
+    if (!pendingRaw) {
+      recordDiagnostic({ phase: "oauth-callback", code: "missing-session", status: 0 });
+      return { type: "error", message: "Login-sessionen mangler. Prøv igen." };
+    }
+    const pending = JSON.parse(pendingRaw);
+    if (params.get("state") !== pending.state) {
+      recordDiagnostic({ phase: "oauth-callback", code: "state-mismatch", status: 0 });
+      return { type: "error", message: "Login blev afvist (state matcher ikke)." };
+    }
+    if (params.has("error")) {
+      recordDiagnostic({ phase: "oauth-callback", code: params.get("error") || "oauth-error", status: 0 });
+      return { type: "error", message: `Login blev afbrudt: ${params.get("error_description") || params.get("error")}` };
+    }
+
+    try {
+      const tokenData = await exchangeAuthorizationCodeForToken(params.get("code"));
+      oauthConfig = {
+        accessToken: tokenData.access_token || "",
+        refreshToken: tokenData.refresh_token || "",
+        expiresAt: Date.now() + (Number(tokenData.expires_in || 1800) * 1000),
+        clientId: buildClientId()
+      };
+      saveOAuthConfig(oauthConfig);
+      return { type: "success" };
+    } catch (error) {
+      const status = Number(String(error.message || "").match(/HA_AUTH_(\d+)/)?.[1] || 0);
+      recordDiagnostic({ phase: "oauth-token-exchange", code: status ? `http-${status}` : "network-error", status });
+      if (status === 400) return { type: "error", message: proxyErrorMessage({ code: "ha-rejected-proxy", status }) };
+      if ([404, 405].includes(status)) return { type: "error", message: proxyErrorMessage({ code: "route-missing", status }) };
+      if ([502, 503, 504].includes(status)) return { type: "error", message: proxyErrorMessage({ code: "upstream-unavailable", status }) };
+      return { type: "error", message: "Kunne ikke fuldføre login. Kontrollér Home Assistant-proxyen /ha/ og prøv igen." };
+    }
+  }
+
+  async function refreshAccessToken(forceRefresh = false) {
+    if (!hasSession()) throw new Error("HA_AUTH_MISSING");
+    if (oauthConfig.mode === "token" && oauthConfig.accessToken) return oauthConfig.accessToken;
+
+    const expiresSoon = !oauthConfig.expiresAt || Date.now() >= (Number(oauthConfig.expiresAt) - 60000);
+    if (!forceRefresh && oauthConfig.accessToken && !expiresSoon) {
+      return oauthConfig.accessToken;
+    }
+
+    const response = await fetch(`${HA_PROXY_PATH}/auth/token`, {
+      method: "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      body: new URLSearchParams({
+        grant_type: "refresh_token",
+        refresh_token: oauthConfig.refreshToken,
+        client_id: oauthConfig.clientId || buildClientId()
+      }).toString()
+    });
+
+    if (!response.ok) {
+      clearOAuthConfig();
+      throw new Error(`HA_AUTH_${response.status}`);
+    }
+
+    const payload = await response.json();
+    oauthConfig.accessToken = payload.access_token || "";
+    oauthConfig.refreshToken = payload.refresh_token || oauthConfig.refreshToken;
+    oauthConfig.expiresAt = Date.now() + (Number(payload.expires_in || 1800) * 1000);
+    oauthConfig.clientId = oauthConfig.clientId || buildClientId();
+    saveOAuthConfig(oauthConfig);
+    return oauthConfig.accessToken;
+  }
+
+  async function haFetch(path, options = {}) {
+    const requestOnce = async () => {
+      const token = await refreshAccessToken(false);
+      const headers = { Authorization: `Bearer ${token}`, ...(options.headers || {}) };
+      return fetch(`${HA_PROXY_PATH}${path}`, { ...options, headers });
+    };
+
+    let response = await requestOnce();
+    if (response.status === 401) {
+      await refreshAccessToken(true);
+      response = await requestOnce();
+    }
+    if (!response.ok) {
+      const error = new Error(`HA request failed: ${response.status}`);
+      error.status = response.status;
+      throw error;
+    }
+    if (response.status === 204) return null;
+    return response.json();
+  }
+
+  // <img src> can't carry an Authorization header, so HA-proxied images (area
+  // pictures, media artwork) need to be fetched as a blob and handed to the
+  // <img> as an object URL instead of a plain HA path.
+  async function haFetchBlob(path) {
+    const requestOnce = async () => {
+      const token = await refreshAccessToken(false);
+      return fetch(`${HA_PROXY_PATH}${path}`, { headers: { Authorization: `Bearer ${token}` } });
+    };
+    let response = await requestOnce();
+    if (response.status === 401) {
+      await refreshAccessToken(true);
+      response = await requestOnce();
+    }
+    if (!response.ok) {
+      const error = new Error(`HA request failed: ${response.status}`);
+      error.status = response.status;
+      throw error;
+    }
+    return response.blob();
+  }
+
+  const imageBlobCache = new Map();
+  const IMAGE_BLOB_CACHE_MS = 15000;
+
+  async function cachedImageObjectUrl(path) {
+    const now = Date.now();
+    const cached = imageBlobCache.get(path);
+    if (cached && cached.expiresAt > now) return cached.promise;
+    const entry = {
+      expiresAt: now + IMAGE_BLOB_CACHE_MS,
+      promise: haFetchBlob(path).then((blob) => URL.createObjectURL(blob))
+    };
+    imageBlobCache.set(path, entry);
+    if (cached) entry.promise.then((url) => cached.promise.then((oldUrl) => {
+      if (oldUrl && oldUrl !== url) URL.revokeObjectURL(oldUrl);
+    }).catch(() => {})).catch(() => {});
+    entry.promise.catch(() => { if (imageBlobCache.get(path) === entry) imageBlobCache.delete(path); });
+    if (imageBlobCache.size > 48) {
+      [...imageBlobCache.entries()]
+        .filter(([, value]) => value.expiresAt <= now)
+        .slice(0, imageBlobCache.size - 48)
+        .forEach(([key]) => imageBlobCache.delete(key));
+    }
+    return entry.promise;
+  }
+
+  function preloadAuthedImage(path) {
+    if (!path) return Promise.resolve(false);
+    return cachedImageObjectUrl(path).then(() => true).catch(() => false);
+  }
+
+  async function setAuthedImageSrc(imgEl, path) {
+    if (!path) { imgEl.removeAttribute("src"); return false; }
+    try {
+      const objectUrl = await cachedImageObjectUrl(path);
+      imgEl.dataset.objectUrl = objectUrl;
+      imgEl.src = objectUrl;
+      return true;
+    } catch (error) {
+      // Leave whatever picture is already showing alone -- callers that
+      // periodically refresh a persistent <img> (camera tiles, the printer's
+      // live view, banner cameras) would otherwise go blank on one transient
+      // fetch failure and stay that way until their next successful refresh,
+      // instead of just keeping the last-known-good frame on screen.
+      return false;
+    }
+  }
+
+  function logout() {
+    clearOAuthConfig();
+  }
+
+  return {
+    HA_PROXY_PATH,
+    getHaBaseUrl,
+    setHaBaseUrl,
+    hasSession,
+    checkProxy,
+    loginWithToken,
+    prepareLogin,
+    discoverHa,
+    useHaAddress,
+    connectToHa,
+    startLogin,
+    handleAuthCallback,
+    refreshAccessToken,
+    haFetch,
+    haFetchBlob,
+    preloadAuthedImage,
+    setAuthedImageSrc,
+    getDiagnostics: loadDiagnostics,
+    clearDiagnostics,
+    logout
+  };
+})();
