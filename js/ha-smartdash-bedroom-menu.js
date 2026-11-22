@@ -1,0 +1,711 @@
+// Full-screen menu page of the bedroom section. It stands in for the rail a
+// bedroom device never shows: the bedroom's own views, screen actions and the
+// way into Administration. Page tiles only appear if the rail lists other
+// pages, which a bedroom device never does. It is a layer over the bedroom page, which stays
+// mounted underneath so closing is instant and camera streams keep running.
+window.BeastBedroom.menu = (() => {
+  const B = window.BeastBedroom;
+  const { t, esc, icon, fmt, hm, capitalize, cfg, list, state, unavailable, numberState, displayName, locale } = B.util;
+
+  const IDLE_CLOSE_MS = 60 * 1000;
+  const DOUBLE_TAP_GUARD_MS = 250;
+  const STATE_REFRESH_MS = 10 * 1000;
+  const ENTRANCE_MS = 400;
+  const MAX_TILES = 12;
+  const PAGE_ICONS = {
+    overview: "home", cameras: "camera", rooms: "rooms", security: "shield", music: "music", energy: "bolt", heating: "thermo",
+    waste: "cal", weather: "weather", car: "car", pool: "pool", robots: "robot", printer: "printer"
+  };
+
+  let openedAt = 0;
+  let idleTimerId = null;
+  let refreshTimerId = null;
+  let settleTimerId = null;
+  let trigger = null;
+  let unsubscribeStatus = null;
+  let reloading = false;
+
+  function host() { return B.layerKind?.() === "menu" ? B.root?.querySelector('[data-bd-layer] .bd-menu') : null; }
+  function isOpen() { return Boolean(host()); }
+
+  // ---------------------------------------------------------------------------
+  // Pages: exactly what this device's rail shows, in rail order
+  // ---------------------------------------------------------------------------
+  // A bedroom device shows nothing but this page, so it has no other pages.
+  function pages() {
+    if (BeastLocalSettings.isBedroomDevice()) return [];
+    return [...document.querySelectorAll("#beastRail .beast-rail-btn[data-section]")]
+      .map((button) => ({ id: button.dataset.section, label: (button.querySelector("span")?.textContent || button.textContent || "").trim() }))
+      .filter((page) => page.id && page.id !== "bedroom" && page.id !== "settings");
+  }
+
+  function panel(name) { return BeastConfig.get(`panels.${name}`) || {}; }
+  function num(id) { return id ? numberState(id) : null; }
+  function off() { return { html: esc(t("Ingen data lige nu")), tone: "off" }; }
+  function plain(text) { return { html: esc(text), tone: "" }; }
+  function live(verb, rest) { return { html: `<b>${esc(verb)}</b>${rest ? ` · ${esc(rest)}` : ""}`, tone: "live" }; }
+
+  function lockIsOpen(id) {
+    const value = state(id)?.state;
+    return Boolean(value) && !["locked", "locking", "unknown", "unavailable"].includes(value);
+  }
+
+  // One short line per page; the colour rules come from the menu design
+  // (terracotta = attention, gold verb = something running).
+  const SUMMARIES = {
+    overview() {
+      let home = 0;
+      let persons = 0;
+      let lights = 0;
+      BeastHaSocket.getAllStates().forEach((st, id) => {
+        if (id.startsWith("person.")) { persons += 1; if (st.state === "home") home += 1; }
+        else if (id.startsWith("light.") && st.state === "on" && !Array.isArray(st.attributes?.entity_id)) lights += 1;
+      });
+      const lightText = lights === 1 ? t("1 lys tændt") : t("{n} lys tændt", { n: lights });
+      return plain(persons ? `${t("{n} hjemme", { n: home })} · ${lightText}` : lightText);
+    },
+    cameras() {
+      const cameras = window.BeastCameras?.getAllCameras?.() || [];
+      if (!cameras.length) return off();
+      const moving = cameras.filter((camera) => camera.motion && Date.now() - (camera.motionChangedAt || 0) < 2 * 60 * 1000)
+        .sort((a, b) => (b.motionChangedAt || 0) - (a.motionChangedAt || 0))[0];
+      if (moving) return live(t("Bevægelse"), moving.label);
+      return plain(t("{n} kameraer · roligt", { n: cameras.length }));
+    },
+    rooms() {
+      const areaIds = (Array.isArray(panel("rooms").areaIds) ? panel("rooms").areaIds : []).filter((id) => typeof id === "string");
+      if (!areaIds.length) return off();
+      if (typeof BeastRegistry !== "undefined" && BeastRegistry.isLoaded()) {
+        const lit = areaIds.filter((areaId) => (BeastRegistry.getAreaEntityIds(areaId) || []).some((id) => id.startsWith("light.") && state(id)?.state === "on")).length;
+        return plain(t("{n} rum · {k} med lys", { n: areaIds.length, k: lit }));
+      }
+      return plain(t("{n} rum", { n: areaIds.length }));
+    },
+    security() {
+      const config = panel("security");
+      const locks = list(config.locks);
+      const unlocked = locks.filter(lockIsOpen).length;
+      if (unlocked) return { html: esc(unlocked === 1 ? t("1 dør ulåst") : t("{n} døre ulåst", { n: unlocked })), tone: "attn" };
+      const open = list(config.openingSensors).filter((id) => state(id)?.state === "on").length;
+      if (open) return { html: esc(open === 1 ? t("1 dør åben") : t("{n} åbne døre", { n: open })), tone: "attn" };
+      const alarm = state(list([config.primaryAlarm])[0] || list(config.alarmPanels)[0]);
+      if (alarm?.state?.startsWith("armed_")) {
+        const mode = { armed_home: "Hjemme", armed_away: "Ude", armed_night: "Nat", armed_vacation: "Ferie", armed_custom_bypass: "Tilpasset" }[alarm.state] || alarm.state;
+        return live(t("Alarm"), t(mode));
+      }
+      if (alarm?.state === "triggered") return { html: esc(t("Alarmen er udløst")), tone: "attn" };
+      if (locks.length) return plain(t("Alle døre låst"));
+      return alarm ? plain(t("Alarm fra")) : off();
+    },
+    music() {
+      const config = panel("music");
+      const players = Array.isArray(config.visiblePlayers) && config.visiblePlayers.length
+        ? list(config.visiblePlayers)
+        : [...BeastHaSocket.getAllStates().keys()].filter((id) => id.startsWith("media_player."));
+      const playing = players.map((id) => state(id)).find((st) => st?.state === "playing");
+      if (playing) return live(t("Afspiller"), String(playing.attributes?.media_title || playing.attributes?.friendly_name || "").trim());
+      return players.length ? plain(t("Intet afspilles")) : off();
+    },
+    energy() {
+      const config = panel("energy");
+      const price = num(config.priceSensor);
+      let power = num(config.powerSensor);
+      const unit = String(state(config.powerSensor)?.attributes?.unit_of_measurement || "W");
+      if (power != null && unit === "W") power /= 1000;
+      const parts = [];
+      if (price != null) parts.push(`${fmt(price, 2)} kr/kWh`);
+      if (power != null) parts.push(`${fmt(power, 1)} kW`);
+      return parts.length ? plain(parts.join(" · ")) : off();
+    },
+    heating() {
+      const rooms = list(panel("heating").rooms).map((id) => state(id)).filter((st) => st && !unavailable(st));
+      if (!rooms.length) return off();
+      const temps = rooms.map((st) => Number(st.attributes?.current_temperature)).filter(Number.isFinite);
+      const heating = rooms.filter((st) => st.attributes?.hvac_action === "heating").length;
+      const parts = [];
+      if (temps.length) parts.push(`${fmt(temps.reduce((sum, value) => sum + value, 0) / temps.length, 1)} °C`);
+      parts.push(heating === 1 ? t("1 rum varmer") : t("{n} rum varmer", { n: heating }));
+      return plain(parts.join(" · "));
+    },
+    waste() {
+      const ids = list(panel("waste").calendars);
+      if (!ids.length) return off();
+      const now = Date.now();
+      const next = ids.map((id) => {
+        const attributes = state(id)?.attributes || {};
+        const at = Date.parse(String(attributes.start_time || "").replace(" ", "T"));
+        return Number.isFinite(at) && attributes.message ? { at, end: Date.parse(String(attributes.end_time || "").replace(" ", "T")), title: String(attributes.message), allDay: attributes.all_day === true } : null;
+      }).filter((event) => event && (Number.isFinite(event.end) ? event.end > now : event.at > now - 3600000)).sort((a, b) => a.at - b.at)[0];
+      if (!next) return plain(t("Intet i kalenderen"));
+      const date = new Date(next.at);
+      const today = B.util.startOfDay();
+      const day = B.util.dateKey(date);
+      const started = next.at <= now;
+      const label = started && !next.allDay ? t("Nu") : started || day === B.util.dateKey(today) ? t("I dag") : day === B.util.dateKey(B.util.addDays(today, 1)) ? t("I morgen") : capitalize(date.toLocaleDateString(locale(), { weekday: "long" }));
+      return plain(`${label}${next.allDay || started ? "" : ` ${hm(date)}`} · ${next.title}`);
+    },
+    weather() {
+      if (typeof ambientWeather !== "function") return off();
+      const weather = ambientWeather();
+      if (weather.temperature === "–") return off();
+      return plain(`${weather.temperature} · ${t(weather.label)}`);
+    },
+    car() {
+      const config = panel("car");
+      const battery = num(config.battery);
+      const range = num(config.range);
+      if (battery == null && range == null) return off();
+      if (state(config.charging)?.state === "on") return live(t("Lader"), battery == null ? "" : `${fmt(battery, 0)} %`);
+      return plain([battery == null ? "" : `${fmt(battery, 0)} %`, range == null ? "" : `${fmt(range, 0)} km`].filter(Boolean).join(" · "));
+    },
+    pool() {
+      const config = panel("pool");
+      const temp = num(config.waterTemp);
+      const pump = state(config.pumpSwitch)?.state;
+      if (temp == null && !pump) return off();
+      const parts = [];
+      if (temp != null) parts.push(`${fmt(temp, 1)} °C`);
+      if (pump === "on") parts.push(t("pumpe kører"));
+      else if (pump === "off") parts.push(t("pumpe slukket"));
+      return plain(parts.join(" · "));
+    },
+    robots() {
+      const config = panel("robots");
+      const robots = [...list(config.vacuums), ...list(config.mowers)].map((id) => ({ id, st: state(id) })).filter((item) => item.st && !unavailable(item.st));
+      if (!robots.length) return off();
+      const running = robots.find((item) => ["cleaning", "mowing", "returning"].includes(item.st.state));
+      if (running) {
+        const verb = running.st.state === "mowing" ? t("Klipper") : running.st.state === "returning" ? t("Kører hjem") : t("Støvsuger");
+        return live(verb, displayName(running.id));
+      }
+      return plain(robots.every((item) => ["docked", "idle"].includes(item.st.state)) ? t("Alle i dock") : t("{n} robotter", { n: robots.length }));
+    },
+    printer() {
+      const config = panel("printer");
+      const status = String(state(config.statusSensor)?.state || "");
+      if (!status || unavailable(state(config.statusSensor))) return off();
+      if (/print|running|busy/i.test(status) && !/finish|complete|idle/i.test(status)) {
+        const progress = num(config.progressSensor);
+        const remaining = num(config.remainingSensor);
+        const rest = [progress == null ? "" : `${fmt(progress, 0)} %`, remaining == null ? "" : B.util.duration(remaining * (String(state(config.remainingSensor)?.attributes?.unit_of_measurement || "min") === "h" ? 60 : 1))].filter(Boolean).join(" · ");
+        return live(t("Printer"), rest);
+      }
+      return plain(/fail|error/i.test(status) ? t("Kræver opmærksomhed") : t("Klar"));
+    }
+  };
+
+  function summaryFor(page) {
+    try {
+      if (page.id.startsWith("custom_")) {
+        const custom = (BeastConfig.get("pages.custom") || []).find((item) => item?.id === page.id);
+        return plain(String(custom?.subtitle || custom?.description || "").trim() || t("Egen side"));
+      }
+      const summary = SUMMARIES[page.id];
+      if (!summary) return plain("");
+      if (BeastHaSocket.getAllStates().size === 0) return { html: "", tone: "loading" };
+      return summary();
+    } catch (_) {
+      return off();
+    }
+  }
+
+  // ---------------------------------------------------------------------------
+  // Markup
+  // ---------------------------------------------------------------------------
+  function tileMarkup(page, { more = 0 } = {}) {
+    if (more) {
+      return `<a class="bd-tile" href="#" data-bd-menu="more" role="button"><span class="bd-tile-ring">${icon("page", 24)}</span><span class="bd-tile-text"><span class="bd-tile-lbl">${esc(t("Flere sider"))}</span><span class="bd-tile-st">${esc(t("{n} sider mere", { n: more }))}</span></span></a>`;
+    }
+    const summary = summaryFor(page);
+    return `<a class="bd-tile${summary.tone ? ` is-${summary.tone}` : ""}" href="#${esc(page.id)}" data-bd-menu="page" data-section="${esc(page.id)}"><span class="bd-tile-ring">${icon(PAGE_ICONS[page.id] || "page", 24)}</span><span class="bd-tile-text"><span class="bd-tile-lbl">${esc(page.label)}</span><span class="bd-tile-st" data-tile-state="${esc(page.id)}">${summary.html}</span></span></a>`;
+  }
+
+  function rowMarkup({ action, iconName, title, sub, on = false, offline = false, trailing = "chev", attrs = "", tag = "button" }) {
+    const end = trailing === "chev" ? icon("chev", 20, "bd-row-chev") : trailing === "switch" ? `<span class="bd-row-sw"></span>` : "";
+    const open = tag === "a" ? `<a class="bd-row${on ? " is-on" : ""}${offline ? " is-off" : ""}" href="#" data-bd-menu="${action}"${attrs}>` : `<button type="button" class="bd-row${on ? " is-on" : ""}${offline ? " is-off" : ""}" data-bd-menu="${action}"${attrs}${offline ? " disabled" : ""}>`;
+    return `${open}<span class="bd-row-badge">${icon(iconName, 20)}</span><span class="bd-row-text"><span class="bd-row-t1">${esc(title)}</span><span class="bd-row-t2" data-row-sub="${action}">${sub}</span></span>${end}${tag === "a" ? "</a>" : "</button>"}`;
+  }
+
+  function bedroomRows() {
+    const rows = [];
+    const sleep = B.sleep?.summary?.();
+    if (sleep) rows.push({ action: "sleep", iconName: "bed", title: t("Søvn & CPAP"), sub: esc(sleep.text), offline: Boolean(sleep.off) });
+    const lightIds = B.lightIds();
+    if (lightIds.length > 1) rows.push({ action: "lights", iconName: "bulb", title: t("Alt lys"), ...lightsRow(lightIds) });
+    const cameraCount = B.allCameraIds?.().length || 0;
+    if (cameraCount) rows.push({ action: "cameras", iconName: "camera", title: t("Kameraer"), sub: esc(cameraCount === 1 ? t("1 kamera") : t("Alle {n} kameraer", { n: cameraCount })) });
+    const sceneIds = B.sceneIds();
+    if (sceneIds.length) rows.push({ action: "scenes", iconName: "scene", title: t("Scener"), ...scenesRow(sceneIds) });
+    rows.push({ action: "modes", iconName: "sliders", title: t("Tilstande"), ...modesRow() });
+    return rows;
+  }
+
+  // "Aften · Nat kl. 22:30", or "Vis alt · 8 min".
+  function modesRow() {
+    const info = B.modeInfo();
+    if (info.showAll) return { sub: `<b>${esc(t("Vis alt · {n} min", { n: info.showAllLeft }))}</b>`, on: true };
+    return { sub: `<b>${esc(B.modeLabel(info.mode))}</b>${info.nextAt ? ` · ${esc(t("{mode} kl. {time}", { mode: B.modeLabel(info.nextMode), time: hm(new Date(info.nextAt)) }))}` : ""}`, on: info.source !== "schedule" };
+  }
+
+  function lightsRow(ids) {
+    const on = ids.filter((id) => B.lightModel(id).on).length;
+    const total = ids.length === 1 ? t("1 lampe") : t("{n} lamper", { n: ids.length });
+    return { sub: on ? `<b>${esc(t("{n} tændt", { n: on }))}</b> · ${esc(total)}` : `${esc(t("Alle slukket"))} · ${esc(total)}`, on: on > 0 };
+  }
+
+  function scenesRow(ids) {
+    const active = B.activeSceneId(ids);
+    const total = ids.length === 1 ? t("1 scene") : t("{n} scener", { n: ids.length });
+    return { sub: active ? `<b>${esc(displayName(active))}</b> · ${esc(total)}` : esc(total), on: Boolean(active) };
+  }
+
+  function dimRow() {
+    const on = B.dimOn();
+    return { action: "dim", iconName: "dim", title: t("Nattilstand"), sub: on ? `<b>${esc(t("Til"))}</b> · ${esc(t("ekstra dæmpet skærm"))}` : esc(t("Ekstra dæmpet skærm")), on, trailing: "switch", attrs: ` role="switch" aria-checked="${on}"` };
+  }
+
+  // Automatisk pauseskærm: idle auto-start on/off and its delay, saved on
+  // this device only (BeastLocalSettings); the app reschedules on change.
+  function delayLabel(seconds) {
+    return seconds < 60 ? t("{n} sek", { n: seconds }) : t("{n} min", { n: Math.round(seconds / 60) });
+  }
+
+  function autoSaverRow() {
+    const on = BeastLocalSettings.screensaverAutoStart();
+    const delay = delayLabel(BeastLocalSettings.screensaverDelaySeconds());
+    return { action: "autosaver", iconName: "timer", title: t("Ved inaktivitet"), sub: on ? `<b>${esc(t("Til"))}</b> · ${esc(t("efter {time} uden tryk", { time: delay }))}` : esc(t("Fra · kun manuelt")), on, trailing: "switch", attrs: ` role="switch" aria-checked="${on}"` };
+  }
+
+  function delayMarkup() {
+    const on = BeastLocalSettings.screensaverAutoStart();
+    const choices = BeastLocalSettings.SCREENSAVER_DELAYS;
+    const index = choices.indexOf(BeastLocalSettings.screensaverDelaySeconds());
+    const label = delayLabel(choices[index]);
+    return `<div class="bd-autodelay${on ? "" : " is-disabled"}" data-autodelay><span class="bd-autodelay-lbl">${esc(t("Start efter"))}</span><div class="bd-autodelay-step" role="group" aria-label="${esc(t("Start efter"))}"><button type="button" data-bd-menu="saver-delay" data-delta="-1" aria-label="${esc(t("Kortere"))}"${on && index > 0 ? "" : " disabled"}>−</button><b data-autodelay-value aria-live="polite">${esc(label)}</b><button type="button" data-bd-menu="saver-delay" data-delta="1" aria-label="${esc(t("Længere"))}"${on && index < choices.length - 1 ? "" : " disabled"}>+</button></div></div>`;
+  }
+
+  function stepDelay(delta) {
+    const choices = BeastLocalSettings.SCREENSAVER_DELAYS;
+    const index = choices.indexOf(BeastLocalSettings.screensaverDelaySeconds());
+    const next = choices[Math.max(0, Math.min(choices.length - 1, index + delta))];
+    if (next !== choices[index]) BeastLocalSettings.set("screensaverAfterSeconds", next);
+  }
+
+  function updateAutoSaver(menu) {
+    if (!menu) return;
+    updateRow(menu, autoSaverRow());
+    const line = menu?.querySelector("[data-autodelay]");
+    if (!line) return;
+    const on = BeastLocalSettings.screensaverAutoStart();
+    const choices = BeastLocalSettings.SCREENSAVER_DELAYS;
+    const index = choices.indexOf(BeastLocalSettings.screensaverDelaySeconds());
+    line.classList.toggle("is-disabled", !on);
+    const value = line.querySelector("[data-autodelay-value]");
+    const label = delayLabel(choices[index]);
+    if (value.textContent !== label) value.textContent = label;
+    line.querySelectorAll("[data-delta]").forEach((button) => {
+      button.disabled = !on || (Number(button.dataset.delta) < 0 ? index <= 0 : index >= choices.length - 1);
+    });
+  }
+
+  // Tidsplan (Change by Claude AI, v0.8.100): "Tænd pauseskærm kl." and
+  // "Sluk pauseskærm kl." are two independent timers with their own switch,
+  // saved centrally for this kind of screen (iPad: panels.bedroom, other
+  // screens: the shared screensaver block) via BeastSaverTimers.
+  const Timers = window.BeastSaverTimers;
+  let timerDraft = null;
+  let timerSaveId = null;
+  let timerNote = "";
+  let timerNoteId = null;
+
+  function timers() { return timerDraft || Timers.get(Timers.thisTarget()); }
+
+  function timerRow(kind) {
+    const value = timers();
+    const on = kind === "start" ? value.startAuto : value.endAuto;
+    const time = kind === "start" ? value.start : value.end;
+    const status = Timers.status(Timers.thisTarget());
+    const ipad = kind === "start" && on && document.documentElement.classList.contains("beast-ipad");
+    let sub;
+    if (!on) sub = esc(kind === "start" ? t("Fra · starter ikke af sig selv") : t("Fra · bliver til du trykker"));
+    else if (ipad) sub = `<b>${esc(t("Til"))}</b> · ${esc(t("hele dagen (iPad-tilstand)"))}`;
+    else if (kind === "start") sub = `<b>${esc(t("Kl. {time}", { time }))}</b>${status.active ? ` · ${esc(t("aktiv nu"))}` : ""}`;
+    else sub = `<b>${esc(t("Kl. {time}", { time }))}</b> · ${esc(t("tilbage til forsiden"))}`;
+    if (timerNote && kind === "end") sub += ` · ${esc(timerNote)}`;
+    return { action: `timer-${kind}`, iconName: kind === "start" ? "moon" : "sun", title: kind === "start" ? t("Tænd pauseskærm") : t("Sluk pauseskærm"), sub, on, trailing: "switch", attrs: ` role="switch" aria-checked="${on}"` };
+  }
+
+  function timerStepMarkup(kind) {
+    const value = timers();
+    const on = kind === "start" ? value.startAuto : value.endAuto;
+    const time = kind === "start" ? value.start : value.end;
+    const label = kind === "start" ? t("Tænd kl.") : t("Sluk kl.");
+    return `<div class="bd-autodelay bd-timerstep${on ? "" : " is-disabled"}" data-timerstep="${kind}"><span class="bd-autodelay-lbl">${esc(label)}</span><div class="bd-autodelay-step" role="group" aria-label="${esc(label)}"><button type="button" data-bd-menu="timer-time" data-kind="${kind}" data-delta="-${Timers.STEP}" aria-label="${esc(t("Tidligere"))}"${on ? "" : " disabled"}>−</button><b data-timer-value aria-live="polite">${esc(time)}</b><button type="button" data-bd-menu="timer-time" data-kind="${kind}" data-delta="${Timers.STEP}" aria-label="${esc(t("Senere"))}"${on ? "" : " disabled"}>+</button></div></div>`;
+  }
+
+  function updateTimers(menu) {
+    if (!menu) return;
+    ["start", "end"].forEach((kind) => {
+      updateRow(menu, timerRow(kind));
+      const line = menu.querySelector(`[data-timerstep="${kind}"]`);
+      if (!line) return;
+      const value = timers();
+      const on = kind === "start" ? value.startAuto : value.endAuto;
+      const time = kind === "start" ? value.start : value.end;
+      line.classList.toggle("is-disabled", !on);
+      const shown = line.querySelector("[data-timer-value]");
+      if (shown.textContent !== time) shown.textContent = time;
+      line.querySelectorAll("[data-delta]").forEach((button) => { button.disabled = !on; });
+    });
+  }
+
+  function changeTimers(patch) {
+    timerDraft = { ...timers(), ...patch };
+    timerNote = "";
+    updateTimers(host());
+    window.clearTimeout(timerSaveId);
+    const payload = { ...timerDraft };
+    timerSaveId = window.setTimeout(() => {
+      Promise.resolve(Timers.save(Timers.thisTarget(), payload)).then((result) => {
+        timerDraft = null;
+        timerNote = result?.success === false ? t("Kunne ikke gemme") : t("Gemt");
+        updateTimers(host());
+        window.clearTimeout(timerNoteId);
+        timerNoteId = window.setTimeout(() => { timerNote = ""; updateTimers(host()); }, 2200);
+      });
+    }, 600);
+  }
+
+  function connectionInfo() {
+    const dot = document.getElementById("beastStatusDot")?.dataset.state || "connecting";
+    if (dot === "connected") return { state: "connected", text: t("Forbundet til Home Assistant") };
+    if (dot === "error") return { state: "error", text: t("Login udløbet") };
+    return { state: "connecting", text: t("Forbinder …") };
+  }
+
+  function footerMarkup() {
+    const tag = document.querySelector('meta[name="beast-release-tag"]')?.content || "";
+    const conn = connectionInfo();
+    const ipad = document.documentElement.classList.contains("beast-ipad") ? " · iPad" : "";
+    return `<div class="bd-foot"><span class="bd-foot-ver">HA Smartdash${tag ? ` <b>${esc(tag)}</b>` : ""}${ipad}</span><span class="bd-conn" data-state="${conn.state}">${esc(conn.text)}</span></div>`;
+  }
+
+  function clockMarkup(now = new Date()) {
+    const [hours, minutes] = hm(now).split(":");
+    return `${hours}<i>:</i>${minutes}`;
+  }
+
+  function menuMarkup() {
+    const now = new Date();
+    const all = pages();
+    const visible = all.length > MAX_TILES ? all.slice(0, MAX_TILES - 1) : all;
+    const tiles = visible.map((page) => tileMarkup(page)).join("") + (all.length > MAX_TILES ? tileMarkup(null, { more: all.length - visible.length }) : "");
+    const tileCount = Math.min(all.length, MAX_TILES);
+    const bed = bedroomRows();
+    // On a bedroom device the menu is the only way to Administration (behind
+    // the PIN gate), so it stays even when the rail's admin button is hidden.
+    const admin = BeastLocalSettings.isBedroomDevice() || BeastConfig.get("showAdminButton") !== false;
+    const classes = ["bd-menu", bed.length ? "has-bed" : "", admin ? "has-settings" : "", tileCount ? "has-pages" : ""].filter(Boolean).join(" ");
+    const screen = `<section class="bd-mpanel bd-mscreen" aria-label="${esc(t("Skærm"))}"><div class="bd-meyebrow">${esc(t("Skærm"))}</div>
+        <button type="button" class="bd-saver" data-bd-menu="screensaver"><span class="bd-saver-pv"><b data-menu-preview>${esc(hm(now))}</b></span><span class="bd-saver-text"><span class="bd-saver-t1">${esc(t("Pauseskærm nu"))}</span><span class="bd-saver-t2">${esc(t("Dæmpet ur · tryk for at vække"))}</span></span></button>
+        <div class="bd-rows">${rowMarkup(dimRow())}${rowMarkup(autoSaverRow())}${delayMarkup()}${Timers ? `${rowMarkup(timerRow("start"))}${timerStepMarkup("start")}${rowMarkup(timerRow("end"))}${timerStepMarkup("end")}` : ""}${rowMarkup({ action: "reload", iconName: "reload", title: t("Genindlæs"), sub: esc(t("Henter siden igen")), trailing: "" })}</div>
+        ${admin ? "" : footerMarkup()}</section>`;
+    const settings = admin ? `<section class="bd-mpanel bd-msettings" aria-label="${esc(t("Indstillinger"))}"><div class="bd-meyebrow">${esc(t("Indstillinger"))}</div>
+        <div class="bd-rows">${rowMarkup({ action: "admin-bedroom", iconName: "sliders", title: t("Tilpas soveværelset"), sub: esc(t("Kameraer, kalendere og lys")), tag: "a" })}${rowMarkup({ action: "admin", iconName: "gear", title: t("Administration"), sub: esc(t("Sider, enheder og udseende")), tag: "a" })}</div>
+        ${footerMarkup()}</section>` : "";
+    return `<div class="${classes}" role="dialog" aria-modal="true" aria-label="${esc(t("Menu"))}">
+      <header class="bd-menu-head"><div class="bd-menu-time" data-menu-clock>${clockMarkup(now)}</div><div class="bd-menu-date"><span class="bd-d1" data-menu-date>${esc(capitalize(now.toLocaleDateString(locale(), { weekday: "long", day: "numeric", month: "long" })))}</span><span class="bd-d2">${esc(t("Menu"))} <span>· ${esc(B.util.roomTitle())}</span></span></div>
+        <button type="button" class="bd-back" data-bd-menu="close" aria-label="${esc(t("Tilbage til soveværelset"))}"><span>${esc(t("Tilbage til soveværelset"))}</span><span class="bd-back-x">${icon("x", 20)}</span></button></header>
+      ${tileCount ? `<section class="bd-mpanel bd-mpages" aria-label="${esc(t("Sider"))}"><div class="bd-meyebrow">${esc(t("Sider"))}</div><div class="bd-tiles" data-n="${tileCount}">${tiles}</div></section>` : ""}
+      ${bed.length ? `<section class="bd-mpanel bd-mbed" aria-label="${esc(B.util.roomTitle())}"><div class="bd-meyebrow is-room">${esc(t("Soveværelset"))}</div><div class="bd-rows">${bed.map(rowMarkup).join("")}</div></section>` : ""}
+      ${screen}${settings}
+    </div>`;
+  }
+
+  // ---------------------------------------------------------------------------
+  // Live updates while open (state lines at most every 10 s, clock per minute)
+  // ---------------------------------------------------------------------------
+  function refresh() {
+    const menu = host();
+    if (!menu) return;
+    pages().forEach((page) => {
+      const line = menu.querySelector(`[data-tile-state="${CSS.escape(page.id)}"]`);
+      if (!line) return;
+      const summary = summaryFor(page);
+      if (line.innerHTML !== summary.html) line.innerHTML = summary.html;
+      const tile = line.closest(".bd-tile");
+      ["attn", "live", "off", "loading"].forEach((tone) => tile.classList.toggle(`is-${tone}`, summary.tone === tone));
+    });
+    bedroomRows().forEach((row) => updateRow(menu, row));
+    updateRow(menu, dimRow());
+    updateAutoSaver(menu);
+    if (Timers) updateTimers(menu);
+    const conn = connectionInfo();
+    const connEl = menu.querySelector(".bd-conn");
+    if (connEl && connEl.dataset.state !== conn.state) { connEl.dataset.state = conn.state; connEl.textContent = conn.text; }
+    tickClock();
+  }
+
+  function updateRow(menu, row) {
+    const sub = menu.querySelector(`[data-row-sub="${row.action}"]`);
+    if (!sub) return;
+    if (sub.innerHTML !== row.sub) sub.innerHTML = row.sub;
+    const element = sub.closest(".bd-row");
+    element.classList.toggle("is-on", Boolean(row.on));
+    element.classList.toggle("is-off", Boolean(row.offline));
+    if (row.attrs?.includes("aria-checked")) element.setAttribute("aria-checked", String(Boolean(row.on)));
+  }
+
+  function tickClock() {
+    const menu = host();
+    if (!menu) return;
+    const now = new Date();
+    const clock = menu.querySelector("[data-menu-clock]");
+    const markup = clockMarkup(now);
+    if (clock && clock.innerHTML !== markup) clock.innerHTML = markup;
+    const preview = menu.querySelector("[data-menu-preview]");
+    if (preview && preview.textContent !== hm(now)) preview.textContent = hm(now);
+    const date = menu.querySelector("[data-menu-date]");
+    const dateText = capitalize(now.toLocaleDateString(locale(), { weekday: "long", day: "numeric", month: "long" }));
+    if (date && date.textContent !== dateText) date.textContent = dateText;
+  }
+
+  // ---------------------------------------------------------------------------
+  // Open / close
+  // ---------------------------------------------------------------------------
+  function resetIdle() {
+    window.clearTimeout(idleTimerId);
+    idleTimerId = window.setTimeout(() => close(), IDLE_CLOSE_MS);
+  }
+
+  function cleanup() {
+    window.clearTimeout(idleTimerId);
+    window.clearInterval(refreshTimerId);
+    window.clearTimeout(settleTimerId);
+    idleTimerId = refreshTimerId = settleTimerId = null;
+    unsubscribeStatus?.();
+    unsubscribeStatus = null;
+    document.removeEventListener("pointerdown", resetIdle, true);
+    document.documentElement.classList.remove("beast-bedroom-menu-open");
+  }
+
+  function open(fromButton) {
+    if (!B.root) return;
+    trigger = fromButton || B.root.querySelector(".bd-menu-btn");
+    const layerHost = B.openLayer("menu", menuMarkup(), cleanup);
+    if (!layerHost) return;
+    openedAt = Date.now();
+    const menu = layerHost.querySelector(".bd-menu");
+    menu.addEventListener("click", onClick);
+    menu.classList.add("is-entering");
+    // The page underneath stops painting once the menu fully covers it.
+    settleTimerId = window.setTimeout(() => {
+      menu.classList.remove("is-entering");
+      if (isOpen()) document.documentElement.classList.add("beast-bedroom-menu-open");
+    }, ENTRANCE_MS);
+    menu.querySelector(".bd-back")?.focus({ preventScroll: true });
+    refreshTimerId = window.setInterval(refresh, STATE_REFRESH_MS);
+    unsubscribeStatus = BeastHaSocket.onStatusChange(() => window.setTimeout(refresh, 0));
+    document.addEventListener("pointerdown", resetIdle, true);
+    resetIdle();
+  }
+
+  // instant: no fade (used when navigating away or opening another view).
+  function close(instant = false) {
+    if (!isOpen()) return;
+    document.documentElement.classList.remove("beast-bedroom-menu-open");
+    B.closeLayer(instant);
+    if (!instant) trigger?.focus?.({ preventScroll: true });
+  }
+
+  function goToPage(section) {
+    close(true);
+    document.querySelector(`.beast-rail-btn[data-section="${CSS.escape(section)}"]`)?.click();
+  }
+
+  function openAdmin(path) {
+    const go = () => {
+      window.BeastScreenLock?.grantAdminVerification?.();
+      window.location.href = smartdashLocalUrl(path);
+    };
+    const lock = window.BeastScreenLock;
+    if (!lock?.hasPin()) { go(); return; }
+    if (lock.isLocked()) return;
+    lock.requestPinVerification((ok) => { if (ok) go(); });
+  }
+
+  function reload(row) {
+    if (reloading) return;
+    reloading = true;
+    row.classList.add("is-busy");
+    row.disabled = true;
+    const sub = row.querySelector(".bd-row-t2");
+    if (sub) sub.textContent = t("Genindlæser …");
+    try { sessionStorage.setItem("beast_active_section_v1", "bedroom"); } catch (_) {}
+    window.setTimeout(() => {
+      const next = new URL(window.location.href);
+      next.searchParams.set("dashboardReload", String(Date.now()));
+      window.location.replace(next.href);
+    }, 180);
+  }
+
+  function openMorePages() {
+    const rest = pages().slice(MAX_TILES - 1);
+    const body = `<div class="bd-rows is-sheet">${rest.map((page) => {
+      const summary = summaryFor(page);
+      return `<button type="button" class="bd-row" data-bd-menu-page="${esc(page.id)}"><span class="bd-row-badge">${icon(PAGE_ICONS[page.id] || "page", 20)}</span><span class="bd-row-text"><span class="bd-row-t1">${esc(page.label)}</span><span class="bd-row-t2">${summary.html}</span></span>${icon("chev", 20, "bd-row-chev")}</button>`;
+    }).join("")}</div>`;
+    close(true);
+    const layerHost = B.openLayer("pages", B.sheetMarkup("pages", t("Flere sider"), body));
+    layerHost?.querySelector(".bd-sheet")?.addEventListener("click", (event) => {
+      const row = event.target.closest("[data-bd-menu-page]");
+      if (!row) return;
+      B.closeLayer(true);
+      document.querySelector(`.beast-rail-btn[data-section="${CSS.escape(row.dataset.bdMenuPage)}"]`)?.click();
+    });
+  }
+
+  function onClick(event) {
+    const target = event.target.closest("[data-bd-menu]");
+    if (!target || target.disabled) return;
+    event.preventDefault();
+    const action = target.dataset.bdMenu;
+    if (action === "close") {
+      if (Date.now() - openedAt < DOUBLE_TAP_GUARD_MS) return;
+      close();
+      return;
+    }
+    switch (action) {
+      case "page": goToPage(target.dataset.section); break;
+      case "more": openMorePages(); break;
+      case "sleep": close(true); B.sleep?.openDetail(); break;
+      case "lights": close(true); B.openLightsSheet(); break;
+      case "scenes": close(true); B.openScenesSheet(); break;
+      case "cameras": close(true); B.openAllCameras(); break;
+      case "modes": openModes(); break;
+      case "screensaver": close(true); window.showAmbientMode?.(true); break;
+      case "dim": B.setDim(!B.dimOn()); refresh(); break;
+      case "autosaver": BeastLocalSettings.set("screensaverAuto", !BeastLocalSettings.screensaverAutoStart()); updateAutoSaver(host()); break;
+      case "timer-start": changeTimers({ startAuto: !timers().startAuto }); break;
+      case "timer-end": changeTimers({ endAuto: !timers().endAuto }); break;
+      case "timer-time": { const kind = target.dataset.kind; const key = kind === "start" ? "start" : "end"; changeTimers({ [key]: Timers.step(timers()[key], Number(target.dataset.delta) || 0) }); break; }
+      case "saver-delay": stepDelay(Number(target.dataset.delta) || 0); updateAutoSaver(host()); break;
+      case "reload": reload(target); break;
+      case "admin-bedroom": openAdmin("admin/#bedroom"); break;
+      case "admin": openAdmin("admin/"); break;
+      default: break;
+    }
+  }
+
+  // ---------------------------------------------------------------------------
+  // Tilstande: the current mode, Vis alt, start times and cards per mode.
+  // Saved centrally (panels.bedroom.modes) and applied at once.
+  // ---------------------------------------------------------------------------
+  const Modes = window.BeastBedroomModes;
+  const STEP_MIN = 15;
+  const CARD_ICONS = { cams: "camera", sec: "shield", sleep: "bed", cal: "cal", lights: "bulb", scenes: "scene", comfort: "moon", media: "tv" };
+  let draft = null;
+  let saveTimerId = null;
+  let savedTimerId = null;
+  let saveNote = "";
+  let modesHtml = "";
+
+  function modesBody() {
+    const info = B.modeInfo();
+    const next = info.nextAt ? t("{mode} kl. {time}", { mode: B.modeLabel(info.nextMode), time: hm(new Date(info.nextAt)) }) : "";
+    const source = info.source === "goodnight" ? t("Godnat er kørt") : info.source === "manual" ? t("Skiftet manuelt") : t("Efter tidsplanen");
+    const seg = Modes.MODES.map((mode) => `<button type="button" class="bd-ms-mode${mode === info.mode ? " is-on" : ""}" data-ms="mode" data-mode="${mode}" aria-pressed="${mode === info.mode}">${esc(B.modeLabel(mode))}</button>`).join("");
+    const now = `<section class="bd-ms-card bd-ms-now"><div class="bd-ms-k">${esc(t("Nu"))}</div>
+      <div class="bd-ms-now-row"><strong>${esc(B.modeLabel(info.mode))}</strong><span>${esc([source, next ? t("derefter {next}", { next }) : ""].filter(Boolean).join(" · "))}</span></div>
+      <div class="bd-ms-seg" role="group" aria-label="${esc(t("Skift tilstand nu"))}">${seg}</div>
+      ${info.source === "manual" ? `<button type="button" class="bd-ms-follow" data-ms="follow">${esc(t("Følg tidsplanen igen"))}</button>` : ""}
+      <button type="button" class="bd-ms-follow bd-ms-fixed${draft.fixedPage ? " is-on" : ""}" data-ms="fixed" role="switch" aria-checked="${Boolean(draft.fixedPage)}">${esc(draft.fixedPage ? t("Siden viser altid {mode} · slå fra", { mode: B.modeLabel(draft.fixedPage) }) : t("Vis altid Aftens side"))}</button></section>`;
+    const showAll = `<button type="button" class="bd-ms-card bd-ms-all${info.showAll ? " is-on" : ""}" data-ms="showall" role="switch" aria-checked="${info.showAll}"><span class="bd-row-badge">${icon("grid", 20)}</span><span class="bd-row-text"><span class="bd-row-t1">${esc(t("Vis alt"))}</span><span class="bd-row-t2">${esc(info.showAll ? t("Til · {n} min tilbage", { n: info.showAllLeft }) : t("Alle kort i {n} min", { n: draft.showAllMinutes }))}</span></span><span class="bd-row-sw"></span></button>`;
+    const stepper = (type, mode) => `<div class="bd-ms-step"><button type="button" data-ms="time" data-type="${type}" data-mode="${mode}" data-delta="-${STEP_MIN}" aria-label="${esc(t("{mode} tidligere", { mode: B.modeLabel(mode) }))}">−</button><b>${esc(draft.times[type][mode])}</b><button type="button" data-ms="time" data-type="${type}" data-mode="${mode}" data-delta="${STEP_MIN}" aria-label="${esc(t("{mode} senere", { mode: B.modeLabel(mode) }))}">+</button></div>`;
+    const times = `<section class="bd-ms-card bd-ms-times"><div class="bd-ms-k">${esc(t("Starttider"))}</div>
+      <div class="bd-ms-tgrid"><span></span><span class="bd-ms-h">${esc(t("Hverdage"))}</span><span class="bd-ms-h">${esc(t("Weekend"))}</span>
+      ${Modes.MODES.map((mode) => `<span class="bd-ms-l">${esc(B.modeLabel(mode))}</span>${stepper("weekday", mode)}${stepper("weekend", mode)}`).join("")}</div>
+      <p class="bd-ms-note">${esc(t("Godnat skifter til Nat med det samme. Weekend er lørdag og søndag."))}</p></section>`;
+    const cards = `<section class="bd-ms-card bd-ms-cards"><div class="bd-ms-k">${esc(t("Kort pr. tilstand"))}</div>
+      <div class="bd-ms-cgrid"><span></span>${Modes.MODES.map((mode) => `<span class="bd-ms-h${mode === info.mode ? " is-now" : ""}">${esc(B.modeLabel(mode))}</span>`).join("")}
+      ${Modes.CARDS.map((card) => `<span class="bd-ms-l">${icon(CARD_ICONS[card], 16)}<span>${esc(t(Modes.CARD_LABELS[card]))}</span></span>${Modes.MODES.map((mode) => {
+        if (!Modes.cardApplies(mode, card)) return `<span class="bd-ms-na" aria-hidden="true">–</span>`;
+        const on = draft.cards[mode][card] !== false;
+        return `<button type="button" class="bd-ms-tog${on ? " is-on" : ""}" data-ms="card" data-mode="${mode}" data-card="${card}" aria-pressed="${on}" aria-label="${esc(`${t(Modes.CARD_LABELS[card])} · ${B.modeLabel(mode)}`)}">${on ? icon("check", 18) : ""}</button>`;
+      }).join("")}`).join("")}</div>
+      <p class="bd-ms-note">${esc(t("Nat vises på pauseskærmen. Vækker du skærmen om natten, vises Aftens kort. Kortene gælder også pauseskærmen."))}</p></section>`;
+    const foot = `<div class="bd-ms-foot"><button type="button" class="bd-ms-reset" data-ms="reset">${icon("reload", 16)}<span>${esc(t("Nulstil til standard"))}</span></button><span class="bd-ms-saved">${esc(saveNote)}</span></div>`;
+    return `<div class="bd-ms">${now}${showAll}${times}${cards}${foot}</div>`;
+  }
+
+  function renderModes(force = false) {
+    if (B.layerKind?.() !== "modes") return;
+    const body = B.root?.querySelector('[data-sheet="modes"] [data-sheet-body]');
+    if (!body || !draft) return;
+    const html = modesBody();
+    if (!force && html === modesHtml) return;
+    modesHtml = html;
+    body.innerHTML = html;
+  }
+
+  function saveModes(reset = false) {
+    window.clearTimeout(saveTimerId);
+    saveNote = "";
+    // The payload is taken now: the sheet may close before the save runs.
+    const modes = reset ? null : JSON.parse(JSON.stringify(draft));
+    saveTimerId = window.setTimeout(() => {
+      BeastConfig.setPanel("bedroom", { modes }).then((result) => {
+        saveNote = result?.success === false ? t("Kunne ikke gemme") : t("Gemt");
+        renderModes();
+        window.clearTimeout(savedTimerId);
+        savedTimerId = window.setTimeout(() => { saveNote = ""; renderModes(); }, 2200);
+      });
+    }, reset ? 0 : 450);
+  }
+
+  function shiftTime(type, mode, delta) {
+    const order = Modes.MODES;
+    const toMin = (time) => Number(time.slice(0, 2)) * 60 + Number(time.slice(3));
+    const index = order.indexOf(mode);
+    const lower = index > 0 ? toMin(draft.times[type][order[index - 1]]) + STEP_MIN : 0;
+    const upper = index < order.length - 1 ? toMin(draft.times[type][order[index + 1]]) - STEP_MIN : 24 * 60 - STEP_MIN;
+    const current = toMin(draft.times[type][mode]);
+    // Snap to the step, then keep the modes in order.
+    const snapped = Math.round((current + delta) / STEP_MIN) * STEP_MIN;
+    const value = Math.max(lower, Math.min(upper, snapped));
+    if (value === current) return;
+    draft.times[type][mode] = `${String(Math.floor(value / 60)).padStart(2, "0")}:${String(value % 60).padStart(2, "0")}`;
+    saveModes();
+  }
+
+  function onModesClick(event) {
+    const target = event.target.closest("[data-ms]");
+    if (!target || target.disabled) return;
+    switch (target.dataset.ms) {
+      case "mode": B.setManualMode(target.dataset.mode); break;
+      case "follow": B.setManualMode(null); break;
+      case "showall": B.setShowAll(!B.modeInfo().showAll); break;
+      case "time": shiftTime(target.dataset.type, target.dataset.mode, Number(target.dataset.delta)); break;
+      case "card": if (!Modes.cardApplies(target.dataset.mode, target.dataset.card)) return; draft.cards[target.dataset.mode][target.dataset.card] = !(draft.cards[target.dataset.mode][target.dataset.card] !== false); saveModes(); break;
+      case "fixed": draft.fixedPage = draft.fixedPage ? "" : "aften"; saveModes(); break;
+      case "reset": draft = Modes.defaults(); saveModes(true); break;
+      default: return;
+    }
+    renderModes();
+  }
+
+  function openModes() {
+    close(true);
+    draft = Modes.normalize(cfg().modes);
+    saveNote = "";
+    modesHtml = "";
+    const layerHost = B.openLayer("modes", B.sheetMarkup("modes", t("Tilstande"), ""), () => {
+      window.clearTimeout(savedTimerId);
+      draft = null;
+    });
+    layerHost?.querySelector(".bd-sheet")?.addEventListener("click", onModesClick);
+    renderModes(true);
+  }
+
+  return { open, close, refresh, tickClock, isOpen, openModes, renderModes };
+})();

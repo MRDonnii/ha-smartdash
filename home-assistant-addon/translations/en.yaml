@@ -1,0 +1,9 @@
+configuration:
+  home_assistant_url:
+    name: Home Assistant URL
+    description: Keep the internal Home Assistant URL unless an advanced setup requires another reachable address.
+  timezone:
+    name: Timezone
+    description: IANA timezone used for logs and scheduled dashboard behavior.
+network:
+  8099/tcp: Smartdash web interface

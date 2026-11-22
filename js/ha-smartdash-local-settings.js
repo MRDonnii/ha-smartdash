@@ -1,0 +1,119 @@
+const BeastLocalSettings = (() => {
+  const STORAGE_KEY = "beast_machine_settings_v1";
+  const DEFAULTS = {
+    hiddenSections: [],
+    defaultSection: "overview",
+    density: "comfortable",
+    favoriteSections: [],
+    powerProfile: "balanced",
+    ipadMode: false,
+    deviceType: "kiosk",
+    bedroomDim: false,
+    kioskScreenLight: null,
+    language: "en",
+    screensaver: { enabled: true, schedule: "custom", startTime: "23:00", endTime: "05:30", offAfterMinutes: 5 }
+  };
+  // Device type: "kiosk" (the normal dashboard) or "bedroom" (only the
+  // bedside page). Older builds stored a bedroomView toggle; it is migrated
+  // once to deviceType so every reader only needs isBedroomDevice().
+  const DEVICE_TYPES = ["kiosk", "bedroom"];
+  // Older builds wrote the whole default screensaver (23:00-05:30) into the
+  // device on every unrelated save, which then overrode the server schedule.
+  // A stored block that is exactly the default is that leftover: drop it (on
+  // bedroom devices only; other devices keep their behaviour unchanged).
+  function isDefaultSaverLeftover(saver) {
+    const keys = saver && typeof saver === "object" ? Object.keys(saver) : [];
+    const defaults = DEFAULTS.screensaver;
+    return keys.length === Object.keys(defaults).length && keys.every((key) => saver[key] === defaults[key]);
+  }
+  function migrate(stored) {
+    if (!stored || typeof stored !== "object") return {};
+    const legacyView = "bedroomView" in stored;
+    if (legacyView) {
+      if (!DEVICE_TYPES.includes(stored.deviceType)) stored.deviceType = stored.bedroomView === true ? "bedroom" : "kiosk";
+      delete stored.bedroomView;
+    }
+    const leftover = stored.deviceType === "bedroom" && isDefaultSaverLeftover(stored.screensaver);
+    if (!legacyView && !leftover) return stored;
+    if (leftover) delete stored.screensaver;
+    try { localStorage.setItem(STORAGE_KEY, JSON.stringify(stored)); } catch (_) {}
+    return stored;
+  }
+  function readRaw() {
+    try { return migrate(JSON.parse(localStorage.getItem(STORAGE_KEY) || "{}")); }
+    catch (_) { return {}; }
+  }
+  function read() {
+    const stored = readRaw();
+    return { ...DEFAULTS, ...stored, screensaver: { ...DEFAULTS.screensaver, ...(stored.screensaver || {}) } };
+  }
+  function get(path, fallback = null) {
+    const value = path.split(".").reduce((node, key) => node == null ? undefined : node[key], readRaw());
+    return value === undefined || value === null ? fallback : value;
+  }
+  // On a bedroom device only what was stored plus this one value is written:
+  // merging the defaults in would pin the default screensaver schedule over
+  // the configured one. Other devices keep the old behaviour.
+  function set(path, value) {
+    const next = isBedroomDevice() ? readRaw() : read();
+    // Never pin the default screensaver block on any device: only a block the
+    // device really stored is kept. -- Change by Claude AI (v0.8.100)
+    if (!isBedroomDevice()) { const raw = readRaw(); if (raw.screensaver) next.screensaver = raw.screensaver; else delete next.screensaver; }
+    const keys = path.split(".");
+    let node = next;
+    for (let index = 0; index < keys.length - 1; index += 1) {
+      if (!node[keys[index]] || typeof node[keys[index]] !== "object") node[keys[index]] = {};
+      node = node[keys[index]];
+    }
+    node[keys[keys.length - 1]] = value;
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
+    document.dispatchEvent(new CustomEvent("beast:local-settings-changed", { detail: { path, value } }));
+    return { success: true };
+  }
+  // Drops stored keys (top level) so the shared value applies again. Used by
+  // the bedroom menu's Pauseskærm section. -- Change by Claude AI (v0.8.100)
+  function remove(...paths) {
+    const next = readRaw();
+    const gone = paths.filter((key) => key in next);
+    if (!gone.length) return { success: true };
+    gone.forEach((key) => delete next[key]);
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
+    gone.forEach((key) => document.dispatchEvent(new CustomEvent("beast:local-settings-changed", { detail: { path: key, value: undefined } })));
+    return { success: true };
+  }
+  function replaceAll(value) {
+    if (!value || typeof value !== "object" || Array.isArray(value)) return { success: false };
+    value = { ...value };
+    if ("bedroomView" in value) {
+      if (!DEVICE_TYPES.includes(value.deviceType)) value.deviceType = value.bedroomView === true ? "bedroom" : "kiosk";
+      delete value.bedroomView;
+    }
+    const stored = { ...DEFAULTS, ...value };
+    if (value.screensaver && typeof value.screensaver === "object") stored.screensaver = { ...DEFAULTS.screensaver, ...value.screensaver };
+    else if (value.deviceType === "bedroom") delete stored.screensaver;
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(stored));
+    document.dispatchEvent(new CustomEvent("beast:local-settings-changed", { detail: { path: "*", value } }));
+    return { success: true };
+  }
+  window.addEventListener("storage", (event) => {
+    if (event.key !== STORAGE_KEY) return;
+    document.dispatchEvent(new CustomEvent("beast:local-settings-changed", { detail: { path: "*", value: read(), remote: true } }));
+  });
+  function deviceType() {
+    const value = readRaw().deviceType;
+    return DEVICE_TYPES.includes(value) ? value : "kiosk";
+  }
+  function isBedroomDevice() { return deviceType() === "bedroom"; }
+  // Idle auto-start of the screensaver on this device: whether it starts by
+  // itself, and after how many idle seconds. Missing values keep the original
+  // behaviour (on, 5 minutes); an unknown delay falls back to the default.
+  // The screensaver object (schedule/times) still decides *when* it may show.
+  const SCREENSAVER_DELAYS = [10, 20, 30, 45, 60, 120, 300, 600, 900, 1800, 3600];
+  const SCREENSAVER_DEFAULT_DELAY = 300;
+  function screensaverAutoStart() { return readRaw().screensaverAuto !== false; }
+  function screensaverDelaySeconds() {
+    const value = Number(readRaw().screensaverAfterSeconds);
+    return SCREENSAVER_DELAYS.includes(value) ? value : SCREENSAVER_DEFAULT_DELAY;
+  }
+  return { get, set, remove, getAll: read, replaceAll, deviceType, isBedroomDevice, SCREENSAVER_DELAYS, screensaverAutoStart, screensaverDelaySeconds };
+})();

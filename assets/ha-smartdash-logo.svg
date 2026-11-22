@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 360 88" role="img" aria-labelledby="smartdash-title smartdash-description">
+  <title id="smartdash-title">HA Smartdash</title>
+  <desc id="smartdash-description">Et intelligent hjem med en levende statuslinje</desc>
+  <defs>
+    <linearGradient id="logo-bg" x1="4" y1="4" x2="80" y2="84" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#172a37"/>
+      <stop offset=".52" stop-color="#123c3a"/>
+      <stop offset="1" stop-color="#0b171e"/>
+    </linearGradient>
+    <linearGradient id="logo-accent" x1="17" y1="20" x2="69" y2="69" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#72f4d0"/>
+      <stop offset="1" stop-color="#27aee4"/>
+    </linearGradient>
+  </defs>
+  <rect x="4" y="4" width="80" height="80" rx="24" fill="url(#logo-bg)"/>
+  <rect x="5.5" y="5.5" width="77" height="77" rx="22.5" fill="none" stroke="#b7fff0" stroke-opacity=".16" stroke-width="3"/>
+  <path d="M17 42 44 19l27 23v25a5 5 0 0 1-5 5H22a5 5 0 0 1-5-5z" fill="none" stroke="url(#logo-accent)" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M27 54h9l4.5-10 7.5 18 5-8h8" fill="none" stroke="#f4fffc" stroke-width="4.5" stroke-linecap="round" stroke-linejoin="round"/>
+  <circle cx="69" cy="20" r="6" fill="#72f4d0"/>
+  <text x="104" y="42" fill="#f4fffc" font-family="Inter, ui-sans-serif, system-ui, sans-serif" font-size="31" font-weight="780" letter-spacing="-.7">HA Smartdash</text>
+  <text x="106" y="65" fill="#72f4d0" font-family="Inter, ui-sans-serif, system-ui, sans-serif" font-size="12" font-weight="700" letter-spacing="2.3">HOME ASSISTANT DASHBOARD</text>
+</svg>

@@ -1,0 +1,9 @@
+configuration:
+  home_assistant_url:
+    name: Home Assistant-adresse
+    description: Behold den interne Home Assistant-adresse, medmindre en avanceret opsætning kræver en anden adresse.
+  timezone:
+    name: Tidszone
+    description: IANA-tidszone til log og tidsstyret dashboardadfærd.
+network:
+  8099/tcp: Smartdash-webinterface

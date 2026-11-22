@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="HA Smartdash">
+  <defs>
+    <linearGradient id="smartdash-bg" x1="8" y1="6" x2="58" y2="60" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#172a37"/>
+      <stop offset=".52" stop-color="#123c3a"/>
+      <stop offset="1" stop-color="#0b171e"/>
+    </linearGradient>
+    <linearGradient id="smartdash-accent" x1="14" y1="16" x2="49" y2="50" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#72f4d0"/>
+      <stop offset="1" stop-color="#27aee4"/>
+    </linearGradient>
+  </defs>
+  <rect x="3" y="3" width="58" height="58" rx="18" fill="url(#smartdash-bg)"/>
+  <rect x="4" y="4" width="56" height="56" rx="17" fill="none" stroke="#b7fff0" stroke-opacity=".16" stroke-width="2"/>
+  <path d="M13 30.5 32 14l19 16.5v18a3.5 3.5 0 0 1-3.5 3.5h-31a3.5 3.5 0 0 1-3.5-3.5z" fill="none" stroke="url(#smartdash-accent)" stroke-width="4.5" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M20 39h7l3.2-7 5.2 13 3.4-6H45" fill="none" stroke="#f4fffc" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"/>
+  <circle cx="49.5" cy="15.5" r="4.5" fill="#72f4d0"/>
+</svg>

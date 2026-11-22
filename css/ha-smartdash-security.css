@@ -1,0 +1,397 @@
+.beast-security-panel { overflow: hidden; }
+
+.beast-security-command {
+  height: 100%;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1.35fr) minmax(390px, .65fr);
+  grid-template-rows: minmax(0, 1fr) minmax(250px, auto);
+  gap: var(--space-4);
+}
+.beast-security-command.has-native-layout {
+  grid-template-columns: repeat(12, minmax(0, 1fr));
+  grid-template-rows: repeat(7, minmax(72px, 1fr));
+  grid-auto-rows: minmax(80px, 1fr);
+  overflow-y: auto;
+}
+.beast-security-command.has-native-layout > .beast-security-native-card {
+  grid-column: var(--security-x) / span var(--security-w) !important;
+  grid-row: var(--security-y) / span var(--security-h) !important;
+  min-width: 0;
+  min-height: 0;
+}
+.beast-security-command.is-native-editing > .beast-security-native-card { position: relative; overflow: visible; outline: 2px dashed color-mix(in srgb, var(--accent), transparent 35%); outline-offset: -3px; touch-action: none; }
+.beast-security-command.is-native-editing { position:relative; }
+.beast-security-command.is-native-editing::after { content:""; position:absolute; top:100%; left:0; width:1px; height:148px; pointer-events:none; }
+.beast-security-command.is-native-editing > .beast-security-native-card > :not(.beast-security-native-drag):not(.beast-security-native-resize) { pointer-events: none; }
+.beast-security-native-drag { position:absolute; z-index:40; top:10px; left:10px; width:50px; height:50px; display:grid; place-items:center; border:2px solid color-mix(in srgb,var(--accent-a) 72%,#fff); border-radius:14px; background:var(--accent-gradient); color:#fff; box-shadow:0 9px 26px rgba(0,0,0,.42),var(--accent-glow); cursor:grab; touch-action:none; }
+.beast-security-native-resize { position:absolute; z-index:41; right:0; bottom:0; width:58px; height:58px; border-radius:20px 0 0 0; background:linear-gradient(135deg,transparent 39%,color-mix(in srgb,var(--accent-a) 28%,#07101d) 40%); filter:drop-shadow(-3px -3px 5px rgba(0,0,0,.34)); cursor:nwse-resize; touch-action:none; }
+.beast-security-command.is-native-editing > .is-dragging, .beast-security-command.is-native-editing > .is-resizing { z-index: 45; opacity: .88; }
+
+.beast-security-hero,
+.beast-security-systems,
+.beast-security-entries {
+  min-width: 0;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  background: var(--surface-2);
+  container-type: size;
+}
+
+.beast-security-hero {
+  min-height: 0;
+  padding: clamp(12px, 4cqb, 26px);
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: clamp(6px, 3cqb, 12px);
+  position: relative;
+  overflow: hidden;
+  background:
+    radial-gradient(circle at 92% 5%, rgba(47,224,168,.13), transparent 38%),
+    linear-gradient(145deg, rgba(255,255,255,.045), rgba(255,255,255,.015));
+}
+
+.beast-security-hero::after {
+  content: "";
+  position: absolute;
+  width: 460px;
+  height: 460px;
+  right: -220px;
+  top: -240px;
+  border: 1px solid rgba(47,224,168,.2);
+  border-radius: 50%;
+  box-shadow: 0 0 0 52px rgba(47,224,168,.026), 0 0 0 104px rgba(47,224,168,.018);
+  animation: beast-security-radar 5s ease-in-out infinite;
+  pointer-events: none;
+}
+
+@keyframes beast-security-radar {
+  0%, 100% { transform: scale(.94); opacity: .58; }
+  50% { transform: scale(1.06); opacity: 1; }
+}
+
+.beast-security-command.is-triggered .beast-security-hero {
+  border-color: var(--danger);
+  background: radial-gradient(circle at 92% 5%, rgba(255,93,122,.22), transparent 42%), var(--surface-2);
+}
+
+.beast-security-hero-top {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: clamp(8px, 4cqi, var(--space-4));
+  position: relative;
+  z-index: 1;
+}
+
+.beast-security-hero-top small,
+.beast-security-section-head small,
+.beast-security-identity small {
+  display: block;
+  color: var(--ink-muted);
+  font-size: var(--text-xs);
+  text-transform: uppercase;
+  letter-spacing: .07em;
+}
+
+.beast-security-hero-top h2 { margin:3px 0; font-size:clamp(1.15rem, 10cqb, 2.55rem); line-height:1.02; }
+.beast-security-hero-top p { margin: 0; color: var(--ink-muted); font-size: clamp(0.62rem, 4cqb, var(--text-sm)); }
+
+.beast-security-orbit {
+  width: clamp(38px, 22cqb, 64px);
+  height: clamp(38px, 22cqb, 64px);
+  display: grid;
+  place-items: center;
+  border: 1px solid rgba(47,224,168,.38);
+  border-radius: 50%;
+  color: var(--success);
+  background: var(--success-soft);
+  box-shadow: 0 0 0 9px rgba(47,224,168,.035), 0 0 30px rgba(47,224,168,.2);
+  animation: beast-shield-pulse 2.8s ease-in-out infinite;
+}
+
+@keyframes beast-shield-pulse { 50% { transform: scale(1.04); box-shadow: 0 0 0 14px rgba(47,224,168,.03), 0 0 42px rgba(47,224,168,.3); } }
+.beast-security-command.is-triggered .beast-security-orbit { color: #fff; background: var(--danger); border-color: #fff; animation: beast-alarm-flash .7s alternate infinite; }
+@keyframes beast-alarm-flash { to { transform: scale(1.08); box-shadow: 0 0 42px var(--danger); } }
+
+.beast-security-health {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: clamp(6px, 3cqi, var(--space-3));
+}
+
+.beast-security-health > div {
+  min-height: clamp(48px, 22cqb, 72px);
+  padding: clamp(6px, 3cqb, 10px) clamp(7px, 3cqi, 12px);
+  display: grid;
+  grid-template-columns: auto 1fr;
+  align-content: center;
+  gap: 2px clamp(6px, 3cqi, 12px);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--surface-solid);
+}
+.beast-security-health span { grid-row: 1 / 3; width: clamp(26px, 14cqb, 40px); height: clamp(26px, 14cqb, 40px); display: grid; place-items: center; border-radius: 12px; color: var(--success); background: var(--success-soft); }
+.beast-security-health b { font-size: clamp(0.85rem, 8cqb, var(--text-xl)); }
+.beast-security-health small { color: var(--ink-muted); font-size: clamp(0.58rem, 4cqb, var(--text-xs)); }
+
+.beast-security-primary-actions {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: clamp(6px, 3cqi, var(--space-3));
+}
+
+.beast-security-action-btn,
+.beast-security-lock-btn,
+.beast-security-lock-all {
+  appearance: none;
+  min-height: clamp(36px, 18cqb, 52px);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-md);
+  background: var(--surface-solid);
+  color: var(--ink);
+  font: 750 clamp(0.65rem, 5cqb, var(--text-sm)) var(--font-sans);
+}
+
+.beast-security-primary-actions .beast-security-action-btn { min-height:clamp(36px, 18cqb, 52px); font-size:clamp(0.65rem, 5cqb, var(--text-sm)); }
+.beast-security-action-btn:active,
+.beast-security-lock-btn:active,
+.beast-security-lock-all:active { transform: scale(.98); }
+.beast-security-action-btn.is-confirming { color: var(--warning); border-color: var(--warning); background: var(--warning-soft); }
+.beast-security-action-btn.is-disarm.is-confirming { color: var(--success); border-color: var(--success); background: var(--success-soft); }
+.beast-security-note { margin: 0; display: flex; align-items: center; gap: 7px; color: var(--ink-muted); font-size: var(--text-xs); }
+
+.beast-security-state-pill {
+  padding: 7px 12px;
+  border-radius: var(--radius-full);
+  background: var(--surface-solid);
+  color: var(--ink-muted);
+  font-size: var(--text-xs);
+  font-weight: 800;
+}
+.beast-security-state-pill[data-state="disarmed"] { color: var(--success); background: var(--success-soft); }
+.beast-security-state-pill[data-state^="armed"] { color: var(--danger); background: rgba(255,93,122,.14); }
+.beast-security-state-pill[data-state="triggered"] { color: #fff; background: var(--danger); }
+.beast-security-state-pill[data-state="pending"],
+.beast-security-state-pill[data-state="arming"],
+.beast-security-state-pill[data-state="disarming"] { color: var(--warning); background: var(--warning-soft); }
+
+.beast-security-systems {
+  min-height: 0;
+  padding: clamp(10px, 4cqb, var(--space-4));
+  display: flex;
+  flex-direction: column;
+  gap: clamp(6px, 3cqb, var(--space-3));
+  overflow-x: hidden;
+  overflow-y: auto;
+}
+.beast-security-command.is-native-editing > .beast-security-systems { overflow:hidden; }
+
+.beast-security-section-head { display: flex; align-items: center; justify-content: space-between; gap: clamp(6px, 3cqi, var(--space-3)); }
+.beast-security-section-head strong { display: block; margin-top: 3px; font-size: clamp(0.8rem, 6cqb, var(--text-lg)); }
+.beast-security-section-head > span { color: var(--success); font-size: clamp(0.58rem, 4cqb, var(--text-xs)); font-weight: 800; }
+
+.beast-security-system {
+  flex: 1;
+  min-height: 0;
+  padding: clamp(5px, 3cqb, 8px) clamp(6px, 3cqi, 10px);
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: clamp(3px, 2cqb, 6px);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--surface-solid);
+}
+.beast-security-system.is-triggered { border-color: var(--danger); box-shadow: inset 0 0 24px rgba(255,93,122,.1); }
+.beast-security-card-head { display: flex; align-items: center; justify-content: space-between; gap: clamp(4px, 2cqi, var(--space-2)); }
+.beast-security-identity { display: flex; align-items: center; gap: clamp(5px, 3cqi, 10px); min-width: 0; }
+.beast-security-identity strong { display: block; margin-top: 2px; font-size: clamp(0.65rem, 4.5cqb, var(--text-sm)); }
+.beast-security-system-icon { width: clamp(22px, 12cqb, 32px); height: clamp(22px, 12cqb, 32px); display:grid; place-items:center; border-radius:10px; color:var(--accent-b); background:var(--accent-soft); }
+.beast-security-system-actions { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: clamp(4px, 2cqi, 7px); }
+.beast-security-system-actions .beast-security-action-btn { min-height:clamp(26px, 14cqb, 36px); padding:3px 5px; border-radius:var(--radius-sm); font-size:clamp(0.55rem, 4cqb, 11px); }
+
+.beast-security-entries {
+  grid-column: 1 / -1;
+  padding: clamp(10px, 3cqb, var(--space-4));
+  display: flex;
+  flex-direction: column;
+}
+.beast-security-lock-all { min-height: clamp(34px, 14cqb, 46px); padding: clamp(5px, 2cqb, 8px) clamp(9px, 3cqi, 16px); display: inline-flex; align-items: center; gap: 8px; color: var(--success); border-color: rgba(47,224,168,.32); background: var(--success-soft); }
+.beast-security-entry-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: clamp(6px, 2cqi, var(--space-3)); margin-top: clamp(6px, 2cqb, var(--space-3)); }
+.beast-security-entry {
+  min-width: 0;
+  min-height: clamp(72px, 32cqb, 106px);
+  padding: clamp(6px, 2cqb, var(--space-3));
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  grid-template-rows: auto auto;
+  align-items: center;
+  gap: 7px clamp(6px, 2cqi, 12px);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--surface-solid);
+}
+.beast-security-entry.is-open { border-color: rgba(255,200,87,.55); background: linear-gradient(135deg, rgba(255,200,87,.08), var(--surface-solid)); }
+.beast-security-entry-icon { grid-row: 1 / 3; width: clamp(30px, 15cqb, 48px); height: clamp(30px, 15cqb, 48px); display: grid; place-items: center; border-radius: 14px; color: var(--success); background: var(--success-soft); }
+.beast-security-entry.is-open .beast-security-entry-icon,
+.beast-security-entry:not(.is-locked) .beast-security-entry-icon { color: var(--warning); background: var(--warning-soft); }
+.beast-security-entry-copy strong { display: block; font-size: clamp(0.68rem, 5cqb, var(--text-md)); }
+.beast-security-entry-copy span { display: block; margin-top: 3px; color: var(--ink-muted); font-size: clamp(0.55rem, 4cqb, var(--text-xs)); }
+.beast-security-entry-contact { justify-self: end; padding: 5px 9px; border-radius: var(--radius-full); color: var(--success); background: var(--success-soft); font-size: clamp(0.55rem, 4cqb, var(--text-xs)); font-weight: 800; }
+.beast-security-entry.is-open .beast-security-entry-contact { color: var(--warning); background: var(--warning-soft); }
+.beast-security-lock-btn { grid-column: 2 / 4; min-height: clamp(34px, 14cqb, 46px); display: inline-flex; align-items: center; justify-content: center; gap: 8px; border-radius: var(--radius-sm); }
+.beast-security-lock-btn.is-on { color: var(--success); border-color: rgba(47,224,168,.3); background: var(--success-soft); }
+
+.beast-security-perimeter {
+  min-height: clamp(52px, 20cqb, 72px);
+  margin-top: clamp(6px, 2cqb, var(--space-3));
+  padding: clamp(7px, 3cqb, 10px) clamp(8px, 3cqi, 12px);
+  display: grid;
+  grid-template-columns: minmax(260px, .55fr) minmax(0, 1.45fr);
+  align-items: center;
+  gap: clamp(6px, 2cqi, var(--space-3));
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: rgba(255,255,255,.022);
+}
+.beast-security-perimeter-summary { display: flex; align-items: center; gap: 11px; }
+.beast-security-perimeter-summary > span { width: clamp(28px, 15cqb, 42px); height: clamp(28px, 15cqb, 42px); display: grid; place-items: center; border-radius: 12px; }
+.beast-security-perimeter-summary > span.is-safe { color: var(--success); background: var(--success-soft); }
+.beast-security-perimeter-summary > span.is-warning { color: var(--warning); background: var(--warning-soft); }
+.beast-security-perimeter-summary strong { display: block; font-size: clamp(0.65rem, 4.5cqb, var(--text-sm)); }
+.beast-security-perimeter-summary small { display: block; margin-top: 3px; color: var(--ink-muted); font-size: clamp(0.55rem, 4cqb, var(--text-xs)); }
+.beast-security-opening-list { min-width: 0; display: flex; justify-content: flex-end; flex-wrap: wrap; gap: 7px; }
+.beast-security-opening {
+  min-height: clamp(24px, 12cqb, 34px);
+  padding: 6px 10px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-full);
+  color: var(--ink-muted);
+  background: var(--surface-solid);
+  font-size: clamp(0.55rem, 4cqb, var(--text-xs));
+  font-weight: 750;
+}
+.beast-security-opening.is-open { color: var(--warning); border-color: rgba(255,200,87,.38); background: var(--warning-soft); }
+.beast-security-opening.is-closed { color: var(--success); border-color: rgba(47,224,168,.28); background: var(--success-soft); }
+
+/* Security command centre: a coherent visual language across the hero,
+   integrations and entry cards. Motion communicates state and remains
+   deliberately slow so the wall display never feels busy. */
+.beast-security-hero,
+.beast-security-systems,
+.beast-security-entries {
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.045), 0 18px 46px rgba(0,0,0,.12);
+}
+.beast-security-hero {
+  background:
+    radial-gradient(circle at 88% 8%, color-mix(in srgb,var(--success) 15%,transparent), transparent 38%),
+    linear-gradient(145deg,color-mix(in srgb,var(--surface-2-solid) 94%,var(--accent-a)),var(--surface-2-solid)),var(--surface-2);
+}
+.beast-security-hero::before {
+  content:"";
+  position:absolute;
+  z-index:0;
+  left:5%;
+  right:5%;
+  height:1px;
+  top:18%;
+  background:linear-gradient(90deg,transparent,color-mix(in srgb,var(--success) 70%,#fff),transparent);
+  opacity:.32;
+  filter:drop-shadow(0 0 8px var(--success));
+  animation:beast-security-scan 7s ease-in-out infinite;
+  pointer-events:none;
+}
+@keyframes beast-security-scan { 0%,100% { transform:translateY(-30px); opacity:0; } 18%,78% { opacity:.3; } 50% { transform:translateY(430px); opacity:.5; } }
+.beast-security-health > div {
+  position:relative;
+  overflow:hidden;
+  background:linear-gradient(145deg,color-mix(in srgb,var(--surface-solid) 92%,var(--success)),var(--surface-solid));
+}
+.beast-security-health > div::after { content:""; position:absolute; left:14px; right:14px; bottom:0; height:2px; border-radius:99px; background:linear-gradient(90deg,transparent,var(--success),transparent); opacity:.58; }
+.beast-security-systems,.beast-security-entries { background:linear-gradient(155deg,color-mix(in srgb,var(--surface-2-solid) 95%,var(--accent-b)),var(--surface-2-solid)),var(--surface-2); }
+.beast-security-system {
+  position:relative;
+  overflow:hidden;
+  border-color:color-mix(in srgb,var(--border) 78%,var(--accent-b));
+  background:linear-gradient(135deg,color-mix(in srgb,var(--surface-solid) 94%,var(--accent-b)),var(--surface-solid));
+}
+.beast-security-system::before { content:""; position:absolute; top:8px; bottom:8px; left:0; width:3px; border-radius:0 4px 4px 0; background:var(--success); box-shadow:0 0 12px color-mix(in srgb,var(--success) 52%,transparent); opacity:.72; }
+.beast-security-system.is-triggered::before { background:var(--danger); box-shadow:0 0 16px var(--danger); animation:beast-security-alert 1s ease-in-out infinite alternate; }
+@keyframes beast-security-alert { to { opacity:.3; } }
+.beast-security-system-icon { box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--accent-b) 24%,transparent); }
+.beast-security-entry {
+  position:relative;
+  overflow:hidden;
+  border-color:color-mix(in srgb,var(--border) 82%,var(--success));
+  background:linear-gradient(145deg,color-mix(in srgb,var(--surface-solid) 95%,var(--success)),var(--surface-solid));
+  transition:border-color .2s ease,transform .2s ease,box-shadow .2s ease;
+}
+.beast-security-entry::before { content:""; position:absolute; inset:0 auto 0 0; width:3px; background:var(--success); opacity:.7; }
+.beast-security-entry.is-open::before,.beast-security-entry:not(.is-locked)::before { background:var(--warning); box-shadow:0 0 14px var(--warning); animation:beast-entry-attention 2.4s ease-in-out infinite; }
+@keyframes beast-entry-attention { 50% { opacity:.28; } }
+.beast-security-lock-btn { background:linear-gradient(145deg,color-mix(in srgb,var(--surface-solid) 94%,var(--accent-a)),var(--surface-solid)); }
+.beast-security-lock-btn.is-on { box-shadow:inset 0 0 18px color-mix(in srgb,var(--success) 7%,transparent); }
+.beast-security-perimeter { position:relative; overflow:hidden; background:linear-gradient(90deg,color-mix(in srgb,var(--surface-solid) 92%,var(--accent-b)),var(--surface-solid)); }
+.beast-security-perimeter::after { content:""; position:absolute; left:-30%; bottom:0; width:28%; height:2px; background:linear-gradient(90deg,transparent,var(--accent-b),transparent); animation:beast-perimeter-sweep 8s linear infinite; }
+@keyframes beast-perimeter-sweep { to { left:105%; } }
+@media (prefers-reduced-motion:reduce) {
+  .beast-security-hero::before,.beast-security-hero::after,.beast-security-orbit,.beast-security-system.is-triggered::before,.beast-security-entry::before,.beast-security-perimeter::after { animation:none !important; }
+}
+
+@media (max-width: 1050px) {
+  .beast-security-command.has-native-layout {
+    height:auto;
+    min-height:100%;
+    display:flex;
+    flex-direction:column;
+    overflow-y:visible;
+  }
+  .beast-security-command.has-native-layout > .beast-security-native-card { flex:0 0 auto; width:100%; }
+  .beast-security-command.has-native-layout > .beast-security-hero { min-height:360px; }
+  .beast-security-command.has-native-layout > .beast-security-systems { min-height:450px; }
+  .beast-security-command.has-native-layout > .beast-security-entries { min-height:340px; }
+  .beast-security-hero { padding:var(--space-5); }
+  .beast-security-health > div { min-height:72px; }
+}
+@media (max-width: 820px) {
+  .beast-security-health { grid-template-columns:repeat(3,minmax(0,1fr)); }
+  .beast-security-entry-grid { grid-template-columns:minmax(0,1fr); }
+  .beast-security-perimeter { grid-template-columns:minmax(0,1fr); }
+  .beast-security-opening-list { justify-content:flex-start; }
+}
+/* Same collapse as the viewport breakpoint above, but driven by the card's
+   own size when it's resized small in the layout editor, not the viewport. */
+@container (max-width: 340px) {
+  .beast-security-hero-top { display:flex; flex-direction:column; align-items:flex-start; gap:6px; }
+  .beast-security-health { grid-template-columns:1fr; }
+  .beast-security-primary-actions { grid-template-columns:1fr; }
+}
+@container (max-width: 320px) {
+  .beast-security-entry-grid { grid-template-columns:minmax(0,1fr); }
+  .beast-security-perimeter { grid-template-columns:minmax(0,1fr); }
+  .beast-security-opening-list { justify-content:flex-start; }
+}
+@container (max-width: 180px) {
+  .beast-security-system-actions { grid-template-columns:1fr; }
+}
+/* A card shrunk to only a couple of grid rows can't fit hero/health/actions
+   stacked and still legible; let it scroll rather than silently clip. */
+@container (max-height: 210px) {
+  .beast-security-hero { overflow-y:auto; }
+}
+.beast-security-command .is-layout-hidden { display: none !important; }
+.beast-security-layout-btn { position: absolute; top: 12px; right: 12px; z-index: 5; width: 44px; height: 44px; border: 0; background: transparent; color: var(--ink-muted); font-size: 28px; }
+.beast-security-layout-modal { width: min(1100px, calc(100vw - 28px)); max-width:1100px; max-height: calc(100dvh - 28px); }
+.beast-security-layout-list { display: grid; gap: 10px; margin: 16px 0 20px; }
+.beast-security-native-editor-card { padding: 13px; border: 1px solid var(--border); border-radius: var(--radius-md); background: var(--surface-2); }
+.beast-security-native-editor-card header label { min-height: 42px; display: flex; align-items: center; gap: 10px; }
+.beast-security-native-editor-card header input { width: 24px; height: 24px; accent-color: var(--accent); }
+.beast-security-native-editor-card > div { display: grid; grid-template-columns: repeat(3,minmax(120px,1fr)); gap: 9px; margin-top: 9px; }
+.beast-security-native-editor-card > div label { min-width: 0; display: flex; flex-direction: column; gap: 5px; color: var(--ink-muted); font-size: var(--text-xs); }
+.beast-security-native-editor-card > div input, .beast-security-native-editor-card > div select { width: 100%; min-height: 44px; padding: 0 10px; border: 1px solid var(--border); border-radius: 10px; background: var(--surface-solid); color: var(--ink); }
+@media (max-width: 760px) { .beast-security-native-editor-card > div { grid-template-columns: minmax(0,1fr); } }

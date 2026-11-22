@@ -1,0 +1,698 @@
+// Screensaver camera alert for bedside devices (deviceType "bedroom"): while the dimmed
+// clock screensaver shows, activity in the house's alarm zones pops up a live
+// camera on top of it. Signals and cameras come from panels.bedroom
+// (alertZoneLog, alertSensors, alertCameras, alertSeconds, alertWhen).
+window.BeastBedroomAlerts = (() => {
+  const DEFAULT_SECONDS = 45;
+  const MAX_EVENT_AGE_MS = 2 * 60 * 1000;
+  // A bedside clock a little behind Home Assistant's would otherwise see
+  // brand-new entries as coming from the future.
+  const MAX_CLOCK_SKEW_MS = 60 * 1000;
+  const VIEW_MAX_MS = 3 * 60 * 1000;
+  const VIEW_SOURCE = "bedroom-alert-camera";
+  const SENSOR_SUFFIX = /_(?:(?:person|vehicle|car|animal|pet|face|license_plate|package|motion|occupancy|presence|moving)(?:_detected|_detection)?|detected|detection)$/;
+  const STILL_CAMERA = /snapshot|still|foto|photo|picture|image/i;
+  const WHAT_LABELS = { person: "Person", vehicle: "Bil", animal: "Dyr", motion: "Bevægelse" };
+  const WHAT_ALIASES = { person: "person", human: "person", face: "person", vehicle: "vehicle", car: "vehicle", licenseplate: "vehicle", license_plate: "vehicle", animal: "animal", pet: "animal" };
+  const ICONS = {
+    x: '<path d="M6.5 6.5l11 11M17.5 6.5l-11 11"/>',
+    corners: '<path d="M4 9V4h5M15 4h5v5M20 15v5h-5M9 20H4v-5"/>',
+    bed: '<path d="M3 18.5v-12"/><path d="M3 14.5h18v4"/><path d="M21 14.5v-2a3 3 0 0 0-3-3h-7v5"/><circle cx="7" cy="11.5" r="1.75"/>',
+    camera: '<rect x="2.75" y="6.5" width="13.5" height="11" rx="2.5"/><path d="m16.25 10.5 4.75-2.6v8.2l-4.75-2.6"/>',
+    bulb: '<path d="M9.25 17.5h5.5M10 20.5h4"/><path d="M12 3.5a6 6 0 0 0-3.6 10.8c.7.5 1.1 1.3 1.1 2.1v1.1h5v-1.1c0-.8.4-1.6 1.1-2.1A6 6 0 0 0 12 3.5Z"/>',
+    moon: '<path d="M19.5 14.6A7.8 7.8 0 0 1 9.4 4.5a7.8 7.8 0 1 0 10.1 10.1Z"/>',
+    fan: '<circle cx="12" cy="12" r="1.6"/><path d="M12 10.4c-.6-2.6.2-5.9 2.6-6.4 2.2-.4 3.2 2.4 1.4 4.1-1 .9-2.4 1.6-4 2.3Z"/><path d="M13.4 12.8c2.5.8 4.9 3.2 4.1 5.5-.7 2.1-3.6 1.6-4-.8-.2-1.3 0-2.9-.1-4.7Z"/><path d="M10.6 12.8c-1.9 1.8-5.2 2.7-6.8.9-1.4-1.7.5-4 2.8-3.2 1.3.4 2.6 1.4 4 2.3Z"/>'
+  };
+  // A tap that lands just as the screensaver (and with it the row) appears
+  // must not also press the button that appears under the finger.
+  const SHORTCUT_GUARD_MS = 400;
+
+  let wiredSignature = "";
+  let socketStatus = "";
+  let unsubscribers = [];
+  let lastZoneEntryAt = 0;
+  const sensorStates = new Map();
+  let alert = null;
+  let view = null;
+
+  function t(da, vars) {
+    const text = window.HASmartdashI18n ? window.HASmartdashI18n.t(da) : da;
+    return vars ? text.replace(/\{(\w+)\}/g, (match, key) => (key in vars ? String(vars[key]) : match)) : text;
+  }
+
+  function esc(value) {
+    return String(value ?? "").replace(/[&<>"']/g, (char) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[char]);
+  }
+
+  function icon(name, size) {
+    return `<svg class="bda-i" width="${size}" height="${size}" viewBox="0 0 24 24" stroke-width="${(36 / size).toFixed(2)}" aria-hidden="true" focusable="false">${ICONS[name]}</svg>`;
+  }
+
+  function hm(at) {
+    const date = new Date(at);
+    return `${String(date.getHours()).padStart(2, "0")}:${String(date.getMinutes()).padStart(2, "0")}`;
+  }
+  function cfg() { return BeastConfig.get("panels.bedroom") || {}; }
+  function list(value) {
+    if (Array.isArray(value)) return value.filter((item) => typeof item === "string" && item.includes("."));
+    return typeof value === "string" && value.includes(".") ? [value] : [];
+  }
+  function state(id) { return id ? BeastHaSocket.getState(id) : null; }
+  function enabledHere() { return BeastLocalSettings.isBedroomDevice(); }
+  function alertMs() {
+    const seconds = Number(cfg().alertSeconds);
+    return Math.max(5, Math.min(600, Number.isFinite(seconds) && seconds > 0 ? seconds : DEFAULT_SECONDS)) * 1000;
+  }
+  function go2rtcBase() { return String(BeastConfig.get("panels.cameras.go2rtcBaseUrl") || "").replace(/\/+$/, ""); }
+  function ambientOverlay() {
+    const overlay = document.getElementById("beastAmbientMode");
+    return overlay && document.body.classList.contains("beast-is-ambient") && overlay.classList.contains("is-visible") ? overlay : null;
+  }
+  function screenLocked() { return Boolean(document.querySelector(".beast-lock-overlay.is-open, .beast-screen-lock")); }
+
+  // The bedroom's own alarm decides; without one, any alarm the dashboard
+  // watches. With no alarm configured anywhere the restriction cannot apply.
+  function alarmAllows() {
+    if (cfg().alertWhen !== "armed") return true;
+    const own = list(cfg().alarm);
+    const ids = own.length ? own : list(BeastConfig.get("panels.security.alarmPanels"));
+    if (!ids.length) return true;
+    return ids.some((id) => /^(armed_|triggered$|pending$)/.test(String(state(id)?.state || "")));
+  }
+
+  function isFresh(at, now = Date.now()) {
+    return Number.isFinite(at) && now - at <= MAX_EVENT_AGE_MS && at - now <= MAX_CLOCK_SKEW_MS;
+  }
+
+  // ---------------------------------------------------------------------------
+  // Signals
+  // ---------------------------------------------------------------------------
+  // "zone|ISO time|what|alarm name;..." newest first. input_text caps the
+  // length, so the oldest entry is often cut off mid-way; anything that does
+  // not parse is skipped.
+  function parseZoneLog(text) {
+    return String(text || "").split(";").map((raw) => {
+      const parts = raw.split("|");
+      if (parts.length < 2) return null;
+      const zone = parts[0].trim().toLowerCase();
+      const at = Date.parse(parts[1].trim());
+      if (!/^[a-z0-9_]+$/.test(zone) || !Number.isFinite(at)) return null;
+      return { zone, at, what: String(parts[2] || "").trim(), name: parts.slice(3).join("|").trim() };
+    }).filter(Boolean);
+  }
+
+  function onZoneLog(st) {
+    if (!st || ["unknown", "unavailable"].includes(st.state)) return;
+    const entries = parseZoneLog(st.state);
+    if (!entries.length) return;
+    const unseen = entries.filter((entry) => entry.at > lastZoneEntryAt);
+    lastZoneEntryAt = Math.max(lastZoneEntryAt, ...entries.map((entry) => entry.at));
+    const now = Date.now();
+    unseen.filter((entry) => isFresh(entry.at, now)).sort((a, b) => a.at - b.at).forEach((entry) => {
+      trigger({ key: entry.zone, slug: entry.zone, what: whatKind(entry.what), name: zoneName(entry.name), at: entry.at });
+    });
+  }
+
+  function zoneName(name) {
+    return String(name || "").replace(/^\s*zone\s*[-–—:·|]\s*/i, "").trim();
+  }
+
+  function whatKind(value) {
+    const key = String(value || "").trim().toLowerCase().replace(/[\s-]+/g, "_");
+    return WHAT_ALIASES[key] || WHAT_ALIASES[key.replace(/_/g, "")] || "motion";
+  }
+
+  function sensorSlug(id) {
+    return id.split(".")[1].replace(SENSOR_SUFFIX, "");
+  }
+
+  function sensorWhat(id) {
+    const match = id.split(".")[1].match(/_(person|face|vehicle|car|license_plate|animal|pet)(?:_detected|_detection)?$/);
+    return match ? whatKind(match[1]) : "motion";
+  }
+
+  // Only a clean off -> on edge counts; coming back from unavailable or a
+  // reconnect snapshot that still says "on" is not a new detection.
+  function onSensor(id, st) {
+    const previous = sensorStates.get(id);
+    const next = st?.state;
+    sensorStates.set(id, next);
+    if (next !== "on" || previous !== "off") return;
+    const changedAt = Date.parse(st.last_changed || "");
+    if (Number.isFinite(changedAt) && !isFresh(changedAt)) return;
+    trigger({ key: sensorSlug(id), sensor: id, slug: sensorSlug(id), what: sensorWhat(id), name: "", at: Number.isFinite(changedAt) ? changedAt : Date.now() });
+  }
+
+  // ---------------------------------------------------------------------------
+  // Event -> camera
+  // ---------------------------------------------------------------------------
+  function cameraInfo(id) {
+    const st = state(id);
+    if (!st || st.state === "unavailable" || STILL_CAMERA.test(id)) return null;
+    return window.BeastCameras?.resolveCamera?.(id) || null;
+  }
+
+  function liveCameras() {
+    const cameras = [];
+    BeastHaSocket.getAllStates().forEach((st, id) => {
+      if (!id.startsWith("camera.")) return;
+      const info = cameraInfo(id);
+      if (info) cameras.push(info);
+    });
+    return cameras;
+  }
+
+  const QUALITY_RANK = { medium: 0, high: 1, low: 2, standard: 3 };
+  function bestOf(cameras) {
+    return cameras.slice().sort((a, b) => (QUALITY_RANK[a.quality] ?? 9) - (QUALITY_RANK[b.quality] ?? 9))[0] || null;
+  }
+
+  function camerasForSlug(cameras, slug) {
+    const exact = cameras.filter((camera) => camera.slug === slug);
+    if (exact.length) return exact;
+    const prefixed = cameras.filter((camera) => camera.entityId.startsWith(`camera.${slug}_`));
+    if (!prefixed.length) return [];
+    const shortest = prefixed.reduce((best, camera) => (camera.slug.length < best.slug.length ? camera : best)).slug;
+    return prefixed.filter((camera) => camera.slug === shortest);
+  }
+
+  // A top-level const in its own script, so not a window property.
+  function registry() { return typeof BeastRegistry === "undefined" ? null : BeastRegistry; }
+
+  function camerasForSensor(cameras, sensorId) {
+    const deviceId = registry()?.isLoaded() ? registry().getEntityMeta(sensorId)?.deviceId : null;
+    if (!deviceId) return [];
+    const ids = new Set(registry().getDeviceEntityIds(deviceId, "camera"));
+    return cameras.filter((camera) => ids.has(camera.entityId));
+  }
+
+  function cameraForEvent(event) {
+    const cameras = liveCameras();
+    let matches = event.sensor ? camerasForSensor(cameras, event.sensor) : [];
+    if (!matches.length) matches = camerasForSlug(cameras, event.slug);
+    const allowed = list(cfg().alertCameras).map((id) => cameraInfo(id)).filter(Boolean);
+    if (allowed.length) {
+      const slugs = new Set(allowed.map((camera) => camera.slug));
+      matches = matches.filter((camera) => slugs.has(camera.slug));
+      if (!matches.length) return allowed[0];
+    }
+    return bestOf(matches);
+  }
+
+  // Same choice as the bedroom tiles: a medium/low sibling entity for HA's
+  // own WebRTC, the matching go2rtc variant as the fallback.
+  function streamSpec(camera, wantHigh = false) {
+    const siblings = liveCameras().filter((item) => item.slug === camera.slug);
+    const order = wantHigh ? ["high", "standard", "medium", "low"] : ["medium", "low", "standard", "high"];
+    const pick = (items) => order.map((quality) => items.find((item) => item.quality === quality)).find(Boolean);
+    const ha = pick(siblings) || camera;
+    const variants = camera.streamVariants || [];
+    return { slug: camera.slug, ha, g2r: pick(variants) || variants[0] || null, label: camera.label };
+  }
+
+  function streamMarkup(spec) {
+    return `<beast-ha-camera-stream data-entity-id="${esc(spec.ha.entityId)}" data-camera-picture="${esc(spec.ha.entityPicture || "")}" data-camera-label="${esc(spec.label)}" data-go2rtc-base="${esc(go2rtcBase())}" data-go2rtc-source="${esc(spec.g2r?.streamName || "")}"></beast-ha-camera-stream>`;
+  }
+
+  // ---------------------------------------------------------------------------
+  // Pop-up over the screensaver
+  // ---------------------------------------------------------------------------
+  function trigger(event) {
+    if (!enabledHere() || !alarmAllows()) return;
+    const overlay = ambientOverlay();
+    if (!overlay || screenLocked()) return;
+    const camera = cameraForEvent(event);
+    if (!camera) return;
+    show(overlay, event, camera);
+  }
+
+  function show(overlay, event, camera) {
+    window.BeastBedroom?.quick?.close?.();
+    const now = Date.now();
+    const windowMs = alertMs();
+    if (!alert) {
+      alert = { slug: null, element: null, observer: null, timerId: null, tickId: null, recent: new Map() };
+    }
+    alert.recent.set(event.key, now);
+    alert.recent.forEach((at, key) => { if (now - at > windowMs) alert.recent.delete(key); });
+    alert.event = event;
+    alert.windowMs = windowMs;
+    alert.deadline = now + windowMs;
+    if (!alert.element || !alert.element.isConnected) mount(overlay);
+    if (alert.slug !== camera.slug) {
+      alert.slug = camera.slug;
+      alert.camera = camera;
+      mountStream(streamSpec(camera));
+    }
+    renderHead();
+    restartCountdown();
+    moveClock(overlay, true);
+  }
+
+  // ---------------------------------------------------------------------------
+  // The screensaver clock steps aside for the pop-up: it shrinks into the top
+  // left corner (date beneath it) and grows back when the pop-up closes. Only
+  // transform/opacity animate (see the alerts stylesheet); the positions are
+  // measured once from the clock's resting place, not every frame.
+  // ---------------------------------------------------------------------------
+  const CLOCK_EDGE = { x: 32, y: 26 };
+  const CLOCK_FONT_PX = 72;
+  const DATE_FONT_PX = 17;
+
+  function clockParts(overlay) {
+    return [overlay?.querySelector(".beast-ambient-time"), overlay?.querySelector(".beast-ambient-date")];
+  }
+
+  function moveClock(overlay, on, { remeasure = false } = {}) {
+    if (!overlay) return;
+    const [time, date] = clockParts(overlay);
+    const wasOn = overlay.classList.contains("has-bd-alert");
+    overlay.classList.toggle("has-bd-alert", on);
+    if (!on) {
+      [time, date].forEach((element) => { if (element) element.style.transform = ""; });
+      return;
+    }
+    if (!time || (wasOn && !remeasure && time.style.transform)) return;
+    // Measure the resting layout (no transform), then animate to the corner;
+    // a re-measure (rotation, resize) jumps straight to the new spot.
+    [time, date].forEach((element) => { if (element) { element.style.transition = "none"; element.style.transform = ""; } });
+    const box = overlay.getBoundingClientRect();
+    const timeRect = time.getBoundingClientRect();
+    const scale = Math.min(1, CLOCK_FONT_PX / (parseFloat(getComputedStyle(time).fontSize) || timeRect.height));
+    const edgeY = box.height > box.width ? CLOCK_EDGE.y + 2 : CLOCK_EDGE.y;
+    const targets = [[time, CLOCK_EDGE.x - (timeRect.left - box.left), edgeY - (timeRect.top - box.top), scale]];
+    if (date) {
+      const dateRect = date.getBoundingClientRect();
+      const dateScale = Math.min(1, DATE_FONT_PX / (parseFloat(getComputedStyle(date).fontSize) || dateRect.height));
+      targets.push([date, CLOCK_EDGE.x + 3 - (dateRect.left - box.left), edgeY + timeRect.height * scale + 10 - (dateRect.top - box.top), dateScale]);
+    }
+    void time.offsetWidth;
+    targets.forEach(([element, x, y, factor]) => {
+      if (!remeasure) element.style.transition = "";
+      element.style.transform = `translate3d(${x.toFixed(1)}px, ${y.toFixed(1)}px, 0) scale(${factor.toFixed(4)})`;
+    });
+    if (remeasure) {
+      void time.offsetWidth;
+      targets.forEach(([element]) => { element.style.transition = ""; });
+    }
+  }
+
+  let resizeTimerId = null;
+  function onResize() {
+    window.clearTimeout(resizeTimerId);
+    resizeTimerId = window.setTimeout(() => {
+      const overlay = ambientOverlay();
+      if (alert && overlay?.classList.contains("has-bd-alert")) moveClock(overlay, true, { remeasure: true });
+    }, 120);
+  }
+
+  function mount(overlay) {
+    const element = document.createElement("div");
+    element.className = "beast-bedroom-alert";
+    element.innerHTML = `<div class="bda-card" role="alertdialog" aria-live="assertive">
+        <div class="bda-head">
+          <span class="bda-dot" aria-hidden="true"></span>
+          <div class="bda-title"><b class="bda-what"></b><span class="bda-name"></span></div>
+          <span class="bda-more" hidden></span>
+          <span class="bda-time"></span>
+          <button type="button" class="bda-close" data-bda="close" aria-label="${esc(t("Luk"))}">${icon("x", 20)}</button>
+        </div>
+        <div class="bda-media" role="button" tabindex="0" data-bda="open">
+          <div class="bda-stream"></div>
+          <div class="bda-scrim" aria-hidden="true"></div>
+          <span class="bda-live" data-live="connecting">${esc(t("Forbinder"))}</span>
+          <span class="bda-cam"></span>
+          <span class="bda-expand" aria-hidden="true">${icon("corners", 16)}</span>
+        </div>
+        <div class="bda-bar" aria-hidden="true"><i></i></div>
+      </div>`;
+    // The screensaver wakes on any pointerdown that reaches it (and the
+    // document); the card handles its own taps so closing it keeps the
+    // screensaver up.
+    element.addEventListener("pointerdown", (pointerEvent) => { if (pointerEvent.target.closest(".bda-card")) pointerEvent.stopPropagation(); });
+    element.addEventListener("click", onCardClick);
+    element.addEventListener("keydown", (keyEvent) => {
+      if ((keyEvent.key === "Enter" || keyEvent.key === " ") && keyEvent.target.matches(".bda-media")) { keyEvent.preventDefault(); openFromAlert(); }
+      if (keyEvent.key === "Escape") close();
+    });
+    overlay.appendChild(element);
+    alert.element = element;
+    alert.slug = null;
+  }
+
+  function mountStream(spec) {
+    const element = alert.element;
+    alert.observer?.disconnect();
+    alert.spec = spec;
+    element.querySelector(".bda-stream").innerHTML = streamMarkup(spec);
+    element.querySelector(".bda-cam").textContent = spec.label;
+    element.querySelector(".bda-media").setAttribute("aria-label", t("Vis {name} i fuld skærm", { name: spec.label }));
+    const stream = element.querySelector("beast-ha-camera-stream");
+    alert.observer = new MutationObserver(updateLive);
+    alert.observer.observe(stream, { attributes: true, attributeFilter: ["class"], childList: true });
+    updateLive();
+  }
+
+  function updateLive() {
+    const element = alert?.element;
+    if (!element) return;
+    const stream = element.querySelector("beast-ha-camera-stream");
+    const live = Boolean(stream && (stream.classList.contains("is-ready") || stream.querySelector("iframe")?.dataset.health === "playing"));
+    const pill = element.querySelector(".bda-live");
+    if (pill.dataset.live === (live ? "live" : "connecting")) return;
+    pill.dataset.live = live ? "live" : "connecting";
+    pill.textContent = live ? "LIVE" : t("Forbinder");
+  }
+
+  function onPlayerMessage(event) {
+    if (event.origin !== window.location.origin || !["camera-player-ready", "camera-player-health"].includes(event.data?.type)) return;
+    const frame = alert?.element?.querySelector(".bda-stream iframe");
+    if (!frame || frame.contentWindow !== event.source) return;
+    frame.dataset.health = event.data.type === "camera-player-ready" ? "playing" : String(event.data.state || "");
+    updateLive();
+  }
+
+  function renderHead() {
+    const { element, event, spec } = alert;
+    const others = [...alert.recent.keys()].filter((key) => key !== event.key).length;
+    element.querySelector(".bda-what").textContent = t(WHAT_LABELS[event.what] || WHAT_LABELS.motion);
+    const name = event.name || spec.label;
+    element.querySelector(".bda-name").textContent = name;
+    element.querySelector(".bda-cam").hidden = name.toLocaleLowerCase() === spec.label.toLocaleLowerCase();
+    element.querySelector(".bda-time").textContent = hm(event.at);
+    const more = element.querySelector(".bda-more");
+    more.hidden = !others;
+    more.textContent = others ? t(others === 1 ? "+{n} zone" : "+{n} zoner", { n: others }) : "";
+    element.querySelector(".bda-card").setAttribute("aria-label", `${element.querySelector(".bda-what").textContent} · ${element.querySelector(".bda-name").textContent}`);
+  }
+
+  // Stepped once a second rather than one long transition: the low power
+  // profile zeroes transition durations, which would empty the bar at once.
+  function restartCountdown() {
+    window.clearTimeout(alert.timerId);
+    window.clearInterval(alert.tickId);
+    const bar = alert.element.querySelector(".bda-bar i");
+    bar.classList.add("is-reset");
+    bar.style.transform = "scaleX(1)";
+    void bar.offsetWidth;
+    bar.classList.remove("is-reset");
+    const tick = () => {
+      if (!alert) return;
+      const left = Math.max(0, alert.deadline - Date.now());
+      bar.style.transform = `scaleX(${Math.max(0, (left - 1000) / alert.windowMs).toFixed(4)})`;
+    };
+    tick();
+    alert.tickId = window.setInterval(tick, 1000);
+    alert.timerId = window.setTimeout(close, alert.deadline - Date.now());
+  }
+
+  // The card fades out while the clock glides back to the middle; the
+  // stream is torn down at once (the card only lingers as a picture).
+  function close() {
+    if (!alert) return;
+    window.clearTimeout(alert.timerId);
+    window.clearInterval(alert.tickId);
+    alert.observer?.disconnect();
+    const element = alert.element;
+    alert = null;
+    moveClock(document.getElementById("beastAmbientMode"), false);
+    if (!element) return;
+    element.querySelector(".bda-stream")?.replaceChildren();
+    if (!element.isConnected || window.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches) { element.remove(); return; }
+    element.classList.add("is-leaving");
+    element.style.pointerEvents = "none";
+    window.setTimeout(() => element.remove(), 360);
+  }
+
+  function onCardClick(event) {
+    const target = event.target.closest("[data-bda]");
+    if (!target) return;
+    event.stopPropagation();
+    if (target.dataset.bda === "close") close();
+    else if (target.dataset.bda === "open") openFromAlert();
+  }
+
+  // ---------------------------------------------------------------------------
+  // Tap: leave the screensaver and show the camera full screen
+  // ---------------------------------------------------------------------------
+  function openFromAlert() {
+    const camera = alert?.camera;
+    close();
+    if (typeof window.noteUserActivity === "function") window.noteUserActivity();
+    else window.hideAmbientMode?.();
+    if (!camera) return;
+    const bedroom = window.BeastBedroom;
+    const pageIds = (bedroom?.cameraIds?.() || []).filter((id) => state(id) && state(id).state !== "unavailable");
+    const index = pageIds.findIndex((id) => window.BeastCameras?.resolveCamera?.(id)?.slug === camera.slug);
+    if (index >= 0 && bedroom?.isActive?.()) bedroom.openCameraView(index);
+    else openView(camera);
+  }
+
+  // Same look as the bedroom page's own full-screen camera, for a camera
+  // that is not one of the page's tiles.
+  function openView(camera) {
+    closeView();
+    const spec = streamSpec(camera, true);
+    const element = document.createElement("div");
+    element.className = "beast-bedroom-camview";
+    element.setAttribute("role", "dialog");
+    element.setAttribute("aria-modal", "true");
+    element.setAttribute("aria-label", spec.label);
+    element.innerHTML = `<div class="bd-cv-media">${streamMarkup(spec)}</div>
+      <div class="bd-cv-top"><span class="bd-cv-name">${esc(spec.label)}</span><button type="button" class="bd-cv-close" aria-label="${esc(t("Luk"))}">${icon("x", 22)}</button></div>`;
+    element.addEventListener("click", closeView);
+    document.body.appendChild(element);
+    view = { element, timerId: window.setTimeout(closeView, VIEW_MAX_MS) };
+    document.dispatchEvent(new CustomEvent("beast:dashboard-cover", { detail: { source: VIEW_SOURCE, on: true } }));
+  }
+
+  function closeView() {
+    if (!view) return;
+    window.clearTimeout(view.timerId);
+    view.element.remove();
+    view = null;
+    document.dispatchEvent(new CustomEvent("beast:dashboard-cover", { detail: { source: VIEW_SOURCE, on: false } }));
+  }
+
+  // ---------------------------------------------------------------------------
+  // Shortcuts: on a bedroom device the screensaver always carries a quiet row
+  // of four ways in near the bottom. A shortcut wakes and opens that view; a
+  // tap anywhere else wakes straight to the bedroom page. The camera pop-up
+  // has priority: while it shows, the row steps back (see the stylesheet).
+  // ---------------------------------------------------------------------------
+  let shortcuts = null;
+
+  function shortcutItems() {
+    const bedroom = window.BeastBedroom;
+    if (!bedroom) return [];
+    return [
+      { id: "bedroom", icon: "bed", label: bedroom.util?.roomTitle?.() || t("Soveværelse") },
+      (bedroom.allCameraIds?.() || []).length ? { id: "cameras", icon: "camera", label: t("Kameraer") } : null,
+      (bedroom.lightIds?.() || []).length ? { id: "lights", icon: "bulb", label: t("Lys") } : null,
+      (bedroom.popupApi?.fanIds?.() || []).length ? { id: "fan", icon: "fan", label: t("Blæser"), toggle: true } : null,
+      bedroom.sleep?.configured?.() ? { id: "sleep", icon: "moon", label: t("Søvn") } : null
+    ].filter(Boolean);
+  }
+
+  function showShortcuts(overlay) {
+    const items = shortcutItems();
+    hideShortcuts();
+    if (!items.length) return false;
+    const element = document.createElement("div");
+    element.className = "beast-bedroom-shortcuts";
+    element.setAttribute("role", "group");
+    element.setAttribute("aria-label", t("Genveje"));
+    element.innerHTML = items.map((item) => {
+      const on = item.toggle && item.id === "fan" && fanShortcutState().on;
+      const pressed = item.toggle ? ` aria-pressed="${on ? "true" : "false"}"` : "";
+      return `<button type="button" class="bds-btn${on ? " is-on" : ""}${item.toggle ? " is-toggle" : ""}" data-bds="${item.id}"${pressed}><span class="bds-ic">${icon(item.icon, 22)}</span><span class="bds-lbl">${esc(item.label)}</span></button>`;
+    }).join("");
+    element.addEventListener("click", (event) => {
+      const button = event.target.closest("[data-bds]");
+      if (!button || !shortcuts || Date.now() - shortcuts.shownAt < SHORTCUT_GUARD_MS) return;
+      event.stopPropagation();
+      if (button.dataset.bds === "fan") { toggleFanShortcut(button); return; }
+      openShortcut(button.dataset.bds);
+    });
+    overlay.appendChild(element);
+    overlay.classList.add("has-bd-shortcuts");
+    shortcuts = { element, shownAt: Date.now(), unsubscribers: [], timers: [] };
+    const fanButton = element.querySelector('[data-bds="fan"]');
+    if (fanButton) {
+      const refresh = () => refreshFanShortcut(fanButton);
+      shortcuts.unsubscribers = fanShortcutState().ids.map((id) => BeastHaSocket.subscribeEntity(id, refresh));
+    }
+    return true;
+  }
+
+  // The Blæser button is a switch, not a pop-up: one tap turns the fan(s) on or
+  // off, the button lights up while they run, and a failed command says so on the
+  // button itself (a night-time tap that silently did nothing was the old problem).
+  function fanShortcutOn(id) {
+    const st = state(id);
+    const pend = window.BeastBedroom?.popupApi?.pendingFor?.(id);
+    return Boolean(pend && "on" in pend ? pend.on : st?.state === "on");
+  }
+
+  function fanShortcutState() {
+    const ids = window.BeastBedroom?.popupApi?.fanIds?.() || [];
+    const usable = ids.filter((id) => {
+      const st = state(id);
+      return st && !["unavailable", "unknown"].includes(st.state);
+    });
+    return { ids, usable, on: usable.some(fanShortcutOn) };
+  }
+
+  function refreshFanShortcut(button) {
+    if (!button?.isConnected) return;
+    const { on } = fanShortcutState();
+    button.classList.toggle("is-on", on);
+    button.setAttribute("aria-pressed", on ? "true" : "false");
+  }
+
+  function flashShortcut(button, text) {
+    const label = button?.querySelector(".bds-lbl");
+    if (!label) return;
+    if (!button.dataset.label) button.dataset.label = label.textContent;
+    label.textContent = text;
+    button.classList.add("is-flash");
+    window.clearTimeout(Number(button.dataset.flashTimer) || 0);
+    button.dataset.flashTimer = String(window.setTimeout(() => {
+      label.textContent = button.dataset.label || label.textContent;
+      button.classList.remove("is-flash");
+    }, 2200));
+  }
+
+  function toggleFanShortcut(button) {
+    const P = window.BeastBedroom?.popupApi;
+    const { usable, on } = fanShortcutState();
+    if (!P || !usable.length) { flashShortcut(button, t("Utilgængelig")); return; }
+    const next = !on;
+    const sends = usable.filter((id) => fanShortcutOn(id) !== next).map((id) => P.toggleEntity(id));
+    refreshFanShortcut(button);
+    // The optimistic state lasts a few seconds; look again once it has expired.
+    if (shortcuts) shortcuts.timers.push(window.setTimeout(() => refreshFanShortcut(button), 5300));
+    Promise.all(sends).then((results) => {
+      if (!results.includes(false)) return;
+      refreshFanShortcut(button);
+      flashShortcut(button, socketStatus && socketStatus !== "connected" ? t("Ingen forbindelse") : t("Mislykkedes"));
+    });
+  }
+
+  function hideShortcuts() {
+    if (!shortcuts) return;
+    const { element, unsubscribers: offs = [], timers = [] } = shortcuts;
+    offs.forEach((unsubscribe) => unsubscribe());
+    timers.forEach((id) => window.clearTimeout(id));
+    element.querySelectorAll("[data-flash-timer]").forEach((b) => window.clearTimeout(Number(b.dataset.flashTimer) || 0));
+    shortcuts = null;
+    element.parentElement?.classList.remove("has-bd-shortcuts");
+    element.remove();
+  }
+
+  // Kameraer, Lys and Blæser open a pop-up on top of the screensaver (see
+  // ha-smartdash-bedroom-quick.js); Soveværelse and Søvn wake to their page.
+  function openShortcut(id) {
+    if (window.BeastBedroom?.quick?.open?.(id)) return;
+    hideShortcuts();
+    // Waking lands on the device's home page, the bedroom.
+    if (typeof window.noteUserActivity === "function") window.noteUserActivity();
+    else window.hideAmbientMode?.();
+    window.setTimeout(() => {
+      const bedroom = window.BeastBedroom;
+      if (!bedroom) return;
+      if (!bedroom.isActive?.()) document.querySelector('.beast-rail-btn[data-section="bedroom"]')?.click();
+      if (id === "cameras") bedroom.openAllCameras?.();
+      else if (id === "lights") bedroom.openLightsSheet?.();
+      else if (id === "sleep") bedroom.sleep?.openDetail?.();
+    }, 80);
+  }
+
+  // Capture phase, so it runs before the screensaver's own wake handler: a
+  // press on a shortcut is kept from waking at once, so its click can follow
+  // (and then wakes and opens the view). Any other tap is left to that wake
+  // handler; the click that the same tap produces a moment later would land
+  // on the bedroom page now under the finger (a light, a lock), so it is
+  // swallowed.
+  const WAKE_CLICK_GUARD_MS = 700;
+  let swallowClickUntil = 0;
+
+  function onSaverPointerDown(event) {
+    if (!enabledHere()) return;
+    const overlay = ambientOverlay();
+    if (!overlay || !overlay.contains(event.target)) return;
+    if (event.target.closest(".bda-card")) return;
+    // Shortcuts, the pop-ups and the content's own buttons (Lås, Sluk/Pause)
+    // keep the screensaver up; their click does the work.
+    if (!alert && event.target.closest("[data-bds], [data-bdv], .bdq")) { event.stopPropagation(); return; }
+    swallowClickUntil = Date.now() + WAKE_CLICK_GUARD_MS;
+  }
+
+  function onClickAfterWake(event) {
+    if (!swallowClickUntil) return;
+    const live = Date.now() < swallowClickUntil;
+    swallowClickUntil = 0;
+    if (!live || ambientOverlay()?.contains(event.target)) return;
+    event.preventDefault();
+    event.stopImmediatePropagation();
+  }
+
+  // ---------------------------------------------------------------------------
+  // Wiring
+  // ---------------------------------------------------------------------------
+  // Bedroom devices get their own (larger, Amber) screensaver clock; the
+  // class keeps those rules away from every other kiosk.
+  function markDevice() {
+    document.documentElement.classList.toggle("beast-bedroom-device", enabledHere());
+  }
+
+  function sync() {
+    markDevice();
+    const config = cfg();
+    const zoneLog = list(config.alertZoneLog)[0] || null;
+    const sensors = list(config.alertSensors);
+    const signature = enabledHere() && (zoneLog || sensors.length) ? JSON.stringify([zoneLog, sensors]) : "";
+    if (signature !== wiredSignature) {
+      unsubscribers.forEach((unsubscribe) => unsubscribe());
+      unsubscribers = [];
+      wiredSignature = signature;
+      sensorStates.clear();
+      if (!signature) { close(); closeView(); return; }
+      if (zoneLog) unsubscribers.push(BeastHaSocket.subscribeEntity(zoneLog, (id, next) => onZoneLog(next)));
+      sensors.forEach((id) => unsubscribers.push(BeastHaSocket.subscribeEntity(id, onSensor)));
+      if (sensors.length) registry()?.ensureLoaded().catch(() => {});
+      if (go2rtcBase()) window.BeastCameras?.ensureStreamDiscovery?.(go2rtcBase());
+    }
+    if (!signature) return;
+    if (zoneLog) onZoneLog(state(zoneLog));
+    sensors.forEach((id) => onSensor(id, state(id)));
+  }
+
+  BeastHaSocket.onStatusChange((status) => { socketStatus = status; if (status === "connected") sync(); });
+  document.addEventListener("beast:config-changed", sync);
+  document.addEventListener("beast:local-settings-changed", sync);
+  document.addEventListener("pointerdown", onSaverPointerDown, true);
+  document.addEventListener("click", onClickAfterWake, true);
+  document.addEventListener("beast:ambientchange", (event) => {
+    if (!event.detail?.on) { close(); hideShortcuts(); return; }
+    closeView();
+    const saver = ambientOverlay();
+    if (saver && enabledHere()) showShortcuts(saver);
+    // Reopening the screensaver rebuilds its content; a pop-up still inside
+    // its window goes back on top.
+    const overlay = ambientOverlay();
+    if (alert && overlay && !alert.element?.isConnected && Date.now() < alert.deadline) {
+      const { event, camera } = alert;
+      close();
+      show(overlay, event, camera);
+    } else if (alert && !alert.element?.isConnected) close();
+  });
+  document.addEventListener("beast:sectionchange", closeView);
+  document.addEventListener("keydown", (event) => { if (event.key === "Escape") closeView(); });
+  document.addEventListener("visibilitychange", () => { if (document.hidden) closeView(); });
+  window.addEventListener("message", onPlayerMessage);
+  window.addEventListener("resize", onResize);
+  markDevice();
+
+  return { parseZoneLog, close, isShowing: () => Boolean(alert), shortcutsShowing: () => Boolean(shortcuts) };
+})();
